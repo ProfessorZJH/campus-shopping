@@ -37,7 +37,7 @@ concurrency:
 jobs:
   full-stack:
     name: Maven / MySQL / FastAPI / Browser E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -169,7 +169,7 @@ jobs:
   external-ai:
     name: Optional live NVIDIA / XFYUN / Milvus smoke
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.external_ai == true }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       EMBEDDING_BASE_URL: https://integrate.api.nvidia.com/v1
