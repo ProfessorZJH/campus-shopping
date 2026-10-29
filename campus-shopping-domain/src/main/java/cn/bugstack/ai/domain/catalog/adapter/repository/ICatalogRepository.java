@@ -15,5 +15,4 @@ public interface ICatalogRepository {
  List<ProductAggregate> searchManaged(String merchant,String query,String category,String status,int offset,int limit);
  long countManaged(String merchant,String query,String category,String status);
  List<SkuOfferVO> offers(List<String> ids,boolean lock);List<CategoryVO> categories();void category(String code,String name,boolean active);
- String storeImage(byte[] bytes);
 }

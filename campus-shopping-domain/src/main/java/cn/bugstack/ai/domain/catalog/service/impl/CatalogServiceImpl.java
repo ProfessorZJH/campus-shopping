@@ -1,6 +1,7 @@
 package cn.bugstack.ai.domain.catalog.service.impl;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
+import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.*;
 import cn.bugstack.ai.domain.catalog.model.valobj.*;
@@ -12,7 +13,9 @@ import org.springframework.stereotype.Service;
 /** 售价、规格与发布规则，不越过仓储直接访问数据表。 */
 @Service
 public class CatalogServiceImpl implements ICatalogService {
- private final ICatalogRepository repository;public CatalogServiceImpl(ICatalogRepository repository){this.repository=repository;}
+ private final ICatalogRepository repository;
+ private final IProductImageRepository images;
+ public CatalogServiceImpl(ICatalogRepository repository,IProductImageRepository images){this.repository=repository;this.images=images;}
  public List<ProductAggregate> recall(List<String> terms,int limit){
   require(terms!=null&&terms.size()<=8&&limit>=1&&limit<=200,ResponseCode.ILLEGAL_PARAMETER);
   for(String term:terms)require(term!=null&&term.length()>=2&&term.length()<=20&&term.matches("[\\p{L}\\p{N}_-]+"),ResponseCode.ILLEGAL_PARAMETER);
@@ -54,5 +57,5 @@ public class CatalogServiceImpl implements ICatalogService {
  public List<CategoryVO> categories(){return repository.categories();}
  private void validCategory(String code){require(repository.categories().stream().anyMatch(c->c.active()&&c.code().equals(code)),ResponseCode.ILLEGAL_PARAMETER);}
  public void category(String code,String name,boolean active){String c=Checks.text(code,"类目编码",32);require(c.matches("[a-z0-9_-]+"),ResponseCode.ILLEGAL_PARAMETER);repository.category(c,Checks.text(name,"类目名称",50),active);}
- public String storeImage(byte[] data){return repository.storeImage(data);}
+ public String storeImage(byte[] data){return images.storeImage(data);}
 }
