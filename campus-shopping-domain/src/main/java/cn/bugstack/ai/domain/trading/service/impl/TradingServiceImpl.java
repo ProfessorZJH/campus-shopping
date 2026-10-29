@@ -17,7 +17,7 @@ public class TradingServiceImpl implements ITradingService {
  public String beginCheckout(String user,String key,String fingerprint){CheckoutRequestVO r=repository.begin(user,text(key,"幂等键",64),fingerprint);require(fingerprint.equals(r.fingerprint()),ResponseCode.REQUEST_CONFLICT);return r.orderId();}
  @Transactional(propagation=Propagation.MANDATORY) public void finishCheckout(String user,String key,String orderId){repository.finishRequest(user,key,orderId);}
  @Transactional(propagation=Propagation.MANDATORY)
- public OrderAggregate create(String id,String buyer,String merchant,String store,List<OrderItemEntity> items,Instant deadline){OrderAggregate o=new OrderAggregate(id,buyer,merchant,store,items,"PENDING_PAYMENT",deadline,clock.instant());repository.insert(o);return o;}
+ public OrderAggregate create(String id,String buyer,String merchant,String store,List<OrderItemEntity> items,Instant deadline){OrderAggregate o=new OrderAggregate(id,buyer,merchant,store,items,OrderStatusEnumVO.PENDING_PAYMENT.name(),deadline,clock.instant());repository.insert(o);return o;}
  public OrderAggregate order(String id,boolean lock){OrderAggregate o=repository.order(text(id,"订单编号",64),lock);require(o!=null,ResponseCode.NOT_FOUND);return o;}
  @Transactional(propagation=Propagation.MANDATORY) public void save(OrderAggregate order){repository.save(order);}
  public List<OrderAggregate> orders(String buyer,String merchant,String status,int page,int size){return orders(buyer,merchant,status,page,size,"");}
@@ -45,16 +45,16 @@ public class TradingServiceImpl implements ITradingService {
  public AfterSaleVO afterSale(String order,boolean lock){return repository.afterSale(order,lock);}
  @Transactional(propagation=Propagation.MANDATORY)
  public AfterSaleVO requestAfterSale(OrderAggregate order,String buyer,String reason){
-  order.requireBuyer(buyer);require("PAID".equals(order.getStatus()),ResponseCode.REFUND_STATE_INVALID);String clean=text(reason,"退款原因",500);
-  AfterSaleVO old=repository.afterSale(order.getId(),true);if(old!=null){require("REQUESTED".equals(old.status())&&old.reason().equals(clean),ResponseCode.REFUND_STATE_INVALID);return old;}
-  AfterSaleVO a=new AfterSaleVO(UUID.randomUUID().toString(),order.getId(),buyer,order.getMerchantId(),"REQUESTED",clean,"",clock.instant());repository.insertAfterSale(a);return a;
+  order.requireBuyer(buyer);require(order.getStatusEnum()==OrderStatusEnumVO.PAID,ResponseCode.REFUND_STATE_INVALID);String clean=text(reason,"退款原因",500);
+  AfterSaleVO old=repository.afterSale(order.getId(),true);if(old!=null){require(old.statusEnum()==AfterSaleStatusEnumVO.REQUESTED&&old.reason().equals(clean),ResponseCode.REFUND_STATE_INVALID);return old;}
+  AfterSaleVO a=new AfterSaleVO(UUID.randomUUID().toString(),order.getId(),buyer,order.getMerchantId(),AfterSaleStatusEnumVO.REQUESTED.name(),clean,"",clock.instant());repository.insertAfterSale(a);return a;
  }
  @Transactional(propagation=Propagation.MANDATORY)
- public void rejectAfterSale(String order,String reason){AfterSaleVO a=repository.afterSale(order,true);require(a!=null,ResponseCode.NOT_FOUND);if("REJECTED".equals(a.status()))return;require(Set.of("REQUESTED","DISPUTED").contains(a.status()),ResponseCode.REFUND_STATE_INVALID);repository.saveAfterSale(a.id(),"REJECTED",text(reason,"驳回理由",500));}
+ public void rejectAfterSale(String order,String reason){AfterSaleVO a=repository.afterSale(order,true);require(a!=null,ResponseCode.NOT_FOUND);if(a.statusEnum()==AfterSaleStatusEnumVO.REJECTED)return;require(EnumSet.of(AfterSaleStatusEnumVO.REQUESTED,AfterSaleStatusEnumVO.DISPUTED).contains(a.statusEnum()),ResponseCode.REFUND_STATE_INVALID);repository.saveAfterSale(a.id(),AfterSaleStatusEnumVO.REJECTED.name(),text(reason,"驳回理由",500));}
  @Transactional(propagation=Propagation.MANDATORY)
- public void appeal(OrderAggregate order,String buyer){order.requireBuyer(buyer);require("PAID".equals(order.getStatus()),ResponseCode.REFUND_STATE_INVALID);AfterSaleVO a=repository.afterSale(order.getId(),true);require(a!=null,ResponseCode.NOT_FOUND);if("DISPUTED".equals(a.status()))return;require("REJECTED".equals(a.status()),ResponseCode.REFUND_STATE_INVALID);repository.saveAfterSale(a.id(),"DISPUTED",a.decisionReason());}
+ public void appeal(OrderAggregate order,String buyer){order.requireBuyer(buyer);require(order.getStatusEnum()==OrderStatusEnumVO.PAID,ResponseCode.REFUND_STATE_INVALID);AfterSaleVO a=repository.afterSale(order.getId(),true);require(a!=null,ResponseCode.NOT_FOUND);if(a.statusEnum()==AfterSaleStatusEnumVO.DISPUTED)return;require(a.statusEnum()==AfterSaleStatusEnumVO.REJECTED,ResponseCode.REFUND_STATE_INVALID);repository.saveAfterSale(a.id(),AfterSaleStatusEnumVO.DISPUTED.name(),a.decisionReason());}
  @Transactional(propagation=Propagation.MANDATORY)
- public void approveAfterSale(String order,String reason){AfterSaleVO a=repository.afterSale(order,true);require(a!=null&&Set.of("REQUESTED","DISPUTED").contains(a.status()),ResponseCode.REFUND_STATE_INVALID);repository.saveAfterSale(a.id(),"APPROVED",text(reason,"退款审核说明",500));}
+ public void approveAfterSale(String order,String reason){AfterSaleVO a=repository.afterSale(order,true);require(a!=null&&EnumSet.of(AfterSaleStatusEnumVO.REQUESTED,AfterSaleStatusEnumVO.DISPUTED).contains(a.statusEnum()),ResponseCode.REFUND_STATE_INVALID);repository.saveAfterSale(a.id(),AfterSaleStatusEnumVO.APPROVED.name(),text(reason,"退款审核说明",500));}
  public List<AfterSaleVO> afterSales(String buyer,String merchant,String status,int page,int size){return repository.afterSales(buyer,merchant,status,offset(page,size),size);}
  public TradingStatsVO statistics(String merchant){return repository.statistics(merchant);}
 }
