@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "checks": [
+    "random_secrets",
+    "distinct_credentials",
+    "no_secret_output",
+    "no_overwrite",
+    "file_mode_0600"
+  ],
+  "deploymentExecuted": false
+}

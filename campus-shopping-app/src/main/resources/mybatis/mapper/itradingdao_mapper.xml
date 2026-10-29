@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.ITradingDao">
+    <insert id="gate">
+INSERT INTO trd_checkout_request(user_id,request_key,fingerprint) VALUES(#{user},#{key},#{fingerprint}) ON DUPLICATE KEY UPDATE user_id=user_id
+    </insert>
+    <select id="request" resultType="cn.bugstack.ai.infrastructure.dao.po.CheckoutRequestPO">
+SELECT * FROM trd_checkout_request WHERE user_id=#{user} AND request_key=#{key} FOR UPDATE
+    </select>
+    <update id="finishRequest">
+UPDATE trd_checkout_request SET order_id=#{order} WHERE user_id=#{user} AND request_key=#{key} AND order_id IS NULL
+    </update>
+    <insert id="insertOrder">
+INSERT INTO trd_order(id,buyer_id,merchant_id,store_id,total_cent,status,deadline,version,created_at) VALUES(#{p.id},#{p.buyerId},#{p.merchantId},#{p.storeId},#{p.totalCent},#{p.status},#{p.deadline},0,#{p.createdAt})
+    </insert>
+    <insert id="insertItem">
+INSERT INTO trd_order_item(order_id,sku_id,title,spec_key,image_url,unit_price_cent,quantity) VALUES(#{p.orderId},#{p.skuId},#{p.title},#{p.specKey},#{p.imageUrl},#{p.unitPriceCent},#{p.quantity})
+    </insert>
+    <select id="order" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderPO">
+SELECT * FROM trd_order WHERE id=#{id}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <select id="items" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderItemPO">
+SELECT * FROM trd_order_item WHERE order_id=#{id} ORDER BY sku_id<if test="lock"> FOR UPDATE</if>
+    </select>
+    <update id="saveOrder">
+UPDATE trd_order SET status=#{status},version=version+1 WHERE id=#{id}
+    </update>
+    <select id="orders" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderPO">
+SELECT * FROM trd_order o WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{buyer}</if> <if test="merchant != null">AND o.merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND o.status=#{status}</if><if test="q != null and q != ''">AND (LOCATE(LOWER(#{q}),LOWER(o.id))>0 OR EXISTS(SELECT 1 FROM trd_order_item oi WHERE oi.order_id=o.id AND LOCATE(LOWER(#{q}),LOWER(oi.title))>0))</if>
+ ORDER BY o.created_at DESC,o.id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countOrders" resultType="long">
+SELECT COUNT(*) FROM trd_order o WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{buyer}</if> <if test="merchant != null">AND o.merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND o.status=#{status}</if>
+    <if test="q != null and q != ''">AND (LOCATE(LOWER(#{q}),LOWER(o.id))>0 OR EXISTS(SELECT 1 FROM trd_order_item oi WHERE oi.order_id=o.id AND LOCATE(LOWER(#{q}),LOWER(oi.title))>0))</if>
+</select>
+    <select id="expired" resultType="java.lang.String">
+SELECT id FROM trd_order WHERE status='PENDING_PAYMENT' AND deadline &lt;= #{now} ORDER BY deadline,id LIMIT 100
+    </select>
+    <insert id="payment">
+INSERT INTO trd_payment(order_id,amount_cent,status) VALUES(#{order},#{amount},'SUCCEEDED')
+    </insert>
+    <insert id="refund">
+INSERT INTO trd_refund(order_id,amount_cent) VALUES(#{order},#{amount})
+    </insert>
+    <select id="cart" resultType="cn.bugstack.ai.infrastructure.dao.po.CartItemPO">
+SELECT * FROM trd_cart_item WHERE user_id=#{user} ORDER BY merchant_id,sku_id LIMIT 100
+    </select>
+    <select id="cartItem" resultType="cn.bugstack.ai.infrastructure.dao.po.CartItemPO">
+SELECT * FROM trd_cart_item WHERE user_id=#{user} AND sku_id=#{sku} FOR UPDATE
+    </select>
+    <insert id="setCart">
+INSERT INTO trd_cart_item(user_id,merchant_id,sku_id,quantity) VALUES(#{user},#{merchant},#{sku},#{quantity}) ON DUPLICATE KEY UPDATE quantity=#{quantity},version=version+1
+    </insert>
+    <delete id="deleteCart">
+DELETE FROM trd_cart_item WHERE user_id=#{user} AND sku_id=#{sku}
+    </delete>
+    <select id="afterSale" resultType="cn.bugstack.ai.infrastructure.dao.po.AfterSalePO">
+SELECT * FROM trd_after_sale WHERE order_id=#{order}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <insert id="insertAfterSale">
+INSERT INTO trd_after_sale(id,order_id,buyer_id,merchant_id,status,reason,decision_reason,created_at) VALUES(#{p.id},#{p.orderId},#{p.buyerId},#{p.merchantId},#{p.status},#{p.reason},#{p.decisionReason},#{p.createdAt})
+    </insert>
+    <update id="saveAfterSale">
+UPDATE trd_after_sale SET status=#{status},decision_reason=#{reason} WHERE id=#{id}
+    </update>
+    <select id="afterSales" resultType="cn.bugstack.ai.infrastructure.dao.po.AfterSalePO">
+SELECT * FROM trd_after_sale WHERE 1=1 <if test="buyer != null">AND buyer_id=#{buyer}</if> <if test="merchant != null">AND merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND status=#{status}</if> ORDER BY created_at DESC,id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countAfterSales" resultType="long">
+SELECT COUNT(*) FROM trd_after_sale WHERE 1=1 <if test="buyer != null">AND buyer_id=#{buyer}</if> <if test="merchant != null">AND merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND status=#{status}</if>
+    </select>
+    <select id="statistics" resultType="cn.bugstack.ai.infrastructure.dao.po.TradingStatsPO">
+SELECT COUNT(*) total_orders,COALESCE(SUM(status='PENDING_PAYMENT'),0) pending_count,COALESCE(SUM(status='PAID'),0) paid_count,COALESCE(SUM(status='COMPLETED'),0) completed_count,COALESCE(SUM(status='REFUNDED'),0) refunded_count,COALESCE(SUM(CASE WHEN status='COMPLETED' THEN total_cent ELSE 0 END),0) completed_amount_cent FROM trd_order <if test="merchant != null">WHERE merchant_id=#{merchant}</if>
+    </select>
+<insert id="ensureCart">INSERT INTO trd_cart_owner(user_id) VALUES(#{user}) ON DUPLICATE KEY UPDATE user_id=user_id</insert>
+<select id="lockCart" resultType="java.lang.String">SELECT user_id FROM trd_cart_owner WHERE user_id=#{user} FOR UPDATE</select>
+</mapper>

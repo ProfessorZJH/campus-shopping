@@ -1,0 +1,4 @@
+# 测试专用配置见 src/test/resources；不要用生产库执行测试。
+campus:
+  jobs:
+    enabled: false

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IMerchantApplicationDao">
+    <insert id="insertIfAbsent">
+INSERT INTO mer_application(application_id,applicant_user_id,request_key,merchant_name,category,contact_name,contact_phone,store_name,campus_location,status)
+VALUES(#{po.applicationId},#{po.applicantUserId},#{po.requestKey},#{po.merchantName},#{po.category},#{po.contactName},#{po.contactPhone},#{po.storeName},#{po.campusLocation},#{po.status}) ON DUPLICATE KEY UPDATE application_id=application_id
+    </insert>
+    <select id="queryByApplicantAndRequestKey" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantApplicationPO">
+SELECT * FROM mer_application WHERE applicant_user_id=#{applicantUserId} AND request_key=#{requestKey}
+    </select>
+    <select id="lock" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantApplicationPO">
+SELECT * FROM mer_application WHERE application_id=#{id} FOR UPDATE
+    </select>
+    <update id="saveReview">
+UPDATE mer_application SET status=#{po.status},reviewer_user_id=#{po.reviewerUserId},rejection_reason=#{po.rejectionReason},opened_merchant_id=#{po.openedMerchantId},version=version+1 WHERE application_id=#{po.applicationId} AND version=#{po.version} AND status='SUBMITTED'
+    </update>
+    <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantApplicationPO">
+SELECT * FROM mer_application WHERE 1=1 <if test="userId != null">AND applicant_user_id=#{userId}</if><if test="status != null and status != ''">AND status=#{status}</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',application_id,merchant_name,contact_name,store_name,contact_phone)))>0</if> ORDER BY create_time DESC, application_id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="count" resultType="long">
+SELECT COUNT(*) FROM mer_application WHERE 1=1 <if test="userId != null">AND applicant_user_id=#{userId}</if><if test="status != null and status != ''">AND status=#{status}</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',application_id,merchant_name,contact_name,store_name,contact_phone)))>0</if>
+    </select>
+</mapper>

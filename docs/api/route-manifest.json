@@ -1,0 +1,2257 @@
+{
+  "version": "1.1.0",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/aftersales",
+      "controller": "AfterSaleController.java",
+      "handler": "platformAfterSales",
+      "responseType": "List<AfterSaleResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/aftersales/page",
+      "controller": "AfterSaleController.java",
+      "handler": "platformAfterSalesPage",
+      "responseType": "PageResponseDTO<AfterSaleResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/categories",
+      "controller": "CatalogController.java",
+      "handler": "category",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "CategoryRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/merchant-applications",
+      "controller": "MerchantApplicationController.java",
+      "handler": "pending",
+      "responseType": "List<AdmissionResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/merchant-applications/page",
+      "controller": "MerchantApplicationController.java",
+      "handler": "pendingPage",
+      "responseType": "PageResponseDTO<AdmissionResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/merchant-applications/{applicationId}/review",
+      "controller": "MerchantApplicationController.java",
+      "handler": "review",
+      "responseType": "MerchantResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "applicationId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ReviewRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/merchants",
+      "controller": "MerchantApplicationController.java",
+      "handler": "allMerchants",
+      "responseType": "List<MerchantResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/merchants/page",
+      "controller": "MerchantApplicationController.java",
+      "handler": "adminMerchantsPage",
+      "responseType": "PageResponseDTO<MerchantResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/merchants/{merchantId}/state",
+      "controller": "MerchantApplicationController.java",
+      "handler": "merchantState",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "StateRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/orders",
+      "controller": "OrderController.java",
+      "handler": "platformOrders",
+      "responseType": "List<OrderResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/orders/page",
+      "controller": "OrderController.java",
+      "handler": "platformOrdersPage",
+      "responseType": "PageResponseDTO<OrderResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/orders/{orderId}/refund-decision",
+      "controller": "AfterSaleController.java",
+      "handler": "platformDecide",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ReviewRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/products",
+      "controller": "CatalogController.java",
+      "handler": "adminProducts",
+      "responseType": "List<ProductResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "merchantId",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/products/page",
+      "controller": "CatalogController.java",
+      "handler": "adminProductPage",
+      "responseType": "PageResponseDTO<ProductResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "merchantId",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/products/{productId}/unpublish",
+      "controller": "CatalogController.java",
+      "handler": "forceUnpublish",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/statistics",
+      "controller": "OrderController.java",
+      "handler": "platformStatistics",
+      "responseType": "StatisticsResponseDTO",
+      "inputs": [],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/chat",
+      "controller": "ShoppingAiController.java",
+      "handler": "chat",
+      "responseType": "ChatResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ChatRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/conversations",
+      "controller": "ShoppingAiController.java",
+      "handler": "conversations",
+      "responseType": "List<ConversationResponseDTO>",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/conversations/{conversationId}/messages",
+      "controller": "ShoppingAiController.java",
+      "handler": "history",
+      "responseType": "List<MessageResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "conversationId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/conversations/{conversationId}/proposals",
+      "controller": "ShoppingAiController.java",
+      "handler": "proposals",
+      "responseType": "List<ProposalResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "conversationId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/proposals/{proposalId}/confirm",
+      "controller": "ShoppingAiController.java",
+      "handler": "confirm",
+      "responseType": "ProposalResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "proposalId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ConfirmProposalRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/proposals/{proposalId}/reject",
+      "controller": "ShoppingAiController.java",
+      "handler": "reject",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "proposalId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/csrf",
+      "controller": "AuthController.java",
+      "handler": "csrf",
+      "responseType": "CsrfTokenResponseDTO",
+      "inputs": [],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "controller": "AuthController.java",
+      "handler": "login",
+      "responseType": "CurrentUserResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "LoginRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "anonymous",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "controller": "AuthController.java",
+      "handler": "logout",
+      "responseType": "Void",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "controller": "AuthController.java",
+      "handler": "me",
+      "responseType": "CurrentUserResponseDTO",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/register",
+      "controller": "AuthController.java",
+      "handler": "register",
+      "responseType": "RegisterResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "RegisterRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "anonymous",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cart",
+      "controller": "CartController.java",
+      "handler": "cart",
+      "responseType": "List<CartResponseDTO>",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/cart",
+      "controller": "CartController.java",
+      "handler": "set",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "CartSetRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cart/{skuId}",
+      "controller": "CartController.java",
+      "handler": "delete",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "skuId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/categories",
+      "controller": "CatalogController.java",
+      "handler": "categories",
+      "responseType": "List<CategoryResponseDTO>",
+      "inputs": [],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/invitations",
+      "controller": "WorkspaceController.java",
+      "handler": "invitations",
+      "responseType": "List<InvitationResponseDTO>",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/invitations/{id}/accept",
+      "controller": "WorkspaceController.java",
+      "handler": "accept",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "id",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/bases",
+      "controller": "KnowledgeController.java",
+      "handler": "bases",
+      "responseType": "List<KnowledgeBaseResponseDTO>",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/bases",
+      "controller": "KnowledgeController.java",
+      "handler": "createBase",
+      "responseType": "KnowledgeBaseResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "KnowledgeBaseRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/bases/{baseId}/documents",
+      "controller": "KnowledgeController.java",
+      "handler": "documents",
+      "responseType": "List<KnowledgeDocumentResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "baseId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/bases/{baseId}/documents",
+      "controller": "KnowledgeController.java",
+      "handler": "upload",
+      "responseType": "KnowledgeDocumentResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "baseId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "DocumentUploadRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/bases/{baseId}/documents/page",
+      "controller": "KnowledgeController.java",
+      "handler": "documentsPage",
+      "responseType": "PageResponseDTO<KnowledgeDocumentResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "baseId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/knowledge/documents/{documentId}",
+      "controller": "KnowledgeController.java",
+      "handler": "document",
+      "responseType": "KnowledgeDocumentResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "documentId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/documents/{documentId}/index",
+      "controller": "KnowledgeController.java",
+      "handler": "index",
+      "responseType": "KnowledgeDocumentResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "documentId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/documents/{documentId}/publish",
+      "controller": "KnowledgeController.java",
+      "handler": "publish",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "documentId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/knowledge/documents/{documentId}/withdraw",
+      "controller": "KnowledgeController.java",
+      "handler": "withdraw",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "documentId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchant-applications",
+      "controller": "MerchantApplicationController.java",
+      "handler": "submit",
+      "responseType": "SubmitMerchantApplicationResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "SubmitMerchantApplicationRequestDTO",
+          "required": true
+        },
+        {
+          "in": "header",
+          "name": "Idempotency-Key",
+          "type": "String",
+          "required": true,
+          "description": "领域规则必填（Controller 为便于统一业务错误码使用 required=false）"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchant-applications/mine",
+      "controller": "MerchantApplicationController.java",
+      "handler": "mine",
+      "responseType": "List<AdmissionResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchant-applications/mine/page",
+      "controller": "MerchantApplicationController.java",
+      "handler": "minePage",
+      "responseType": "PageResponseDTO<AdmissionResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/public",
+      "controller": "MerchantApplicationController.java",
+      "handler": "publicMerchants",
+      "responseType": "List<MerchantResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/public/page",
+      "controller": "MerchantApplicationController.java",
+      "handler": "publicMerchantsPage",
+      "responseType": "PageResponseDTO<MerchantResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/public/{merchantId}",
+      "controller": "MerchantApplicationController.java",
+      "handler": "publicMerchant",
+      "responseType": "MerchantResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/aftersales",
+      "controller": "AfterSaleController.java",
+      "handler": "merchantAfterSales",
+      "responseType": "List<AfterSaleResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/aftersales/page",
+      "controller": "AfterSaleController.java",
+      "handler": "merchantAfterSalesPage",
+      "responseType": "PageResponseDTO<AfterSaleResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/images",
+      "controller": "CatalogController.java",
+      "handler": "image",
+      "responseType": "ImageResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "FileUploadRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/invitations",
+      "controller": "WorkspaceController.java",
+      "handler": "invite",
+      "responseType": "InvitationResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "InvitationRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/members",
+      "controller": "WorkspaceController.java",
+      "handler": "members",
+      "responseType": "List<MembershipResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/merchants/{merchantId}/members/{userId}",
+      "controller": "WorkspaceController.java",
+      "handler": "revoke",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "userId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/orders",
+      "controller": "OrderController.java",
+      "handler": "merchantOrders",
+      "responseType": "List<OrderResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/orders/page",
+      "controller": "OrderController.java",
+      "handler": "merchantOrdersPage",
+      "responseType": "PageResponseDTO<OrderResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/prepare",
+      "controller": "FulfillmentController.java",
+      "handler": "prepare",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/ready",
+      "controller": "FulfillmentController.java",
+      "handler": "ready",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/refund-decision",
+      "controller": "AfterSaleController.java",
+      "handler": "merchantDecide",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ReviewRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/verify",
+      "controller": "FulfillmentController.java",
+      "handler": "verify",
+      "responseType": "OrderResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "VerifyPickupRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/products",
+      "controller": "CatalogController.java",
+      "handler": "managed",
+      "responseType": "List<ProductResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/products",
+      "controller": "CatalogController.java",
+      "handler": "create",
+      "responseType": "ProductResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ProductRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/products/page",
+      "controller": "CatalogController.java",
+      "handler": "managedPage",
+      "responseType": "PageResponseDTO<ProductResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "status",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "sort",
+          "type": "String",
+          "required": false,
+          "default": "NEWEST"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/merchants/{merchantId}/products/{productId}",
+      "controller": "CatalogController.java",
+      "handler": "edit",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ProductRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/products/{productId}/publish",
+      "controller": "CatalogController.java",
+      "handler": "publish",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "PublishRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/products/{productId}/skus",
+      "controller": "CatalogController.java",
+      "handler": "addSku",
+      "responseType": "ProductResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "SkuRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/merchants/{merchantId}/products/{productId}/skus/{skuId}/price",
+      "controller": "CatalogController.java",
+      "handler": "price",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "skuId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "PriceRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/merchants/{merchantId}/profile",
+      "controller": "MerchantApplicationController.java",
+      "handler": "updateProfile",
+      "responseType": "MerchantResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "MerchantProfileRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/merchants/{merchantId}/rbac/members/{userId}/role",
+      "controller": "RoleController.java",
+      "handler": "assign",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "userId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "RoleAssignmentRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/rbac/permissions",
+      "controller": "RoleController.java",
+      "handler": "permissions",
+      "responseType": "List<PermissionResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/rbac/roles",
+      "controller": "RoleController.java",
+      "handler": "roles",
+      "responseType": "List<RoleResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/rbac/roles",
+      "controller": "RoleController.java",
+      "handler": "createRole",
+      "responseType": "RoleResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "RoleRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/merchants/{merchantId}/rbac/roles/{code}",
+      "controller": "RoleController.java",
+      "handler": "deleteRole",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "code",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/merchants/{merchantId}/rbac/roles/{code}",
+      "controller": "RoleController.java",
+      "handler": "updateRole",
+      "responseType": "RoleResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "code",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "RoleRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/statistics",
+      "controller": "OrderController.java",
+      "handler": "merchantStatistics",
+      "responseType": "StatisticsResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/stock-movements",
+      "controller": "InventoryController.java",
+      "handler": "movements",
+      "responseType": "List<StockMovementResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/stock-movements/page",
+      "controller": "InventoryController.java",
+      "handler": "movementsPage",
+      "responseType": "PageResponseDTO<StockMovementResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/stocks",
+      "controller": "InventoryController.java",
+      "handler": "stocks",
+      "responseType": "List<StockResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/stocks/page",
+      "controller": "InventoryController.java",
+      "handler": "stocksPage",
+      "responseType": "PageResponseDTO<StockResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/stocks/{skuId}/replenish",
+      "controller": "InventoryController.java",
+      "handler": "replenish",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "skuId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "ReplenishRequestDTO",
+          "required": true
+        },
+        {
+          "in": "header",
+          "name": "Idempotency-Key",
+          "type": "String",
+          "required": true,
+          "description": "领域规则必填（Controller 为便于统一业务错误码使用 required=false）"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/orders",
+      "controller": "OrderController.java",
+      "handler": "mine",
+      "responseType": "List<OrderResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders",
+      "controller": "OrderController.java",
+      "handler": "checkout",
+      "responseType": "OrderResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "CheckoutRequestDTO",
+          "required": true
+        },
+        {
+          "in": "header",
+          "name": "Idempotency-Key",
+          "type": "String",
+          "required": true,
+          "description": "领域规则必填（Controller 为便于统一业务错误码使用 required=false）"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/orders/page",
+      "controller": "OrderController.java",
+      "handler": "minePage",
+      "responseType": "PageResponseDTO<OrderResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "state",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/orders/{orderId}",
+      "controller": "OrderController.java",
+      "handler": "detail",
+      "responseType": "OrderResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders/{orderId}/appeal",
+      "controller": "AfterSaleController.java",
+      "handler": "appeal",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders/{orderId}/cancel",
+      "controller": "OrderController.java",
+      "handler": "cancel",
+      "responseType": "OrderResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders/{orderId}/pay",
+      "controller": "OrderController.java",
+      "handler": "pay",
+      "responseType": "OrderResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders/{orderId}/pickup-token",
+      "controller": "FulfillmentController.java",
+      "handler": "token",
+      "responseType": "TokenResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders/{orderId}/refunds",
+      "controller": "AfterSaleController.java",
+      "handler": "requestRefund",
+      "responseType": "AfterSaleResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "RefundRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products",
+      "controller": "CatalogController.java",
+      "handler": "products",
+      "responseType": "List<ProductResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "merchantId",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/page",
+      "controller": "CatalogController.java",
+      "handler": "productPage",
+      "responseType": "PageResponseDTO<ProductResponseDTO>",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "merchantId",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
+        },
+        {
+          "in": "query",
+          "name": "category",
+          "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "sort",
+          "type": "String",
+          "required": false,
+          "default": "NEWEST"
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/{productId}",
+      "controller": "CatalogController.java",
+      "handler": "detail",
+      "responseType": "ProductResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/workspace",
+      "controller": "WorkspaceController.java",
+      "handler": "workspace",
+      "responseType": "WorkspaceResponseDTO",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    }
+  ]
+}

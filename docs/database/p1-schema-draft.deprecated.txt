@@ -1,0 +1,121 @@
+历史草案：不能用于当前版本建库。当前结构见 app/resources/schema.sql。
+
+-- Campus Shopping P1 DDL design draft - MySQL 8.0+.
+-- NOT yet applied or migration-tested. Review against existing database first.
+-- Separate this into versioned migrations before deploying to production.
+-- NO default usernames, passwords, API keys, or platform-admin accounts.
+CREATE DATABASE IF NOT EXISTS campus_shopping
+  CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+USE campus_shopping;
+
+CREATE TABLE IF NOT EXISTS iam_user (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  username VARCHAR(64) NOT NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  status VARCHAR(24) NOT NULL DEFAULT 'ACTIVE',
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uk_iam_user_username (username)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS iam_platform_role (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  user_id VARCHAR(36) NOT NULL,
+  role VARCHAR(32) NOT NULL,
+  status VARCHAR(24) NOT NULL DEFAULT 'ACTIVE',
+  granted_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uk_iam_platform_role_user_role (user_id, role),
+  KEY ix_iam_platform_role_user (user_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS mer_application (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  applicant_user_id VARCHAR(36) NOT NULL,
+  merchant_name VARCHAR(120) NOT NULL,
+  business_category VARCHAR(80) NOT NULL,
+  contact_info VARCHAR(120) NOT NULL,
+  store_name VARCHAR(120) NOT NULL,
+  campus_location VARCHAR(255) NOT NULL,
+  status VARCHAR(24) NOT NULL,
+  reviewer_user_id VARCHAR(36) NULL,
+  reject_reason VARCHAR(500) NULL,
+  opened_merchant_id VARCHAR(36) NULL,
+  request_key VARCHAR(100) NOT NULL,
+  request_hash CHAR(64) NOT NULL,
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  decided_at DATETIME(3) NULL,
+  UNIQUE KEY uk_mer_application_request (applicant_user_id, request_key),
+  KEY ix_mer_application_status_time (status, created_at),
+  KEY ix_mer_application_applicant (applicant_user_id, created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS mer_merchant (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  source_application_id VARCHAR(36) NOT NULL,
+  display_name VARCHAR(120) NOT NULL,
+  business_category VARCHAR(80) NOT NULL,
+  status VARCHAR(24) NOT NULL DEFAULT 'ACTIVE',
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uk_mer_source_application (source_application_id),
+  KEY ix_mer_merchant_status (status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS mer_store (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  merchant_id VARCHAR(36) NOT NULL,
+  display_name VARCHAR(120) NOT NULL,
+  campus_location VARCHAR(255) NOT NULL,
+  pickup_instruction VARCHAR(500) NULL,
+  status VARCHAR(24) NOT NULL DEFAULT 'ACTIVE',
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uk_mer_store_merchant (merchant_id)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS mer_review_audit (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  application_id VARCHAR(36) NOT NULL,
+  reviewer_user_id VARCHAR(36) NOT NULL,
+  decision VARCHAR(24) NOT NULL,
+  reason VARCHAR(500) NULL,
+  correlation_id VARCHAR(100) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  KEY ix_mer_review_application_time (application_id, created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS iam_merchant_member (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  merchant_id VARCHAR(36) NOT NULL,
+  user_id VARCHAR(36) NOT NULL,
+  role VARCHAR(24) NOT NULL,
+  status VARCHAR(24) NOT NULL DEFAULT 'ACTIVE',
+  version BIGINT NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  UNIQUE KEY uk_iam_member_user_merchant (user_id, merchant_id),
+  KEY ix_iam_member_merchant_role (merchant_id, role, status)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS iam_merchant_invite (
+  id VARCHAR(36) NOT NULL PRIMARY KEY,
+  merchant_id VARCHAR(36) NOT NULL,
+  invitee_user_id VARCHAR(36) NOT NULL,
+  inviter_user_id VARCHAR(36) NOT NULL,
+  requested_role VARCHAR(24) NOT NULL DEFAULT 'CLERK',
+  status VARCHAR(24) NOT NULL DEFAULT 'PENDING',
+  expires_at DATETIME(3) NOT NULL,
+  consumed_at DATETIME(3) NULL,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  KEY ix_iam_invitee_status (invitee_user_id, status, expires_at),
+  KEY ix_iam_merchant_invite_scope (merchant_id, status)
+) ENGINE=InnoDB;
+
+-- Runtime invariants requiring transactional application logic (not only schema):
+-- 1. Approve merchant application, create merchant/store, grant initial owner, audit in ONE transaction.
+-- 2. Use SELECT ... FOR UPDATE or version/CAS to avoid approval/rejection races.
+-- 3. Owner can only be provisioned after Merchant created; privileges are scoped to merchantId.
+-- 4. No seeded platform admin or plaintext credentials. Bootstrap admin via secured operator procedure.
+-- 5. SQL is a DRAFT, not a tested Flyway migration. Migration/rollback policy is project-specific.

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-label="暂无商品图片">
+  <rect width="320" height="320" rx="32" fill="#f2f8fa"/>
+  <circle cx="160" cy="150" r="85" fill="#e5f3f2"/>
+  <g fill="none" stroke="#92b9ba" stroke-width="9" stroke-linejoin="round" stroke-linecap="round">
+    <path d="m116 130 44-24 44 24-44 25z"/>
+    <path d="M116 130v54l44 25 44-25v-54M160 155v54"/>
+  </g>
+  <text x="160" y="273" fill="#8ca4ab" font-family="sans-serif" font-size="18" text-anchor="middle">暂无图片</text>
+</svg>

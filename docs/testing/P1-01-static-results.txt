@@ -1,0 +1,10 @@
+$ python scripts/verify-source.py
+静态检查通过： 257 项
+exit=0
+
+$ java -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -cp /mnt/data/campus-next-tools/parser JavaSyntaxCheck .
+Java 17 语法解析通过：76 个源文件（未检查依赖类型）
+exit=0
+
+$ python -m py_compile scripts/smoke-auth.py scripts/verify-source.py
+exit=0

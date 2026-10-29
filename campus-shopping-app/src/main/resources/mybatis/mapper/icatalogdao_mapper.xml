@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.ICatalogDao">
+    <select id="product" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT * FROM cat_product WHERE id=#{id}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <select id="skus" resultType="cn.bugstack.ai.infrastructure.dao.po.SkuPO">
+SELECT * FROM cat_sku WHERE product_id IN <foreach collection="productIds" item="id" open="(" separator="," close=")">#{id}</foreach> ORDER BY id
+    </select>
+    <select id="search" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
+<if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
+<if test="merchantId!=null and merchantId!=''">AND p.merchant_id=#{merchantId}</if>
+<if test="query!=null and query!=''">AND (
+  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
+  OR LOCATE(LOWER(#{query}),LOWER(m.name)) &gt; 0
+  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id
+      <if test="publicOnly">AND s.status='ACTIVE'</if>
+      AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
+)</if>
+<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<choose>
+ <when test="sort == 'PRICE_ASC'">ORDER BY
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') ASC,p.id</when>
+ <when test="sort == 'STOCK_DESC'">ORDER BY
+   (SELECT COALESCE(SUM(GREATEST(COALESCE(b.on_hand,0)-COALESCE(b.reserved,0),0)),0)
+    FROM cat_sku s LEFT JOIN inv_stock_balance b ON b.store_id=s.store_id AND b.sku_id=s.id
+    WHERE s.product_id=p.id AND s.status='ACTIVE') DESC,p.id</when>
+ <otherwise>ORDER BY p.created_at DESC,p.id</otherwise>
+</choose> LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="recall" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p
+JOIN mer_merchant m ON m.id=p.merchant_id
+LEFT JOIN cat_category c ON c.code=p.category_code
+WHERE p.status='PUBLISHED' AND m.status='ACTIVE'
+AND EXISTS (SELECT 1 FROM cat_sku active_s WHERE active_s.product_id=p.id AND active_s.status='ACTIVE')
+AND (
+ <foreach collection="terms" item="term" separator=" OR ">
+  (LOCATE(LOWER(#{term}),LOWER(CONCAT_WS(' ',p.title,p.description,c.name,m.name))) &gt; 0
+   OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
+    AND LOCATE(LOWER(#{term}),LOWER(s.spec_key)) &gt; 0))
+ </foreach>
+)
+ORDER BY (
+ <foreach collection="terms" item="term" separator=" + ">
+   (CASE WHEN LOCATE(LOWER(#{term}),LOWER(p.title)) &gt; 0 THEN 6 ELSE 0 END
+    + CASE WHEN LOCATE(LOWER(#{term}),LOWER(p.description)) &gt; 0 THEN 3 ELSE 0 END
+    + CASE WHEN LOCATE(LOWER(#{term}),LOWER(COALESCE(c.name,''))) &gt; 0 THEN 1 ELSE 0 END
+    + CASE WHEN EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
+        AND LOCATE(LOWER(#{term}),LOWER(s.spec_key)) &gt; 0) THEN 4 ELSE 0 END)
+ </foreach>
+) DESC,p.created_at DESC,p.id LIMIT #{limit}
+    </select>
+    <select id="publicByIds" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p JOIN mer_merchant m ON m.id=p.merchant_id
+WHERE p.id IN <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+AND p.status='PUBLISHED' AND m.status='ACTIVE'
+AND EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE')
+    </select>
+    <select id="count" resultType="long">
+SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
+<if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
+<if test="merchantId!=null and merchantId!=''">AND p.merchant_id=#{merchantId}</if>
+<if test="query!=null and query!=''">AND (
+  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
+  OR LOCATE(LOWER(#{query}),LOWER(m.name)) &gt; 0
+  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id
+      <if test="publicOnly">AND s.status='ACTIVE'</if>
+      AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
+)</if>
+<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+    </select>
+    <select id="searchManaged" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
+<if test="query!=null and query!=''">AND (
+  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
+  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND
+    (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
+)</if>
+<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<if test="status!=null and status!=''">AND p.status=#{status}</if>
+<choose>
+ <when test="sort == 'PRICE_ASC'">ORDER BY
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') ASC,p.id</when>
+ <when test="sort == 'STOCK_DESC'">ORDER BY
+   (SELECT COALESCE(SUM(GREATEST(COALESCE(b.on_hand,0)-COALESCE(b.reserved,0),0)),0)
+    FROM cat_sku s LEFT JOIN inv_stock_balance b ON b.store_id=s.store_id AND b.sku_id=s.id
+    WHERE s.product_id=p.id AND s.status='ACTIVE') DESC,p.id</when>
+ <otherwise>ORDER BY p.created_at DESC,p.id</otherwise>
+</choose> LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countManaged" resultType="long">
+SELECT COUNT(*) FROM cat_product p WHERE p.merchant_id=#{merchantId}
+<if test="query!=null and query!=''">AND (
+  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
+  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND
+    (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
+)</if>
+<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<if test="status!=null and status!=''">AND p.status=#{status}</if>
+    </select>
+    <insert id="insertProduct">
+INSERT INTO cat_product(id,merchant_id,store_id,title,description,category_code,image_url,status,version) VALUES(#{p.id},#{p.merchantId},#{p.storeId},#{p.title},#{p.description},#{p.categoryCode},#{p.imageUrl},#{p.status},#{p.version})
+    </insert>
+    <insert id="insertSku">
+INSERT INTO cat_sku(id,product_id,merchant_id,store_id,spec_key,price_cent,status,version) VALUES(#{s.id},#{s.productId},#{s.merchantId},#{s.storeId},#{s.specKey},#{s.priceCent},#{s.status},#{s.version})
+    </insert>
+    <update id="saveProduct">
+UPDATE cat_product SET title=#{p.title},description=#{p.description},category_code=#{p.categoryCode},image_url=#{p.imageUrl},status=#{p.status},version=version+1 WHERE id=#{p.id} AND version=#{p.version}
+    </update>
+    <update id="saveSku">
+UPDATE cat_sku SET price_cent=#{s.priceCent},status=#{s.status},version=#{s.version} WHERE id=#{s.id} AND product_id=#{s.productId}
+    </update>
+    <select id="offers" resultType="cn.bugstack.ai.infrastructure.dao.po.OfferPO">
+SELECT s.id AS sku_id,p.id AS product_id,p.merchant_id,p.store_id,p.title,s.spec_key,s.price_cent,p.version,p.status AS product_status,s.status AS sku_status,p.image_url,p.description
+FROM cat_sku s JOIN cat_product p ON s.product_id=p.id WHERE s.id IN <foreach collection="skuIds" item="id" open="(" separator="," close=")">#{id}</foreach> ORDER BY s.id <if test="lock"> FOR UPDATE</if>
+    </select>
+    <select id="categories" resultType="cn.bugstack.ai.infrastructure.dao.po.CategoryPO">
+SELECT * FROM cat_category ORDER BY code
+    </select>
+    <insert id="category">
+INSERT INTO cat_category(code,name,active) VALUES(#{code},#{name},#{active}) ON DUPLICATE KEY UPDATE name=#{name},active=#{active}
+    </insert>
+</mapper>

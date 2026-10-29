@@ -1,0 +1,96 @@
+name: campus-shopping
+services:
+  mysql:
+    image: mysql:8.0.36
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: campus_shopping
+      MYSQL_USER: campus_app
+      MYSQL_PASSWORD: ${DB_PASSWORD:?先运行 scripts/generate-env.py}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?必须设置独立的数据库管理密码}
+      TZ: UTC
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./campus-shopping-app/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./campus-shopping-app/src/main/resources/data.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=$$MYSQL_PASSWORD mysql -h 127.0.0.1 -u $$MYSQL_USER -e 'SELECT 1' campus_shopping >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    # 默认不把数据库端口公开到宿主机；调试可使用 docker compose exec mysql。
+
+  ai:
+    build: ./ai-service
+    restart: unless-stopped
+    environment:
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY:?必须设置 Java/Python 共享服务密钥}
+      AI_DB_PATH: /app/var/knowledge.sqlite3
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+      QDRANT_URL: ${QDRANT_URL:-}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
+      QDRANT_COLLECTION: ${QDRANT_COLLECTION:-campus_knowledge_v1}
+      MILVUS_URI: ${MILVUS_URI:-}
+      MILVUS_TOKEN: ${MILVUS_TOKEN:-}
+      MILVUS_PRODUCT_COLLECTION: ${MILVUS_PRODUCT_COLLECTION:-campus_products_v1}
+    volumes:
+      - ai-data:/app/var
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health',timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    # 不向浏览器公开推理端口，调用必须经 Java 复权。
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${APP_PORT:-8091}:8091"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      PORT: 8091
+      DB_URL: jdbc:mysql://mysql:3306/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+      DB_USERNAME: campus_app
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_INIT_MODE: never
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      BOOTSTRAP_ADMIN: ${BOOTSTRAP_ADMIN:-true}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:?必须设置初始管理员用户名}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?必须设置初始管理员密码}
+      AI_SERVICE_URL: http://ai:8100
+      AI_SERVICE_KEY: ${AI_SERVICE_KEY}
+      AI_PRODUCT_VECTOR_SYNC_ENABLED: ${AI_PRODUCT_VECTOR_SYNC_ENABLED:-false}
+      UPLOAD_DIR: /app/var/uploads
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=70 -Duser.timezone=UTC
+    volumes:
+      - uploads:/app/var/uploads
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8091/api/v1/categories | grep -q '\"code\":\"0000\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+    # AI 故障不阻止普通购物启动。生产发布需 HTTPS、Secure Cookie、备份和真实验收。
+
+  qdrant:
+    profiles: [vector]
+    image: qdrant/qdrant:v1.13.4
+    restart: unless-stopped
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?启用向量配置前设置访问密钥}
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+volumes:
+  mysql-data:
+  ai-data:
+  uploads:
+  qdrant-data:

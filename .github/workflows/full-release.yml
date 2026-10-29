@@ -1,29 +1,47 @@
 name: Campus Shopping - Real Acceptance
+
 on:
   push:
     branches: [main]
-    paths: ['pom.xml', 'campus-shopping-*/**', 'ai-service/**', 'frontend/**', 'scripts/**', 'docs/**', 'compose.yml']
+    paths:
+      - 'pom.xml'
+      - 'campus-shopping-*/**'
+      - 'ai-service/**'
+      - 'frontend/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'compose.yml'
   pull_request:
-    paths: ['pom.xml', 'campus-shopping-*/**', 'ai-service/**', 'frontend/**', 'scripts/**', 'docs/**', 'compose.yml']
+    paths:
+      - 'pom.xml'
+      - 'campus-shopping-*/**'
+      - 'ai-service/**'
+      - 'frontend/**'
+      - 'scripts/**'
+      - 'docs/**'
+      - 'compose.yml'
   workflow_dispatch:
     inputs:
       external_ai:
-        description: 'Run live NVIDIA, XFYUN and Milvus read-only checks (requires private secrets)'
+        description: 'Run read-only NVIDIA, XFYUN and Milvus connectivity checks (requires secrets)'
         type: boolean
         default: false
+
 permissions:
   contents: read
+
 concurrency:
   group: acceptance-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   full-stack:
     name: Maven / MySQL / FastAPI / Browser E2E
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Require complete project
+      - name: Require full project checkout
         run: |
           test -f pom.xml || { echo 'Project source missing. Import v1.2.3 first.'; exit 1; }
           test -f scripts/smoke-full.py
@@ -37,41 +55,44 @@ jobs:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: ai-service/requirements*.txt
-      - name: Install Python and Chromium
+      - name: Install test dependencies
         run: |
           python -m pip install -r ai-service/requirements-dev.txt playwright==1.58.0 pyyaml==6.0.3
           python -m playwright install --with-deps chromium
-      - name: API, SDD and source safety
+      - name: API / SDD / source safety checks
         run: |
           python scripts/verify-api-contract.py
           python scripts/verify-fix-regressions.py
           python scripts/verify-source.py
-      - name: Start isolated MySQL for Maven IT
+      - name: Start isolated MySQL for JUnit
         shell: bash
         run: |
           set -euo pipefail
-          DB_PASS=$(openssl rand -hex 24)
-          ADMIN_PASS=$(openssl rand -hex 24)
-          SERVICE_KEY=$(openssl rand -hex 32)
-          for value in "$DB_PASS" "$ADMIN_PASS" "$SERVICE_KEY"; do echo "::add-mask::$value"; done
+          PASSWORD=$(openssl rand -hex 24)
+          ADMIN_PASSWORD=$(openssl rand -hex 24)
+          AI_SERVICE_KEY=$(openssl rand -hex 32)
+          for secret in "$PASSWORD" "$ADMIN_PASSWORD" "$AI_SERVICE_KEY"; do echo "::add-mask::$secret"; done
           {
             echo 'MYSQL_TEST_URL=jdbc:mysql://127.0.0.1:3307/campus_shopping_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
             echo 'MYSQL_TEST_USERNAME=campus_it'
-            echo "MYSQL_TEST_PASSWORD=$DB_PASS"
-            echo "DB_PASSWORD=$DB_PASS"
+            echo "MYSQL_TEST_PASSWORD=$PASSWORD"
+            echo "DB_PASSWORD=$PASSWORD"
             echo 'ADMIN_USERNAME=ci_admin'
-            echo "ADMIN_PASSWORD=$ADMIN_PASS"
-            echo "AI_SERVICE_KEY=$SERVICE_KEY"
+            echo "ADMIN_PASSWORD=$ADMIN_PASSWORD"
+            echo "AI_SERVICE_KEY=$AI_SERVICE_KEY"
           } >> "$GITHUB_ENV"
-          docker run -d --name campus-mysql-it -p 127.0.0.1:3307:3306 -e MYSQL_RANDOM_ROOT_PASSWORD=yes -e MYSQL_DATABASE=campus_shopping_it -e MYSQL_USER=campus_it -e MYSQL_PASSWORD="$DB_PASS" mysql:8.0.36
-          for n in $(seq 1 90); do
-            if docker exec -e MYSQL_PWD="$DB_PASS" campus-mysql-it mysql -ucampus_it -e 'SELECT 1' campus_shopping_it >/dev/null 2>&1; then exit 0; fi
+          docker run -d --name campus-mysql-it -p 127.0.0.1:3307:3306 \
+            -e MYSQL_RANDOM_ROOT_PASSWORD=yes -e MYSQL_DATABASE=campus_shopping_it \
+            -e MYSQL_USER=campus_it -e MYSQL_PASSWORD="$PASSWORD" mysql:8.0.36
+          for attempt in $(seq 1 90); do
+            if docker exec -e MYSQL_PWD="$PASSWORD" campus-mysql-it mysql -ucampus_it \
+              -e 'SELECT 1' campus_shopping_it >/dev/null 2>&1; then exit 0; fi
             sleep 2
           done
-          exit 1
-      - name: Real Maven compilation + MySQL integration tests
+          echo 'MySQL IT did not become ready'; exit 1
+      - name: Real Maven build + MySQL tests
         run: mvn -B -ntp clean verify
-      - name: Domain, HTTP and Python AI tests
+      - name: Java domain / HTTP / Python AI tests
         run: |
           python scripts/verify-domain.py
           python scripts/verify-http-body.py
@@ -80,7 +101,7 @@ jobs:
           (cd ai-service && python -m pytest -q --junitxml=../docs/testing/evidence/ai-unit-tests.xml)
           python ai-service/evaluate.py
           python scripts/smoke-ai-local.py
-      - name: Chromium UI contracts (mocked API)
+      - name: Chromium contract tests (mocked backend)
         run: |
           python frontend/tests/contract_ui.py
           python frontend/tests/ui_sdd_integration.py
@@ -88,53 +109,69 @@ jobs:
           python frontend/tests/ui_fix_regression.py
           python frontend/tests/ui_rbac_regression.py
           python frontend/tests/ui_global_sort.py
-      - name: Start real MySQL / Spring Boot / FastAPI
+      - name: Start independent real MySQL / Spring / FastAPI
         shell: bash
         run: |
           set -euo pipefail
-          docker run -d --name campus-mysql-e2e -p 127.0.0.1:3308:3306 -e MYSQL_RANDOM_ROOT_PASSWORD=yes -e MYSQL_DATABASE=campus_shopping -e MYSQL_USER=campus_app -e MYSQL_PASSWORD="$DB_PASSWORD" mysql:8.0.36
+          docker run -d --name campus-mysql-e2e -p 127.0.0.1:3308:3306 \
+            -e MYSQL_RANDOM_ROOT_PASSWORD=yes -e MYSQL_DATABASE=campus_shopping \
+            -e MYSQL_USER=campus_app -e MYSQL_PASSWORD="$DB_PASSWORD" mysql:8.0.36
           READY=0
-          for n in $(seq 1 90); do
-            if docker exec -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app -e 'SELECT 1' campus_shopping >/dev/null 2>&1; then READY=1; break; fi
+          for attempt in $(seq 1 90); do
+            if docker exec -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app \
+              -e 'SELECT 1' campus_shopping >/dev/null 2>&1; then READY=1; break; fi
             sleep 2
           done
           test "$READY" = 1
-          docker exec -i -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app campus_shopping < campus-shopping-app/src/main/resources/schema.sql
-          docker exec -i -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app campus_shopping < campus-shopping-app/src/main/resources/data.sql
+          docker exec -i -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app \
+            campus_shopping < campus-shopping-app/src/main/resources/schema.sql
+          docker exec -i -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app \
+            campus_shopping < campus-shopping-app/src/main/resources/data.sql
           mkdir -p var/ci docs/testing/evidence
-          (cd ai-service && AI_DB_PATH=../var/ci/knowledge.sqlite3 python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8100) > var/ci/ai.log 2>&1 &
-          echo $! > var/ci/ai.pid
-          DB_URL='jdbc:mysql://127.0.0.1:3308/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' DB_USERNAME=campus_app BOOTSTRAP_ADMIN=true SESSION_COOKIE_SECURE=false java -jar campus-shopping-app/target/campus-shopping-app.jar --spring.profiles.active=dev > var/ci/app.log 2>&1 &
-          echo $! > var/ci/app.pid
-          for n in $(seq 1 120); do
-            if curl -fsS http://127.0.0.1:8091/api/v1/categories | grep -q '"code":"0000"'; then exit 0; fi
+          (cd ai-service && AI_DB_PATH=../var/ci/knowledge.sqlite3 \
+            python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8100) \
+            >var/ci/ai.log 2>&1 &
+          echo $! >var/ci/ai.pid
+          DB_URL='jdbc:mysql://127.0.0.1:3308/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' \
+            DB_USERNAME=campus_app BOOTSTRAP_ADMIN=true SESSION_COOKIE_SECURE=false \
+            java -jar campus-shopping-app/target/campus-shopping-app.jar --spring.profiles.active=dev \
+            >var/ci/app.log 2>&1 &
+          echo $! >var/ci/app.pid
+          for attempt in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:8091/api/v1/categories | grep -q '"code":"0000"' \
+              && [ "$(docker exec -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -N -s -ucampus_app \
+                -e "SELECT COUNT(*) FROM iam_user u JOIN iam_platform_role r ON r.user_id=u.id WHERE u.username='ci_admin' AND r.role='PLATFORM_ADMIN'" campus_shopping)" = "1" ]; then exit 0; fi
             sleep 1
           done
-          echo 'Spring Boot readiness failed'; exit 1
+          echo 'Spring HTTP health check did not pass'; exit 1
       - name: Real cross-service HTTP business E2E
         run: python scripts/smoke-full.py
-      - name: Real frontend against Spring Boot
+      - name: Real Spring frontend browser E2E
         run: python frontend/tests/live_ui.py
-      - name: Upload evidence including failures
+      - name: Upload reports and failure diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: campus-acceptance-evidence
-          retention-days: 7
           if-no-files-found: warn
+          retention-days: 7
           path: |
             **/target/surefire-reports/*
             docs/testing/evidence/**
             var/ci/*.log
       - name: Stop isolated services
         if: always()
+        shell: bash
         run: |
-          for p in var/ci/app.pid var/ci/ai.pid; do if [ -f "$p" ]; then kill "$(cat "$p")" || true; fi; done
+          for file in var/ci/app.pid var/ci/ai.pid; do
+            if [ -f "$file" ]; then kill "$(cat "$file")" || true; fi
+          done
           docker rm -f campus-mysql-it campus-mysql-e2e || true
+
   external-ai:
-    name: Optional live NVIDIA / XFYUN / Milvus smoke (read-only)
+    name: Optional live NVIDIA / XFYUN / Milvus smoke
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.external_ai == true }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       EMBEDDING_BASE_URL: https://integrate.api.nvidia.com/v1
@@ -150,16 +187,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Require source and private configuration
+      - name: Verify private configuration exists
         shell: bash
         run: |
           test -f ai-service/requirements.txt
           for key in EMBEDDING_API_KEY LLM_API_KEY LLM_MODEL MILVUS_URI MILVUS_TOKEN; do
-            if [ -z "$(printenv "$key" 2>/dev/null || true)" ]; then echo "Missing secret or variable: $key"; exit 1; fi
+            if [ -z "$(printenv "$key" 2>/dev/null || true)" ]; then echo "Missing required secret or variable: $key"; exit 1; fi
           done
-      - name: Install service dependencies
+      - name: Install AI service
         run: python -m pip install -r ai-service/requirements.txt
-      - name: Real remote smoke without writes
+      - name: Live provider connectivity (read-only)
         run: |
           (cd ai-service && python -m app.smoke_model)
           (cd ai-service && python -m app.smoke_vector)
