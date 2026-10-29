@@ -13,7 +13,7 @@ import java.time.*;import java.util.*;import java.util.concurrent.locks.Reentran
 /** Java 负责复权、商品事实和用户确认；模型文本从不直接变成写命令。 */
 @Service
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
- private final IConversationStateService conversations,IProposalStateService proposals;private final IAiEnginePort engine;private final IKnowledgeCase knowledge;private final ICatalogService catalog;private final IInventoryService inventory;private final IMerchantService merchants;private final IUserAccountService accounts;private final ICartService cart;private final Clock clock;
+ private final IConversationStateService conversations;private final IProposalStateService proposals;private final IAiEnginePort engine;private final IKnowledgeCase knowledge;private final ICatalogService catalog;private final IInventoryService inventory;private final IMerchantService merchants;private final IUserAccountService accounts;private final ICartService cart;private final Clock clock;
  private final ReentrantLock[] locks=new ReentrantLock[64];
  @Value("${campus.proposal.minutes:10}")private long proposalMinutes=10;
  public ShoppingAiCaseImpl(IConversationStateService conversations,IProposalStateService proposals,IAiEnginePort engine,IKnowledgeCase knowledge,ICatalogService catalog,IInventoryService inventory,IMerchantService merchants,IUserAccountService accounts,ICartService cart,Clock clock){this.conversations=conversations;this.proposals=proposals;this.engine=engine;this.knowledge=knowledge;this.catalog=catalog;this.inventory=inventory;this.merchants=merchants;this.accounts=accounts;this.cart=cart;this.clock=clock;for(int i=0;i<locks.length;i++)locks[i]=new ReentrantLock();}
