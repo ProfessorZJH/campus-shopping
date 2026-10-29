@@ -20,7 +20,7 @@ class KnowledgePublicationPolicyTest {
     void pendingAndFailedIndexMustNotPublish() {
         for (String status : new String[] {"PENDING", "FAILED"}) {
             var version = new KnowledgePublicationVO("doc-2", "root", "doc-1", 2, 2, status);
-            assertEquals("K0001", assertThrows(AppException.class,
+            assertEquals("AI0003", assertThrows(AppException.class,
                     () -> KnowledgePublicationPolicy.requirePublishable(version)).getCode());
         }
     }
@@ -28,7 +28,7 @@ class KnowledgePublicationPolicyTest {
     @Test
     void olderReadyVersionCannotOverwriteLatest() {
         var version = new KnowledgePublicationVO("doc-1", "root", "doc-1", 1, 2, "READY");
-        assertEquals("T0004", assertThrows(AppException.class,
+        assertEquals("G0002", assertThrows(AppException.class,
                 () -> KnowledgePublicationPolicy.requirePublishable(version)).getCode());
         assertTrue(KnowledgePublicationPolicy.isActive(version));
     }
