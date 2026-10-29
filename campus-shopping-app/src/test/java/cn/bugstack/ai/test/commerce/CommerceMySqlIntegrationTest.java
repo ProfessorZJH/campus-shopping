@@ -302,6 +302,21 @@ class CommerceMySqlIntegrationTest {
         assertEquals("G0001",code(()->ai.confirm(other,proposal.id(),List.of(item(p).skuId()))));
         ai.confirm(buyer,proposal.id(),List.of(item(p).skuId()));ai.confirm(buyer,proposal.id(),List.of(item(p).skuId()));assertEquals(1,cart.list(buyer).get(0).quantity());
     }
+    /** 会话两条消息和导购提案原子提交：提案主键冲突时不能留下半轮聊天。 */
+    @Test void proposalPersistenceFailureRollsBackEntireConversationTurn(){
+        var conversation=conversations.conversation(buyer,null,"测试提案原子写入");
+        var proposal=new ProposalVO(UUID.randomUUID().toString(),buyer,conversation.id(),"PENDING",
+            List.of(),null,clock.instant().plusSeconds(600));
+        conversations.appendTurn(buyer,conversation.id(),"第一轮","正常回复",proposal,"scope");
+        assertEquals(2,scalar("SELECT COUNT(*) FROM ai_message WHERE conversation_id=?",conversation.id()));
+        assertEquals(1,scalar("SELECT COUNT(*) FROM ai_proposal WHERE conversation_id=?",conversation.id()));
+
+        // 第二轮复用相同 proposal ID 必然触发数据库主键冲突，验证整个 appendTurn 回滚。
+        assertThrows(Exception.class,()->conversations.appendTurn(buyer,conversation.id(),
+            "第二轮","应该一同回滚",proposal,"scope"));
+        assertEquals(2,scalar("SELECT COUNT(*) FROM ai_message WHERE conversation_id=?",conversation.id()));
+        assertEquals(1,scalar("SELECT COUNT(*) FROM ai_proposal WHERE conversation_id=?",conversation.id()));
+    }
     @Test void knowledgeInternalScopeAndWithdrawalAreEffectiveImmediately(){
         var base=knowledge.createBase(owner,merchant.id(),"内部资料","MERCHANT_INTERNAL");var doc=knowledgeState.createDocument(null,base.id(),"内部说明","不得给普通买家看的内容");
         // 这里只验证 Java ACL/版本状态，索引构建由 Python 独立测试，不假装已调用向量库。
