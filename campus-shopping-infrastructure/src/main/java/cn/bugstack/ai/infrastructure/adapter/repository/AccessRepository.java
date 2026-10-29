@@ -23,19 +23,6 @@ public class AccessRepository implements IAccessRepository {
  public List<InvitationVO> invitations(String userId){return dao.invitations(userId).stream().map(this::toInvitation).toList();}
  public void accept(String id){dao.accept(id);}
  public void audit(String actor,String action,String target,String merchantId,String detail){dao.audit(UUID.randomUUID().toString(),actor,action,target,merchantId,detail);}
- public List<MerchantRoleVO> customRoles(String merchantId){
-  return dao.roles(merchantId).stream().map(r->new MerchantRoleVO(r.getRoleCode(),r.getName(),dao.rolePermissions(merchantId,r.getRoleCode()),false)).toList();
- }
- public MerchantRoleVO customRole(String merchantId,String code,boolean lock){
-  var r=dao.role(merchantId,code,lock);
-  return r==null?null:new MerchantRoleVO(code,r.getName(),dao.rolePermissions(merchantId,code),false);
- }
- public Set<String> customPermissions(String merchantId,String code){return dao.rolePermissions(merchantId,code);}
- public void createRole(String mid,String code,String name,Set<String> permissions){dao.createRole(mid,code,name);dao.insertPermissions(mid,code,permissions);}
- public void updateRole(String mid,String code,String name,Set<String> permissions){dao.updateRole(mid,code,name);dao.deletePermissions(mid,code);dao.insertPermissions(mid,code,permissions);}
- public void deleteRole(String mid,String code){dao.deletePermissions(mid,code);dao.deleteRole(mid,code);}
- public int countRoleMembers(String mid,String code){return dao.countRoleMembers(mid,code);}
- public void assignRole(String mid,String uid,String code){dao.assignRole(mid,uid,code);}
  private MembershipVO toMember(MembershipPO p){return p==null?null:new MembershipVO(p.getMerchantId(),p.getUserId(),p.getRole(),p.getStatus());}
  private InvitationVO toInvitation(InvitationPO p){return p==null?null:new InvitationVO(p.getId(),p.getMerchantId(),p.getTargetUserId(),p.getStatus(),p.getExpiresAt());}
 }

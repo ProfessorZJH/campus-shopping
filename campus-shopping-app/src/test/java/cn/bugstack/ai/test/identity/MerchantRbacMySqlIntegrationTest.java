@@ -2,6 +2,7 @@ package cn.bugstack.ai.test.identity;
 
 import cn.bugstack.ai.Application;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
+import cn.bugstack.ai.domain.identity.service.IRoleService;
 import cn.bugstack.ai.types.exception.AppException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @EnabledIfEnvironmentVariable(named="MYSQL_TEST_URL",matches=".+")
 class MerchantRbacMySqlIntegrationTest {
     @Autowired IAccessService access;
+    @Autowired IRoleService roleService;
     @Autowired JdbcTemplate jdbc;
     private final String suffix=UUID.randomUUID().toString().replace("-","").substring(0,15);
     private final String m1="rbac-m1-"+suffix,m2="rbac-m2-"+suffix;
@@ -63,30 +65,30 @@ class MerchantRbacMySqlIntegrationTest {
 
     @Test
     void builtInRolesCustomPermissionRevocationAndMerchantIsolation() {
-        assertEquals(2,access.roles(owner,m1).size());
-        assertThrows(AppException.class,()->access.saveRole(owner,m1,null,"越权角色",Set.of("role.manage")));
-        var role=access.saveRole(owner,m1,null,"商品管理员",Set.of("product.read","product.write"));
+        assertEquals(2,roleService.roles(owner,m1).size());
+        assertThrows(AppException.class,()->roleService.saveRole(owner,m1,null,"越权角色",Set.of("role.manage")));
+        var role=roleService.saveRole(owner,m1,null,"商品管理员",Set.of("product.read","product.write"));
         assertTrue(role.code().matches("R[a-f0-9]{12}"));
-        assertEquals(3,access.roles(owner,m1).size());
-        assertEquals(2,access.roles(owner,m2).size());
-        assertThrows(AppException.class,()->access.assignRole(owner,m2,clerk,role.code()));
-        access.assignRole(owner,m1,clerk,role.code());
+        assertEquals(3,roleService.roles(owner,m1).size());
+        assertEquals(2,roleService.roles(owner,m2).size());
+        assertThrows(AppException.class,()->roleService.assignRole(owner,m2,clerk,role.code()));
+        roleService.assignRole(owner,m1,clerk,role.code());
         assertTrue(access.permissions(clerk,m1).contains("product.write"));
         assertThrows(AppException.class,()->access.requirePermission(clerk,m1,"role.manage"));
         assertThrows(AppException.class,()->access.requirePermission(clerk,m2,"product.read"));
-        assertThrows(AppException.class,()->access.deleteRole(owner,m1,role.code()));
-        access.saveRole(owner,m1,role.code(),"知识读取",Set.of("knowledge.read"));
+        assertThrows(AppException.class,()->roleService.deleteRole(owner,m1,role.code()));
+        roleService.saveRole(owner,m1,role.code(),"知识读取",Set.of("knowledge.read"));
         assertFalse(access.permissions(clerk,m1).contains("product.write"));
         assertTrue(access.permissions(clerk,m1).contains("knowledge.read"));
-        access.assignRole(owner,m1,clerk,"CLERK");
-        access.deleteRole(owner,m1,role.code());
-        assertEquals(2,access.roles(owner,m1).size());
+        roleService.assignRole(owner,m1,clerk,"CLERK");
+        roleService.deleteRole(owner,m1,role.code());
+        assertEquals(2,roleService.roles(owner,m1).size());
     }
 
     @Test
     void revokedCustomMemberReacceptsAsClerkRatherThanInheritingOldGrant() {
-        var role=access.saveRole(owner,m1,null,"售后审核员",Set.of("aftersale.read","aftersale.review"));
-        access.assignRole(owner,m1,clerk,role.code());
+        var role=roleService.saveRole(owner,m1,null,"售后审核员",Set.of("aftersale.read","aftersale.review"));
+        roleService.assignRole(owner,m1,clerk,role.code());
         assertTrue(access.permissions(clerk,m1).contains("aftersale.review"));
         access.revoke(owner,m1,clerk);
         assertTrue(access.permissions(clerk,m1).isEmpty());
