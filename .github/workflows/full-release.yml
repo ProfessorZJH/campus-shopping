@@ -64,6 +64,7 @@ jobs:
           python scripts/verify-api-contract.py
           python scripts/verify-fix-regressions.py
           python scripts/verify-source.py
+          python scripts/verify-java-readability.py
       - name: Start isolated MySQL for JUnit
         shell: bash
         run: |
