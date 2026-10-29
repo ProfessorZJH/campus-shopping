@@ -22,7 +22,7 @@ public class RoleController implements IRoleApi {
  @Override @PostMapping("/roles")
  public Response<RoleResponseDTO> createRole(@PathVariable("merchantId") String merchantId,@RequestBody RoleRequestDTO request,Principal principal){return exec(()->view(roleService.saveRole(actor(principal),merchantId,null,required(request).getName(),request.getPermissions())));}
  @Override @PutMapping("/roles/{code}")
- public Response<RoleResponseDTO> updateRole(@PathVariable("merchantId") String merchantId,@PathVariable("code") String code,@RequestBody RoleRequestDTO request,Principal principal){return exec(()->view(access.saveRole(actor(principal),merchantId,code,required(request).getName(),request.getPermissions())));}
+ public Response<RoleResponseDTO> updateRole(@PathVariable("merchantId") String merchantId,@PathVariable("code") String code,@RequestBody RoleRequestDTO request,Principal principal){return exec(()->view(roleService.saveRole(actor(principal),merchantId,code,required(request).getName(),request.getPermissions())));}
  @Override @DeleteMapping("/roles/{code}")
  public Response<Void> deleteRole(@PathVariable("merchantId") String merchantId,@PathVariable("code") String code,Principal principal){return exec(()->{roleService.deleteRole(actor(principal),merchantId,code);return null;});}
  @Override @PutMapping("/members/{userId}/role")
