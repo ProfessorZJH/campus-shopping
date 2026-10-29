@@ -323,6 +323,30 @@ class CommerceMySqlIntegrationTest {
         knowledgeState.indexState(doc.id(),"READY","");knowledge.publish(owner,doc.id());assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(doc.id())));assertTrue(knowledge.readableDocuments(buyer).stream().noneMatch(d->d.id().equals(doc.id())));
         knowledge.withdraw(owner,doc.id());assertTrue(knowledge.readableDocuments(owner).stream().noneMatch(d->d.id().equals(doc.id())));
     }
+    /** MySQL 文档根锁与 Domain 发布规则：仅 READY 的最新版本生效，撤旧稿不能撤新稿。 */
+    @Test void knowledgePublishRequiresLatestReadyVersionAndWithdrawalPreservesActivePointer(){
+        var base = knowledge.createBase(owner,merchant.id(),"发布版本测试","MERCHANT_INTERNAL");
+        var first = knowledgeState.createDocument(null,base.id(),"第一版","第一版内容");
+        assertEquals("AI0003",code(()->knowledge.publish(owner,first.id())));
+        knowledgeState.indexState(first.id(),"READY","");
+        knowledge.publish(owner,first.id());
+        assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(first.id())));
+
+        var next = knowledgeState.createDocument(first.rootId(),base.id(),"第二版","第二版内容");
+        assertEquals("G0002",code(()->knowledge.publish(owner,first.id())));
+        assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(first.id())));
+        assertEquals("AI0003",code(()->knowledge.publish(owner,next.id())));
+
+        knowledgeState.indexState(next.id(),"READY","");
+        knowledge.publish(owner,next.id());
+        assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(next.id())));
+        assertFalse(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(first.id())));
+
+        knowledge.withdraw(owner,first.id());
+        assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(next.id())));
+        knowledge.withdraw(owner,next.id());
+        assertFalse(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(next.id())));
+    }
     @Test void replenishRetryDoesNotAddTwice(){var p=product(0);String sku=item(p).skuId();catalog.replenish(owner,merchant.id(),sku,5,"once");catalog.replenish(owner,merchant.id(),sku,5,"once");assertEquals(5,scalar("SELECT on_hand FROM inv_stock_balance"));assertEquals("G0003",code(()->catalog.replenish(owner,merchant.id(),sku,6,"once")));}
     @Test void requestKeyIsCaseSensitive(){var p=product(4);checkout.checkout(buyer,merchant.id(),List.of(item(p)),"Key-A");checkout.checkout(buyer,merchant.id(),List.of(item(p)),"key-a");assertEquals(2,scalar("SELECT COUNT(*) FROM trd_order"));}
 
