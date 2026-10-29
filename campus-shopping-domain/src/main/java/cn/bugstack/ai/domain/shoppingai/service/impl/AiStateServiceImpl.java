@@ -37,7 +37,7 @@ public class AiStateServiceImpl implements IAiStateService {
  }
  public ProposalVO proposal(String actor,String id,boolean lock){ProposalVO p=repository.proposal(id,lock);require(p!=null&&actor.equals(p.userId()),ResponseCode.NOT_FOUND);return p;}
  public List<ProposalVO> proposals(String actor,String conversation){conversation(actor,conversation,"历史会话");return repository.proposals(actor,conversation);}
- public void confirm(String id,String hash){repository.proposalState(id,"CONFIRMED",hash);}
+ public void confirm(String id,String hash){repository.proposalState(id,ProposalStatusEnumVO.CONFIRMED.name(),hash);}
  @Transactional(rollbackFor=Exception.class)
- public void reject(String actor,String id){ProposalVO p=proposal(actor,id,true);if("REJECTED".equals(p.status()))return;ProposalAggregate aggregate=new ProposalAggregate(p.userId(),p.expiresAt(),p.status(),p.selectionHash());aggregate.reject(actor);repository.proposalState(id,aggregate.getStatus(),null);}
+ public void reject(String actor,String id){ProposalVO p=proposal(actor,id,true);if(p.statusEnum()==ProposalStatusEnumVO.REJECTED)return;ProposalAggregate aggregate=new ProposalAggregate(p.userId(),p.expiresAt(),p.status(),p.selectionHash());aggregate.reject(actor);repository.proposalState(id,aggregate.getStatus(),null);}
 }
