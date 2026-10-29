@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """用 JSON Schema 2020-12 验证生成契约及有效/无效业务样例；不替代运行时领域校验。"""
+import argparse
 import json
 from pathlib import Path
 
@@ -19,6 +20,9 @@ def body(path, method='post'):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/ddd-refactor-20261029/api-schemas.json')
+    args = parser.parse_args()
     checks = []
     for name, schema in SPEC['components']['schemas'].items():
         Draft202012Validator.check_schema(schema)
@@ -75,8 +79,22 @@ def main():
     check(order, {'code': 'G0001', 'info': '失败', 'data': {'orderId': 'forged'}}, False,
           'failure cannot carry a success-shaped business object')
     check(order, {'code': 'unknown', 'info': '失败', 'data': None}, False, 'unknown response code is rejected')
+    status_examples = {
+        'AdmissionResponseDTO': {'applicationId': 'a', 'merchantName': '店铺', 'category': '文具',
+                                 'contactName': '经营者', 'contactPhone': '13800000000', 'storeName': '校园店',
+                                 'location': '校内', 'rejectionReason': None, 'merchantId': None},
+        'CurrentUserResponseDTO': {'userId': 'u', 'username': 'student001', 'displayName': '同学'},
+        'SubmitMerchantApplicationResponseDTO': {'applicationId': 'a'},
+    }
+    for name, example in status_examples.items():
+        validator = at('components', 'schemas', name)
+        for state in SPEC['components']['schemas'][name]['properties']['status']['enum']:
+            check(validator, {**example, 'status': state}, True, name+' accepts declared status '+state)
+        check(validator, {**example, 'status': 'UNKNOWN'}, False, name+' rejects an unknown status')
+        check(validator, {**example, 'status': None}, False, name+' rejects a null status')
+        check(validator, example, False, name+' requires status')
     report = {'status': 'PASS', 'kind': 'JSON_SCHEMA_EXAMPLES_NOT_RUNTIME', 'checks': checks}
-    output = ROOT/'docs/testing/evidence/ddd-refactor-20261029/api-schemas.json'
+    output = args.output
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
     print('PASS', len(checks), 'schema checks')

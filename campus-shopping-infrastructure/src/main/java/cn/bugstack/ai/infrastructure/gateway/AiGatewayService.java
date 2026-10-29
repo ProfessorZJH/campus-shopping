@@ -12,7 +12,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -87,7 +86,14 @@ public class AiGatewayService {
     }
 
     public void index(AiGatewayDTO.Index request) {
-        post("/v1/index", request, Map.class);
+        var result = post("/v1/index", request, AiGatewayDTO.KnowledgeIndexResult.class);
+        if (
+            result == null ||
+            result.chunks() == null ||
+            result.chunks() < 1 ||
+            result.chunks() > 162 ||
+            !java.util.Set.of("REMOTE_EMBEDDING", "LOCAL_CHAR_NGRAM_DEMO").contains(java.util.Objects.toString(result.mode(), ""))
+        ) throw new AppException(ResponseCode.AI_UNAVAILABLE);
     }
 
     public String extract(AiGatewayDTO.Extract request) {

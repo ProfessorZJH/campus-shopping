@@ -3,17 +3,20 @@ package cn.bugstack.ai.cases.catalog.impl;
 import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
+import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
-import cn.bugstack.ai.domain.inventory.model.valobj.*;
+import cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO;
+import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,20 +38,42 @@ public class CatalogCaseImpl implements ICatalogCase {
 
     @Transactional(rollbackFor = Exception.class)
     public ProductAggregate create(String actor, String merchant, ProductCreateEntity command) {
+        return createView(actor, merchant, command).product();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ProductReadModel createView(String actor, String merchant, ProductCreateEntity command) {
         access.requirePermission(actor, merchant, "product.write");
-        MerchantVO m = merchants.requireActiveForNewTrade(merchant);
-        ProductAggregate p = catalog.create(merchant, m.storeId(), command);
-        for (var s : p.getSkus()) inventory.initialize(merchant, m.storeId(), s.id());
-        return p;
+        MerchantVO owner = merchants.requireActiveForNewTrade(merchant);
+        ProductAggregate product = catalog.create(merchant, owner.storeId(), command);
+        for (var sku : product.getSkus()) inventory.initialize(merchant, owner.storeId(), sku.id());
+        // 新建库存已知为零；复用事务内取得的商户，提交后不再为响应额外查库。
+        return ProductReadModel.from(product, owner.name(), Map.of());
     }
 
     @Transactional(rollbackFor = Exception.class)
     public ProductAggregate addSku(String actor, String merchant, String product, String spec, long price) {
+        return addSkuView(actor, merchant, product, spec, price).product();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ProductReadModel addSkuView(String actor, String merchant, String productId, String spec, long price) {
         access.requirePermission(actor, merchant, "product.write");
-        MerchantVO m = merchants.requireActiveForNewTrade(merchant);
-        ProductAggregate p = catalog.addSku(merchant, product, spec, price);
-        for (var s : p.getSkus()) inventory.initialize(merchant, m.storeId(), s.id());
-        return p;
+        MerchantVO owner = merchants.requireActiveForNewTrade(merchant);
+        ProductAggregate product = catalog.addSku(merchant, productId, spec, price);
+        for (var sku : product.getSkus()) inventory.initialize(merchant, owner.storeId(), sku.id());
+        Map<String, StockVO> stocks = inventory
+            .stocks(
+                product
+                    .getSkus()
+                    .stream()
+                    .map(sku -> sku.id())
+                    .toList()
+            )
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(StockVO::skuId, stock -> stock));
+        // 旧规格的库存也属于写操作响应；读取失败会使整个新增规格事务回滚。
+        return ProductReadModel.from(product, owner.name(), stocks);
     }
 
     @Transactional(rollbackFor = Exception.class)

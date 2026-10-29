@@ -3,15 +3,19 @@ package cn.bugstack.ai.infrastructure.adapter.repository;
 import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IKnowledgeRepository;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeIndexAttemptVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
-import cn.bugstack.ai.infrastructure.dao.po.*;
+import cn.bugstack.ai.infrastructure.dao.po.DocumentRootPO;
+import cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO;
+import cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
-import java.time.*;
-import java.util.*;
+import java.time.Clock;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 /** 本地持久化适配器；业务规则由对应领域服务维护。 */
@@ -70,12 +74,26 @@ public class KnowledgeRepository implements IKnowledgeRepository {
         return dao.countDocuments(base);
     }
 
-    public List<KnowledgeDocumentVO> visible(List<String> bases) {
-        return bases.isEmpty() ? List.of() : dao.visible(bases).stream().map(this::document).toList();
+    public List<KnowledgeScopeVO> visibleScope(List<String> bases) {
+        return bases.isEmpty()
+            ? List.of()
+            : dao
+                  .visibleScope(bases)
+                  .stream()
+                  .map(p -> new KnowledgeScopeVO(p.getId(), p.getTitle(), p.getVisibility()))
+                  .toList();
     }
 
-    public void indexState(String id, String status, String error) {
-        require(dao.indexState(id, status, error) == 1, ResponseCode.NOT_FOUND);
+    public List<KnowledgeDocumentVO> documentsByIds(List<String> ids) {
+        return ids.isEmpty() ? List.of() : dao.documentsByIds(ids).stream().map(this::document).toList();
+    }
+
+    public void beginIndex(String id, String attempt) {
+        require(dao.beginIndex(id, attempt) == 1, ResponseCode.NOT_FOUND);
+    }
+
+    public boolean completeIndex(KnowledgeIndexAttemptVO attempt, String status, String error) {
+        return dao.completeIndex(attempt.documentId(), attempt.token(), status, error) == 1;
     }
 
     public cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate lockPublication(String id) {

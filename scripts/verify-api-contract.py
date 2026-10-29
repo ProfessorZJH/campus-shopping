@@ -137,9 +137,10 @@ def verify():
               path + '：查询 q 谓词与 COUNT 谓词完全一致')
 
     cart = source('campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/CartResponseDTO.java')
-    cart_controller = source('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/CartController.java')
-    check('merchantName' in cart and '.merchantName(merchant.name())' in cart_controller,
-          '购物车 API 直接返回商户名，不依赖当前页商户缓存')
+    cart_schema = spec['components']['schemas']['CartResponseDTO']
+    check('merchantName' in cart and 'merchantName' in cart_schema['required']
+          and cart_schema['properties']['merchantName'].get('type') == 'string',
+          '购物车 API 契约要求商户名必填且非 null，不依赖当前页商户缓存')
     live = source('frontend/tests/live_ui.py')
     check('form.login-dialog' in live and '.header-login' in live and 'page.route(' not in live
           and 'apiMockUsed' in live, '真实浏览器测试使用新版 Vue 选择器且不 mock API')

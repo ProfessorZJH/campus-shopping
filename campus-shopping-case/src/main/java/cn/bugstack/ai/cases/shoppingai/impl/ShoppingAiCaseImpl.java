@@ -2,27 +2,41 @@ package cn.bugstack.ai.cases.shoppingai.impl;
 
 import static cn.bugstack.ai.types.common.Checks.*;
 
-import cn.bugstack.ai.cases.shoppingai.*;
+import cn.bugstack.ai.cases.shoppingai.IConversationTurnCase;
+import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
+import cn.bugstack.ai.cases.shoppingai.IProposalConfirmationCase;
+import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
-import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
-import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiAnswerVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiOfferVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecallVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecommendationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IProposalService;
 import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
-import cn.bugstack.ai.domain.trading.service.ICartService;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.time.*;
-import java.util.*;
-import java.util.concurrent.locks.ReentrantLock;
+import java.time.Clock;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -39,11 +53,10 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     private final IKnowledgeCase knowledge;
     private final ICatalogService catalog;
     private final IInventoryService inventory;
-    private final IMerchantService merchants;
     private final IUserAccountService accounts;
-    private final ICartService trading;
     private final Clock clock;
-    private final ReentrantLock[] locks = new ReentrantLock[64];
+    private final IConversationTurnCase turns;
+    private final IProposalConfirmationCase confirmation;
 
     @Value("${campus.proposal.minutes:10}")
     private long proposalMinutes = 10;
@@ -55,10 +68,10 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         IKnowledgeCase knowledge,
         ICatalogService catalog,
         IInventoryService inventory,
-        IMerchantService merchants,
         IUserAccountService accounts,
-        ICartService trading,
-        Clock clock
+        Clock clock,
+        IConversationTurnCase turns,
+        IProposalConfirmationCase confirmation
     ) {
         this.state = state;
         this.proposals = proposals;
@@ -66,28 +79,38 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         this.knowledge = knowledge;
         this.catalog = catalog;
         this.inventory = inventory;
-        this.merchants = merchants;
         this.accounts = accounts;
-        this.trading = trading;
         this.clock = clock;
-        for (int i = 0; i < locks.length; i++) locks[i] = new ReentrantLock();
+        this.turns = turns;
+        this.confirmation = confirmation;
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
     public ChatResult chat(String actor, String conversationId, String question) {
         accounts.requireActive(actor);
         String q = text(question, "问题", 2000);
-        var conversation = state.conversation(actor, conversationId, q);
-        var lock = locks[Math.floorMod(conversation.id().hashCode(), locks.length)];
-        require(lock.tryLock(), ResponseCode.STATE_CONFLICT);
+        var turn = state.beginTurn(actor, conversationId, q);
         try {
-            return answer(actor, conversation.id(), q);
-        } finally {
-            lock.unlock();
+            return answer(actor, turn, q);
+        } catch (RuntimeException failure) {
+            // 成功提交已经在短事务中释放租约；失败才做 token 条件释放，不能误清除后继请求。
+            try {
+                state.releaseTurn(turn);
+            } catch (RuntimeException releaseFailure) {
+                failure.addSuppressed(releaseFailure);
+                log.error(
+                    "会话租约释放失败 conversationId={} diagnostic={}",
+                    turn.conversationId(),
+                    cn.bugstack.ai.types.common.FailureDiagnostics.describe(releaseFailure)
+                );
+            }
+            throw failure;
         }
     }
 
-    private ChatResult answer(String actor, String conversation, String question) {
-        var documents = knowledge.readableDocuments(actor);
+    private ChatResult answer(String actor, ConversationTurnVO turn, String question) {
+        String conversation = turn.conversationId();
+        var documents = knowledge.readableScope(actor);
         String fingerprint = scope(documents);
         List<MessageVO> history = safeHistory(actor, conversation, fingerprint, 12);
         AiRecallVO recall = engine.recall(question, history);
@@ -159,12 +182,18 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .map(SkuOfferVO::skuId)
             .toList();
         AiAnswerVO answer = engine.query(
-            new AiQueryEntity(question, documents.stream().map(KnowledgeDocumentVO::id).toList(), candidates, history, recall.query(), semanticSkuIds)
+            new AiQueryEntity(question, documents.stream().map(KnowledgeScopeVO::id).toList(), candidates, history, recall.query(), semanticSkuIds)
         );
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
-        var current = knowledge.readableDocuments(actor);
+        var current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
-        Map<String, KnowledgeDocumentVO> byId = current.stream().collect(Collectors.toMap(KnowledgeDocumentVO::id, d -> d));
+        Set<String> allowedIds = current.stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
+        List<String> citedIds = answer.citations().stream().map(AiCitationVO::documentId).distinct().toList();
+        require(allowedIds.containsAll(citedIds), ResponseCode.KNOWLEDGE_NOT_READY);
+        Map<String, KnowledgeDocumentVO> byId = knowledge
+            .citationDocuments(actor, citedIds)
+            .stream()
+            .collect(Collectors.toMap(KnowledgeDocumentVO::id, d -> d));
         List<AiCitationVO> citations = new ArrayList<>();
         for (var c : answer.citations()) {
             var d = byId.get(c.documentId());
@@ -180,17 +209,6 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         Map<String, Long> available = new HashMap<>();
         stocks.forEach((id, s) -> available.put(id, s.onHand() - s.reserved()));
         List<ProposalItemVO> items = RecommendationPolicy.select(answer.recommendations(), quotes, available);
-        ProposalVO proposal = items.isEmpty()
-            ? null
-            : new ProposalVO(
-                  UUID.randomUUID().toString(),
-                  actor,
-                  conversation,
-                  "PENDING",
-                  List.copyOf(items),
-                  null,
-                  clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60)
-              );
         // 不把模型提出但未通过 Java SKU/库存复核的条目输出给前端。
         Map<String, String> reasons = new HashMap<>();
         for (var r : answer.recommendations()) if (r.skuId() != null) reasons.putIfAbsent(r.skuId(), r.reason());
@@ -211,12 +229,20 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             verified,
             answer.latencyMs()
         );
-        state.appendTurn(actor, conversation, question, safe.answer(), proposal, fingerprint);
+        require(fingerprint.equals(scope(knowledge.readableScope(actor))), ResponseCode.KNOWLEDGE_NOT_READY);
+        ProposalVO proposal = turns.complete(
+            turn,
+            question,
+            safe.answer(),
+            items,
+            clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60),
+            fingerprint
+        );
         return new ChatResult(conversation, safe, proposal);
     }
 
-    private String scope(List<KnowledgeDocumentVO> docs) {
-        return Fingerprints.of(docs.stream().map(KnowledgeDocumentVO::id).sorted().toArray());
+    private String scope(List<KnowledgeScopeVO> docs) {
+        return Fingerprints.of(docs.stream().map(KnowledgeScopeVO::id).sorted().toArray());
     }
 
     private List<MessageVO> safeHistory(String actor, String conversation, String fingerprint, int limit) {
@@ -233,7 +259,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
     public List<MessageVO> history(String actor, String conversation) {
         accounts.requireActive(actor);
-        return safeHistory(actor, conversation, scope(knowledge.readableDocuments(actor)), 100);
+        return safeHistory(actor, conversation, scope(knowledge.readableScope(actor)), 100);
     }
 
     public List<ConversationVO> conversations(String actor) {
@@ -246,42 +272,8 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         return proposals.proposals(actor, conversation);
     }
 
-    @Transactional(rollbackFor = Exception.class)
     public ProposalVO confirm(String actor, String id, List<String> selected) {
-        accounts.requireActive(actor);
-        ProposalVO p = proposals.confirmSelection(actor, id, selected);
-        if (p == null) return proposals.proposal(actor, id);
-        List<String> ids = selected.stream().sorted().toList();
-        Map<String, ProposalItemVO> proposed = p
-            .items()
-            .stream()
-            .collect(Collectors.toMap(ProposalItemVO::skuId, i -> i));
-        trading.lockCart(actor);
-        ids.stream()
-            .map(s -> proposed.get(s).merchantId())
-            .distinct()
-            .sorted()
-            .forEach(merchants::requireActiveForNewTrade);
-        var offers = catalog
-            .offers(ids, true, true)
-            .stream()
-            .collect(Collectors.toMap(SkuOfferVO::skuId, o -> o));
-        var stocks = inventory
-            .stocks(ids)
-            .stream()
-            .collect(Collectors.toMap(StockVO::skuId, s -> s));
-        for (String sku : ids) {
-            var item = proposed.get(sku);
-            var o = offers.get(sku);
-            require(
-                o.priceCent() == item.priceCent() && o.version() == item.quoteVersion() && o.merchantId().equals(item.merchantId()),
-                ResponseCode.PRICE_CHANGED
-            );
-            var stock = stocks.get(sku);
-            require(stock != null && stock.onHand() - stock.reserved() >= item.quantity(), ResponseCode.STOCK_NOT_ENOUGH);
-            trading.addCart(actor, o.merchantId(), sku, item.quantity());
-        }
-        return proposals.proposal(actor, id);
+        return confirmation.confirm(actor, id, selected);
     }
 
     public void reject(String actor, String proposal) {

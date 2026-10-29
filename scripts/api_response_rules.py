@@ -40,6 +40,9 @@ FIELDS = {
 }
 
 ENUM_FIELDS = {
+    ('AdmissionResponseDTO', 'status'): 'merchant/model/valobj/MerchantApplicationStatusEnumVO',
+    ('SubmitMerchantApplicationResponseDTO', 'status'): 'merchant/model/valobj/MerchantApplicationStatusEnumVO',
+    ('CurrentUserResponseDTO', 'status'): 'identity/model/valobj/UserAccountStatusEnumVO',
     ('OrderResponseDTO', 'status'): 'trading/model/valobj/OrderStatusEnumVO',
     ('AfterSaleResponseDTO', 'status'): 'trading/model/valobj/AfterSaleStatusEnumVO',
     ('ProductResponseDTO', 'status'): 'catalog/model/valobj/ProductStatusEnumVO',
@@ -58,7 +61,8 @@ ENUM_FIELDS = {
 
 def enum_codes(root, source):
     path = root/'campus-shopping-domain/src/main/java/cn/bugstack/ai/domain'/f'{source}.java'
-    values = re.findall(r'^\s*([A-Z][A-Z_0-9]*)\("', path.read_text('utf-8'), re.M)
+    # 状态 HTTP 编码与枚举名一致；兼容带描述参数和无参数的状态枚举。
+    values = re.findall(r'^\s*([A-Z][A-Z_0-9]*)\s*(?:\(|[,;}])', path.read_text('utf-8'), re.M)
     assert values, path
     return values
 

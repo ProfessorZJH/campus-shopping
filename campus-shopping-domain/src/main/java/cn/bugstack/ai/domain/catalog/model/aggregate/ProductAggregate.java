@@ -1,12 +1,15 @@
 package cn.bugstack.ai.domain.catalog.model.aggregate;
 
-import static cn.bugstack.ai.types.common.Checks.*;
+import static cn.bugstack.ai.types.common.Checks.optional;
+import static cn.bugstack.ai.types.common.Checks.require;
+import static cn.bugstack.ai.types.common.Checks.text;
 
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 /** 商品聚合统一约束规格唯一、售价和发布状态；历史 SKU 不物理删除。 */
 public final class ProductAggregate {
@@ -71,12 +74,16 @@ public final class ProductAggregate {
 
     public void changeInfo(String title, String desc, String category, String image, long expected) {
         require(expected == version, ResponseCode.STATE_CONFLICT);
-        this.title = text(title, "商品名称", 100);
-        this.description = optional(desc, 5000);
-        this.categoryCode = text(category, "类别", 32);
-        String v = optional(image, 255);
-        require(v.isEmpty() || v.matches("/media/[a-f0-9-]+\\.png"), ResponseCode.ILLEGAL_PARAMETER);
-        this.imageUrl = v;
+        String checkedTitle = text(title, "商品名称", 100);
+        String checkedDescription = optional(desc, 5000);
+        String checkedCategory = text(category, "类别", 32);
+        String checkedImage = optional(image, 255);
+        require(checkedImage.isEmpty() || checkedImage.matches("/media/[a-f0-9-]+\\.png"), ResponseCode.ILLEGAL_PARAMETER);
+        // 聚合校验失败时保留原状态；不依赖数据库回滚来修复内存中的半更新。
+        this.title = checkedTitle;
+        this.description = checkedDescription;
+        this.categoryCode = checkedCategory;
+        this.imageUrl = checkedImage;
     }
 
     public void publish() {

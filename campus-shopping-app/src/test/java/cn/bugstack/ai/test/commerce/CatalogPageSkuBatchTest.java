@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
+import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
@@ -37,12 +38,10 @@ class CatalogPageSkuBatchTest {
         var merchants = mock(IMerchantService.class);
         var inventory = mock(IInventoryService.class);
         ReflectionTestUtils.setField(c, "catalogCase", useCase);
-        ReflectionTestUtils.setField(c, "catalog", catalog);
-        ReflectionTestUtils.setField(c, "merchants", merchants);
-        ReflectionTestUtils.setField(c, "inventory", inventory);
+        ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(useCase, catalog, inventory, merchants));
         when(useCase.publicProductsSorted(null, "", null, 1, 100, "NEWEST")).thenReturn(products);
         when(useCase.countPublicProducts(null, "", null)).thenReturn(51L);
-        when(merchants.find("m1")).thenReturn(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园"));
+        when(merchants.findAll(List.of("m1"))).thenReturn(List.of(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园")));
         when(inventory.stocks(anyList())).thenAnswer(invocation -> {
             List<String> ids = invocation.getArgument(0);
             if (ids.size() > 1000) throw new IllegalArgumentException("库存查询不得超过1000 SKU");
@@ -66,6 +65,8 @@ class CatalogPageSkuBatchTest {
                     .allMatch(s -> s.getAvailable() == 5)
             );
         }
+        verify(merchants).findAll(List.of("m1"));
+        verify(merchants, never()).find(anyString());
         var captured = org.mockito.ArgumentCaptor.forClass(List.class);
         verify(inventory, times(3)).stocks(captured.capture());
         var batches = captured.getAllValues();

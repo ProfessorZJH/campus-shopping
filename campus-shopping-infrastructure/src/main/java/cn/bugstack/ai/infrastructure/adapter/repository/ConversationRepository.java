@@ -1,17 +1,14 @@
 package cn.bugstack.ai.infrastructure.adapter.repository;
 
-import static cn.bugstack.ai.types.common.Checks.require;
-
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
-import cn.bugstack.ai.infrastructure.dao.po.*;
-import cn.bugstack.ai.types.enums.ResponseCode;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import cn.bugstack.ai.infrastructure.dao.po.ConversationPO;
+import cn.bugstack.ai.infrastructure.dao.po.MessagePO;
 import jakarta.annotation.Resource;
-import java.time.*;
-import java.util.*;
+import java.util.List;
 import org.springframework.stereotype.Repository;
 
 /** 本地持久化适配器；业务规则由对应领域服务维护。 */
@@ -20,9 +17,6 @@ public class ConversationRepository implements IConversationRepository {
 
     @Resource
     private IAiDao dao;
-
-    @Resource
-    private ObjectMapper mapper;
 
     public void createConversation(ConversationVO c) {
         dao.conversationInsert(ConversationPO.builder().id(c.id()).userId(c.userId()).title(c.title()).createdAt(c.createdAt()).build());
@@ -57,22 +51,16 @@ public class ConversationRepository implements IConversationRepository {
         );
     }
 
-    public void insertProposal(ProposalVO p) {
-        try {
-            dao.proposalInsert(
-                ProposalPO.builder()
-                    .id(p.id())
-                    .userId(p.userId())
-                    .conversationId(p.conversationId())
-                    .status(p.status())
-                    .itemsJson(mapper.writeValueAsString(p.items()))
-                    .selectionHash(p.selectionHash())
-                    .expiresAt(p.expiresAt())
-                    .build()
-            );
-        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
-            throw new IllegalStateException("提案序列化失败", e);
-        }
+    public boolean claimTurn(String id, String actor, String token) {
+        return dao.claimTurn(id, actor, token) == 1;
+    }
+
+    public boolean finishTurn(ConversationTurnVO turn) {
+        return dao.finishTurn(turn.conversationId(), turn.userId(), turn.token()) == 1;
+    }
+
+    public void releaseTurn(ConversationTurnVO turn) {
+        dao.releaseTurn(turn.conversationId(), turn.userId(), turn.token());
     }
 
     private ConversationVO conversation(ConversationPO p) {

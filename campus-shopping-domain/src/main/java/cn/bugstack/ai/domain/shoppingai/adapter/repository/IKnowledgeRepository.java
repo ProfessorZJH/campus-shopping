@@ -1,9 +1,11 @@
 package cn.bugstack.ai.domain.shoppingai.adapter.repository;
 
 import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import java.time.*;
-import java.util.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeIndexAttemptVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
+import java.util.List;
 
 /** 按业务能力限定的领域端口。 */
 public interface IKnowledgeRepository {
@@ -13,9 +15,11 @@ public interface IKnowledgeRepository {
     KnowledgeDocumentVO createDocument(String id, String root, String base, String title, String content);
     KnowledgeDocumentVO document(String id);
     List<KnowledgeDocumentVO> documents(String base, int offset, int size);
-    List<KnowledgeDocumentVO> visible(List<String> bases);
+    List<KnowledgeScopeVO> visibleScope(List<String> bases);
+    List<KnowledgeDocumentVO> documentsByIds(List<String> ids);
     long countDocuments(String base);
-    void indexState(String id, String status, String error);
+    void beginIndex(String id, String attempt);
+    boolean completeIndex(KnowledgeIndexAttemptVO attempt, String status, String error);
     cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate lockPublication(String id);
     void savePublication(cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate publication);
 }

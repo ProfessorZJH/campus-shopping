@@ -1,15 +1,31 @@
 package cn.bugstack.ai.trigger.http;
 
-import cn.bugstack.ai.api.dto.*;
+import cn.bugstack.ai.api.dto.AdmissionResponseDTO;
+import cn.bugstack.ai.api.dto.AfterSaleResponseDTO;
+import cn.bugstack.ai.api.dto.CartResponseDTO;
+import cn.bugstack.ai.api.dto.InvitationResponseDTO;
+import cn.bugstack.ai.api.dto.MembershipResponseDTO;
+import cn.bugstack.ai.api.dto.MerchantResponseDTO;
+import cn.bugstack.ai.api.dto.OrderItemResponseDTO;
+import cn.bugstack.ai.api.dto.OrderResponseDTO;
+import cn.bugstack.ai.api.dto.PickupResponseDTO;
+import cn.bugstack.ai.api.dto.ProductResponseDTO;
+import cn.bugstack.ai.api.dto.SkuResponseDTO;
+import cn.bugstack.ai.api.dto.StatisticsResponseDTO;
+import cn.bugstack.ai.api.dto.StockResponseDTO;
+import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.trading.model.CartItemReadModel;
+import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.fulfillment.model.valobj.PickupVO;
-import cn.bugstack.ai.domain.identity.model.valobj.*;
+import cn.bugstack.ai.domain.identity.model.valobj.InvitationVO;
+import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.merchant.model.aggregate.MerchantApplicationAggregate;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
-import cn.bugstack.ai.domain.trading.model.valobj.*;
-import java.util.*;
+import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
+import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 
 /** 对外字段白名单映射；不输出密码摘要、自提摘要、数据库 PO。 */
 public final class ApiViews {
@@ -58,9 +74,11 @@ public final class ApiViews {
             .build();
     }
 
-    public static ProductResponseDTO product(ProductAggregate p, Map<String, StockVO> stocks) {
+    public static ProductResponseDTO product(ProductReadModel model) {
+        ProductAggregate p = model.product();
         return ProductResponseDTO.builder()
             .productId(p.getId())
+            .merchantName(model.merchantName())
             .merchantId(p.getMerchantId())
             .storeId(p.getStoreId())
             .title(p.getTitle())
@@ -74,14 +92,13 @@ public final class ApiViews {
                     .getSkus()
                     .stream()
                     .map(s -> {
-                        StockVO st = stocks.get(s.id());
                         return SkuResponseDTO.builder()
                             .skuId(s.id())
                             .specKey(s.specKey())
                             .priceCent(s.priceCent())
                             .quoteVersion(p.getVersion())
                             .status(s.status())
-                            .available(st == null ? 0 : st.onHand() - st.reserved())
+                            .available(model.availableBySku().get(s.id()))
                             .build();
                     })
                     .toList()
@@ -114,9 +131,13 @@ public final class ApiViews {
                   .build();
     }
 
-    public static OrderResponseDTO order(OrderAggregate o, PickupVO p, AfterSaleVO a) {
+    public static OrderResponseDTO order(OrderReadModel model) {
+        OrderAggregate o = model.order();
+        PickupVO p = model.pickup();
+        AfterSaleVO a = model.afterSale();
         return OrderResponseDTO.builder()
             .orderId(o.getId())
+            .merchantName(model.merchantName())
             .buyerId(o.getBuyerId())
             .merchantId(o.getMerchantId())
             .storeId(o.getStoreId())
@@ -145,10 +166,22 @@ public final class ApiViews {
             .build();
     }
 
-    public static OrderResponseDTO order(cn.bugstack.ai.cases.trading.model.OrderReadModel model) {
-        var dto = order(model.order(), model.pickup(), model.afterSale());
-        dto.setMerchantName(model.merchantName());
-        return dto;
+    public static CartResponseDTO cart(CartItemReadModel model) {
+        var item = model.item();
+        var offer = model.offer();
+        return CartResponseDTO.builder()
+            .merchantId(item.merchantId())
+            .merchantName(model.merchantName())
+            .skuId(item.skuId())
+            .title(offer.title())
+            .specKey(offer.specKey())
+            .imageUrl(offer.imageUrl())
+            .priceCent(offer.priceCent())
+            .quoteVersion(offer.version())
+            .quantity(item.quantity())
+            .available(model.available())
+            .sellable(model.sellable())
+            .build();
     }
 
     public static StatisticsResponseDTO statistics(TradingStatsVO s) {

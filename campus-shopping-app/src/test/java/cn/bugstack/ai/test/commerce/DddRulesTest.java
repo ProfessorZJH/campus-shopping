@@ -187,9 +187,9 @@ class DddRulesTest {
 
     @Test
     void permissionEnumCentralizesProtectedCapabilitiesAndDependencies() {
-        code("0002", () -> MerchantPermissionEnumVO.validateGrant(Set.of("role.manage")));
+        code("A0006", () -> MerchantPermissionEnumVO.validateGrant(Set.of("role.manage")));
         code("0002", () -> MerchantPermissionEnumVO.validateGrant(Set.of("product.write")));
-        code("0002", () -> MerchantPermissionEnumVO.validateGrant(Set.of("unknown")));
+        code("A0006", () -> MerchantPermissionEnumVO.validateGrant(Set.of("unknown")));
         assertEquals(Set.of("product.read", "product.write"), MerchantPermissionEnumVO.validateGrant(Set.of("product.read", "product.write")));
     }
 }

@@ -3,13 +3,14 @@ package cn.bugstack.ai.domain.shoppingai.service.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
-import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
-import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.time.*;
-import java.util.*;
+import java.time.Clock;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,13 +48,25 @@ public class ConversationServiceImpl implements IConversationService {
         return repository.messages(id, limit);
     }
 
-    @Transactional(rollbackFor = Exception.class)
-    public void appendTurn(String actor, String conversation, String question, String answer, ProposalVO proposal, String accessFingerprint) {
-        conversation(actor, conversation, question);
-        repository.append(new MessageVO(UUID.randomUUID().toString(), conversation, "user", text(question, "问题", 2000), clock.instant(), null));
+    /** 租约通过单次 UPDATE 生效；远程模型调用期间没有数据库事务或行锁。 */
+    public ConversationTurnVO beginTurn(String actor, String id, String question) {
+        var conversation = conversation(actor, id, question);
+        String token = UUID.randomUUID().toString();
+        require(repository.claimTurn(conversation.id(), actor, token), ResponseCode.STATE_CONFLICT);
+        return new ConversationTurnVO(conversation.id(), actor, token);
+    }
+
+    /** 必须与提案创建同事务提交；过期或被新请求替换的令牌不能写入消息。 */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void appendTurn(ConversationTurnVO turn, String question, String answer, String accessFingerprint) {
+        require(repository.finishTurn(turn), ResponseCode.STATE_CONFLICT);
+        repository.append(new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "user", text(question, "问题", 2000), clock.instant(), null));
         repository.append(
-            new MessageVO(UUID.randomUUID().toString(), conversation, "assistant", text(answer, "回答", 10000), clock.instant(), accessFingerprint)
+            new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "assistant", text(answer, "回答", 10000), clock.instant(), accessFingerprint)
         );
-        if (proposal != null) repository.insertProposal(proposal);
+    }
+
+    public void releaseTurn(ConversationTurnVO turn) {
+        repository.releaseTurn(turn);
     }
 }

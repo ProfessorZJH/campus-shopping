@@ -1,7 +1,6 @@
 package cn.bugstack.ai.domain.shoppingai.model.entity;
 
-import java.time.*;
-import java.util.*;
+import java.util.List;
 
 /** 检索白名单只能由受控 Java 用例构造。 */
 public record AiQueryEntity(

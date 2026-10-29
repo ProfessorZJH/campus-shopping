@@ -3,15 +3,15 @@ package cn.bugstack.ai.infrastructure.adapter.repository;
 import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IProposalRepository;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
-import cn.bugstack.ai.infrastructure.dao.po.*;
+import cn.bugstack.ai.infrastructure.dao.po.ProposalPO;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
-import java.time.*;
-import java.util.*;
+import java.util.List;
 import org.springframework.stereotype.Repository;
 
 /** 本地持久化适配器；业务规则由对应领域服务维护。 */
@@ -23,6 +23,24 @@ public class ProposalRepository implements IProposalRepository {
 
     @Resource
     private ObjectMapper mapper;
+
+    public void insert(ProposalVO p) {
+        try {
+            dao.proposalInsert(
+                ProposalPO.builder()
+                    .id(p.id())
+                    .userId(p.userId())
+                    .conversationId(p.conversationId())
+                    .status(p.status())
+                    .itemsJson(mapper.writeValueAsString(p.items()))
+                    .selectionHash(p.selectionHash())
+                    .expiresAt(p.expiresAt())
+                    .build()
+            );
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalStateException("提案序列化失败", e);
+        }
+    }
 
     public ProposalVO proposal(String id, boolean lock) {
         return proposal(dao.proposal(id, lock));

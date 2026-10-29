@@ -1,12 +1,16 @@
 package cn.bugstack.ai.cases.catalog;
 
+import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
-import cn.bugstack.ai.domain.inventory.model.valobj.*;
-import java.util.*;
+import cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO;
+import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
+import java.util.List;
 
 /** 商品与库存用例边界。 */
 public interface ICatalogCase {
+    ProductReadModel createView(String actor, String merchant, ProductCreateEntity command);
+    ProductReadModel addSkuView(String actor, String merchant, String product, String spec, long price);
     ProductAggregate create(String actor, String merchant, ProductCreateEntity command);
     ProductAggregate addSku(String actor, String merchant, String product, String spec, long price);
     void price(String actor, String merchant, String product, String sku, long price, long version);

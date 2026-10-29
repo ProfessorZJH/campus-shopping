@@ -153,3 +153,11 @@ python scripts/smoke-full.py
 - 商品索引写入必须校验 MILVUS 模式与完整数量；删除拒绝 DISABLED，允许 EMPTY_INDEX/幂等删除。同步失败不得更新成功时间。
 - Java 自动格式化为 4 空格/160 列，前端维持单独规则。
 - 本次隔离 clean verify 140 通过、0 跳过；HTTP 173、严格响应 117、真实浏览器 8、Python 42 通过。Docker、远程模型/Milvus与性能本次未验收。见 docs/testing/INTEGRATION-20261029.md。
+
+## 代码职责与并发修复（2026-10-30）
+
+- Catalog/Cart Controller 只依赖 Case；跨域查询返回完整读模型，商户批量查询，必填响应字段在 ApiViews 一次组装。商品新增响应事实在事务内完成。
+- AI 长调用入口使用 NEVER；会话按完整 ID 领取数据库时间裁决的 10 分钟租约，完成和失败释放均校验 token。消息、提案与租约完成由短事务原子提交；提案确认保持独立事务实时复验。
+- 知识索引完成必须匹配当前 index_attempt；知识权限列表不加载正文，仅按实际引用批量查询。权限授予规则统一归 MerchantPermissionEnumVO。
+- 新增 V20261030_01，已有库须备份并显式迁移；旧进程锁版本与新版不能混跑。此次只操作临时测试库，没有升级业务库或替换运行服务。
+- Maven Wrapper 3.9.9 隔离 clean verify 175 通过、0 跳过；HTTP 173、严格响应 117、真实浏览器 8、Python 42 通过。Docker NOT_RUN，远程模型/Milvus、性能与生产集群本次未验收。详见 [本轮报告](docs/testing/CODE-QUALITY-20261030.md)。

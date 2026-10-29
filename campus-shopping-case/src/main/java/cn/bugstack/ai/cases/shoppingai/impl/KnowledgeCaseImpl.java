@@ -3,14 +3,21 @@ package cn.bugstack.ai.cases.shoppingai.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
-import cn.bugstack.ai.domain.identity.service.*;
+import cn.bugstack.ai.domain.identity.service.IAccessService;
+import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
 import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeService;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,6 +99,7 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     }
 
     /** 提取和建索引发生在数据库短事务之外，不持锁等待模型/向量库。 */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
     public KnowledgeDocumentVO upload(String actor, String base, String root, String title, String filename, String mime, byte[] bytes) {
         manage(actor, base, "knowledge.manage");
         require(bytes != null && bytes.length > 0 && bytes.length <= 2000000, ResponseCode.UPLOAD_INVALID);
@@ -101,19 +109,20 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         return index(actor, d.id());
     }
 
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
     public KnowledgeDocumentVO index(String actor, String id) {
         var d = document(actor, id);
         manage(actor, d.baseId(), "knowledge.manage");
-        state.indexState(id, "PENDING", "");
+        var attempt = state.beginIndex(id);
         try {
             engine.index(id, d.title(), d.content());
-            state.indexState(id, "READY", "");
+            state.completeIndex(attempt, true, "");
         } catch (AppException e) {
             if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;
-            state.indexState(id, "FAILED", "索引构建失败，可检查服务配置后重试");
+            state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试");
             log.error("知识索引构建失败 documentId={} diagnostic={}", id, cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
         } catch (RuntimeException e) {
-            state.indexState(id, "FAILED", "索引构建失败，可检查服务配置后重试");
+            state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试");
             throw e;
         }
         return state.document(id);
@@ -135,7 +144,7 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         access.audit(actor, "KNOWLEDGE_WITHDRAWN", id, d.merchantId(), "撤回知识版本，后续检索立即排除");
     }
 
-    public List<KnowledgeDocumentVO> readableDocuments(String actor) {
+    public List<KnowledgeScopeVO> readableScope(String actor) {
         accounts.requireActive(actor);
         boolean admin = access.isAdmin(actor);
         Set<String> member = access
@@ -155,6 +164,14 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
             };
             if (readable) allowed.add(b.id());
         }
-        return state.visible(allowed);
+        return state.visibleScope(allowed);
+    }
+
+    /** 原文仅按模型实际引用批量加载，调用者不能借此越过当前授权。 */
+    public List<KnowledgeDocumentVO> citationDocuments(String actor, List<String> ids) {
+        require(ids != null && ids.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
+        Set<String> allowed = readableScope(actor).stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
+        require(allowed.containsAll(ids), ResponseCode.KNOWLEDGE_NOT_READY);
+        return state.documentsByIds(ids);
     }
 }

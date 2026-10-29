@@ -9,13 +9,15 @@ import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
+import cn.bugstack.ai.domain.trading.model.aggregate.AfterSaleAggregate;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
+import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleStatusEnumVO;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
+import cn.bugstack.ai.domain.trading.model.valobj.OrderStatusEnumVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleService;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.time.*;
-import java.util.*;
+import java.time.Clock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -92,7 +94,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         access.requirePermission(actor, merchant, "order.prepare");
         OrderAggregate o = trading.order(id, true);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
-        require("PAID".equals(o.getStatus()), ResponseCode.ORDER_STATE_INVALID);
+        require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.ORDER_STATE_INVALID);
         fulfillment.prepare(id, ready);
     }
 
@@ -101,7 +103,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.order(id, true);
         o.requireBuyer(buyer);
-        require("PAID".equals(o.getStatus()), ResponseCode.ORDER_STATE_INVALID);
+        require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.ORDER_STATE_INVALID);
         requireNoPendingRefund(id);
         return fulfillment.issue(id);
     }
@@ -111,7 +113,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         access.requirePermission(actor, merchant, "pickup.verify");
         OrderAggregate o = trading.order(id, true);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
-        require(Set.of("PAID", "COMPLETED").contains(o.getStatus()), ResponseCode.ORDER_STATE_INVALID);
+        require(o.state() == OrderStatusEnumVO.PAID || o.state() == OrderStatusEnumVO.COMPLETED, ResponseCode.ORDER_STATE_INVALID);
         requireNoPendingRefund(id);
         if (fulfillment.verify(id, token, actor)) {
             inventory.consume(id);
@@ -148,9 +150,9 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         if (!platform) require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
         AfterSaleVO a = afterSales.afterSale(id, true);
         require(a != null, ResponseCode.NOT_FOUND);
-        if ("APPROVED".equals(a.status()) && "REFUNDED".equals(o.getStatus()) && approved) return;
-        require("PAID".equals(o.getStatus()), ResponseCode.REFUND_STATE_INVALID);
-        if (!platform) new cn.bugstack.ai.domain.trading.model.aggregate.AfterSaleAggregate(a).requireMerchantReview();
+        if (a.state() == AfterSaleStatusEnumVO.APPROVED && o.state() == OrderStatusEnumVO.REFUNDED && approved) return;
+        require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.REFUND_STATE_INVALID);
+        if (!platform) new AfterSaleAggregate(a).requireMerchantReview();
         if (approved) {
             afterSales.approveAfterSale(id, reason);
             fulfillment.cancel(id);

@@ -10,6 +10,7 @@ import cn.bugstack.ai.api.dto.RoleResponseDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.domain.identity.model.valobj.MerchantPermissions;
 import cn.bugstack.ai.domain.identity.model.valobj.MerchantRoleVO;
+import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.identity.service.IRoleService;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
@@ -26,10 +27,10 @@ import org.springframework.web.bind.annotation.*;
 public class RoleController implements IRoleApi {
 
     @Resource
-    private IRoleService access;
+    private IRoleService roleService;
 
     @Resource
-    private cn.bugstack.ai.domain.identity.service.IAccessService authorization;
+    private IAccessService authorization;
 
     @Override
     @GetMapping("/permissions")
@@ -47,13 +48,13 @@ public class RoleController implements IRoleApi {
     @Override
     @GetMapping("/roles")
     public Response<List<RoleResponseDTO>> roles(@PathVariable("merchantId") String merchantId, Principal principal) {
-        return exec(() -> access.roles(actor(principal), merchantId).stream().map(this::view).toList());
+        return exec(() -> roleService.roles(actor(principal), merchantId).stream().map(this::view).toList());
     }
 
     @Override
     @PostMapping("/roles")
     public Response<RoleResponseDTO> createRole(@PathVariable("merchantId") String merchantId, @RequestBody RoleRequestDTO request, Principal principal) {
-        return exec(() -> view(access.saveRole(actor(principal), merchantId, null, required(request).getName(), request.getPermissions())));
+        return exec(() -> view(roleService.saveRole(actor(principal), merchantId, null, required(request).getName(), request.getPermissions())));
     }
 
     @Override
@@ -64,14 +65,14 @@ public class RoleController implements IRoleApi {
         @RequestBody RoleRequestDTO request,
         Principal principal
     ) {
-        return exec(() -> view(access.saveRole(actor(principal), merchantId, code, required(request).getName(), request.getPermissions())));
+        return exec(() -> view(roleService.saveRole(actor(principal), merchantId, code, required(request).getName(), request.getPermissions())));
     }
 
     @Override
     @DeleteMapping("/roles/{code}")
     public Response<Void> deleteRole(@PathVariable("merchantId") String merchantId, @PathVariable("code") String code, Principal principal) {
         return exec(() -> {
-            access.deleteRole(actor(principal), merchantId, code);
+            roleService.deleteRole(actor(principal), merchantId, code);
             return null;
         });
     }
@@ -85,7 +86,7 @@ public class RoleController implements IRoleApi {
         Principal principal
     ) {
         return exec(() -> {
-            access.assignRole(actor(principal), merchantId, userId, required(required(request).getRoleCode()));
+            roleService.assignRole(actor(principal), merchantId, userId, required(required(request).getRoleCode()));
             return null;
         });
     }

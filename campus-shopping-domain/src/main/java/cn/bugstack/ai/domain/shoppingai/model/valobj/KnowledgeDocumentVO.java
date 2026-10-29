@@ -1,7 +1,6 @@
 package cn.bugstack.ai.domain.shoppingai.model.valobj;
 
-import java.time.*;
-import java.util.*;
+import java.time.Instant;
 
 /** 知识文档不可变版本与索引状态；正文只返回给获准管理者。 */
 public record KnowledgeDocumentVO(

@@ -15,9 +15,12 @@ import cn.bugstack.ai.domain.identity.service.*;
 import cn.bugstack.ai.domain.merchant.model.entity.AdmissionCommandEntity;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.*;
+import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
+import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeService;
+import cn.bugstack.ai.domain.shoppingai.service.impl.ConversationServiceImpl;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
 import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
@@ -36,6 +39,9 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.*;
+import org.springframework.transaction.IllegalTransactionStateException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * 真实 MySQL + Spring 事务集成测试；绝不使用 H2 冒充行锁语义。
@@ -93,10 +99,25 @@ class CommerceMySqlIntegrationTest {
     IConversationService conversations;
 
     @Autowired
+    IConversationTurnCase conversationTurns;
+
+    @Autowired
+    IConversationRepository conversationRepository;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
+
+    @SpyBean
+    IAiEnginePort aiEngine;
+
+    @Autowired
     MutableClock clock;
 
     @SpyBean
     AccessRepository accessRepository;
+
+    @SpyBean
+    cn.bugstack.ai.domain.inventory.service.impl.InventoryServiceImpl inventoryService;
 
     String admin, owner, buyer, other;
     MerchantVO merchant;
@@ -185,6 +206,47 @@ class CommerceMySqlIntegrationTest {
         catalog.publish(owner, merchant.id(), p.getId(), true);
         if (quantity > 0) catalog.replenish(owner, merchant.id(), p.getSkus().get(0).id(), quantity, UUID.randomUUID().toString());
         return catalog.publicDetail(p.getId());
+    }
+
+    @Test
+    void creationViewUsesKnownFactsWithoutReadingInventoryAfterCommit() {
+        doThrow(new IllegalStateException("unexpected inventory read")).when(inventoryService).stocks(anyList());
+        var result = catalog.createView(
+            owner,
+            merchant.id(),
+            new ProductCreateEntity("完整创建响应", "", "stationery", "", List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)))
+        );
+        assertEquals(merchant.name(), result.merchantName());
+        assertTrue(
+            result
+                .availableBySku()
+                .values()
+                .stream()
+                .allMatch(value -> value == 0L)
+        );
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM cat_product WHERE id=?", Integer.class, result.product().getId()));
+        verify(inventoryService, never()).stocks(anyList());
+    }
+
+    @Test
+    void addSkuViewFailureRollsBackNewSkuAndProductVersion() {
+        var product = catalog.create(
+            owner,
+            merchant.id(),
+            new ProductCreateEntity("事务响应测试", "", "stationery", "", List.of(new ProductSkuEntity(null, "原规格", 100, "ACTIVE", 0)))
+        );
+        doThrow(new IllegalStateException("inventory query unavailable")).when(inventoryService).stocks(anyList());
+        assertThrows(IllegalStateException.class, () -> catalog.addSkuView(owner, merchant.id(), product.getId(), "新增规格", 200));
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM cat_sku WHERE product_id=?", Integer.class, product.getId()));
+        assertEquals(product.getVersion(), jdbc.queryForObject("SELECT version FROM cat_product WHERE id=?", Long.class, product.getId()));
+        assertEquals(
+            1,
+            jdbc.queryForObject(
+                "SELECT COUNT(*) FROM inv_stock_balance WHERE sku_id IN (SELECT id FROM cat_sku WHERE product_id=?)",
+                Integer.class,
+                product.getId()
+            )
+        );
     }
 
     /** 排序必须发生在 SQL LIMIT/OFFSET 之前：价格与库存结果跨页稳定，COUNT 不受影响。 */
@@ -545,7 +607,7 @@ class CommerceMySqlIntegrationTest {
     void proposalConfirmationIsOwnedVersionedAndExactlyOnce() {
         var p = product(4);
         var conversation = conversations.conversation(buyer, null, "买笔");
-        var proposal = new ProposalVO(
+        var draft = new ProposalVO(
             UUID.randomUUID().toString(),
             buyer,
             conversation.id(),
@@ -554,7 +616,8 @@ class CommerceMySqlIntegrationTest {
             null,
             clock.instant().plusSeconds(600)
         );
-        conversations.appendTurn(buyer, conversation.id(), "买笔", "仅测试提案，不调用模型", proposal, "scope");
+        var turn = conversations.beginTurn(buyer, conversation.id(), "买笔");
+        var proposal = conversationTurns.complete(turn, "买笔", "仅测试提案，不调用模型", draft.items(), draft.expiresAt(), "scope");
         assertEquals("G0001", code(() -> ai.confirm(other, proposal.id(), List.of(item(p).skuId()))));
         ai.confirm(buyer, proposal.id(), List.of(item(p).skuId()));
         ai.confirm(buyer, proposal.id(), List.of(item(p).skuId()));
@@ -566,24 +629,24 @@ class CommerceMySqlIntegrationTest {
         var base = knowledge.createBase(owner, merchant.id(), "内部资料", "MERCHANT_INTERNAL");
         var doc = aiState.createDocument(null, base.id(), "内部说明", "不得给普通买家看的内容");
         // 这里只验证 Java ACL/版本状态，索引构建由 Python 独立测试，不假装已调用向量库。
-        aiState.indexState(doc.id(), "READY", "");
+        aiState.completeIndex(aiState.beginIndex(doc.id()), true, "");
         knowledge.publish(owner, doc.id());
         assertTrue(
             knowledge
-                .readableDocuments(owner)
+                .readableScope(owner)
                 .stream()
                 .anyMatch(d -> d.id().equals(doc.id()))
         );
         assertTrue(
             knowledge
-                .readableDocuments(buyer)
+                .readableScope(buyer)
                 .stream()
                 .noneMatch(d -> d.id().equals(doc.id()))
         );
         knowledge.withdraw(owner, doc.id());
         assertTrue(
             knowledge
-                .readableDocuments(owner)
+                .readableScope(owner)
                 .stream()
                 .noneMatch(d -> d.id().equals(doc.id()))
         );
@@ -643,7 +706,7 @@ class CommerceMySqlIntegrationTest {
 
     private ProposalVO proposal(ProductAggregate product) {
         var conversation = conversations.conversation(buyer, null, "买笔");
-        var proposal = new ProposalVO(
+        var draft = new ProposalVO(
             UUID.randomUUID().toString(),
             buyer,
             conversation.id(),
@@ -652,7 +715,8 @@ class CommerceMySqlIntegrationTest {
             null,
             clock.instant().plusSeconds(600)
         );
-        conversations.appendTurn(buyer, conversation.id(), "买笔", "仅构建事务测试提案，不调用模型", proposal, "scope");
+        var turn = conversations.beginTurn(buyer, conversation.id(), "买笔");
+        var proposal = conversationTurns.complete(turn, "买笔", "仅构建事务测试提案，不调用模型", draft.items(), draft.expiresAt(), "scope");
         return proposal;
     }
 
@@ -661,8 +725,8 @@ class CommerceMySqlIntegrationTest {
         var base = knowledge.createBase(owner, merchant.id(), "规则", "PUBLIC");
         var old = aiState.createDocument(null, base.id(), "旧规则", "旧规则正文");
         var latest = aiState.createDocument(old.rootId(), base.id(), "新规则", "新规则正文");
-        aiState.indexState(old.id(), "READY", "");
-        aiState.indexState(latest.id(), "READY", "");
+        aiState.completeIndex(aiState.beginIndex(old.id()), true, "");
+        aiState.completeIndex(aiState.beginIndex(latest.id()), true, "");
         var result = race(() -> aiState.publish(old.id()), () -> aiState.publish(latest.id()));
         assertTrue(result.contains("0000"));
         assertTrue(result.contains("G0002"));
@@ -723,5 +787,77 @@ class CommerceMySqlIntegrationTest {
         MutableClock testClock() {
             return new MutableClock();
         }
+    }
+
+    @Test
+    void lateKnowledgeAttemptCannotOverwriteNewerReadyState() {
+        var base = knowledge.createBase(owner, merchant.id(), "并发知识", "PUBLIC");
+        var doc = aiState.createDocument(null, base.id(), "说明", "不可变正文");
+        var oldAttempt = aiState.beginIndex(doc.id());
+        var newAttempt = aiState.beginIndex(doc.id());
+        assertTrue(aiState.completeIndex(newAttempt, true, ""));
+        assertFalse(aiState.completeIndex(oldAttempt, false, "旧请求超时"));
+        assertEquals("READY", aiState.document(doc.id()).indexStatus());
+        assertFalse(aiState.completeIndex(newAttempt, false, "重复完成"));
+    }
+
+    @Test
+    void conversationLeaseIsPerIdAndExpiredOwnerCannotCommitOrReleaseSuccessor() {
+        String firstId = "00000000-0000-0000-0000-000000000000";
+        String secondId = "00000000-0000-0000-0000-000000000022";
+        assertEquals(Math.floorMod(firstId.hashCode(), 64), Math.floorMod(secondId.hashCode(), 64));
+        jdbc.update("INSERT INTO ai_conversation(id,user_id,title) VALUES(?,?,?),(?,?,?)", firstId, buyer, "one", secondId, buyer, "two");
+        var first = conversations.beginTurn(buyer, firstId, "问题");
+        var independent = conversations.beginTurn(buyer, secondId, "问题");
+        assertEquals("G0002", code(() -> conversations.beginTurn(buyer, firstId, "并发")));
+        jdbc.update("UPDATE ai_conversation SET turn_expires_at=TIMESTAMPADD(SECOND,-1,CURRENT_TIMESTAMP(3)) WHERE id=?", firstId);
+        var successor = conversations.beginTurn(buyer, firstId, "重试");
+        assertEquals("G0002", code(() -> conversationTurns.complete(first, "旧问题", "旧答案", List.of(), clock.instant().plusSeconds(600), "scope")));
+        conversations.releaseTurn(first);
+        assertEquals(successor.token(), jdbc.queryForObject("SELECT turn_token FROM ai_conversation WHERE id=?", String.class, firstId));
+        conversationTurns.complete(successor, "问题", "答案", List.of(), clock.instant().plusSeconds(600), "scope");
+        conversationTurns.complete(independent, "问题", "答案", List.of(), clock.instant().plusSeconds(600), "scope");
+        assertEquals(4, scalar("SELECT COUNT(*) FROM ai_message"));
+    }
+
+    @Test
+    void proposalCreationFailureRollsBackBothMessagesAndTurnCompletion() {
+        var turn = conversations.beginTurn(buyer, null, "问题");
+        var invalid = new ProposalItemVO("sku", merchant.id(), "坏报价", "", 0, 0, 1);
+        assertEquals("0002", code(() -> conversationTurns.complete(turn, "问题", "答案", List.of(invalid), clock.instant().plusSeconds(600), "scope")));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM ai_message WHERE conversation_id=?", turn.conversationId()));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM ai_proposal WHERE conversation_id=?", turn.conversationId()));
+        assertEquals(turn.token(), jdbc.queryForObject("SELECT turn_token FROM ai_conversation WHERE id=?", String.class, turn.conversationId()));
+        conversationTurns.complete(turn, "问题", "正确答案", List.of(), clock.instant().plusSeconds(600), "scope");
+        assertEquals(2, scalar("SELECT COUNT(*) FROM ai_message WHERE conversation_id=?", turn.conversationId()));
+    }
+
+    @Test
+    void independentConversationServiceInstancesCompeteThroughDatabaseLease() throws Exception {
+        var conversation = conversations.conversation(buyer, null, "竞争问题");
+        var instanceA = new ConversationServiceImpl(conversationRepository, Clock.offset(clock, Duration.ofDays(1)));
+        var instanceB = new ConversationServiceImpl(conversationRepository, Clock.offset(clock, Duration.ofDays(-1)));
+        var result = race(() -> instanceA.beginTurn(buyer, conversation.id(), "问题 A"), () -> instanceB.beginTurn(buyer, conversation.id(), "问题 B"));
+        assertEquals(List.of("0000", "G0002"), result.stream().sorted().toList());
+        assertEquals(
+            1,
+            scalar("SELECT COUNT(*) FROM ai_conversation WHERE id=? AND turn_token IS NOT NULL AND turn_expires_at>CURRENT_TIMESTAMP(3)", conversation.id())
+        );
+        assertEquals(0, scalar("SELECT COUNT(*) FROM ai_message"));
+    }
+
+    @Test
+    void longRunningAiEntrypointsRejectOuterTransactionBeforeAnyRemoteWork() {
+        clearInvocations(aiEngine);
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(status -> {
+            assertThrows(IllegalTransactionStateException.class, () -> ai.chat(buyer, null, "问题"));
+            assertThrows(IllegalTransactionStateException.class, () -> knowledge.index(owner, "unused"));
+            assertThrows(IllegalTransactionStateException.class, () ->
+                knowledge.upload(owner, "unused", null, "标题", "说明.txt", "text/plain", new byte[] { 1 })
+            );
+        });
+        verifyNoInteractions(aiEngine);
+        assertEquals(0, scalar("SELECT COUNT(*) FROM ai_conversation"));
     }
 }

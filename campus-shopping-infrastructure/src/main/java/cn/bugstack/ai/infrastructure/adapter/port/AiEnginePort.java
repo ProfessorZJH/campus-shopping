@@ -4,12 +4,20 @@ import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
 import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiAnswerVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecallVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecommendationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProductIndexVO;
 import cn.bugstack.ai.infrastructure.gateway.AiGatewayService;
 import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import jakarta.annotation.Resource;
-import java.util.*;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /** 远程协议防腐适配，不访问 MySQL 或业务 DAO。 */
@@ -61,8 +69,7 @@ public class AiEnginePort implements IAiEnginePort {
         );
         require(
             response != null &&
-                response.answer() != null &&
-                response.answer().length() <= 10000 &&
+                text(response.answer(), 10000) &&
                 response.citations() != null &&
                 response.citations().size() <= 20 &&
                 response.recommendations() != null &&

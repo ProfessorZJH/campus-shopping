@@ -1,7 +1,6 @@
 package cn.bugstack.ai.domain.shoppingai.model.valobj;
 
-import java.time.*;
-import java.util.*;
+import java.util.List;
 
 /** 区分真实模型回答、本地演示和故障降级的返回值。 */
 public record AiAnswerVO(

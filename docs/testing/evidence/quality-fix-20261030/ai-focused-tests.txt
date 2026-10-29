@@ -1,0 +1,17 @@
+00:28:52.606 [main] WARN cn.bugstack.ai.infrastructure.gateway.AiGatewayService -- ai_dependency_failed operation=/v1/products/index request_id=74f75169-e882-4e5f-b0a0-d04bc45522ef http_status=503 exception_type=RemoteStatus duration_ms=6
+
+Test run finished after 2579 ms
+[         3 containers found      ]
+[         0 containers skipped    ]
+[         3 containers started    ]
+[         0 containers aborted    ]
+[         3 containers successful ]
+[         0 containers failed     ]
+[        10 tests found           ]
+[         0 tests skipped         ]
+[        10 tests started         ]
+[         0 tests aborted         ]
+[        10 tests successful      ]
+[         0 tests failed          ]
+
+Java HotSpot(TM) 64-Bit Server VM warning: Sharing is only supported for boot loader classes because bootstrap classpath has been appended

@@ -4,13 +4,20 @@ import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
+import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
-import cn.bugstack.ai.domain.catalog.model.entity.*;
-import cn.bugstack.ai.domain.catalog.model.valobj.*;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
+import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,14 +27,10 @@ import org.springframework.stereotype.Service;
 public class CatalogServiceImpl implements ICatalogService {
 
     private final ICatalogRepository repository;
-    private final cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository images;
+    private final IProductImageRepository images;
     private final ICatalogQueryRepository queries;
 
-    public CatalogServiceImpl(
-        ICatalogRepository repository,
-        ICatalogQueryRepository queries,
-        cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository images
-    ) {
+    public CatalogServiceImpl(ICatalogRepository repository, ICatalogQueryRepository queries, IProductImageRepository images) {
         this.repository = repository;
         this.queries = queries;
         this.images = images;
@@ -54,7 +57,7 @@ public class CatalogServiceImpl implements ICatalogService {
         List<ProductSkuEntity> skus = c
             .skus()
             .stream()
-            .map(s -> new ProductSkuEntity(UUID.randomUUID().toString(), s.specKey(), s.priceCent(), "ACTIVE", 0))
+            .map(s -> new ProductSkuEntity(UUID.randomUUID().toString(), s.specKey(), s.priceCent(), SkuStatusEnumVO.ACTIVE.getCode(), 0))
             .toList();
         ProductAggregate p = new ProductAggregate(
             UUID.randomUUID().toString(),
@@ -64,7 +67,7 @@ public class CatalogServiceImpl implements ICatalogService {
             c.description(),
             c.categoryCode(),
             c.imageUrl(),
-            "DRAFT",
+            ProductStatusEnumVO.DRAFT.getCode(),
             0,
             skus
         );
@@ -87,7 +90,7 @@ public class CatalogServiceImpl implements ICatalogService {
 
     public ProductAggregate addSku(String merchant, String id, String spec, long price) {
         ProductAggregate p = owned(merchant, id);
-        p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(), spec, price, "ACTIVE", 0));
+        p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(), spec, price, SkuStatusEnumVO.ACTIVE.getCode(), 0));
         repository.save(p);
         return repository.find(id, false);
     }
@@ -126,7 +129,7 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     private String checkedSort(String sort) {
-        String value = sort == null || sort.isBlank() ? "NEWEST" : sort;
+        String value = sort == null || sort.isBlank() ? ProductSortEnumVO.NEWEST.getCode() : sort;
         return ProductSortEnumVO.filter(value);
     }
 
@@ -167,7 +170,7 @@ public class CatalogServiceImpl implements ICatalogService {
         List<SkuOfferVO> offers = repository.offers(unique, lock);
         require(offers.size() == unique.size(), ResponseCode.PRODUCT_UNAVAILABLE);
         if (sale) for (SkuOfferVO o : offers)
-            require("PUBLISHED".equals(o.productStatus()) && "ACTIVE".equals(o.skuStatus()), ResponseCode.PRODUCT_UNAVAILABLE);
+            require(o.productStatusEnum() == ProductStatusEnumVO.PUBLISHED && o.skuStatusEnum() == SkuStatusEnumVO.ACTIVE, ResponseCode.PRODUCT_UNAVAILABLE);
         return offers;
     }
 

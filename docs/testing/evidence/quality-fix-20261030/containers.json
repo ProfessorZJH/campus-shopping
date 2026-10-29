@@ -1,0 +1,6 @@
+{
+  "status": "NOT_RUN",
+  "testType": "ISOLATED_REAL_DELIVERY_IMAGES",
+  "existingDatabaseUsed": false,
+  "reason": "Docker Engine unavailable"
+}

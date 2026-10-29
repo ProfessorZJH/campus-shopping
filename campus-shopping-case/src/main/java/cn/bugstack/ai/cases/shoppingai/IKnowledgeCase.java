@@ -1,7 +1,9 @@
 package cn.bugstack.ai.cases.shoppingai;
 
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import java.util.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
+import java.util.List;
 
 /** 后台知识管理与前台 RAG 授权是不同能力。 */
 public interface IKnowledgeCase {
@@ -14,5 +16,6 @@ public interface IKnowledgeCase {
     KnowledgeDocumentVO index(String actor, String id);
     void publish(String actor, String id);
     void withdraw(String actor, String id);
-    List<KnowledgeDocumentVO> readableDocuments(String actor);
+    List<KnowledgeScopeVO> readableScope(String actor);
+    List<KnowledgeDocumentVO> citationDocuments(String actor, List<String> ids);
 }

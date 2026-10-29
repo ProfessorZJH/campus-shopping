@@ -1,7 +1,8 @@
 package cn.bugstack.ai.trigger.http;
 
-import static cn.bugstack.ai.trigger.http.RequestInputs.*;
-import static cn.bugstack.ai.types.common.Checks.require;
+import static cn.bugstack.ai.trigger.http.RequestInputs.actor;
+import static cn.bugstack.ai.trigger.http.RequestInputs.file;
+import static cn.bugstack.ai.trigger.http.RequestInputs.required;
 
 import cn.bugstack.ai.api.ICatalogApi;
 import cn.bugstack.ai.api.dto.CategoryRequestDTO;
@@ -16,21 +17,24 @@ import cn.bugstack.ai.api.dto.PublishRequestDTO;
 import cn.bugstack.ai.api.dto.SkuRequestDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
-import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
+import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
+import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
-import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
-import cn.bugstack.ai.domain.inventory.service.IInventoryService;
-import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
-import java.util.*;
+import java.util.List;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 /** HTTP 入口只做协议转换、可信身份提取和响应封装。 */
 @Slf4j
@@ -42,13 +46,7 @@ public class CatalogController implements ICatalogApi {
     private ICatalogCase catalogCase;
 
     @Resource
-    private ICatalogService catalog;
-
-    @Resource
-    private IMerchantService merchants;
-
-    @Resource
-    private IInventoryService inventory;
+    private ICatalogQueryCase catalogQuery;
 
     /** 公开商品搜索与分页。 */
     @Override
@@ -61,7 +59,7 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(defaultValue = "20") int size
     ) {
         return execute(() -> {
-            return products(catalogCase.publicProducts(merchantId, q, category, page, size));
+            return products(catalogQuery.publicProducts(merchantId, q, category, page, size));
         });
     }
 
@@ -76,14 +74,10 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "NEWEST") String sort
     ) {
-        return execute(() ->
-            PageResponseDTO.of(
-                products(catalogCase.publicProductsSorted(merchantId, q, category, page, size, sort)),
-                page,
-                size,
-                catalogCase.countPublicProducts(merchantId, q, category)
-            )
-        );
+        return execute(() -> {
+            var result = catalogQuery.publicPage(merchantId, q, category, page, size, sort);
+            return PageResponseDTO.of(products(result.items()), page, size, result.total());
+        });
     }
 
     /** 查看可售商品与实时库存快照。 */
@@ -91,7 +85,7 @@ public class CatalogController implements ICatalogApi {
     @GetMapping("/products/{productId}")
     public Response<ProductResponseDTO> detail(@PathVariable("productId") String productId) {
         return execute(() -> {
-            return products(List.of(catalogCase.publicDetail(productId))).get(0);
+            return ApiViews.product(catalogQuery.detail(productId));
         });
     }
 
@@ -100,7 +94,7 @@ public class CatalogController implements ICatalogApi {
     @GetMapping("/categories")
     public Response<List<CategoryResponseDTO>> categories() {
         return execute(() -> {
-            return catalog
+            return catalogQuery
                 .categories()
                 .stream()
                 .map(c -> CategoryResponseDTO.builder().code(c.code()).name(c.name()).active(c.active()).build())
@@ -118,7 +112,7 @@ public class CatalogController implements ICatalogApi {
         Principal principal
     ) {
         return execute(() -> {
-            return products(catalogCase.managedProducts(actor(principal), merchantId, page, size));
+            return products(catalogQuery.managedProducts(actor(principal), merchantId, page, size));
         });
     }
 
@@ -134,14 +128,10 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(defaultValue = "NEWEST") String sort,
         Principal principal
     ) {
-        return execute(() ->
-            PageResponseDTO.of(
-                products(catalogCase.managedProductsSorted(actor(principal), merchantId, q, category, status, page, size, sort)),
-                page,
-                size,
-                catalogCase.countManagedProductsFiltered(actor(principal), merchantId, q, category, status)
-            )
-        );
+        return execute(() -> {
+            var result = catalogQuery.managedPage(actor(principal), merchantId, q, category, status, page, size, sort);
+            return PageResponseDTO.of(products(result.items()), page, size, result.total());
+        });
     }
 
     /** 创建商品、多个规格与空库存。 */
@@ -156,12 +146,12 @@ public class CatalogController implements ICatalogApi {
                 .stream()
                 .map(s -> new ProductSkuEntity(null, required(s).getSpecKey(), required(s.getPriceCent()), "ACTIVE", 0))
                 .toList();
-            var product = catalogCase.create(
+            var product = catalogCase.createView(
                 actor(principal),
                 merchantId,
                 new ProductCreateEntity(request.getTitle(), request.getDescription(), request.getCategoryCode(), request.getImageUrl(), skus)
             );
-            return products(List.of(product)).get(0);
+            return ApiViews.product(product);
         });
     }
 
@@ -201,9 +191,7 @@ public class CatalogController implements ICatalogApi {
     ) {
         return execute(() -> {
             required(request);
-            return products(List.of(catalogCase.addSku(actor(principal), merchantId, productId, request.getSpecKey(), required(request.getPriceCent())))).get(
-                0
-            );
+            return ApiViews.product(catalogCase.addSkuView(actor(principal), merchantId, productId, request.getSpecKey(), required(request.getPriceCent())));
         });
     }
 
@@ -271,27 +259,8 @@ public class CatalogController implements ICatalogApi {
         });
     }
 
-    private List<ProductResponseDTO> products(List<ProductAggregate> products) {
-        // 分页商品最多 100 件、每件最多 20 个 SKU；按领域库存查询上限分批读取。
-        var ids = products
-            .stream()
-            .flatMap(p -> p.getSkus().stream())
-            .map(ProductSkuEntity::id)
-            .distinct()
-            .toList();
-        Map<String, StockVO> stocks = new HashMap<>();
-        for (int start = 0; start < ids.size(); start += 500) {
-            inventory.stocks(ids.subList(start, Math.min(start + 500, ids.size()))).forEach(s -> stocks.put(s.skuId(), s));
-        }
-        Map<String, String> names = new HashMap<>();
-        return products
-            .stream()
-            .map(p -> {
-                var view = ApiViews.product(p, stocks);
-                view.setMerchantName(names.computeIfAbsent(p.getMerchantId(), m -> merchants.find(m).name()));
-                return view;
-            })
-            .toList();
+    private List<ProductResponseDTO> products(List<ProductReadModel> products) {
+        return products.stream().map(ApiViews::product).toList();
     }
 
     /** 平台监管列表展示所有状态；权限仍由用例重新校验。 */
@@ -304,7 +273,7 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(defaultValue = "20") int size,
         Principal principal
     ) {
-        return execute(() -> products(catalogCase.adminProducts(actor(principal), merchantId, q, page, size)));
+        return execute(() -> products(catalogQuery.adminProducts(actor(principal), merchantId, q, page, size)));
     }
 
     @Override
@@ -316,14 +285,10 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(defaultValue = "20") int size,
         Principal principal
     ) {
-        return execute(() ->
-            PageResponseDTO.of(
-                products(catalogCase.adminProducts(actor(principal), merchantId, q, page, size)),
-                page,
-                size,
-                catalogCase.countAdminProducts(actor(principal), merchantId, q)
-            )
-        );
+        return execute(() -> {
+            var result = catalogQuery.adminPage(actor(principal), merchantId, q, page, size);
+            return PageResponseDTO.of(products(result.items()), page, size, result.total());
+        });
     }
 
     private <T> Response<T> execute(Supplier<T> action) {

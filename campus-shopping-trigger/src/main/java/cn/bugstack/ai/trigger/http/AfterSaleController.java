@@ -1,7 +1,6 @@
 package cn.bugstack.ai.trigger.http;
 
 import static cn.bugstack.ai.trigger.http.RequestInputs.*;
-import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.api.IAfterSaleApi;
 import cn.bugstack.ai.api.dto.AfterSaleResponseDTO;
@@ -17,7 +16,6 @@ import jakarta.annotation.Resource;
 import java.security.Principal;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -31,7 +29,7 @@ public class AfterSaleController implements IAfterSaleApi {
     private IOrderLifecycleCase lifecycle;
 
     @Resource
-    private IAfterSaleQueryService trading;
+    private IAfterSaleQueryService afterSaleQueryService;
 
     @Resource
     private IAccessService access;
@@ -67,7 +65,7 @@ public class AfterSaleController implements IAfterSaleApi {
     ) {
         return execute(() -> {
             access.requirePermission(actor(principal), merchantId, "aftersale.read");
-            return trading.afterSales(null, merchantId, state, page, size).stream().map(ApiViews::afterSale).toList();
+            return afterSaleQueryService.afterSales(null, merchantId, state, page, size).stream().map(ApiViews::afterSale).toList();
         });
     }
 
@@ -83,10 +81,10 @@ public class AfterSaleController implements IAfterSaleApi {
         return execute(() -> {
             access.requirePermission(actor(principal), merchantId, "aftersale.read");
             return PageResponseDTO.of(
-                trading.afterSales(null, merchantId, state, page, size).stream().map(ApiViews::afterSale).toList(),
+                afterSaleQueryService.afterSales(null, merchantId, state, page, size).stream().map(ApiViews::afterSale).toList(),
                 page,
                 size,
-                trading.countAfterSales(null, merchantId, state)
+                afterSaleQueryService.countAfterSales(null, merchantId, state)
             );
         });
     }
@@ -118,7 +116,7 @@ public class AfterSaleController implements IAfterSaleApi {
     ) {
         return execute(() -> {
             access.requireAdmin(actor(principal));
-            return trading.afterSales(null, null, state, page, size).stream().map(ApiViews::afterSale).toList();
+            return afterSaleQueryService.afterSales(null, null, state, page, size).stream().map(ApiViews::afterSale).toList();
         });
     }
 
@@ -144,10 +142,10 @@ public class AfterSaleController implements IAfterSaleApi {
         return execute(() -> {
             access.requireAdmin(actor(principal));
             return PageResponseDTO.of(
-                trading.afterSales(null, null, state, page, size).stream().map(ApiViews::afterSale).toList(),
+                afterSaleQueryService.afterSales(null, null, state, page, size).stream().map(ApiViews::afterSale).toList(),
                 page,
                 size,
-                trading.countAfterSales(null, null, state)
+                afterSaleQueryService.countAfterSales(null, null, state)
             );
         });
     }

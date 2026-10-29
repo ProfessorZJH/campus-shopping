@@ -1,7 +1,14 @@
 package cn.bugstack.ai.domain.shoppingai.service;
 
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import java.util.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecommendationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /** 导购纯规则：排名融合、跨商品规格配额、建议去重和库存约束。无外部依赖或跨领域类型。 */
 public final class RecommendationPolicy {

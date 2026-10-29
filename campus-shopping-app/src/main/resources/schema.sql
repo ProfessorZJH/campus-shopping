@@ -131,12 +131,12 @@ CREATE TABLE IF NOT EXISTS ai_document_root (
 
 CREATE TABLE IF NOT EXISTS ai_document (
  id VARCHAR(36) PRIMARY KEY, root_id VARCHAR(36) NOT NULL, base_id VARCHAR(36) NOT NULL, version INT NOT NULL, title VARCHAR(120) NOT NULL,
- status VARCHAR(20) NOT NULL, index_status VARCHAR(20) NOT NULL, content LONGTEXT NOT NULL, error VARCHAR(500) NOT NULL DEFAULT '',
+ status VARCHAR(20) NOT NULL, index_status VARCHAR(20) NOT NULL, index_attempt VARCHAR(36) NULL, content LONGTEXT NOT NULL, error VARCHAR(500) NOT NULL DEFAULT '',
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_doc_version(root_id,version), KEY ix_document_base(base_id,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_conversation (
- id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at)
+ id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, turn_token VARCHAR(36) NULL, turn_expires_at DATETIME(3) NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_message (
@@ -176,3 +176,4 @@ CREATE TABLE IF NOT EXISTS sys_schema_migration (
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_01','7fe7d76b5e4f579b07167a3216af93dbc006216f7ab9a56ff95c3a807e2e95a7' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_02','271f49d26dd7a5538f32851d6cbe5ccb2a9592be6722da2190b0a329940a39cd' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261029_01','efdc1a9b032afcea14d4e0ee0198011beb2d9088850da21b5a5ead10881040ef' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261030_01','436372074fa9cd2fe0cb9c2c00ce29bb3196a93aa8d477042ac3c8437f200e32' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

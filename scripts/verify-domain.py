@@ -15,7 +15,8 @@ files=['campus-shopping-types/'+BASE+'types/'+p for p in ['enums/ResponseCode.ja
 files += ['campus-shopping-domain/'+BASE+'domain/'+p for p in [
  'catalog/model/entity/ProductSkuEntity.java','catalog/model/aggregate/ProductAggregate.java',
  'inventory/model/aggregate/StockBalanceAggregate.java','trading/model/entity/OrderItemEntity.java','trading/model/aggregate/OrderAggregate.java',
- 'fulfillment/model/valobj/PickupVO.java','fulfillment/model/aggregate/PickupAggregate.java','shoppingai/model/aggregate/ProposalAggregate.java']]
+ 'fulfillment/model/valobj/PickupVO.java','fulfillment/model/aggregate/PickupAggregate.java','shoppingai/model/aggregate/ProposalAggregate.java',
+ 'shoppingai/model/valobj/ProposalVO.java','shoppingai/model/valobj/ProposalItemVO.java']]
 files += [str(p.relative_to(ROOT)).replace('\\','/') for p in (ROOT/'campus-shopping-domain'/BASE/'domain').rglob('*EnumVO.java') if p.name != 'UserAccountStatusEnumVO.java']
 files += ['scripts/verification/DomainRulesCheck.java']
 with tempfile.TemporaryDirectory(prefix='campus-domain-') as out:

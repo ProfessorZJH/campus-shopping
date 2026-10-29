@@ -30,7 +30,7 @@ class AiGatewayProductIndexTest {
     @BeforeEach
     void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/v1/products/", exchange -> {
+        var productContext = server.createContext("/v1/products/", exchange -> {
             exchange.getRequestBody().readAllBytes();
             byte[] response = body.get().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -39,6 +39,7 @@ class AiGatewayProductIndexTest {
                 stream.write(response);
             }
         });
+        server.createContext("/v1/index", productContext.getHandler());
         server.start();
 
         gateway = new AiGatewayService();
@@ -128,6 +129,25 @@ class AiGatewayProductIndexTest {
         )) {
             body.set(response);
             assertEquals(ResponseCode.AI_UNAVAILABLE.getCode(), assertThrows(AppException.class, () -> gateway.deleteProducts(request)).getCode());
+        }
+    }
+
+    @Test
+    void knowledgeIndexRequiresTypedNonemptyResult() {
+        var request = new AiGatewayDTO.Index("doc", "title", "content");
+        for (String invalid : List.of(
+            "null",
+            "{}",
+            "{\"chunks\":0,\"mode\":\"REMOTE_EMBEDDING\"}",
+            "{\"chunks\":1,\"mode\":\"UNKNOWN\"}",
+            "{\"chunks\":163,\"mode\":\"REMOTE_EMBEDDING\"}"
+        )) {
+            body.set(invalid);
+            assertEquals(ResponseCode.AI_UNAVAILABLE.getCode(), assertThrows(AppException.class, () -> gateway.index(request)).getCode());
+        }
+        for (String mode : List.of("REMOTE_EMBEDDING", "LOCAL_CHAR_NGRAM_DEMO")) {
+            body.set("{\"chunks\":1,\"mode\":\"" + mode + "\"}");
+            assertDoesNotThrow(() -> gateway.index(request));
         }
     }
 }

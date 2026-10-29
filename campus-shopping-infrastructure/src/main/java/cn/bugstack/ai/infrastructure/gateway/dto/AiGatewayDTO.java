@@ -1,6 +1,6 @@
 package cn.bugstack.ai.infrastructure.gateway.dto;
 
-import java.util.*;
+import java.util.List;
 
 /** Java 与 Python 的明确 JSON 协议，不包含凭证或数据库连接信息。 */
 public final class AiGatewayDTO {
@@ -58,4 +58,6 @@ public final class AiGatewayDTO {
     public record ProductIndexResult(int indexed, int unchanged, String mode) {}
 
     public record ProductDeleteResult(Integer deleted, String mode) {}
+
+    public record KnowledgeIndexResult(Integer chunks, String mode) {}
 }

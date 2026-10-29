@@ -1,8 +1,10 @@
 package cn.bugstack.ai.cases.shoppingai;
 
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import java.util.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
+import java.util.List;
 
 /** 导购问答只产生提案，明确确认后才允许调用购物车写能力。 */
 public interface IShoppingAiCase {

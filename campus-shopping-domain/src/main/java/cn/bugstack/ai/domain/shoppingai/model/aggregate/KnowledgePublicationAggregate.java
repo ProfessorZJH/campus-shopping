@@ -1,9 +1,8 @@
 package cn.bugstack.ai.domain.shoppingai.model.aggregate;
 
-import static cn.bugstack.ai.types.common.Checks.require;
-
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import cn.bugstack.ai.types.enums.ResponseCode;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentStatusEnumVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 
 /** 一个文档根的发布行为。版本计数与当前指针由仓储在同一根行锁下重建。 */
 public final class KnowledgePublicationAggregate {

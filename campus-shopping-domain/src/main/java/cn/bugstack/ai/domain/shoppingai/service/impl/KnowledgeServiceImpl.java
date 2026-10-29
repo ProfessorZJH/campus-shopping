@@ -3,13 +3,16 @@ package cn.bugstack.ai.domain.shoppingai.service.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IKnowledgeRepository;
-import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeIndexAttemptVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeIndexStatusEnumVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
 import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeService;
-import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.time.*;
-import java.util.*;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class KnowledgeServiceImpl implements IKnowledgeService {
 
     private final IKnowledgeRepository repository;
-    private final Clock clock;
 
-    public KnowledgeServiceImpl(IKnowledgeRepository repository, Clock clock) {
+    public KnowledgeServiceImpl(IKnowledgeRepository repository) {
         this.repository = repository;
-        this.clock = clock;
     }
 
     public KnowledgeBaseVO createBase(String name, String merchant, String visibility, String actor) {
@@ -66,14 +67,25 @@ public class KnowledgeServiceImpl implements IKnowledgeService {
         return repository.countDocuments(base);
     }
 
-    public List<KnowledgeDocumentVO> visible(List<String> bases) {
+    public List<KnowledgeScopeVO> visibleScope(List<String> bases) {
         require(bases.size() <= 1000, ResponseCode.ILLEGAL_PARAMETER);
-        return repository.visible(bases);
+        return repository.visibleScope(bases);
     }
 
-    public void indexState(String id, String status, String error) {
-        require(Set.of("PENDING", "READY", "FAILED").contains(status), ResponseCode.ILLEGAL_PARAMETER);
-        repository.indexState(id, status, optional(error, 500));
+    public List<KnowledgeDocumentVO> documentsByIds(List<String> ids) {
+        require(ids != null && ids.size() <= 20 && ids.stream().allMatch(id -> id != null && !id.isBlank()), ResponseCode.ILLEGAL_PARAMETER);
+        return ids.isEmpty() ? List.of() : repository.documentsByIds(ids.stream().distinct().toList());
+    }
+
+    public KnowledgeIndexAttemptVO beginIndex(String id) {
+        var attempt = new KnowledgeIndexAttemptVO(id, UUID.randomUUID().toString());
+        repository.beginIndex(id, attempt.token());
+        return attempt;
+    }
+
+    public boolean completeIndex(KnowledgeIndexAttemptVO attempt, boolean ready, String error) {
+        var status = ready ? KnowledgeIndexStatusEnumVO.READY : KnowledgeIndexStatusEnumVO.FAILED;
+        return repository.completeIndex(attempt, status.getCode(), optional(error, 500));
     }
 
     @Transactional(rollbackFor = Exception.class)

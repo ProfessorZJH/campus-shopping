@@ -1,9 +1,10 @@
 package cn.bugstack.ai.domain.shoppingai.service;
 
-import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import java.time.*;
-import java.util.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeIndexAttemptVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
+import java.util.List;
 
 /** 按业务能力限定的领域端口。 */
 public interface IKnowledgeService {
@@ -13,9 +14,11 @@ public interface IKnowledgeService {
     KnowledgeDocumentVO createDocument(String root, String base, String title, String content);
     KnowledgeDocumentVO document(String id);
     List<KnowledgeDocumentVO> documents(String base, int page, int size);
-    List<KnowledgeDocumentVO> visible(List<String> bases);
+    List<KnowledgeScopeVO> visibleScope(List<String> bases);
+    List<KnowledgeDocumentVO> documentsByIds(List<String> ids);
     long countDocuments(String base);
-    void indexState(String id, String status, String error);
+    KnowledgeIndexAttemptVO beginIndex(String id);
+    boolean completeIndex(KnowledgeIndexAttemptVO attempt, boolean ready, String error);
     void publish(String id);
     void withdraw(String id);
 }

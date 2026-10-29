@@ -97,6 +97,9 @@ def migration_checks(connection, report):
         old, count = re.subn(r',\s*CONSTRAINT ' + constraint + r' CHECK\([^)]*\)', '', old)
         assert count == 1, constraint
     old = old.replace(" image_url VARCHAR(255) NOT NULL DEFAULT '',", '')
+    for column in ('index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL'):
+        old, count = re.subn(r' ' + re.escape(column) + ',', '', old)
+        assert count == 1, column
     old = re.sub(r'CREATE TABLE IF NOT EXISTS iam_merchant_role(?:_permission)? \(.*?;\n', '', old, flags=re.S)
     with connection.cursor() as cur:
         for database, contents in [('campus_shopping_it', schema), ('campus_shopping_migration_it', old)]:
@@ -111,6 +114,11 @@ def migration_checks(connection, report):
         cur.execute("INSERT INTO trd_order_item(order_id,sku_id,title,spec_key,unit_price_cent,quantity) "
                     "VALUES('historic-order','historic-sku','历史商品','原规格',1200,2)")
         cur.execute("INSERT INTO trd_payment(order_id,amount_cent,status) VALUES('invalid-fixture',0,'PAID')")
+        cur.execute("INSERT INTO ai_document(id,root_id,base_id,version,title,status,index_status,content) "
+                    "VALUES('historic-document','historic-root','historic-base',1,'历史知识','PUBLISHED','READY','保留正文')")
+        cur.execute("INSERT INTO ai_conversation(id,user_id,title) VALUES('historic-conversation','historic-user','历史会话')")
+        cur.execute("INSERT INTO ai_message(id,conversation_id,role,content) "
+                    "VALUES('historic-message','historic-conversation','assistant','历史回答')")
         migrations = [p.read_text('utf-8') for p in sorted((ROOT/'docs/database/migrations').glob('V*.sql'))]
         try:
             apply_migrations(connection)
@@ -129,9 +137,16 @@ def migration_checks(connection, report):
                 execute_script(cur, migration)
         cur.execute("SELECT title,unit_price_cent,quantity,image_url FROM trd_order_item WHERE order_id='historic-order'")
         assert cur.fetchone() == ('历史商品', 1200, 2, '')
+        cur.execute("SELECT status,index_status,content,index_attempt FROM ai_document WHERE id='historic-document'")
+        assert cur.fetchone() == ('PUBLISHED', 'READY', '保留正文', None)
+        cur.execute("SELECT user_id,title,turn_token,turn_expires_at FROM ai_conversation WHERE id='historic-conversation'")
+        assert cur.fetchone() == ('historic-user', '历史会话', None, None)
+        cur.execute("SELECT role,content FROM ai_message WHERE id='historic-message'")
+        assert cur.fetchone() == ('assistant', '历史回答')
         assert fingerprint(cur, 'campus_shopping_it') == fingerprint(cur, 'campus_shopping_migration_it'), \
             '升级后字段、索引、CHECK 必须与全新库一致'
         report['checks'].extend(['all migrations replay twice and preserve historical snapshot',
+                                 'AI attempt and lease columns added to old schema without changing published knowledge or conversation history',
                                  'fresh and upgraded database columns/indexes/constraints match'])
         validate_history(cur)
         cur.execute("UPDATE sys_schema_migration SET checksum=REPEAT('0',64) WHERE version='V20261028_01'")

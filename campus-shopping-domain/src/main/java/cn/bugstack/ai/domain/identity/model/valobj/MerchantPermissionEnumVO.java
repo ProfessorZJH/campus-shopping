@@ -57,10 +57,12 @@ public enum MerchantPermissionEnumVO {
     }
 
     public static Set<String> validateGrant(Set<String> permissions) {
-        require(permissions != null && !permissions.isEmpty() && permissions.size() <= 12, ResponseCode.ILLEGAL_PARAMETER);
+        require(permissions != null && !permissions.isEmpty() && permissions.size() <= values().length, ResponseCode.ILLEGAL_PARAMETER);
+        require(permissions.stream().noneMatch(java.util.Objects::isNull), ResponseCode.ILLEGAL_PARAMETER);
+        // 先判定授予资格，再判定依赖；混合输入的错误码不能随 Set 遍历顺序改变。
+        require(permissions.stream().allMatch(code -> find(code) != null && find(code).grantable), ResponseCode.AUTH_FORBIDDEN);
         for (String code : permissions) {
             var permission = find(code);
-            require(permission != null && permission.grantable, ResponseCode.ILLEGAL_PARAMETER);
             require(permission.prerequisite == null || permissions.contains(permission.prerequisite), ResponseCode.ILLEGAL_PARAMETER);
         }
         return Set.copyOf(permissions);

@@ -17,7 +17,7 @@ checks = {
     'insert SQL': ('campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml', 'INSERT INTO trd_order_item(order_id,sku_id,title,spec_key,image_url'),
     'checkout snapshot': ('campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java', 'o.imageUrl()'),
     'order DTO': ('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/ApiViews.java', '.imageUrl(i.imageUrl())'),
-    'cart DTO': ('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/CartController.java', '.imageUrl(offer.imageUrl())'),
+    'cart DTO': ('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/ApiViews.java', '.imageUrl(offer.imageUrl())'),
     'AI proposal': ('campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java', 'o.imageUrl()'),
 }
 for label, (file, token) in checks.items():

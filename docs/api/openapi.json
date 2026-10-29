@@ -17114,7 +17114,12 @@
             ]
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "APPROVED",
+              "REJECTED"
+            ]
           },
           "rejectionReason": {
             "anyOf": [
@@ -17588,7 +17593,11 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ACTIVE",
+              "DISABLED"
+            ]
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/CurrentUserResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
@@ -18995,7 +19004,12 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SUBMITTED",
+              "APPROVED",
+              "REJECTED"
+            ]
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/SubmitMerchantApplicationResponseDTO.java（字段类型来自源码；必填以领域规则为准）",

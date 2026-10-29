@@ -3,13 +3,10 @@ package cn.bugstack.ai.domain.trading.service.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.domain.trading.adapter.repository.ICartRepository;
-import cn.bugstack.ai.domain.trading.model.aggregate.AfterSaleAggregate;
-import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
 import cn.bugstack.ai.domain.trading.model.valobj.*;
 import cn.bugstack.ai.domain.trading.service.ICartService;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.time.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
@@ -19,11 +16,9 @@ import org.springframework.transaction.annotation.*;
 public class CartServiceImpl implements ICartService {
 
     private final ICartRepository repository;
-    private final Clock clock;
 
-    public CartServiceImpl(ICartRepository repository, Clock clock) {
+    public CartServiceImpl(ICartRepository repository) {
         this.repository = repository;
-        this.clock = clock;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

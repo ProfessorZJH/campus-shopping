@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """领域依赖、能力接口、查询读写与表归属门禁。带拒绝样例，不替代编译/真实事务测试。"""
 from pathlib import Path
+import argparse
 import datetime
 import json
 import re
@@ -43,6 +44,11 @@ def java_errors(path, source):
         errors.append('broad-service-dependency')
     if path.endswith('/OrderController.java') and re.search(r'(?<![.\w])(?:trading|fulfillment|merchants|access)\.', source):
         errors.append('controller-order-orchestration')
+    if path.endswith(('/CatalogController.java', '/CartController.java')) and re.search(
+            r'cn\.bugstack\.ai\.domain\.\w+\.service\.', source):
+        errors.append('controller-cross-domain-read')
+    if path.endswith('/IConversationRepository.java') and re.search(r'\b(?:insertProposal|ProposalVO)\b', source):
+        errors.append('conversation-proposal-write')
     return sorted(set(errors))
 
 
@@ -78,6 +84,12 @@ def rejection_checks():
             'package cn.bugstack.ai.domain.trading.model.aggregate; class Bad {private String status;}'), 'untyped-aggregate-state'),
         ('broad service returns', java_errors('trigger/http/Bad.java',
             'class Bad { ITradingService trading; }'), 'broad-service-dependency'),
+        ('catalog controller read composition', java_errors('trigger/http/CatalogController.java',
+            'import cn.bugstack.ai.domain.inventory.service.IInventoryService; class CatalogController {}'), 'controller-cross-domain-read'),
+        ('cart controller read composition', java_errors('trigger/http/CartController.java',
+            'import cn.bugstack.ai.domain.catalog.service.ICatalogService; class CartController {}'), 'controller-cross-domain-read'),
+        ('conversation writes proposals', java_errors('domain/shoppingai/adapter/repository/IConversationRepository.java',
+            'interface IConversationRepository { void insertProposal(ProposalVO proposal); }'), 'conversation-proposal-write'),
         ('cross-domain write', sql_errors('ITradingDao','bad','update','UPDATE mer_merchant SET status=1'), 'cross-domain-table-mer_merchant'),
         ('unapproved read', sql_errors('ICatalogDao','bad','select','SELECT * FROM mer_merchant'), 'cross-domain-table-mer_merchant'),
         ('query write', sql_errors('ICatalogQueryDao','bad','delete','DELETE FROM cat_product'), 'query-side-write-or-lock'),
@@ -90,7 +102,7 @@ def rejection_checks():
     return [label for label, _, _ in cases]
 
 
-def verify():
+def verify(output):
     errors = []
     sources = list(ROOT.glob('campus-shopping-*/src/main/java/**/*.java'))
     for path in sources:
@@ -109,7 +121,6 @@ def verify():
     report = {'status': 'FAIL' if errors else 'PASS', 'kind':'STATIC_BOUNDARIES_WITH_REJECTION_FIXTURES',
               'timestamp':datetime.datetime.now(datetime.timezone.utc).isoformat(),
               'javaSources':len(sources),'sqlStatements':sql_count,'rejectedFixtures':rejected,'errors':errors}
-    output=ROOT/'docs/testing/evidence/ddd-refactor-20261029/boundaries.json'
     output.parent.mkdir(parents=True,exist_ok=True)
     output.write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n','utf-8')
     print(json.dumps(report,ensure_ascii=False,indent=2))
@@ -117,4 +128,6 @@ def verify():
 
 
 if __name__ == '__main__':
-    verify()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/ddd-refactor-20261029/boundaries.json')
+    verify(parser.parse_args().output)

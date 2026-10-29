@@ -4,13 +4,15 @@ import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IProposalRepository;
 import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IProposalService;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.time.*;
-import java.util.*;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +28,14 @@ public class ProposalServiceImpl implements IProposalService {
         this.repository = repository;
         this.clock = clock;
         this.conversations = conversations;
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public ProposalVO create(String actor, String conversation, List<ProposalItemVO> items, Instant expiresAt) {
+        conversations.conversation(actor, conversation, "创建提案");
+        ProposalVO proposal = ProposalAggregate.create(actor, conversation, items, expiresAt, clock.instant());
+        repository.insert(proposal);
+        return proposal;
     }
 
     public ProposalVO proposal(String actor, String id) {

@@ -43,7 +43,7 @@ class InvalidInputContractTest {
         assertEquals("0002", assertThrows(AppException.class, () -> catalog.offers(Arrays.asList("sku", null), true, false)).getCode());
         verifyNoInteractions(repository);
         var aiRepository = mock(IKnowledgeRepository.class);
-        var state = new KnowledgeServiceImpl(aiRepository, Clock.systemUTC());
+        var state = new KnowledgeServiceImpl(aiRepository);
         assertEquals("0002", assertThrows(AppException.class, () -> state.createBase("知识库", null, null, "u")).getCode());
         verifyNoInteractions(aiRepository);
     }
