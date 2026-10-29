@@ -1,6 +1,8 @@
 # 校园智能导购及商品交易平台 · R1 交付候选版
 
-> **这是完整业务范围的源码候选版，不是“全栈已跑通”的验收版。** 本次已执行纯 Java 领域/HTTP、Python 检索服务和真实 Chromium 的接口替身测试；完整 Maven 构建、Spring/MySQL、Docker、真实模型及 Qdrant 尚未验证，具体证据见下文。
+> **当前 CI 验收基线（2026-10-29）**：`main` 于 PR #5 合并后，GitHub Actions [#40888061664](https://github.com/ProfessorZJH/campus-shopping/actions/runs/40888061664) 完整成功。Java/Maven + MySQL 集成、Python 本地测试、真实 Spring/MySQL/FastAPI HTTP 和 Chromium 浏览器验收均已执行；**不等于生产部署或真实 NVIDIA/讯飞/Milvus 联通验收**。
+>
+> **历史记录提示**：以下 10 月 28 日至 29 日早期小节中“未运行 Maven/未联调”的说明是当时的验收状态，已被上述 CI 证据更新，不代表当前 `main` 没有跑通本地全栈。外部 AI 与生产上线尚待独立验收。Java 代码风格及知识版本发布规则治理见 [PR4 规范](docs/development/JAVA-STYLE.md)。
 
 在已有小傅哥 DDD 工程上持续实现，保留 Java17 / Spring Boot3.4.3 / MyBatis3.0.4；因真实跨域事务增加 Case 模块。前端为同源 Vue3，AI 为独立 Python FastAPI。
 
