@@ -1,6 +1,6 @@
 package cn.bugstack.ai.cases.shoppingai.impl;
 import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
-import cn.bugstack.ai.domain.shoppingai.service.IAiStateService;import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeStateService;import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.domain.identity.service.*;import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.enums.ResponseCode;import cn.bugstack.ai.types.exception.AppException;import static cn.bugstack.ai.types.common.Checks.*;
 import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;
@@ -8,8 +8,8 @@ import java.util.*;import java.util.stream.Collectors;
 /** 知识发布指针是权限事实，Qdrant 里的旧向量不决定可见性。 */
 @Service
 public class KnowledgeCaseImpl implements IKnowledgeCase {
- private final IAiStateService state;private final IAiEnginePort engine;private final IAccessService access;private final IUserAccountService accounts;private final IMerchantService merchants;
- public KnowledgeCaseImpl(IAiStateService state,IAiEnginePort engine,IAccessService access,IUserAccountService accounts,IMerchantService merchants){this.state=state;this.engine=engine;this.access=access;this.accounts=accounts;this.merchants=merchants;}
+ private final IKnowledgeStateService state;private final IAiEnginePort engine;private final IAccessService access;private final IUserAccountService accounts;private final IMerchantService merchants;
+ public KnowledgeCaseImpl(IKnowledgeStateService state,IAiEnginePort engine,IAccessService access,IUserAccountService accounts,IMerchantService merchants){this.state=state;this.engine=engine;this.access=access;this.accounts=accounts;this.merchants=merchants;}
  private KnowledgeBaseVO manage(String actor,String id,String permission){accounts.requireActive(actor);KnowledgeBaseVO b=state.base(id);if(access.isAdmin(actor))return b;require(b.merchantId()!=null,ResponseCode.AUTH_FORBIDDEN);access.requirePermission(actor,b.merchantId(),permission);return b;}
  public List<KnowledgeBaseVO> managedBases(String actor){accounts.requireActive(actor);boolean admin=access.isAdmin(actor);Set<String> managed=access.memberships(actor).stream().map(m->m.merchantId()).filter(id->access.permissions(actor,id).contains("knowledge.read")).collect(Collectors.toSet());return state.bases().stream().filter(b->admin||managed.contains(b.merchantId())).toList();}
  @Transactional(rollbackFor=Exception.class)

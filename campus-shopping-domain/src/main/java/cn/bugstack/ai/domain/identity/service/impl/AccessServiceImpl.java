@@ -1,5 +1,6 @@
 package cn.bugstack.ai.domain.identity.service.impl;
 import cn.bugstack.ai.domain.identity.adapter.repository.IAccessRepository;
+import cn.bugstack.ai.domain.identity.adapter.repository.IRoleRepository;
 import cn.bugstack.ai.domain.identity.service.*;
 import cn.bugstack.ai.domain.identity.model.valobj.*;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -12,8 +13,8 @@ import org.springframework.transaction.annotation.Transactional;
 /** 平台权限和商户成员权限分开校验；撤销权限不依赖过期会话内的角色副本。 */
 @Service
 public class AccessServiceImpl implements IAccessService {
- private final IAccessRepository repository;private final IUserAccountService accounts;private final Clock clock;
- public AccessServiceImpl(IAccessRepository repository,IUserAccountService accounts,Clock clock){this.repository=repository;this.accounts=accounts;this.clock=clock;}
+ private final IAccessRepository repository;private final IRoleRepository roleRepository;private final IUserAccountService accounts;private final Clock clock;
+ public AccessServiceImpl(IAccessRepository repository,IRoleRepository roleRepository,IUserAccountService accounts,Clock clock){this.repository=repository;this.roleRepository=roleRepository;this.accounts=accounts;this.clock=clock;}
  public boolean isAdmin(String userId){return repository.isAdmin(userId);}
  public void requireAdmin(String userId){accounts.requireActive(userId);require(isAdmin(userId),ResponseCode.AUTH_FORBIDDEN);}
  public void requireMember(String userId,String merchantId,boolean ownerOnly){
@@ -67,53 +68,8 @@ public class AccessServiceImpl implements IAccessService {
   return switch(m.role()){
    case "OWNER" -> MerchantPermissions.OWNER;
    case "CLERK" -> MerchantPermissions.CLERK;
-   default -> repository.customPermissions(merchantId,m.role());
+   default -> roleRepository.customPermissions(merchantId,m.role());
   };
- }
- public List<MerchantRoleVO> roles(String actor,String merchantId){
-  requirePermission(actor,merchantId,MerchantPermissions.ROLE_MANAGE);
-  List<MerchantRoleVO> result=new ArrayList<>();
-  result.add(new MerchantRoleVO("OWNER","经营者",MerchantPermissions.OWNER,true));
-  result.add(new MerchantRoleVO("CLERK","店员",MerchantPermissions.CLERK,true));
-  result.addAll(repository.customRoles(merchantId));return result;
- }
- private Set<String> validPermissions(Set<String> values){
-  require(values!=null&&!values.isEmpty()&&values.size()<=MerchantPermissions.LABELS.size(),ResponseCode.ILLEGAL_PARAMETER);
-  require(values.stream().allMatch(MerchantPermissions::isGrantable),ResponseCode.AUTH_FORBIDDEN);
-  Map<String,String> dependencies=Map.of("product.write","product.read","stock.replenish","stock.read",
-      "order.prepare","order.read","pickup.verify","order.read","aftersale.review","aftersale.read",
-      "knowledge.manage","knowledge.read","dashboard.read","order.read");
-  for(var pair:dependencies.entrySet())if(values.contains(pair.getKey()))require(values.contains(pair.getValue()),ResponseCode.ILLEGAL_PARAMETER);
-  return Set.copyOf(values);
- }
- @Transactional(rollbackFor=Exception.class)
- public MerchantRoleVO saveRole(String actor,String merchantId,String code,String name,Set<String> requested){
-  requirePermission(actor,merchantId,MerchantPermissions.ROLE_MANAGE);
-  String label=Checks.text(name,"角色名称",40);Set<String> perms=validPermissions(requested);
-  String roleCode=code==null||code.isBlank()?"R"+UUID.randomUUID().toString().replace("-","").substring(0,12):code;
-  require(roleCode.matches("R[a-f0-9]{12}"),ResponseCode.ILLEGAL_PARAMETER);
-  if(code==null||code.isBlank())repository.createRole(merchantId,roleCode,label,perms);
-  else {require(repository.customRole(merchantId,roleCode,true)!=null,ResponseCode.NOT_FOUND);repository.updateRole(merchantId,roleCode,label,perms);}
-  audit(actor,code==null||code.isBlank()?"ROLE_CREATED":"ROLE_CHANGED",roleCode,merchantId,label);
-  return new MerchantRoleVO(roleCode,label,perms,false);
- }
- @Transactional(rollbackFor=Exception.class)
- public void deleteRole(String actor,String merchantId,String code){
-  requirePermission(actor,merchantId,MerchantPermissions.ROLE_MANAGE);
-  require(code!=null&&code.matches("R[a-f0-9]{12}"),ResponseCode.ILLEGAL_PARAMETER);
-  require(repository.customRole(merchantId,code,true)!=null,ResponseCode.NOT_FOUND);
-  require(repository.countRoleMembers(merchantId,code)==0,ResponseCode.STATE_CONFLICT);
-  repository.deleteRole(merchantId,code);audit(actor,"ROLE_DELETED",code,merchantId,"删除未分配的角色");
- }
- @Transactional(rollbackFor=Exception.class)
- public void assignRole(String actor,String merchantId,String targetUserId,String roleCode){
-  requirePermission(actor,merchantId,MerchantPermissions.ROLE_MANAGE);
-  require(!"OWNER".equals(roleCode)&&roleCode!=null,ResponseCode.AUTH_FORBIDDEN);
-  if(!"CLERK".equals(roleCode))require(repository.customRole(merchantId,roleCode,true)!=null,ResponseCode.NOT_FOUND);
-  MembershipVO target=repository.member(targetUserId,merchantId,true);
-  require(target!=null&&"ACTIVE".equals(target.status())&&!"OWNER".equals(target.role()),ResponseCode.AUTH_FORBIDDEN);
-  repository.assignRole(merchantId,targetUserId,roleCode);
-  audit(actor,"MEMBER_ROLE_CHANGED",targetUserId,merchantId,"设置角色 "+roleCode);
  }
 
 }

@@ -1,7 +1,7 @@
 package cn.bugstack.ai.domain.identity.service;
 import cn.bugstack.ai.domain.identity.model.valobj.*;
 import java.util.*;
-/** 公开身份授权能力，跨领域用例不得直接读成员表。 */
+/** 用户授权、成员邀请及审计能力；动态角色治理请走 IRoleService。 */
 public interface IAccessService {
  boolean isAdmin(String userId); void requireAdmin(String userId);
  void requireMember(String userId,String merchantId,boolean ownerOnly);
@@ -13,9 +13,5 @@ public interface IAccessService {
  /** 所有商户敏感读写均通过当前数据库成员关系与角色实时复权。 */
  void requirePermission(String actor,String merchantId,String permission);
  Set<String> permissions(String actor,String merchantId);
- List<MerchantRoleVO> roles(String actor,String merchantId);
- MerchantRoleVO saveRole(String actor,String merchantId,String code,String name,Set<String> permissions);
- void deleteRole(String actor,String merchantId,String code);
- void assignRole(String actor,String merchantId,String targetUserId,String roleCode);
 
 }

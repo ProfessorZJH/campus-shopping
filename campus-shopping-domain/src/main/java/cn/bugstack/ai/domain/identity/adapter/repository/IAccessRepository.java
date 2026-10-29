@@ -10,13 +10,6 @@ public interface IAccessRepository {
  void revoke(String merchantId,String userId);
  void invite(InvitationVO invitation,String inviter); InvitationVO invitation(String id); List<InvitationVO> invitations(String userId); void accept(String id);
  void audit(String actor,String action,String target,String merchantId,String detail);
- List<MerchantRoleVO> customRoles(String merchantId);
- MerchantRoleVO customRole(String merchantId,String code,boolean lock);
- void createRole(String merchantId,String code,String name,Set<String> permissions);
- void updateRole(String merchantId,String code,String name,Set<String> permissions);
- void deleteRole(String merchantId,String code);
- int countRoleMembers(String merchantId,String code);
- void assignRole(String merchantId,String userId,String code);
- Set<String> customPermissions(String merchantId,String code);
+
 
 }

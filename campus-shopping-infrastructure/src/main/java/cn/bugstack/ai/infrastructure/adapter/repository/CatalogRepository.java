@@ -8,7 +8,6 @@ import cn.bugstack.ai.infrastructure.dao.po.*;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 import java.util.*;
 import java.nio.file.*;
@@ -19,7 +18,7 @@ import javax.imageio.stream.ImageInputStream;
 /** 聚合/PO 映射与本地商品图片存储；图片重编码，不直接公开用户原始文件。 */
 @Repository
 public class CatalogRepository implements ICatalogRepository {
- @Resource private ICatalogDao dao;@Value("${campus.uploads}") private String uploadDir;
+ @Resource private ICatalogDao dao;
  public ProductAggregate find(String id,boolean lock){ProductPO p=dao.product(id,lock);return p==null?null:aggregate(p,dao.skus(List.of(id)));}
  public List<ProductAggregate> search(String merchant,String q,String category,boolean publicOnly,int offset,int limit){
   List<ProductPO> ps=dao.search(merchant,q,category,publicOnly,offset,limit,"NEWEST");if(ps.isEmpty())return List.of();
@@ -57,14 +56,5 @@ public class CatalogRepository implements ICatalogRepository {
  private ProductAggregate aggregate(ProductPO p,List<SkuPO> ss){return new ProductAggregate(p.getId(),p.getMerchantId(),p.getStoreId(),p.getTitle(),p.getDescription(),p.getCategoryCode(),p.getImageUrl(),p.getStatus(),p.getVersion(),ss.stream().map(s->new ProductSkuEntity(s.getId(),s.getSpecKey(),s.getPriceCent(),s.getStatus(),s.getVersion())).toList());}
  private ProductPO po(ProductAggregate p){return ProductPO.builder().id(p.getId()).merchantId(p.getMerchantId()).storeId(p.getStoreId()).title(p.getTitle()).description(p.getDescription()).categoryCode(p.getCategoryCode()).imageUrl(p.getImageUrl()).status(p.getStatus()).version(p.getVersion()).build();}
  private SkuPO sku(ProductAggregate p,ProductSkuEntity s){return SkuPO.builder().id(s.id()).productId(p.getId()).merchantId(p.getMerchantId()).storeId(p.getStoreId()).specKey(s.specKey()).priceCent(s.priceCent()).status(s.status()).version(s.version()).build();}
- public String storeImage(byte[] data){
-  if(data==null||data.length==0||data.length>2*1024*1024)throw new AppException(ResponseCode.UPLOAD_INVALID);
-  try(ImageInputStream in=ImageIO.createImageInputStream(new ByteArrayInputStream(data))){
-   Iterator<ImageReader> rs=ImageIO.getImageReaders(in);if(!rs.hasNext())throw new AppException(ResponseCode.UPLOAD_INVALID);
-   ImageReader r=rs.next();try{r.setInput(in);if((long)r.getWidth(0)*r.getHeight(0)>12000000L)throw new AppException(ResponseCode.UPLOAD_INVALID);
-    String name=UUID.randomUUID()+".png";Path dir=Path.of(uploadDir).toAbsolutePath().normalize();Files.createDirectories(dir);
-    if(!ImageIO.write(r.read(0),"png",dir.resolve(name).toFile()))throw new IOException("图片编码失败");return "/media/"+name;
-   }finally{r.dispose();}
-  }catch(IOException e){throw new IllegalStateException("商品图片存储失败",e);}
- }
+
 }
