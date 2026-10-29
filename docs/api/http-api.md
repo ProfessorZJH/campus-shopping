@@ -1,7 +1,7 @@
 # HTTP API 当前权威契约（v1.1）
 
 > 本文件由 `python scripts/generate-api-contract.py` 从当前 Controller/DTO **生成**；禁止手工追加旧版路由。
-> 接口字段来自源码，未带 Bean Validation 的 DTO 不代表任何字段都可为空。业务规则见 [行为契约](behavior-v1.1.md)，
+> 路由/字段来自源码；必填、范围、枚举由 `scripts/api_contract_rules.py` 显式核对合并。业务规则见 [行为契约](behavior-v1.1.md)，
 > 机器可读的 93 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
 
 ## 统一约定
@@ -12,7 +12,10 @@
 - 幂等键：入驻申请、补货、结算的 `Idempotency-Key` **业务必填且最长 64 字符**；同键不同内容返回业务冲突。
 - 分页：`page` 从 1 开始，`size` 范围 1–100；`data.items/page/size/total/hasNext`。搜索参数 `q` 先在 SQL 过滤，再按相同条件 COUNT。
 - 错误码以 `ResponseCode.java` 为准；HTTP 状态与业务码相互独立，鉴权缺失一般 401、CSRF/拒绝访问一般 403。
-- Spring MVC 安全过滤器与真实 MySQL 仍需实际集成测试；此文档是静态契约，不是运行证明。
+- 协议错误返回同一 JSON 信封：400/0002、404/G0001、405/G0005、406/G0007、413/G0004、415/G0006。限流 429/A0007 附正确 Retry-After。
+- 金额、数量、版本禁止小数截断；每个正文只接受一个 JSON 值。未知字段继续忽略，附加的身份/角色字段没有授权效力。
+- 字段约束描述规范化后的输入，Java 字符长度按 UTF-16 单元；商品创建必填 skus，编辑必填 expectedVersion，退款审核必填 reason。
+- 本文件是契约，运行证据另见 docs/testing/CONTRACT-DATABASE-API-AUDIT-09.md。
 
 ## 全量路由（共 93 条）
 
@@ -114,7 +117,7 @@
 
 ## DTO 字段索引
 
-以下字段由 API DTO 自动提取，约束、权限和枚举含义以 `behavior-v1.1.md` 与领域校验为准。
+以下字段由 API DTO 自动提取；机器约束在 OpenAPI 中，权限与状态语义见 `behavior-v1.1.md`。
 
 ### `AdmissionResponseDTO`
 

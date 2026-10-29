@@ -1,0 +1,145 @@
+{
+  "scope": "Local acceptance observations enabled after initial incomplete attempts; not a success-rate or latency benchmark",
+  "records": [
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 10896
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 21441
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 20362
+    },
+    {
+      "stage": "answer",
+      "result": "failed",
+      "errorType": "ReadTimeout",
+      "httpStatus": "None",
+      "durationMs": 32035
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 10480
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 25184
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 17221
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 33698
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 9664
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 40145
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 22958
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 39220
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 10405
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 26232
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 25554
+    },
+    {
+      "stage": "answer",
+      "result": "failed",
+      "errorType": "ConnectTimeout",
+      "httpStatus": "None",
+      "durationMs": 5239
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 19262
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 22894
+    },
+    {
+      "stage": "recall",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 13116
+    },
+    {
+      "stage": "answer",
+      "result": "success",
+      "errorType": null,
+      "httpStatus": null,
+      "durationMs": 22125
+    }
+  ]
+}

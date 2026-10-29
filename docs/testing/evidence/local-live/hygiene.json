@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "credentialLiteralMatches": 0,
+  "filesScanned": 679,
+  "secretValuesChecked": 13,
+  "shortPasswordsExcludedFromLiteralScan": true,
+  "privateEnvAccountsAndBackupsIgnored": true,
+  "frontendSourcesMatchStaticAndRunningJar": true,
+  "frontendFilesVerified": 26,
+  "mismatchedResources": []
+}

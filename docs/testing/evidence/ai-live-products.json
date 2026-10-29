@@ -1,0 +1,82 @@
+{
+  "startedAt": "2026-10-29T12:36:16.710303+00:00",
+  "scope": "Real remote models and real local Uvicorn TCP; synthetic public fixtures",
+  "llmModel": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "versions": {
+    "fastapi": "0.128.2",
+    "uvicorn": "0.48.0",
+    "httpx": "0.28.1",
+    "pydantic": "2.13.5",
+    "pymilvus": "2.6.17"
+  },
+  "javaMySqlTested": false,
+  "businessCartTransactionsTested": false,
+  "productionProductCollectionModified": false,
+  "checks": [
+    {
+      "name": "milvus_transport_exception",
+      "status": "INFO",
+      "encrypted": false,
+      "scope": "Explicit CLI exception for this acceptance run; production Settings.validate unchanged"
+    },
+    {
+      "name": "milvus_real_authenticated_connection",
+      "status": "PASS",
+      "collection": "campus_acceptance_1443cf38f0b2307ced97",
+      "serverVersion": "pkg/v2.5.4",
+      "encrypted": false
+    },
+    {
+      "name": "milvus_real_121_products_index",
+      "status": "PASS",
+      "latencyMs": 33643,
+      "indexed": 121,
+      "collection": "campus_acceptance_1443cf38f0b2307ced97",
+      "fixtureData": true
+    },
+    {
+      "name": "milvus_real_idempotent_sync",
+      "status": "PASS",
+      "latencyMs": 703,
+      "indexed": 0,
+      "unchanged": 2,
+      "mode": "MILVUS"
+    },
+    {
+      "name": "milvus_real_semantic_recall",
+      "status": "PASS",
+      "latencyMs": 4132,
+      "result": {
+        "productIds": [
+          "fixture-old-121",
+          "fixture-082",
+          "fixture-084",
+          "fixture-068",
+          "fixture-001"
+        ],
+        "mode": "MILVUS"
+      },
+      "boundary": "Milvus semantic recall over 121 fixtures; not MySQL newest-100 regression"
+    },
+    {
+      "name": "milvus_real_incremental_update",
+      "status": "PASS",
+      "latencyMs": 4262,
+      "indexed": 1,
+      "unchanged": 0,
+      "mode": "MILVUS"
+    },
+    {
+      "name": "milvus_isolated_collection_cleanup",
+      "status": "PASS",
+      "latencyMs": 1051,
+      "onlyThisRunCollectionDropped": "campus_acceptance_1443cf38f0b2307ced97"
+    }
+  ],
+  "finishedAt": "2026-10-29T12:37:06.773906+00:00",
+  "summary": {
+    "INFO": 1,
+    "PASS": 6
+  }
+}

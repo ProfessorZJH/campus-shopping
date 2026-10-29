@@ -1,0 +1,75 @@
+{
+  "status": "PASS",
+  "finishedAt": "2026-10-29T21:50:10.229436+08:00",
+  "apiMockUsed": false,
+  "baseUrl": "http://127.0.0.1:8091/#/",
+  "database": "campus_shopping",
+  "reports": {
+    "full-http.json": {
+      "status": "PASS",
+      "checks": 173
+    },
+    "shopping-api.json": {
+      "status": "PASS",
+      "checks": 19
+    },
+    "database-readback.json": {
+      "status": "PASS",
+      "checks": 8
+    },
+    "browser/product.json": {
+      "status": "PASS",
+      "checks": 5
+    },
+    "browser/flow.json": {
+      "status": "PASS",
+      "checks": 12
+    },
+    "browser/pages.json": {
+      "status": "PASS",
+      "checks": 40
+    }
+  },
+  "baselineBrowserChecks": 8,
+  "browserChecksByStage": {
+    "baseline": 8,
+    "product": 5,
+    "flow": 12,
+    "pagesAndPermissions": 40
+  },
+  "pageRoutes": 28,
+  "maven": {
+    "passed": 63,
+    "skipped": 29
+  },
+  "pythonTestsPassed": 40,
+  "aiHealth": {
+    "status": "UP",
+    "llmConfigured": true,
+    "retrievalMode": "REMOTE_EMBEDDING",
+    "vectorStore": "LOCAL_SQLITE",
+    "productIndex": "MILVUS"
+  },
+  "javaHealthy": true,
+  "milvusEncrypted": false,
+  "milvusExceptionScope": "Explicit local acceptance launcher only; normal app TLS policy unchanged",
+  "artifactSha256": "da8f0744f057424fade98639c36b290c44fef8da14a8b785aa3c00c96a6c699c",
+  "hygiene": {
+    "status": "PASS",
+    "credentialLiteralMatches": 0,
+    "filesScanned": 679,
+    "secretValuesChecked": 13,
+    "shortPasswordsExcludedFromLiteralScan": true,
+    "privateEnvAccountsAndBackupsIgnored": true,
+    "frontendSourcesMatchStaticAndRunningJar": true,
+    "frontendFilesVerified": 26,
+    "mismatchedResources": []
+  },
+  "notRunInThisAcceptance": [
+    "Docker",
+    "Qdrant",
+    "production deployment",
+    "capacity/performance acceptance",
+    "dedicated MySQL JUnit suites"
+  ]
+}

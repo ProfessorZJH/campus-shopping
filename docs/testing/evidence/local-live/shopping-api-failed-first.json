@@ -1,0 +1,72 @@
+{
+  "testType": "REAL_JAVA_MYSQL_AI",
+  "apiMockUsed": false,
+  "database": "campus_shopping",
+  "merchantId": "b8902e9d-080b-444b-9d16-ab76b072a4e4",
+  "checks": [
+    {
+      "name": "java_scheduled_sync_real_product_to_milvus",
+      "status": "PASS",
+      "productId": "959db025-2039-4886-bab1-e42abab7d500"
+    },
+    {
+      "name": "remote_llm_and_java_proposal",
+      "status": "PASS",
+      "mode": "LLM",
+      "retrievalMode": "REMOTE_EMBEDDING",
+      "proposalId": "21102bb0-7a1e-4585-8d7b-752c670bf9e0"
+    },
+    {
+      "name": "trusted_catalog_quantity_and_budget",
+      "status": "PASS",
+      "proposal": {
+        "id": "21102bb0-7a1e-4585-8d7b-752c670bf9e0",
+        "status": "PENDING",
+        "items": [
+          {
+            "skuId": "7035a07c-15ba-4f0c-9996-1d5ab0be60d1",
+            "merchantId": "b8902e9d-080b-444b-9d16-ab76b072a4e4",
+            "title": "真实联调无糖乌龙茶",
+            "specKey": "500ml瓶装",
+            "imageUrl": "/media/dbc6fc50-d97b-49cf-9e45-1af6db0b8a74.png",
+            "priceCent": 600,
+            "quoteVersion": 1,
+            "quantity": 2
+          }
+        ],
+        "expiresAt": "2026-10-29T13:22:07.402007400Z"
+      }
+    },
+    {
+      "name": "java_proposal_total_within_budget",
+      "status": "PASS"
+    },
+    {
+      "name": "java_knowledge_acl_no_private_document",
+      "status": "PASS",
+      "citations": [
+        {
+          "documentId": "9b992a57-0625-413b-bbb5-072d12ab4ebb",
+          "title": "真实联调茶饮自提规则",
+          "snippet": "真实联调校园茶饮店的无糖乌龙茶每天09:00到21:00在图书馆一层真实验收柜台自提，付款后等待商户备货。"
+        }
+      ]
+    },
+    {
+      "name": "other_user_cannot_confirm_proposal",
+      "status": "PASS"
+    },
+    {
+      "name": "confirmed_proposal_persists_cart_quantity",
+      "status": "PASS",
+      "beforeQuantity": 0,
+      "afterQuantity": 2
+    },
+    {
+      "name": "repeat_confirmation_idempotent",
+      "status": "PASS"
+    }
+  ],
+  "status": "FAILED",
+  "failedCheck": "remote_llm_and_java_proposal on second query; response mode was not LLM; original response not retained"
+}

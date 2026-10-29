@@ -1,0 +1,56 @@
+{
+  "database": "campus_shopping",
+  "readOnly": true,
+  "missingIndexes": [
+    [
+      "iam_merchant_membership",
+      "ix_member_role"
+    ],
+    [
+      "mer_application",
+      "ix_app_applicant"
+    ],
+    [
+      "inv_stock_balance",
+      "ix_stock_sku"
+    ],
+    [
+      "inv_stock_movement",
+      "ix_movement_merchant"
+    ],
+    [
+      "ai_document",
+      "ix_document_base"
+    ],
+    [
+      "ai_message",
+      "ix_message_sequence"
+    ],
+    [
+      "ai_proposal",
+      "ix_proposal_conversation"
+    ]
+  ],
+  "checkConstraints": [
+    {
+      "CONSTRAINT_NAME": "ck_sku_price",
+      "CHECK_CLAUSE": "(`price_cent` > 0)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_stock_balance",
+      "CHECK_CLAUSE": "((`on_hand` >= `reserved`) and (`reserved` >= 0))"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_reservation_qty",
+      "CHECK_CLAUSE": "(`quantity` > 0)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_cart_quantity",
+      "CHECK_CLAUSE": "(`quantity` between 1 and 99)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_order_total",
+      "CHECK_CLAUSE": "(`total_cent` > 0)"
+    }
+  ]
+}

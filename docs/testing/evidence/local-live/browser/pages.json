@@ -1,0 +1,2212 @@
+{
+  "stage": "pages",
+  "testType": "REAL_CHROMIUM_REAL_JAVA_MYSQL_AI",
+  "apiMockUsed": false,
+  "checks": [
+    {
+      "name": "live_route_/",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/ai",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/product/959db025-2039-4886-bab1-e42abab7d500",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/shops/b8902e9d-080b-444b-9d16-ab76b072a4e4",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/cart",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/orders",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/orders/1b9f0eb7-b6a9-4033-9d6e-f0c4a28d2b05",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/account",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/apply",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/invitations",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/products",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/inventory",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/orders",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/pickup",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/aftersales",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/team",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/roles",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/knowledge",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/merchant/settings",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/applications",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/merchants",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/products",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/orders",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/disputes",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/categories",
+      "status": "PASS"
+    },
+    {
+      "name": "live_route_/admin/knowledge",
+      "status": "PASS"
+    },
+    {
+      "name": "clerk_cannot_create_product_or_manage_roles",
+      "status": "PASS"
+    },
+    {
+      "name": "owner_browser_creates_custom_role",
+      "status": "PASS"
+    },
+    {
+      "name": "browser_assigned_role_enables_product_creation",
+      "status": "PASS"
+    },
+    {
+      "name": "custom_product_role_cannot_manage_roles",
+      "status": "PASS"
+    },
+    {
+      "name": "browser_role_edit_revokes_product_creation",
+      "status": "PASS"
+    },
+    {
+      "name": "browser_restores_clerk_and_deletes_custom_role",
+      "status": "PASS"
+    },
+    {
+      "name": "buyer_cannot_access_admin_page",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile_no_horizontal_overflow_ai-mobile",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile_no_horizontal_overflow_merchant-mobile",
+      "status": "PASS"
+    },
+    {
+      "name": "mobile_no_horizontal_overflow_admin-mobile",
+      "status": "PASS"
+    },
+    {
+      "name": "no_uncaught_browser_errors",
+      "status": "PASS"
+    },
+    {
+      "name": "no_http_5xx_from_real_backend",
+      "status": "PASS"
+    }
+  ],
+  "pageErrors": [],
+  "apiResponses": [
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 401,
+      "code": "A0004"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 401,
+      "code": "A0004"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 401,
+      "code": "A0004"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 401,
+      "code": "A0004"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/ai/conversations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/ai/conversations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/959db025-2039-4886-bab1-e42abab7d500",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/b8902e9d-080b-444b-9d16-ab76b072a4e4",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?merchantId=b8902e9d-080b-444b-9d16-ab76b072a4e4&page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/cart",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/orders/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/orders/1b9f0eb7-b6a9-4033-9d6e-f0c4a28d2b05",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/invitations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchant-applications/mine/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/invitations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchant-applications/mine/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchant-applications/mine/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/invitations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/statistics",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/orders/page?page=1&size=5",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stock-movements/page?page=1&size=8",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/orders/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/orders/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/aftersales/page?page=1&size=10",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/bases",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/bases/35b0f253-5bad-4717-a973-9a51cfd31bb0/documents/page?page=1&size=15",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/statistics",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/merchants/page?page=1&size=6",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/orders/page?page=1&size=6",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/merchant-applications/page?page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/merchants/page?page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/products/page?page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/orders/page?page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/aftersales/page?page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/bases",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/bases",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/bases/62b1bef9-aa0a-4b3c-893d-3e958d836ebe/documents/page?page=1&size=15",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "POST",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "PUT",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/members/26477259-4914-4b87-a9f9-a1315eed1ea5/role",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "PUT",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles/R2c73f9131a7e",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "PUT",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/members/26477259-4914-4b87-a9f9-a1315eed1ea5/role",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/csrf",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "DELETE",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles/R2c73f9131a7e",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/permissions",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/rbac/roles",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/members",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/ai/conversations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/public/page?page=1&size=50",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/products/page?page=1&size=20",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/ai/conversations",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/categories",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/products/page?page=1&size=9&sort=NEWEST",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/merchants/b8902e9d-080b-444b-9d16-ab76b072a4e4/stocks/page?page=1&size=100",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/workspace",
+      "http": 200,
+      "code": "0000"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/merchant-applications/page?page=1&size=12",
+      "http": 200,
+      "code": "0000"
+    }
+  ],
+  "browserVersion": "136.0.7103.25",
+  "status": "PASS"
+}

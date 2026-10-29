@@ -1,0 +1,36 @@
+{
+  "status": "FAIL",
+  "checks": [
+    "dirty historical amount stops migration without changing the row",
+    "all migrations replay twice and preserve historical snapshot",
+    "fresh and upgraded database columns/indexes/constraints match",
+    "five invalid amount/quantity writes rejected by real MySQL CHECK"
+  ],
+  "existingDatabaseUsed": false,
+  "mysqlVersion": "8.0.31",
+  "indexesAdded": [
+    "ix_member_role",
+    "ix_app_applicant",
+    "ix_stock_sku",
+    "ix_movement_merchant",
+    "ix_document_base",
+    "ix_message_sequence",
+    "ix_proposal_conversation"
+  ],
+  "constraintsAdded": [
+    "ck_order_item_values",
+    "ck_payment_amount",
+    "ck_refund_amount"
+  ],
+  "mavenExitCode": 1,
+  "buildSource": "current source copied to isolated temporary Maven reactor (no .env/target)",
+  "junit": {
+    "suites": [],
+    "tests": 0,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "temporaryDatabaseCleaned": true,
+  "failure": "Maven 构建或测试失败"
+}

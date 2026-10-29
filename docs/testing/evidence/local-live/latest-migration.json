@@ -1,0 +1,16 @@
+{
+  "database": "campus_shopping",
+  "status": "PASS",
+  "backup": "var\\local-live\\campus_shopping_before_latest_migration_20261029_213028.sql",
+  "backupBytes": 74635,
+  "invalidHistoricalRows": {
+    "orderItems": 0,
+    "payments": 0,
+    "refunds": 0
+  },
+  "indexesPresent": 7,
+  "constraintsPresent": 3,
+  "businessRowsChanged": false,
+  "migration": "docs\\database\\migrations\\V20261029_01__contract_integrity_and_indexes.sql",
+  "otherDatabasesModified": false
+}

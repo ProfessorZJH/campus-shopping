@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-10-29T13:31:42.406315+00:00",
+  "testType": "REAL_BROWSER_REAL_JAVA_HTTP",
+  "status": "PASS",
+  "error": null,
+  "checks": [
+    "新版 Vue 匿名消费者首页加载",
+    "匿名商户列表与详情放行；平台私有数据拒绝匿名访问",
+    "新版管理员 Session 登录并访问入驻审核",
+    "管理员退出后 Session 与私有数据失效",
+    "注册真实数据库账号且注册后不自动登录",
+    "普通用户登录后仍无法访问管理员页面",
+    "移动端真实前端无横向溢出",
+    "浏览器无未捕获 JS 异常"
+  ],
+  "browserErrors": [],
+  "apiMockUsed": false
+}

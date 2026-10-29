@@ -1,0 +1,15 @@
+INFO:     Started server process [33592]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:56538 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56554 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56689 - "POST /v1/extract HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=embedding request_id=90d743c9-8576-42ef-ab2b-d60cf9526aaf duration_ms=1
+INFO:     127.0.0.1:56689 - "POST /v1/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56689 - "POST /v1/extract HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=embedding request_id=fdf3acd9-dc9b-4866-8971-2c7ad5006017 duration_ms=0
+INFO:     127.0.0.1:56689 - "POST /v1/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56689 - "POST /v1/recall HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56689 - "POST /v1/products/search HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=embedding request_id=02ceb1c6-cfa0-4b96-9fe2-959684310e48 duration_ms=0
+INFO:     127.0.0.1:56689 - "POST /v1/query HTTP/1.1" 200 OK

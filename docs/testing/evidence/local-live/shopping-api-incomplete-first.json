@@ -1,0 +1,22 @@
+{
+  "testType": "REAL_JAVA_MYSQL_AI",
+  "apiMockUsed": false,
+  "database": "campus_shopping",
+  "merchantId": "b8902e9d-080b-444b-9d16-ab76b072a4e4",
+  "checks": [
+    {
+      "name": "document_index_PUBLIC",
+      "status": "PASS"
+    },
+    {
+      "name": "document_index_MERCHANT_INTERNAL",
+      "status": "PASS"
+    },
+    {
+      "name": "java_scheduled_sync_real_product_to_milvus",
+      "status": "PASS",
+      "productId": "959db025-2039-4886-bab1-e42abab7d500"
+    }
+  ],
+  "status": "INCOMPLETE"
+}
