@@ -27,7 +27,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
   for(var i:items)require(i!=null&&i.skuId()!=null&&seen.add(i.skuId())&&i.quantity()>0&&i.quantity()<=99&&i.expectedPriceCent()>0&&i.expectedVersion()>=0,ResponseCode.ILLEGAL_PARAMETER);
   List<CheckoutItemEntity> sorted=items.stream().sorted(Comparator.comparing(CheckoutItemEntity::skuId)).toList();
   List<Object> fp=new ArrayList<>();fp.add(merchant);for(var i:sorted){fp.add(i.skuId());fp.add(i.quantity());fp.add(i.expectedPriceCent());fp.add(i.expectedVersion());}
-  String existing=trading.beginCheckout(buyer,key,Fingerprints.of(fp.toArray()));if(existing!=null)return trading.order(existing,false);
+  String existing=trading.beginCheckout(buyer,key,Fingerprints.of(fp.toArray()));if(existing!=null)return trading.order(existing,true);
   trading.lockCart(buyer);var m=merchants.requireActiveForNewTrade(merchant);
   Map<String,SkuOfferVO> offers=catalog.offers(sorted.stream().map(CheckoutItemEntity::skuId).toList(),true,true).stream().collect(Collectors.toMap(SkuOfferVO::skuId,o->o));
   List<OrderItemEntity> snapshots=new ArrayList<>();List<SkuQuantityVO> quantities=new ArrayList<>();
