@@ -254,7 +254,7 @@ class CommerceMySqlIntegrationTest {
     @Test void proposalConfirmationIsOwnedVersionedAndExactlyOnce(){
         var p=product(4);var conversation=aiState.conversation(buyer,null,"买笔");var proposal=new ProposalVO(UUID.randomUUID().toString(),buyer,conversation.id(),"PENDING",List.of(new ProposalItemVO(item(p).skuId(),merchant.id(),p.getTitle(),"一盒",1200,p.getVersion(),1)),null,clock.instant().plusSeconds(600));
         aiState.appendTurn(buyer,conversation.id(),"买笔","仅测试提案，不调用模型",proposal,"scope");
-        assertEquals("A0006",code(()->ai.confirm(other,proposal.id(),List.of(item(p).skuId()))));
+        assertEquals("G0001",code(()->ai.confirm(other,proposal.id(),List.of(item(p).skuId()))));
         ai.confirm(buyer,proposal.id(),List.of(item(p).skuId()));ai.confirm(buyer,proposal.id(),List.of(item(p).skuId()));assertEquals(1,cart.list(buyer).get(0).quantity());
     }
     @Test void knowledgeInternalScopeAndWithdrawalAreEffectiveImmediately(){
