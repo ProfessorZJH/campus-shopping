@@ -1,18 +1,20 @@
 package cn.bugstack.ai.test.identity;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 import cn.bugstack.ai.domain.identity.adapter.repository.IUserAccountRepository;
 import cn.bugstack.ai.domain.identity.model.aggregate.UserAccountAggregate;
 import cn.bugstack.ai.domain.identity.model.valobj.UserAccountStatusEnumVO;
 import cn.bugstack.ai.domain.identity.service.impl.UserAccountServiceImpl;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
-import org.junit.jupiter.api.Test;
 import java.util.Optional;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import org.junit.jupiter.api.Test;
 
 /** 领域登录规则测试：不依赖安全容器或数据库。 */
 class UserAccountAuthenticationTest {
+
     private final IUserAccountRepository repository = mock(IUserAccountRepository.class);
     private final UserAccountServiceImpl service = new UserAccountServiceImpl(repository);
 
@@ -38,8 +40,7 @@ class UserAccountAuthenticationTest {
 
     @Test
     void disabledAccountCannotAuthenticateEvenWithValidCredentials() {
-        UserAccountAggregate user = UserAccountAggregate.reconstitute("user-1", "student001", "用户",
-                UserAccountStatusEnumVO.DISABLED, 2L);
+        UserAccountAggregate user = UserAccountAggregate.reconstitute("user-1", "student001", "用户", UserAccountStatusEnumVO.DISABLED, 2L);
         when(repository.findByCredentials("student001", "valid-password")).thenReturn(Optional.of(user));
         AppException e = assertThrows(AppException.class, () -> service.authenticate("student001", "valid-password"));
         assertEquals(ResponseCode.AUTH_ACCOUNT_DISABLED.getCode(), e.getCode());
@@ -54,8 +55,7 @@ class UserAccountAuthenticationTest {
 
     @Test
     void reconstitutionPreservesStatusAndVersion() {
-        UserAccountAggregate user = UserAccountAggregate.reconstitute("user-1", "student001", "用户",
-                UserAccountStatusEnumVO.DISABLED, 9L);
+        UserAccountAggregate user = UserAccountAggregate.reconstitute("user-1", "student001", "用户", UserAccountStatusEnumVO.DISABLED, 9L);
         assertEquals(9L, user.getVersion());
         assertThrows(AppException.class, user::ensureActive);
     }

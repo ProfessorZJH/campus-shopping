@@ -1,20 +1,31 @@
 package cn.bugstack.ai.api;
+
 import cn.bugstack.ai.api.dto.*;
 import cn.bugstack.ai.api.response.Response;
-import java.util.*;
 import java.security.Principal;
+import java.util.*;
+
 /** 对外接口契约，由 Trigger 的 CatalogController 实现。 */
 public interface ICatalogApi {
     /** 公开商品搜索与分页。 */
     Response<List<ProductResponseDTO>> products(String merchantId, String q, String category, int page, int size);
-    Response<PageResponseDTO<ProductResponseDTO>> productPage(String merchantId,String q,String category,int page,int size,String sort);
+    Response<PageResponseDTO<ProductResponseDTO>> productPage(String merchantId, String q, String category, int page, int size, String sort);
     /** 查看可售商品与实时库存快照。 */
     Response<ProductResponseDTO> detail(String productId);
     /** 商品类目列表。 */
     Response<List<CategoryResponseDTO>> categories();
     /** 商户自己的商品，包括草稿和下架。 */
     Response<List<ProductResponseDTO>> managed(String merchantId, int page, int size, Principal principal);
-    Response<PageResponseDTO<ProductResponseDTO>> managedPage(String merchantId,String q,String category,String status,int page,int size,String sort,Principal principal);
+    Response<PageResponseDTO<ProductResponseDTO>> managedPage(
+        String merchantId,
+        String q,
+        String category,
+        String status,
+        int page,
+        int size,
+        String sort,
+        Principal principal
+    );
     /** 创建商品、多个规格与空库存。 */
     Response<ProductResponseDTO> create(String merchantId, ProductRequestDTO request, Principal principal);
     /** 按版本修改商品资料。 */
@@ -31,6 +42,6 @@ public interface ICatalogApi {
     Response<Void> forceUnpublish(String productId, Principal principal);
     /** 平台维护类目。 */
     Response<Void> category(CategoryRequestDTO request, Principal principal);
- Response<PageResponseDTO<ProductResponseDTO>> adminProductPage(String merchantId,String q,int page,int size,Principal principal);
- Response<List<ProductResponseDTO>> adminProducts(String merchantId,String q,int page,int size,Principal principal);
+    Response<PageResponseDTO<ProductResponseDTO>> adminProductPage(String merchantId, String q, int page, int size, Principal principal);
+    Response<List<ProductResponseDTO>> adminProducts(String merchantId, String q, int page, int size, Principal principal);
 }

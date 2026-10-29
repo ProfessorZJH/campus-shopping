@@ -3,9 +3,6 @@ package cn.bugstack.ai.infrastructure.adapter.repository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Repository;
-
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -15,6 +12,8 @@ import java.util.UUID;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Repository;
 
 /**
  * 商品图片的本地文件存储适配器。
@@ -22,6 +21,7 @@ import javax.imageio.stream.ImageInputStream;
  */
 @Repository
 public class ProductImageRepository implements IProductImageRepository {
+
     @Value("${campus.uploads}")
     private String uploadDir;
 

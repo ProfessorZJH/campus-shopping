@@ -1,10 +1,16 @@
 package cn.bugstack.ai.infrastructure.dao.po;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 入驻申请持久化对象，完整资料与审核事实一并保存。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MerchantApplicationPO {
+
     private String applicationId;
     private String applicantUserId;
     private String requestKey;

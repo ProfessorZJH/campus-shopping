@@ -1,18 +1,20 @@
 package cn.bugstack.ai.test.identity;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import cn.bugstack.ai.domain.identity.model.valobj.UserAccountStatusEnumVO;
 import cn.bugstack.ai.infrastructure.adapter.repository.UserAccountRepository;
 import cn.bugstack.ai.infrastructure.dao.IUserAccountDao;
 import cn.bugstack.ai.infrastructure.dao.po.UserAccountPO;
-import cn.bugstack.ai.domain.identity.model.valobj.UserAccountStatusEnumVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 /** 调用真实 BCrypt，DAO 使用测试替身；不是 MySQL 集成测试。 */
 class UserCredentialRepositoryTest {
+
     private final IUserAccountDao dao = mock(IUserAccountDao.class);
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
     private final UserAccountRepository repository = new UserAccountRepository();
@@ -25,8 +27,14 @@ class UserCredentialRepositoryTest {
     }
 
     private UserAccountPO stored() {
-        return UserAccountPO.builder().id("user-1").username("student001").displayName("用户")
-                .passwordHash(encoder.encode("correct-password")).status("DISABLED").version(3L).build();
+        return UserAccountPO.builder()
+            .id("user-1")
+            .username("student001")
+            .displayName("用户")
+            .passwordHash(encoder.encode("correct-password"))
+            .status("DISABLED")
+            .version(3L)
+            .build();
     }
 
     @Test

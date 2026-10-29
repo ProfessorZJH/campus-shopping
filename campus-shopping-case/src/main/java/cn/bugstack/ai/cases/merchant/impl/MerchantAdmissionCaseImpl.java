@@ -1,9 +1,9 @@
 package cn.bugstack.ai.cases.merchant.impl;
 
 import cn.bugstack.ai.cases.merchant.IMerchantAdmissionCase;
-import cn.bugstack.ai.domain.merchant.service.*;
-import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
+import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
+import cn.bugstack.ai.domain.merchant.service.*;
 import cn.bugstack.ai.types.common.Checks;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,9 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 /** 申请、商户、首店和 Owner 关系只能全部提交或全部回滚。 */
 @Service
 public class MerchantAdmissionCaseImpl implements IMerchantAdmissionCase {
+
     private final IMerchantApplicationService applications;
     private final IMerchantService merchants;
     private final IAccessService access;
+
     public MerchantAdmissionCaseImpl(IMerchantApplicationService applications, IMerchantService merchants, IAccessService access) {
         this.applications = applications;
         this.merchants = merchants;
@@ -21,7 +23,6 @@ public class MerchantAdmissionCaseImpl implements IMerchantAdmissionCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    /** 入驻审批、创建门店、授予初始 Owner 和审计在一个数据库事务内提交。 */
     public MerchantVO approve(String actor, String id) {
         access.requireAdmin(actor);
         MerchantVO m = applications.approveAndOpen(id, actor);
@@ -46,6 +47,7 @@ public class MerchantAdmissionCaseImpl implements IMerchantAdmissionCase {
         merchants.changeStatus(id, active);
         access.audit(actor, active ? "MERCHANT_RESUMED" : "MERCHANT_SUSPENDED", id, id, reason);
     }
+
     /** 停用商户也可以纠正经营资料；这不会恢复其新交易资格。 */
     @Transactional(rollbackFor = Exception.class)
     public MerchantVO updateProfile(String actor, String id, String name, String storeName, String location) {

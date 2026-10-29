@@ -1,8 +1,10 @@
 package cn.bugstack.ai.infrastructure.dao;
-import org.apache.ibatis.annotations.*;
+
 import cn.bugstack.ai.infrastructure.dao.po.*;
-import java.util.*;
 import java.time.*;
+import java.util.*;
+import org.apache.ibatis.annotations.*;
+
 /** 数据访问映射，业务决定由领域服务作出。 */
 @Mapper
 public interface IAiDao {

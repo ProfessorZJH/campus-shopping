@@ -1,10 +1,16 @@
 package cn.bugstack.ai.api.dto;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 知识管理视图，不包含服务器文件路径。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class KnowledgeDocumentResponseDTO {
+
     private String id;
     private String rootId;
     private String baseId;

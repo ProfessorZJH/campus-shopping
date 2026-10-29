@@ -1,10 +1,16 @@
 package cn.bugstack.ai.infrastructure.dao.po;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 报价查询投影，不直接作为对外响应。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class OfferPO {
+
     private String skuId;
     private String productId;
     private String merchantId;

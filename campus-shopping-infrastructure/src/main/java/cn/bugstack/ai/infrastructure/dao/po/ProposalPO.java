@@ -1,10 +1,16 @@
 package cn.bugstack.ai.infrastructure.dao.po;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 提案及冻结商品快照。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ProposalPO {
+
     private String id;
     private String userId;
     private String conversationId;
