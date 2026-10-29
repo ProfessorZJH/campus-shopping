@@ -39,7 +39,16 @@ public class AiGatewayService {
     public AiGatewayDTO.ProductSearchResult semanticProducts(AiGatewayDTO.ProductSearch request) {
         return post("/v1/products/search",request,AiGatewayDTO.ProductSearchResult.class);
     }
-    public void indexProducts(AiGatewayDTO.ProductIndexRequest request) {post("/v1/products/index",request,Map.class);}
+    /** 启用同步任务时必须收到 Milvus 实际处理结果，不能把 DISABLED 当成功。 */
+    public void indexProducts(AiGatewayDTO.ProductIndexRequest request) {
+        AiGatewayDTO.ProductIndexResult result = post(
+                "/v1/products/index", request, AiGatewayDTO.ProductIndexResult.class);
+        if (result == null || !"MILVUS".equals(result.mode())
+                || result.indexed() < 0 || result.unchanged() < 0
+                || (long) result.indexed() + result.unchanged() != request.products().size()) {
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
+    }
     public void index(AiGatewayDTO.Index request) { post("/v1/index", request, Map.class); }
     public String extract(AiGatewayDTO.Extract request) {
         return post("/v1/extract", request, AiGatewayDTO.Extracted.class).text();
