@@ -18,7 +18,7 @@ CORE = [
     "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/service/impl/FulfillmentServiceImpl.java",
     "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/service/MerchantApplicationServiceImpl.java",
     "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/service/impl/MerchantServiceImpl.java",
-    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/aggregate/KnowledgePublicationPolicy.java",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/service/policy/KnowledgePublicationPolicy.java",
 ]
 
 def check(path: Path) -> list[str]:

@@ -1,6 +1,6 @@
 package cn.bugstack.ai.test.commerce;
 
-import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationPolicy;
+import cn.bugstack.ai.domain.shoppingai.service.policy.KnowledgePublicationPolicy;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 import cn.bugstack.ai.types.exception.AppException;
 import org.junit.jupiter.api.Test;

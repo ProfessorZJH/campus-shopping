@@ -1,4 +1,4 @@
-package cn.bugstack.ai.domain.shoppingai.model.aggregate;
+package cn.bugstack.ai.domain.shoppingai.service.policy;
 
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 import cn.bugstack.ai.types.enums.ResponseCode;

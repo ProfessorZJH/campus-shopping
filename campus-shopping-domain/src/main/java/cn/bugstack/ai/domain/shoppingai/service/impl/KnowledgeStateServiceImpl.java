@@ -1,7 +1,7 @@
 package cn.bugstack.ai.domain.shoppingai.service.impl;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IKnowledgeRepository;
-import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationPolicy;
+import cn.bugstack.ai.domain.shoppingai.service.policy.KnowledgePublicationPolicy;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
