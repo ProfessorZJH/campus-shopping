@@ -1,0 +1,113 @@
+{
+  "status": "EXECUTED_LOCAL_ONLY",
+  "sampleCount": 8,
+  "retrievalMode": "BM25 + local character n-gram + RRF",
+  "realEmbeddingModelTested": false,
+  "realLLMTested": false,
+  "qdrantTested": false,
+  "recallAt1": 1.0,
+  "recallAt5": 1.0,
+  "meanLatencyMs": 0.6058272500126805,
+  "details": [
+    {
+      "question": "自提凭证多久失效",
+      "expected": "pickup",
+      "retrieved": [
+        "pickup",
+        "close",
+        "refund"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "未提货可以退款吗",
+      "expected": "refund",
+      "retrieved": [
+        "refund",
+        "pickup",
+        "milk",
+        "pay",
+        "pen"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "苹果怎么保存",
+      "expected": "fruit",
+      "retrieved": [
+        "fruit",
+        "close",
+        "pay"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "考试黑色签字笔规格",
+      "expected": "pen",
+      "retrieved": [
+        "pen",
+        "member",
+        "pay",
+        "close",
+        "fruit"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "乳糖不耐受能喝这种牛奶吗",
+      "expected": "milk",
+      "retrieved": [
+        "milk",
+        "pen",
+        "member",
+        "refund",
+        "pay"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "付款会扣银行卡钱吗",
+      "expected": "pay",
+      "retrieved": [
+        "pay",
+        "refund",
+        "milk",
+        "close"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "未付款订单多久关闭",
+      "expected": "close",
+      "retrieved": [
+        "close",
+        "refund",
+        "pay",
+        "pen",
+        "fruit"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    },
+    {
+      "question": "店员能修改其他商户商品吗",
+      "expected": "member",
+      "retrieved": [
+        "member",
+        "pickup",
+        "pay",
+        "milk",
+        "refund"
+      ],
+      "hitAt1": true,
+      "hitAt5": true
+    }
+  ],
+  "limitation": "8条人工演示样本，不代表真实校园业务分布，也不是泛化性能承诺。"
+}

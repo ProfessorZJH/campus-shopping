@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-10-28T04:20:53.371047+00:00",
+  "commands": {
+    "java": {
+      "available": true,
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment (build 21.0.12.1+1-1-deb13u1-Debian)\nOpenJDK 64-Bit Server VM (build 21.0.12.1+1-1-deb13u1-Debian, mixed mode, sharing)\n"
+    },
+    "maven": {
+      "available": false,
+      "error": "executable not found"
+    },
+    "mysql": {
+      "available": false,
+      "error": "executable not found"
+    },
+    "docker": {
+      "available": false,
+      "error": "executable not found"
+    }
+  },
+  "networkDependencyDownload": "Earlier Maven Central download failed: Could not resolve host. No dependency artifacts were fetched.",
+  "browserNetwork": "Local HTTP navigation blocked by administrator policy; real browser offline contract tests are labeled separately.",
+  "mavenFullBuild": "NOT_RUN",
+  "mysqlIntegration": "NOT_RUN",
+  "dockerDeployment": "NOT_RUN",
+  "realLlmEmbeddingQdrant": "NOT_RUN"
+}

@@ -1,0 +1,77 @@
+{
+  "type": "Chromium真实Vue + Spring API契约替身；不是MySQL、Spring端到端",
+  "timestamp": "2026-10-29T08:16:27.801002+00:00",
+  "passed": [
+    "首页视觉内容与商品卡渲染",
+    "移动首页没有横向溢出",
+    "商品搜索过滤",
+    "分类筛选",
+    "商品规格弹层以及预览写操作禁用",
+    "AI页移动端无横向溢出",
+    "AI快捷提问可触发对话，示例与真实状态分离",
+    "推荐勾选与合计金额实时更新，预览不能伪造加购",
+    "商户商品管理列表和详情面板渲染",
+    "商户搜索与过滤",
+    "商品明细联动与规格切换",
+    "新建商品弹窗，预览禁用提交",
+    "管理端窄屏没有全页横向溢出（表格内允许滚动）",
+    "商品详情重新复核并通过真实路径PUT购物车",
+    "AI真实 chat -> proposal -> confirm API 契约及显式模型模式",
+    "库存补货真实API契约与幂等键",
+    "创建商品的分类、规格、价格以真实请求体传给Java接口",
+    "消费者登录弹层通过 Session 接口并更新登录主体",
+    "商户未登录可以进入认证并重新获取商户数据",
+    "所有写请求都携带CSRF",
+    "库存补货带独立幂等键",
+    "没有请求未定义的契约接口",
+    "Chromium 无未捕获 JavaScript 异常"
+  ],
+  "errors": [],
+  "apiWrites": [
+    {
+      "path": "/cart",
+      "method": "PUT",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/ai/chat",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/ai/proposals/proposal1/confirm",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/merchants/m1/stocks/sku0/replenish",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": true
+    },
+    {
+      "path": "/merchants/m1/products",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    }
+  ],
+  "unhandledRoutes": [],
+  "fullStackPassed": false,
+  "notes": "通过离线DOM加载，因容器浏览器HTTP/file导航被策略禁止，原图局部素材通过data URI提供给截图"
+}

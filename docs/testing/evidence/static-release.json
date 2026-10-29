@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-10-29T08:27:19.793552+00:00",
+  "type": "STATIC_SOURCE_AND_CONTRACT_ONLY",
+  "status": "PASS",
+  "counts": {
+    "javaSyntaxFiles": 265,
+    "internalInterfaceImplementations": 38,
+    "schemaTables": 33,
+    "mybatisMapperFiles": 9,
+    "mavenPomFiles": 8
+  },
+  "errors": [],
+  "mavenCompiled": false,
+  "springMySqlTested": false
+}
