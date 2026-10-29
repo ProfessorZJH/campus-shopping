@@ -60,6 +60,9 @@ class MerchantApplicationServiceTest {
         @Override public MerchantApplicationAggregate lock(String id) { return entries.values().stream().filter(a -> a.getApplicationId().equals(id)).findFirst().orElse(null); }
         @Override public void saveReview(MerchantApplicationAggregate application) { }
         @Override public java.util.List<MerchantApplicationAggregate> list(String user,String status,int offset,int limit) { return java.util.List.copyOf(entries.values()); }
+        @Override public java.util.List<MerchantApplicationAggregate> list(String user,String status,int offset,int limit,String q) { return list(user,status,offset,limit); }
+        @Override public long count(String user,String status) { return entries.size(); }
+        @Override public long count(String user,String status,String q) { return entries.size(); }
 
         private final Map<String, MerchantApplicationAggregate> entries = new ConcurrentHashMap<>();
 
