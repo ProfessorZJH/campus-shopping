@@ -1,6 +1,8 @@
 package cn.bugstack.ai.domain.shoppingai.service.impl;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IKnowledgeRepository;
+import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationPolicy;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
 import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeStateService;
@@ -88,9 +90,18 @@ public class KnowledgeStateServiceImpl implements IKnowledgeStateService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void publish(String id) { repository.publish(id); }
+    public void publish(String id) {
+        // 仓储在同一事务内锁住文档根，防止发布过程中被新的版本越过。
+        KnowledgePublicationVO snapshot = repository.lockPublication(id);
+        KnowledgePublicationPolicy.requirePublishable(snapshot);
+        repository.publish(snapshot);
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void withdraw(String id) { repository.withdraw(id); }
+    public void withdraw(String id) {
+        KnowledgePublicationVO snapshot = repository.lockPublication(id);
+        // 旧版本撤回不能清空另一个新版本的生效指针。
+        repository.withdraw(snapshot, KnowledgePublicationPolicy.isActive(snapshot));
+    }
 }

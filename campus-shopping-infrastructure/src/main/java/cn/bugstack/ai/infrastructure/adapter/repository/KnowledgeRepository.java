@@ -3,6 +3,7 @@ package cn.bugstack.ai.infrastructure.adapter.repository;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IKnowledgeRepository;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
 import cn.bugstack.ai.infrastructure.dao.po.DocumentRootPO;
 import cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO;
@@ -79,29 +80,37 @@ public class KnowledgeRepository implements IKnowledgeRepository {
     }
 
     @Override
-    public void publish(String id) {
+    public KnowledgePublicationVO lockPublication(String id) {
         KnowledgeDocumentPO document = dao.document(id);
         require(document != null, ResponseCode.NOT_FOUND);
+
+        // FOR UPDATE 锁定同一文档根后重新读取目标文档索引状态。
         DocumentRootPO root = dao.root(document.getRootId());
+        require(root != null, ResponseCode.NOT_FOUND);
         document = dao.document(id);
-        require("READY".equals(document.getIndexStatus()), ResponseCode.KNOWLEDGE_NOT_READY);
-        require(document.getVersion().equals(root.getVersionCounter()), ResponseCode.STATE_CONFLICT);
-        if (root.getActiveDocumentId() != null && !root.getActiveDocumentId().equals(id)) {
-            dao.documentState(root.getActiveDocumentId(), "WITHDRAWN");
-        }
-        dao.documentState(id, "PUBLISHED");
-        dao.activeDocument(root.getId(), id);
+        require(document != null, ResponseCode.NOT_FOUND);
+
+        return new KnowledgePublicationVO(document.getId(), root.getId(),
+                root.getActiveDocumentId(), document.getVersion(),
+                root.getVersionCounter(), document.getIndexStatus());
     }
 
     @Override
-    public void withdraw(String id) {
-        KnowledgeDocumentPO document = dao.document(id);
-        require(document != null, ResponseCode.NOT_FOUND);
-        DocumentRootPO root = dao.root(document.getRootId());
-        if (id.equals(root.getActiveDocumentId())) {
-            dao.activeDocument(root.getId(), null);
+    public void publish(KnowledgePublicationVO decision) {
+        String previous = decision.activeDocumentId();
+        if (previous != null && !previous.equals(decision.documentId())) {
+            dao.documentState(previous, "WITHDRAWN");
         }
-        dao.documentState(id, "WITHDRAWN");
+        dao.documentState(decision.documentId(), "PUBLISHED");
+        dao.activeDocument(decision.rootId(), decision.documentId());
+    }
+
+    @Override
+    public void withdraw(KnowledgePublicationVO decision, boolean deactivate) {
+        if (deactivate) {
+            dao.activeDocument(decision.rootId(), null);
+        }
+        dao.documentState(decision.documentId(), "WITHDRAWN");
     }
 
     private KnowledgeBaseVO convertBase(KnowledgeBasePO po) {
