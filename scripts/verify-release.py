@@ -2,17 +2,24 @@
 """发布静态一致性检查：真实JDK语法树、内部接口、Mapper类型、DDL字段和文档链接。
 这里不加载Spring/MyBatis，也不把检查结果当作完整Maven编译或数据库测试。
 """
-import ast,datetime,json,re,subprocess,tempfile,xml.etree.ElementTree as ET
+import ast,datetime,json,os,re,subprocess,tempfile,xml.etree.ElementTree as ET
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 errors=[];counts={}
 def need(condition,message):
     if not condition:errors.append(message)
 
+def project_files():
+    excluded = {'.git', '.idea', 'var', 'artifacts', 'target', 'node_modules', 'dist', '__pycache__', '.pytest_cache', '.venv', 'venv'}
+    for directory, children, names in os.walk(ROOT):
+        children[:] = [name for name in children if name not in excluded]
+        for name in names:
+            yield Path(directory)/name
+
 def main():
     with tempfile.TemporaryDirectory(prefix='campus-source-index-') as temp:
-        subprocess.run(['javac','--release','17','-d',temp,str(ROOT/'scripts/SourceIndex.java')],check=True)
-        output=subprocess.check_output(['java','-cp',temp,'SourceIndex',str(ROOT)],text=True,encoding='utf-8')
+        subprocess.run(['javac','-encoding','UTF-8','--release','17','-d',temp,str(ROOT/'scripts/SourceIndex.java')],check=True)
+        output=subprocess.check_output(['java','-Dfile.encoding=UTF-8','-cp',temp,'SourceIndex',str(ROOT)],text=True,encoding='utf-8')
     classes={};imports={};methods={};fields={}
     for line in output.splitlines():
         a=line.split('|')
@@ -56,7 +63,7 @@ def main():
     counts['internalInterfaceImplementations']=checked
     for name in classes:
         if name.startswith('cn.bugstack.ai.api.I') and name.endswith('Api'):need(name in implemented,name+' 没有Trigger实现')
-    schema=(ROOT/'campus-shopping-app/src/main/resources/schema.sql').read_text()
+    schema=(ROOT/'campus-shopping-app/src/main/resources/schema.sql').read_text(encoding='utf-8')
     tables={}
     for name,body in re.findall(r'CREATE TABLE IF NOT EXISTS\s+(\w+)\s*\((.*?)\)\s*ENGINE',schema,re.S|re.I):
         parts=[];level=0;start=0
@@ -94,23 +101,25 @@ def main():
                 # recent 是消息子查询别名，不是实体表。
                 if table=='recent':continue
                 need(table in tables,str(path)+' 引用未知数据表 '+table)
-    poms=list(ROOT.glob('**/pom.xml'));counts['mavenPomFiles']=len(poms)
+    files=list(project_files())
+    poms=[p for p in files if p.name == 'pom.xml'];counts['mavenPomFiles']=len(poms)
     for p in poms:ET.parse(p)
-    for p in ROOT.rglob('*.py'):
-        if 'target' not in p.parts and '__pycache__' not in p.parts:ast.parse(p.read_text(encoding='utf-8'),filename=str(p))
-    for p in ROOT.rglob('*.md'):
-        if 'target' in p.parts or '.git' in p.parts:continue
+    for p in files:
+        if p.suffix == '.py':ast.parse(p.read_text(encoding='utf-8'),filename=str(p))
+    for p in (p for p in files if p.suffix == '.md'):
         text=p.read_text(encoding='utf-8')
         need(sum(1 for line in text.splitlines() if line.startswith('```'))%2==0,str(p)+' 代码围栏不配对')
         for link in re.findall(r'\[[^\]]*\]\(([^)]+)\)',text):
             if link.startswith(('https:','http:','mailto:','#','file:')):continue
             dest=link.split('#')[0]
             if dest:need((p.parent/dest).exists(),str(p)+' 文档链接缺失 '+dest)
-    need(not list(ROOT.glob('**/GlobalExceptionHandler.java')),'意外新增全局业务异常处理器')
-    need(not list(ROOT.glob('**/IPasswordHasherPort.java')),'密码本地处理被错误定义为远程Port')
+    need(not any(p.name == 'GlobalExceptionHandler.java' for p in files),'意外新增全局业务异常处理器')
+    need(not any(p.name == 'IPasswordHasherPort.java' for p in files),'密码本地处理被错误定义为远程Port')
     report={'timestamp':datetime.datetime.now(datetime.timezone.utc).isoformat(),'type':'STATIC_SOURCE_AND_CONTRACT_ONLY','status':'PASS' if not errors else 'FAIL','counts':counts,'errors':errors,'mavenCompiled':False,'springMySqlTested':False}
     out=ROOT/'docs/testing/evidence/static-release.json';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False,indent=2))
     if errors:raise SystemExit(1)
 
-if __name__=='__main__':main()
+if __name__=='__main__':
+    main()
+    subprocess.run([os.sys.executable, '-B', str(ROOT/'scripts/verify-ddd-boundaries.py')],check=True)

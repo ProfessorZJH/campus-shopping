@@ -1,14 +1,16 @@
 package cn.bugstack.ai.domain.shoppingai.adapter.repository;
 
-import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
-import java.util.List;
+import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import java.time.*;
+import java.util.*;
 
-/** 本地会话与消息持久化，按真实用户主体隔离访问。 */
+/** 按业务能力限定的领域端口。 */
 public interface IConversationRepository {
     void createConversation(ConversationVO conversation);
     ConversationVO conversation(String id);
     List<ConversationVO> conversations(String user);
     List<MessageVO> messages(String conversation, int limit);
     void append(MessageVO message);
+    void insertProposal(ProposalVO proposal);
 }

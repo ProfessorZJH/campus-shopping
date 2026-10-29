@@ -1,3 +1,4 @@
+from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 import shutil
 """Chromium + 真实 Vue：验证服务端 q/total/分页在前端正确使用。
@@ -76,7 +77,7 @@ with sync_playwright() as p:
         assert f.seen[-1][1] == term.lower() and f.seen[-1][4] == 1, f.seen
         assert f.seen[-1][2] == 1
         checks.append(path+' 远端跨页搜索与准确 total')
-        page.close()
+        close_page(page)
     assert not ERRORS,ERRORS
-    browser.close()
+    close_browser(browser)
 print('PASSED',len(checks),'UI SEARCH CONTRACT CHECKS',json.dumps(checks,ensure_ascii=False))

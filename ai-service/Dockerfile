@@ -1,7 +1,7 @@
-FROM python:3.12-slim
+FROM python:3.11-slim-bookworm
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements.lock .
+RUN pip install --no-cache-dir --require-hashes -r requirements.lock
 COPY app ./app
 RUN useradd -r -u 10001 appuser && mkdir -p /app/var && chown -R appuser /app
 USER appuser

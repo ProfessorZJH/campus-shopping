@@ -1,16 +1,28 @@
-import {go,store,preview,notify,replaceSession,loadPublic} from '../services/store.js';
-import {api,resetCsrf} from '../services/api.js';
+import { go, store, preview, notify, replaceSession, loadPublic } from '../services/store.js';
+import { api, resetCsrf } from '../services/api.js';
 import AuthDialog from './AuthDialog.js';
-const {ref}=Vue;
+const { ref } = Vue;
 export default {
-  name:'ConsumerShell',components:{AuthDialog},
-  props:{active:{type:String,default:'home'}},
-  setup(){
-    const loginOpen=ref(false);
-    async function logout(){try{await api('/auth/logout',{method:'POST'});resetCsrf();replaceSession(null);notify('已退出');go('/');loadPublic();}catch(err){notify(err.message);}}
-    return {go,store,preview,loginOpen,logout,loadPublic};
+  name: 'ConsumerShell',
+  components: { AuthDialog },
+  props: { active: { type: String, default: 'home' } },
+  setup() {
+    const loginOpen = ref(false);
+    async function logout() {
+      try {
+        await api('/auth/logout', { method: 'POST' });
+        resetCsrf();
+        replaceSession(null);
+        notify('已退出');
+        go('/');
+        loadPublic();
+      } catch (err) {
+        notify(err.message);
+      }
+    }
+    return { go, store, preview, loginOpen, logout, loadPublic };
   },
-  template:`
+  template: `
     <div class="consumer-shell">
       <div class="consumer-width">
         <header class="consumer-header">
@@ -32,5 +44,5 @@ export default {
         </div>
       </nav>
       <AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="loadPublic" />
-    </div>`
+    </div>`,
 };

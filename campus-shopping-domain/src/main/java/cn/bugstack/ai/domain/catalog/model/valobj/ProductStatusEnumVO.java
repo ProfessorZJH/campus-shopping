@@ -1,19 +1,32 @@
 package cn.bugstack.ai.domain.catalog.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** 商品发布状态，库存可售量由库存领域独立判定。 */
+/** 商品发布状态；code 保持已有数据库和 HTTP 协议值。 */
 public enum ProductStatusEnumVO {
-    DRAFT, PUBLISHED, UNPUBLISHED;
+    DRAFT("草稿"),
+    PUBLISHED("已上架"),
+    UNPUBLISHED("已下架");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    ProductStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static ProductStatusEnumVO fromCode(String code) {
-        for (ProductStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.STATE_CONFLICT);
+        return EnumValues.stored(ProductStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(ProductStatusEnumVO.class, code);
     }
 }

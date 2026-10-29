@@ -46,3 +46,8 @@ var/
 *.pyc
 *.log
 .playwright/
+/release-manifest.json
+**/node_modules/
+**/dist/
+**/.venv/
+**/venv/

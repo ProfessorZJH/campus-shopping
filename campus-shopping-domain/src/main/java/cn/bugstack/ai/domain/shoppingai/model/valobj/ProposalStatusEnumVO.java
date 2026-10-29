@@ -1,19 +1,32 @@
 package cn.bugstack.ai.domain.shoppingai.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** AI 提案状态；确认后不可再次更换选择。 */
+/** 导购提案生命周期；code 保持已有数据库和 HTTP 协议值。 */
 public enum ProposalStatusEnumVO {
-    PENDING, CONFIRMED, REJECTED;
+    PENDING("待确认"),
+    CONFIRMED("已确认"),
+    REJECTED("已拒绝");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    ProposalStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static ProposalStatusEnumVO fromCode(String code) {
-        for (ProposalStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.STATE_CONFLICT);
+        return EnumValues.stored(ProposalStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(ProposalStatusEnumVO.class, code);
     }
 }

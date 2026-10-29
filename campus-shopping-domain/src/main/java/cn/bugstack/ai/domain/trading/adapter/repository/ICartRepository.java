@@ -1,9 +1,12 @@
 package cn.bugstack.ai.domain.trading.adapter.repository;
 
-import cn.bugstack.ai.domain.trading.model.valobj.CartItemVO;
-import java.util.List;
+import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
+import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
+import cn.bugstack.ai.domain.trading.model.valobj.*;
+import java.time.*;
+import java.util.*;
 
-/** 本地购物车持久化抽象；不暴露订单和售后数据访问。 */
+/** 按业务能力限定的领域端口。 */
 public interface ICartRepository {
     void lockCart(String user);
     List<CartItemVO> cart(String user);

@@ -1,30 +1,31 @@
 package cn.bugstack.ai.cases.catalog.impl;
 
+import static cn.bugstack.ai.types.common.Checks.require;
+
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
-import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
-import cn.bugstack.ai.domain.merchant.model.valobj.MerchantStatusEnumVO;
+import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
-import cn.bugstack.ai.domain.merchant.service.IMerchantService;
-import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
-import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.inventory.model.valobj.*;
+import cn.bugstack.ai.domain.inventory.service.IInventoryService;
+import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
+import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import static cn.bugstack.ai.types.common.Checks.require;
+import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.*;
 
 /** 新增 SKU 与初始化库存同事务，禁止跨商户操作；停用后可受控下架。 */
 @Service
 public class CatalogCaseImpl implements ICatalogCase {
+
     private final ICatalogService catalog;
     private final IInventoryService inventory;
     private final IMerchantService merchants;
     private final IAccessService access;
+
     public CatalogCaseImpl(ICatalogService catalog, IInventoryService inventory, IMerchantService merchants, IAccessService access) {
         this.catalog = catalog;
         this.inventory = inventory;
@@ -33,7 +34,6 @@ public class CatalogCaseImpl implements ICatalogCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    /** 建商品前校验商户权限与营业状态；SKU 对应库存行也由本地事务同步初始化。 */
     public ProductAggregate create(String actor, String merchant, ProductCreateEntity command) {
         access.requirePermission(actor, merchant, "product.write");
         MerchantVO m = merchants.requireActiveForNewTrade(merchant);
@@ -59,8 +59,7 @@ public class CatalogCaseImpl implements ICatalogCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void edit(String actor, String merchant, String product, String title, String desc, String category, String image,
-        long version) {
+    public void edit(String actor, String merchant, String product, String title, String desc, String category, String image, long version) {
         access.requirePermission(actor, merchant, "product.write");
         merchants.requireActiveForNewTrade(merchant);
         catalog.edit(merchant, product, title, desc, category, image, version);
@@ -81,7 +80,6 @@ public class CatalogCaseImpl implements ICatalogCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    /** 补货时须验证权限与 SKU 所属商户，重复请求使用业务键防止加库存两次。 */
     public void replenish(String actor, String merchant, String sku, int quantity, String key) {
         access.requirePermission(actor, merchant, "stock.replenish");
         MerchantVO m = merchants.requireActiveForNewTrade(merchant);
@@ -112,16 +110,14 @@ public class CatalogCaseImpl implements ICatalogCase {
         return catalog.searchSorted(merchant, query, category, true, page, size, sort);
     }
 
-    public List<ProductAggregate> managedProductsSorted(String actor, String merchant, String q, String cat, String status,
-        int page, int size, String sort) {
+    public List<ProductAggregate> managedProductsSorted(String actor, String merchant, String q, String cat, String status, int page, int size, String sort) {
         access.requirePermission(actor, merchant, "product.read");
         return catalog.searchManagedSorted(merchant, q, cat, status, page, size, sort);
     }
-    /** 公开详情实时复核上架与商户 ACTIVE，不能只信页面缓存或搜索结果。 */
+
     public ProductAggregate publicDetail(String id) {
         ProductAggregate p = catalog.find(id);
-        require(p.getStatusEnum() == ProductStatusEnumVO.PUBLISHED && merchants.find(p.getMerchantId()).statusEnum() == MerchantStatusEnumVO
-            .ACTIVE, ResponseCode.PRODUCT_UNAVAILABLE);
+        require("PUBLISHED".equals(p.getStatus()) && "ACTIVE".equals(merchants.find(p.getMerchantId()).status()), ResponseCode.PRODUCT_UNAVAILABLE);
         return p;
     }
 
@@ -133,8 +129,11 @@ public class CatalogCaseImpl implements ICatalogCase {
     public Map<String, SkuOfferVO> stockOffers(String actor, String merchant, List<String> skuIds) {
         access.requirePermission(actor, merchant, "product.read");
         if (skuIds.isEmpty()) return Map.of();
-        return catalog.offers(skuIds, false, false).stream().filter(o -> merchant.equals(o.merchantId())).collect(java.util.stream
-            .Collectors.toMap(SkuOfferVO::skuId, o -> o));
+        return catalog
+            .offers(skuIds, false, false)
+            .stream()
+            .filter(o -> merchant.equals(o.merchantId()))
+            .collect(java.util.stream.Collectors.toMap(SkuOfferVO::skuId, o -> o));
     }
 
     public long countStocks(String actor, String merchant) {
@@ -160,8 +159,7 @@ public class CatalogCaseImpl implements ICatalogCase {
         return catalog.count(merchant, "", null, false);
     }
 
-    public List<ProductAggregate> managedProductsFiltered(String actor, String merchant, String q, String category, String status,
-        int page, int size) {
+    public List<ProductAggregate> managedProductsFiltered(String actor, String merchant, String q, String category, String status, int page, int size) {
         access.requirePermission(actor, merchant, "product.read");
         return catalog.searchManaged(merchant, q, category, status, page, size);
     }
@@ -176,9 +174,9 @@ public class CatalogCaseImpl implements ICatalogCase {
         return catalog.count(merchant, query, null, false);
     }
 
-    public String image(String actor, String merchant, byte[]bytes) {
+    public String image(String actor, String merchant, byte[] bytes) {
         access.requirePermission(actor, merchant, "product.write");
-        require(merchants.find(merchant).statusEnum() == MerchantStatusEnumVO.ACTIVE, ResponseCode.MERCHANT_SUSPENDED);
+        require("ACTIVE".equals(merchants.find(merchant).status()), ResponseCode.MERCHANT_SUSPENDED);
         return catalog.storeImage(bytes);
     }
 

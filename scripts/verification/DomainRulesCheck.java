@@ -70,7 +70,7 @@ public final class DomainRulesCheck {
         check("自提凭证只保存摘要",!f.view().credentialHash().equals("long-random-test-token")&&f.view().credentialHash().length()==64);
         fails("错误令牌不能核销",ResponseCode.PICKUP_INVALID,()->f.verify("another",NOW));
         check("有效令牌首次核销成功",f.verify("long-random-test-token",NOW));check("相同凭证核销重试不再次出库",!f.verify("long-random-test-token",NOW.plusSeconds(120)));
-        fails("已交付自提任务不能取消",ResponseCode.ORDER_STATE_INVALID,f::cancel);
+        fails("已交付自提任务不能取消",ResponseCode.PICKUP_STATE_INVALID,f::cancel);
         PickupAggregate changed=pickup();changed.ready();changed.issue("old-token",NOW.plusSeconds(60));changed.issue("new-token",NOW.plusSeconds(60));
         fails("重新签发令牌使旧令牌无效",ResponseCode.PICKUP_INVALID,()->changed.verify("old-token",NOW));
         fails("凭证到期边界拒绝核销",ResponseCode.PICKUP_INVALID,()->changed.verify("new-token",NOW.plusSeconds(60)));
@@ -87,7 +87,7 @@ public final class DomainRulesCheck {
         fails("拒绝后不能再确认提案",ResponseCode.STATE_CONFLICT,()->c.confirm("u1","selection",NOW));
         check("指纹编码避免分隔歧义",!Fingerprints.of("a","bc").equals(Fingerprints.of("ab","c")));
         check("同一输入指纹稳定",Fingerprints.of("m","sku",2,100).equals(Fingerprints.of("m","sku",2,100)));
-        Throwable cause=new IllegalStateException("private-system-error");AppException ex=new AppException("A1","公开提示",cause);
+        Throwable cause=new IllegalStateException("private-system-error");AppException ex=new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode(),"公开提示",cause);
         check("业务异常保留消息与原始原因",ex.getMessage().equals("公开提示")&&ex.getCause()==cause);
         for(String label:PASSED)System.out.println("PASS "+label);
         System.out.println("PRODUCTION_DOMAIN_CHECKS="+PASSED.size());

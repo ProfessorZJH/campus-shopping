@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from types import SimpleNamespace
 from playwright.sync_api import sync_playwright, expect
+from browser_transport import track_bindings, close_browser
 
 ROOT=Path(__file__).resolve().parents[2]
 STATIC=ROOT/'campus-shopping-app/src/main/resources/static'
@@ -205,6 +206,7 @@ def main():
                 fixture.handle(SimpleNamespace(request=req,fulfill=fulfill))
                 return result
             page.expose_binding('__contractApi',offline_call)
+            track_bindings(page)
             page.on('dialog',lambda d:d.accept())
             page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><title>校园集市前端契约测试</title></head><body><div id="app"></div></body></html>')
             page.add_style_tag(path=str(STATIC/'assets/app.css'))
@@ -287,7 +289,7 @@ def main():
             check('下单与补货均携带幂等键',all(x['hasIdempotency'] for x in fixture.writes if x['path']=='/orders' or x['path'].endswith('/replenish')))
             check('未调用未定义契约接口',not fixture.unhandled)
             check('无浏览器JavaScript未捕获错误',not errors)
-            browser.close()
+            close_browser(browser)
     finally:
         server.shutdown()
         result={'testType':'真实Chromium + 真实Vue；后端为接口契约替身，不是Java/MySQL端到端','timestamp':datetime.now(timezone.utc).isoformat(),'passedChecks':checks,'browserErrors':errors,'unhandledMockRoutes':fixture.unhandled,'writes':fixture.writes,'realJavaMySqlTested':False,'browserTransport':'离线DOM加载，本地HTTP导航被环境策略禁止；fetch替换为契约替身'}

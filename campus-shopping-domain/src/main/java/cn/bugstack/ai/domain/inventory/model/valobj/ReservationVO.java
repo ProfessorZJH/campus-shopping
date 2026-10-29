@@ -1,12 +1,15 @@
 package cn.bugstack.ai.domain.inventory.model.valobj;
 
-/** 订单与 SKU 唯一的预占记录；状态只允许预占、释放、消耗。 */
+import java.time.*;
+import java.util.*;
+
+/** 按订单与 SKU 唯一的预占记录。 */
 public record ReservationVO(String orderId, String storeId, String skuId, int quantity, String status) {
     public ReservationVO {
         ReservationStatusEnumVO.fromCode(status);
     }
 
-    public ReservationStatusEnumVO statusEnum() {
+    public ReservationStatusEnumVO state() {
         return ReservationStatusEnumVO.fromCode(status);
     }
 }

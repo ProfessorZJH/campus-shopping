@@ -12,15 +12,19 @@ const paths = {
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-7 8-7s8 2 8 7"/>',
   map: '<path d="m3 6 6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/>',
   pin: '<path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
-  store: '<path d="M3 9 5 3h14l2 6M3 9v11h18V9M9 20v-7h6v7"/><path d="M2 9c0 3 4 3 5 0 1 3 4 3 5 0 1 3 4 3 5 0 1 3 5 3 5 0"/>',
+  store:
+    '<path d="M3 9 5 3h14l2 6M3 9v11h18V9M9 20v-7h6v7"/><path d="M2 9c0 3 4 3 5 0 1 3 4 3 5 0 1 3 4 3 5 0 1 3 5 3 5 0"/>',
   grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   package: '<path d="m12 2 9 5-9 5-9-5zM3 7v10l9 5 9-5V7M12 12v10"/>',
   box: '<rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h7"/>',
-  clipboard: '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 11h8M8 15h8"/>',
+  clipboard:
+    '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M9 5V3h6v2M8 11h8M8 15h8"/>',
   scan: '<path d="M4 8V4h4M16 4h4v4M20 16v4h-4M8 20H4v-4M4 12h16"/>',
-  users: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M19 20v-2a6 6 0 0 0-3-5"/>',
+  users:
+    '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M19 20v-2a6 6 0 0 0-3-5"/>',
   book: '<path d="M12 6c-3-3-7-3-10-2v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 2zM12 6v15"/>',
-  settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
+  settings:
+    '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
   filter: '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   minus: '<path d="M5 12h14"/>',
@@ -37,17 +41,32 @@ const paths = {
   shield: '<path d="m12 2 9 4v6c0 5-3 8-9 10-6-2-9-5-9-10V6z"/><path d="m8 12 3 3 5-6"/>',
   menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
   smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14c2 2 6 2 8 0M8 9h.01M16 9h.01"/>',
-  circleHelp: '<circle cx="12" cy="12" r="9"/><path d="M9.8 9.5a2.5 2.5 0 0 1 4.3 1.6c0 1.7-2.1 2-2.1 3.4M12 18h.01"/>',
+  circleHelp:
+    '<circle cx="12" cy="12" r="9"/><path d="M9.8 9.5a2.5 2.5 0 0 1 4.3 1.6c0 1.7-2.1 2-2.1 3.4M12 18h.01"/>',
   alert: '<path d="m12 2 10 18H2zM12 8v5M12 17h.01"/>',
   more: '<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
   logout: '<path d="M9 3H4v18h5M13 7l5 5-5 5M7 12h11"/>',
-}
+};
 export default {
   name: 'UiIcon',
-  props: { name: {type:String, required:true}, size: {type:[Number,String],default:20}, stroke:{type:Number,default:1.85} },
-  setup(props){
-    return ()=> Vue.h('svg', { viewBox:'0 0 24 24', width:props.size, height:props.size,
-      'aria-hidden':'true', fill:'none', stroke:'currentColor', 'stroke-width':props.stroke,
-      'stroke-linecap':'round', 'stroke-linejoin':'round', innerHTML:paths[props.name]||paths.circleHelp });
-  }
+  props: {
+    name: { type: String, required: true },
+    size: { type: [Number, String], default: 20 },
+    stroke: { type: Number, default: 1.85 },
+  },
+  setup(props) {
+    return () =>
+      Vue.h('svg', {
+        viewBox: '0 0 24 24',
+        width: props.size,
+        height: props.size,
+        'aria-hidden': 'true',
+        fill: 'none',
+        stroke: 'currentColor',
+        'stroke-width': props.stroke,
+        'stroke-linecap': 'round',
+        'stroke-linejoin': 'round',
+        innerHTML: paths[props.name] || paths.circleHelp,
+      });
+  },
 };

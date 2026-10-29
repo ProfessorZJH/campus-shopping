@@ -5,10 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
+    "build": "node scripts/build.mjs",
+    "format": "prettier --config .prettierrc.json --write \"src/**/*.js\" \"scripts/*.mjs\" \"../campus-shopping-*/src/{main,test}/java/**/*.java\"",
+    "format:check": "prettier --config .prettierrc.json --check \"src/**/*.js\" \"scripts/*.mjs\" \"../campus-shopping-*/src/{main,test}/java/**/*.java\"",
     "preview": "vite preview --host 127.0.0.1"
   },
   "devDependencies": {
-    "vite": "^6.3.5"
+    "@vue/compiler-dom": "3.5.13",
+    "acorn": "8.14.1",
+    "magic-string": "0.30.17",
+    "prettier": "3.9.10",
+    "prettier-plugin-java": "2.11.0",
+    "vite": "6.4.5"
   }
 }

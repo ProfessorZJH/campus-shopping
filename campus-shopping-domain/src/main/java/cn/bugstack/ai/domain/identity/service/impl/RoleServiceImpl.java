@@ -1,5 +1,7 @@
 package cn.bugstack.ai.domain.identity.service.impl;
 
+import static cn.bugstack.ai.types.common.Checks.require;
+
 import cn.bugstack.ai.domain.identity.adapter.repository.IAccessRepository;
 import cn.bugstack.ai.domain.identity.adapter.repository.IRoleRepository;
 import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
@@ -9,16 +11,13 @@ import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.identity.service.IRoleService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import static cn.bugstack.ai.types.common.Checks.require;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 商户角色治理领域服务。
@@ -27,6 +26,7 @@ import static cn.bugstack.ai.types.common.Checks.require;
  */
 @Service
 public class RoleServiceImpl implements IRoleService {
+
     private final IRoleRepository roles;
     private final IAccessRepository members;
     private final IAccessService access;
@@ -48,16 +48,25 @@ public class RoleServiceImpl implements IRoleService {
     }
 
     private Set<String> validPermissions(Set<String> values) {
-        require(values != null && !values.isEmpty()
-                        && values.size() <= MerchantPermissions.LABELS.size(),
-                ResponseCode.ILLEGAL_PARAMETER);
-        require(values.stream().allMatch(MerchantPermissions::isGrantable),
-                ResponseCode.AUTH_FORBIDDEN);
+        require(values != null && !values.isEmpty() && values.size() <= MerchantPermissions.LABELS.size(), ResponseCode.ILLEGAL_PARAMETER);
+        require(values.stream().noneMatch(java.util.Objects::isNull), ResponseCode.ILLEGAL_PARAMETER);
+        require(values.stream().allMatch(value -> value != null && MerchantPermissions.isGrantable(value)), ResponseCode.AUTH_FORBIDDEN);
         Map<String, String> dependencies = Map.of(
-                "product.write", "product.read", "stock.replenish", "stock.read",
-                "order.prepare", "order.read", "pickup.verify", "order.read",
-                "aftersale.review", "aftersale.read", "knowledge.manage", "knowledge.read",
-                "dashboard.read", "order.read");
+            "product.write",
+            "product.read",
+            "stock.replenish",
+            "stock.read",
+            "order.prepare",
+            "order.read",
+            "pickup.verify",
+            "order.read",
+            "aftersale.review",
+            "aftersale.read",
+            "knowledge.manage",
+            "knowledge.read",
+            "dashboard.read",
+            "order.read"
+        );
         for (var pair : dependencies.entrySet()) {
             if (values.contains(pair.getKey())) {
                 require(values.contains(pair.getValue()), ResponseCode.ILLEGAL_PARAMETER);
@@ -68,15 +77,12 @@ public class RoleServiceImpl implements IRoleService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public MerchantRoleVO saveRole(String actor, String merchantId, String code,
-                                   String name, Set<String> requested) {
+    public MerchantRoleVO saveRole(String actor, String merchantId, String code, String name, Set<String> requested) {
         access.requirePermission(actor, merchantId, MerchantPermissions.ROLE_MANAGE);
         String label = Checks.text(name, "角色名称", 40);
         Set<String> permissions = validPermissions(requested);
         boolean creating = code == null || code.isBlank();
-        String roleCode = creating
-                ? "R" + UUID.randomUUID().toString().replace("-", "").substring(0, 12)
-                : code;
+        String roleCode = creating ? "R" + UUID.randomUUID().toString().replace("-", "").substring(0, 12) : code;
         require(roleCode.matches("R[a-f0-9]{12}"), ResponseCode.ILLEGAL_PARAMETER);
         if (creating) {
             roles.createRole(merchantId, roleCode, label, permissions);
@@ -84,8 +90,7 @@ public class RoleServiceImpl implements IRoleService {
             require(roles.customRole(merchantId, roleCode, true) != null, ResponseCode.NOT_FOUND);
             roles.updateRole(merchantId, roleCode, label, permissions);
         }
-        access.audit(actor, creating ? "ROLE_CREATED" : "ROLE_CHANGED",
-                roleCode, merchantId, label);
+        access.audit(actor, creating ? "ROLE_CREATED" : "ROLE_CHANGED", roleCode, merchantId, label);
         return new MerchantRoleVO(roleCode, label, permissions, false);
     }
 
@@ -109,10 +114,8 @@ public class RoleServiceImpl implements IRoleService {
             require(roles.customRole(merchantId, roleCode, true) != null, ResponseCode.NOT_FOUND);
         }
         MembershipVO member = members.member(targetUserId, merchantId, true);
-        require(member != null && "ACTIVE".equals(member.status())
-                        && !"OWNER".equals(member.role()), ResponseCode.AUTH_FORBIDDEN);
+        require(member != null && "ACTIVE".equals(member.status()) && !"OWNER".equals(member.role()), ResponseCode.AUTH_FORBIDDEN);
         roles.assignRole(merchantId, targetUserId, roleCode);
-        access.audit(actor, "MEMBER_ROLE_CHANGED", targetUserId, merchantId,
-                "设置角色 " + roleCode);
+        access.audit(actor, "MEMBER_ROLE_CHANGED", targetUserId, merchantId, "设置角色 " + roleCode);
     }
 }

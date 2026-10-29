@@ -9,12 +9,14 @@ import json
 import re
 import sys
 from pathlib import Path
+from api_contract_rules import merge_request_rules, request_schema
+from api_response_rules import merge_response_rules, success_data, query_enum
 
 ROOT = Path(__file__).resolve().parents[1]
 CTRL = ROOT / 'campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http'
 DTO = ROOT / 'campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto'
 DEST = ROOT / 'docs/api'
-RE = re.compile(r'@(Get|Post|Put|Patch|Delete)Mapping\("([^"\n]+)"\)')
+RE = re.compile(r'@(Get|Post|Put|Patch|Delete)Mapping\(\s*"([^"\n]+)"\s*\)')
 WRITES = {'POST', 'PUT', 'PATCH', 'DELETE'}
 ANON = {'GET /api/v1/auth/csrf', 'GET /api/v1/categories',
         'GET /api/v1/products', 'GET /api/v1/products/page',
@@ -43,7 +45,7 @@ def split_top(src, sep=','):
 
 
 def java_type_schema(text):
-    text = text.strip()
+    text = re.sub(r'\s+', '', text).replace('java.util.', '')
     if text.startswith('List<') or text.startswith('Set<'):
         return {'type': 'array', 'items': java_type_schema(text[text.index('<')+1:-1])}
     if text.startswith('PageResponseDTO<'):
@@ -69,7 +71,7 @@ def dto_schemas():
     for file in sorted(DTO.glob('*.java')):
         s=file.read_text(encoding='utf-8')
         props={}
-        for type_, name in re.findall(r'\bprivate\s+(?!static\b)([\w.<>?, ]+)\s+([A-Za-z_]\w*)\s*;',s):
+        for type_, name in re.findall(r'\bprivate\s+(?!static\b)([\w.<>?,\s]+?)\s+([A-Za-z_]\w*)\s*;',s):
             props[name] = java_type_schema(type_)
         if re.search(r'\brecord\s+'+re.escape(file.stem)+r'\s*[<(]',s):
             mt=re.search(r'\brecord\s+'+re.escape(file.stem)+r'[^\(]*\(([^)]*)\)',s,re.S)
@@ -79,14 +81,37 @@ def dto_schemas():
                     if len(a)>=2:props[a[-1]]=java_type_schema(' '.join(a[:-1]))
         if props:
             schemas[file.stem]={'type':'object','properties':props, 'description':'来自 '+file.relative_to(ROOT).as_posix()+'（字段类型来自源码；必填以领域规则为准）'}
+    merge_request_rules(schemas, ROOT)
+    merge_response_rules(schemas, ROOT)
     return schemas
 
 
+def error_codes():
+    source = (ROOT/'campus-shopping-types/src/main/java/cn/bugstack/ai/types/enums/ResponseCode.java').read_text('utf-8')
+    values = re.findall(r'\b([A-Z][A-Z_0-9]+)\s*\(\s*"([A-Z0-9]+)",\s*"([^"]+)"\s*\)', source)
+    assert values and len({code for _, code, _ in values}) == len(values), '错误码重复或读取失败'
+    return values
+
+
+def error_codes_md():
+    lines = ['# R1 业务与协议错误码', '',
+             '> 由 `python scripts/generate-api-contract.py` 从 `ResponseCode.java` 生成，CI 检查漂移。', '',
+             '| 枚举名 | 业务码 | 安全提示 |', '|---|---|---|']
+    lines += [f'| `{name}` | `{code}` | {info} |' for name, code, info in error_codes()]
+    lines += ['', 'Domain/Case 抛出 AppException，异常穿过事务代理后由 Controller 内部捕获；禁止在事务方法内吞异常返回成功。', '',
+              '数据库唯一约束冲突在明确的仓储写操作处翻译：用户名 A0001、同商户角色重名 M0006；其他 SQL 故障仍为系统失败。', '',
+              'ApiProtocolExceptionResolver 只适配 /api 下的 MVC 协议错误，不处理 AppException 或普通运行异常；没有新增全局业务异常处理器。',
+              'Security 独立处理 401/403，账号状态服务不可用返回 503/0001；入口限流为 429/A0007。', '',
+              '协议映射：400/0002、404/G0001、405/G0005、406/G0007、413/G0004、415/G0006；业务失败通常仍为 HTTP 200。',
+              '请求体上限 3,000,000 字节（包括分块上传）；文件解码后上限 2,000,000 字节。错误响应不回显正文、SQL 或异常堆栈。', '']
+    return '\n'.join(lines)
+
+
 def parse_method(src, index):
-    m = re.search(r'\bpublic\s+(Response<[^\n{]+?>)\s+(\w+)\s*\(', src[index:])
+    m = re.search(r'\bpublic\s+(Response<[^{};]+?>)\s+(\w+)\s*\(', src[index:])
     if not m or m.start()>450:
         raise ValueError('映射注解后找不到方法：'+src[index:index+120])
-    response=m.group(1); name=m.group(2)
+    response=re.sub(r'\s+', '', m.group(1)); name=m.group(2)
     at=index+m.end(); level=1; end=at
     while level and end<len(src):
         if src[end]=='(':level+=1
@@ -102,14 +127,14 @@ def parse_method(src, index):
             inputs.append({'in':'path','name':var,'type':tokens[-2],'required':True})
         elif '@RequestParam' in part:
             default=re.search(r'defaultValue\s*=\s*"([^"]*)"',part)
-            optional='required=false' in part or bool(default)
+            optional=bool(re.search(r'required\s*=\s*false',part)) or bool(default)
             inputs.append({'in':'query','name':var,'type':tokens[-2],'required':not optional,
                            **({'default':default.group(1)} if default else {})})
         elif '@RequestHeader' in part:
             quoted=re.search(r'"([^"]+)"',part)
             header=quoted.group(1) if quoted else var
             inputs.append({'in':'header','name':header,'type':tokens[-2],
-                           'required':'required=false' not in part})
+                           'required':not bool(re.search(r'required\s*=\s*false',part))})
         elif '@RequestBody' in part:
             inputs.append({'in':'body','name':var,'type':tokens[-2],'required':True})
     assert response.startswith('Response<') and response.endswith('>'),response
@@ -120,7 +145,7 @@ def routes():
     rows=[]
     for file in sorted(CTRL.glob('*Controller.java')):
         src=file.read_text(encoding='utf-8')
-        base=re.search(r'@RequestMapping\("([^"]+)"\)',src)
+        base=re.search(r'@RequestMapping\(\s*"([^"]+)"\s*\)',src)
         assert base,file
         for m in RE.finditer(src):
             name,response,params=parse_method(src,m.end())
@@ -139,17 +164,32 @@ def routes():
 
 
 def openapi(rows,schemas):
+    schemas = dict(schemas)
+    codes = error_codes()
+    schemas['ResponseCode'] = {'type': 'string', 'enum': [v[1] for v in codes],
+                              'x-enumNames': [v[0] for v in codes], 'x-enumDescriptions': [v[2] for v in codes]}
+    schemas['FailureCode'] = {'type': 'string', 'enum': [v[1] for v in codes if v[1] != '0000']}
+    schemas['ErrorResponse'] = {'type': 'object', 'required': ['code', 'info', 'data'],
+        'properties': {'code': {'$ref': '#/components/schemas/FailureCode'},
+                       'info': {'type': 'string'}, 'data': {'type': 'null'}}}
     paths={}
     for row in rows:
         parameters=[];body=None
         for inp in row['inputs']:
             if inp['in']=='body':
-                body={'required':True,'content':{'application/json':{'schema':java_type_schema(inp['type'])}}}
+                body={'required':True,'content':{'application/json':{'schema':request_schema(row, inp['type'], java_type_schema(inp['type']))}}}
             else:
                 param={'name':inp['name'],'in':inp['in'],'required':inp['required'],'schema':java_type_schema(inp['type'])}
                 if 'default' in inp:
                     val=inp['default'];param['schema']['default']=int(val) if inp['type'] in ('int','Integer') else val
                 if 'description' in inp:param['description']=inp['description']
+                if inp['name'] == 'page': param['schema'].update(minimum=1, maximum=10000)
+                if inp['name'] == 'size': param['schema'].update(minimum=1, maximum=100)
+                if inp['name'] == 'q': param['schema']['maxLength'] = 100
+                allowed_states = query_enum(ROOT, row, inp['name'])
+                if allowed_states is not None: param['schema']['enum'] = allowed_states
+                if inp['name'] == 'sort': param['schema']['enum'] = ['NEWEST', 'PRICE_ASC', 'STOCK_DESC']
+                if inp['name'] == 'Idempotency-Key': param['schema'].update(minLength=1, maxLength=64)
                 parameters.append(param)
         if row['csrf']:
             parameters.append({'name':'X-CSRF-TOKEN','in':'header','required':True,'schema':{'type':'string'},
@@ -162,14 +202,33 @@ def openapi(rows,schemas):
                    'parameters':parameters,
                    'responses':{
                        '200':{'description':'业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000',
-                              'content':{'application/json':{'schema':{'type':'object','required':['code','info'],
-                                                                       'properties':{'code':{'type':'string'},'info':{'type':'string'},'data':data_schema}}}}},
+                              'content':{'application/json':{'schema':{'oneOf':[
+                                  {'type':'object','required':['code','info','data'], 'properties':{
+                                      'code':{'const':'0000'},'info':{'type':'string'},
+                                      'data':success_data(row,data_schema)}},
+                                  {'$ref':'#/components/schemas/ErrorResponse'}]}}}},
                        '401':{'description':'未登录'},'403':{'description':'安全拒绝/CSRF'}},
                    'security':[] if row['access']=='anonymous' else [{'SessionCookie':[]}]}
+        protocol_responses = {
+            '400': '0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。',
+            '401': 'A0004：未登录或会话失效。', '403': 'A0005/A0006/A0003：CSRF/授权/账号状态拒绝。',
+            '404': 'G0001：无此 API 路由；私有路径先鉴权。', '405': 'G0005：方法不支持，附 Allow。',
+            '406': 'G0007：响应媒体类型不支持。', '413': 'G0004：请求体超过 3,000,000 字节。',
+            '415': 'G0006：请求媒体类型不支持。', '503': '0001：账号状态服务暂不可用，失败关闭。',
+        }
+        for status, description in protocol_responses.items():
+            operation['responses'][status] = {'description': description,
+                'content': {'application/json': {'schema': {'$ref': '#/components/schemas/ErrorResponse'}}}}
+        operation['responses']['405']['headers'] = {'Allow': {'schema': {'type': 'string'}, 'description': '支持的 HTTP 方法。'}}
+        if row['path'] in {'/api/v1/auth/register', '/api/v1/auth/login'} and row['method'] == 'POST':
+            operation['responses']['429'] = {'description': 'A0007：单实例入口限流。',
+                'headers': {'Retry-After': {'schema': {'type': 'integer', 'minimum': 1}, 'description': '距窗口重置的秒数。'}},
+                'content': {'application/json': {'schema': {'$ref': '#/components/schemas/ErrorResponse'}}}}
+        if body: operation['x-maxRequestBodyBytes'] = 3_000_000
         if body:operation['requestBody']=body
         paths.setdefault(row['path'],{})[row['method'].lower()]=operation
     return {'openapi':'3.1.0', 'info':{'title':'校园智能导购交易平台 HTTP API','version':'1.1.0',
-                                   'description':'由 Java Controller/DTO 静态提取；业务校验/状态流转详见 docs/api/behavior-v1.1.md。未声称真实端到端验证。'},
+                                   'description':'路由/类型从 Java 提取；输入约束由 scripts/api_contract_rules.py 显式核对合并。约束针对规范化后的业务输入，Java 长度按 UTF-16 单元；密码另限 UTF-8 72 字节。业务校验/状态流转详见 docs/api/behavior-v1.1.md。'},
             'servers':[{'url':'/'}], 'paths':paths,
             'components':{'securitySchemes':{'SessionCookie':{'type':'apiKey','in':'cookie','name':'JSESSIONID'}},
                           'schemas':schemas}}
@@ -178,7 +237,7 @@ def openapi(rows,schemas):
 def md(rows,schemas):
     out=['# HTTP API 当前权威契约（v1.1）','',
          '> 本文件由 `python scripts/generate-api-contract.py` 从当前 Controller/DTO **生成**；禁止手工追加旧版路由。',
-         '> 接口字段来自源码，未带 Bean Validation 的 DTO 不代表任何字段都可为空。业务规则见 [行为契约](behavior-v1.1.md)，',
+         '> 路由/字段来自源码；必填、范围、枚举由 `scripts/api_contract_rules.py` 显式核对合并。业务规则见 [行为契约](behavior-v1.1.md)，',
          f'> 机器可读的 {len(rows)} 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。','',
          '## 统一约定','',
          '- URL 前缀：`/api/v1`；普通 JSON 响应结构为 `{ "code":"0000", "info":"成功", "data":... }`；HTTP 200 也可能有失败业务码。',
@@ -187,7 +246,10 @@ def md(rows,schemas):
          '- 幂等键：入驻申请、补货、结算的 `Idempotency-Key` **业务必填且最长 64 字符**；同键不同内容返回业务冲突。',
          '- 分页：`page` 从 1 开始，`size` 范围 1–100；`data.items/page/size/total/hasNext`。搜索参数 `q` 先在 SQL 过滤，再按相同条件 COUNT。',
          '- 错误码以 `ResponseCode.java` 为准；HTTP 状态与业务码相互独立，鉴权缺失一般 401、CSRF/拒绝访问一般 403。',
-         '- Spring MVC 安全过滤器与真实 MySQL 仍需实际集成测试；此文档是静态契约，不是运行证明。','',
+         '- 协议错误返回同一 JSON 信封：400/0002、404/G0001、405/G0005、406/G0007、413/G0004、415/G0006。限流 429/A0007 附正确 Retry-After。',
+         '- 金额、数量、版本禁止小数截断；每个正文只接受一个 JSON 值。未知字段继续忽略，附加的身份/角色字段没有授权效力。',
+         '- 字段约束描述规范化后的输入，Java 字符长度按 UTF-16 单元；商品创建必填 skus，编辑必填 expectedVersion，退款审核必填 reason。',
+         '- 本文件是契约，运行证据另见 docs/testing/CONTRACT-DATABASE-API-AUDIT-09.md。','',
          f'## 全量路由（共 {len(rows)} 条）','',
          '| 方法 | 路径 | 请求参数 / 主体 | data 类型 | 访问控制 | 实现类 |','|---|---|---|---|---|---|']
     for r in rows:
@@ -197,7 +259,7 @@ def md(rows,schemas):
         args='、'.join(spec(i) for i in r['inputs']) or '—'
         out.append(f"| `{r['method']}` | `{r['path']}` | {args} | `{r['responseType']}` | {r['access']} | `{r['controller']}` |")
     out += ['', '## DTO 字段索引','',
-            '以下字段由 API DTO 自动提取，约束、权限和枚举含义以 `behavior-v1.1.md` 与领域校验为准。','']
+            '以下字段由 API DTO 自动提取；机器约束在 OpenAPI 中，权限与状态语义见 `behavior-v1.1.md`。','']
     for name, schema in sorted(schemas.items()):
         out.append(f"### `{name}`")
         out.append('')
@@ -215,7 +277,8 @@ def output_files():
     assert len(all_routes)>=80,f'路由数量异常：{len(all_routes)}'
     return {'docs/api/route-manifest.json':json.dumps({'version':'1.1.0','routes':all_routes},ensure_ascii=False,indent=2)+'\n',
             'docs/api/openapi.json':json.dumps(openapi(all_routes,schema),ensure_ascii=False,indent=2)+'\n',
-            'docs/api/http-api.md':md(all_routes,schema)}
+            'docs/api/http-api.md':md(all_routes,schema),
+            'docs/api/error-codes.md':error_codes_md()}
 
 
 def main():

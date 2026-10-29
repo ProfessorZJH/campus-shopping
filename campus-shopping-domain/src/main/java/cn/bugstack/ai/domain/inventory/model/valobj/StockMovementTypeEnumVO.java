@@ -1,19 +1,33 @@
 package cn.bugstack.ai.domain.inventory.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** 库存流水类型；流水的业务键负责幂等核对。 */
+/** 库存流水业务类型；code 保持已有数据库和 HTTP 协议值。 */
 public enum StockMovementTypeEnumVO {
-    REPLENISH, RESERVE, RELEASE, CONSUME;
+    REPLENISH("补货"),
+    RESERVE("预占"),
+    RELEASE("释放"),
+    CONSUME("核销消耗");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    StockMovementTypeEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static StockMovementTypeEnumVO fromCode(String code) {
-        for (StockMovementTypeEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.STOCK_STATE_INVALID);
+        return EnumValues.stored(StockMovementTypeEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(StockMovementTypeEnumVO.class, code);
     }
 }
