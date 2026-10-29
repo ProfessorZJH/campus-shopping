@@ -84,6 +84,7 @@ jobs:
       - name: Formatting / generated UI / schema drift checks
         run: |
           npm run format:check --prefix frontend
+          node --test frontend/tests/build-reproducibility.test.mjs
           npm audit --prefix frontend --audit-level=high
           python scripts/build-ui-bundle.py --check
           python scripts/schema_contract.py --check

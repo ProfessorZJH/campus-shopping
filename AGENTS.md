@@ -161,3 +161,8 @@ python scripts/smoke-full.py
 - 知识索引完成必须匹配当前 index_attempt；知识权限列表不加载正文，仅按实际引用批量查询。权限授予规则统一归 MerchantPermissionEnumVO。
 - 新增 V20261030_01，已有库须备份并显式迁移；旧进程锁版本与新版不能混跑。此次只操作临时测试库，没有升级业务库或替换运行服务。
 - Maven Wrapper 3.9.9 隔离 clean verify 175 通过、0 跳过；HTTP 173、严格响应 117、真实浏览器 8、Python 42 通过。Docker NOT_RUN，远程模型/Milvus、性能与生产集群本次未验收。详见 [本轮报告](docs/testing/CODE-QUALITY-20261030.md)。
+
+## CI 跨平台构建收尾（2026-10-30）
+
+- UI 文本输入摘要与输出统一 LF，二进制保持原字节，路径使用规范相对路径排序。新增 `node --test frontend/tests/build-reproducibility.test.mjs` 已接入 CI，仍须运行 UI 快照完整比对。
+- `a3fa07c` 远端生成检查失败，已从干净 Git 检出复现并修复；同轮独立 Docker/Compose 交易链路通过。后续远端结果与本地验收分开记录，见 [CI 收尾报告](docs/testing/CI-FOLLOWUP-20261030.md)。

@@ -19,7 +19,7 @@
 | **工程化收敛** | [八项修复、构建流程及实际验证](testing/ENGINEERING-10.md) |
 | **DDD 枚举、异常及领域边界审查** | [问题、代码依据与实施顺序](architecture/DDD-REVIEW-20261029.md)、[隔离行为探针](testing/evidence/ddd-review-20261029.json) |
 | **SDD-11 DDD 专项整改** | [领域与契约设计](specs/SDD-DDD-11.md)、[116 项 Java 及真实全栈验证](testing/DDD-REFACTOR-20261029.md) |
-| **代码职责与并发修复（2026-10-30）** | [读模型、AI 租约、索引请求与 175 项 Java 验证](testing/CODE-QUALITY-20261030.md) |
+| **代码职责与并发修复（2026-10-30）** | [读模型、AI 租约、索引请求与 175 项 Java 验证](testing/CODE-QUALITY-20261030.md)、[跨平台 UI 构建与 CI 收尾](testing/CI-FOLLOWUP-20261030.md) |
 | 数据库和升级 | [数据模型](database/logical-data-model.md) |
 | 运行与验收 | [运行手册](operations/R1-runbook.md)、[验证证据](testing/R1-verification.md) |
 | 需求追踪 | [FR追踪矩阵](TRACEABILITY.md)、[状态路线](ROADMAP.md) |
