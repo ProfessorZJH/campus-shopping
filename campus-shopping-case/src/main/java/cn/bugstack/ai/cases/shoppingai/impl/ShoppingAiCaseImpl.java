@@ -1,6 +1,7 @@
 package cn.bugstack.ai.cases.shoppingai.impl;
 import cn.bugstack.ai.cases.shoppingai.*;import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
-import cn.bugstack.ai.domain.shoppingai.service.IAiStateService;import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
+import cn.bugstack.ai.domain.shoppingai.service.IConversationStateService;
+import cn.bugstack.ai.domain.shoppingai.service.IProposalStateService;import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
 import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;import cn.bugstack.ai.domain.shoppingai.model.valobj.*;import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
@@ -12,12 +13,12 @@ import java.time.*;import java.util.*;import java.util.concurrent.locks.Reentran
 /** Java 负责复权、商品事实和用户确认；模型文本从不直接变成写命令。 */
 @Service
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
- private final IAiStateService state;private final IAiEnginePort engine;private final IKnowledgeCase knowledge;private final ICatalogService catalog;private final IInventoryService inventory;private final IMerchantService merchants;private final IUserAccountService accounts;private final ICartService cart;private final Clock clock;
+ private final IConversationStateService conversations,IProposalStateService proposals;private final IAiEnginePort engine;private final IKnowledgeCase knowledge;private final ICatalogService catalog;private final IInventoryService inventory;private final IMerchantService merchants;private final IUserAccountService accounts;private final ICartService cart;private final Clock clock;
  private final ReentrantLock[] locks=new ReentrantLock[64];
  @Value("${campus.proposal.minutes:10}")private long proposalMinutes=10;
- public ShoppingAiCaseImpl(IAiStateService state,IAiEnginePort engine,IKnowledgeCase knowledge,ICatalogService catalog,IInventoryService inventory,IMerchantService merchants,IUserAccountService accounts,ICartService cart,Clock clock){this.state=state;this.engine=engine;this.knowledge=knowledge;this.catalog=catalog;this.inventory=inventory;this.merchants=merchants;this.accounts=accounts;this.cart=cart;this.clock=clock;for(int i=0;i<locks.length;i++)locks[i]=new ReentrantLock();}
+ public ShoppingAiCaseImpl(IConversationStateService conversations,IProposalStateService proposals,IAiEnginePort engine,IKnowledgeCase knowledge,ICatalogService catalog,IInventoryService inventory,IMerchantService merchants,IUserAccountService accounts,ICartService cart,Clock clock){this.conversations=conversations;this.proposals=proposals;this.engine=engine;this.knowledge=knowledge;this.catalog=catalog;this.inventory=inventory;this.merchants=merchants;this.accounts=accounts;this.cart=cart;this.clock=clock;for(int i=0;i<locks.length;i++)locks[i]=new ReentrantLock();}
  public ChatResult chat(String actor,String conversationId,String question){
-  accounts.requireActive(actor);String q=text(question,"问题",2000);var conversation=state.conversation(actor,conversationId,q);var lock=locks[Math.floorMod(conversation.id().hashCode(),locks.length)];require(lock.tryLock(),ResponseCode.STATE_CONFLICT);
+  accounts.requireActive(actor);String q=text(question,"问题",2000);var conversation=conversations.conversation(actor,conversationId,q);var lock=locks[Math.floorMod(conversation.id().hashCode(),locks.length)];require(lock.tryLock(),ResponseCode.STATE_CONFLICT);
   try{return answer(actor,conversation.id(),q);}finally{lock.unlock();}
  }
  private ChatResult answer(String actor,String conversation,String question){
@@ -70,23 +71,23 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
    String reason=reasons.get(i.skuId());return new AiRecommendationVO(i.skuId(),i.quantity(),reason==null||reason.isBlank()?"匹配当前需求":reason);
   }).toList();
   AiAnswerVO safe=new AiAnswerVO(answer.answer(),answer.mode(),answer.retrievalMode(),answer.rewrittenQuery(),answer.warning(),List.copyOf(citations),verified,answer.latencyMs());
-  state.appendTurn(actor,conversation,question,safe.answer(),proposal,fingerprint);return new ChatResult(conversation,safe,proposal);
+  conversations.appendTurn(actor,conversation,question,safe.answer(),proposal,fingerprint);return new ChatResult(conversation,safe,proposal);
  }
  private String scope(List<KnowledgeDocumentVO> docs){return Fingerprints.of(docs.stream().map(KnowledgeDocumentVO::id).sorted().toArray());}
- private List<MessageVO> safeHistory(String actor,String conversation,String fingerprint,int limit){return state.messages(actor,conversation,limit).stream().map(m->"assistant".equals(m.role())&&!fingerprint.equals(m.accessFingerprint())?new MessageVO(m.id(),m.conversationId(),m.role(),"资料权限或版本已变化，此历史回答已隐藏，请重新提问。",m.createdAt(),fingerprint):m).toList();}
+ private List<MessageVO> safeHistory(String actor,String conversation,String fingerprint,int limit){return conversations.messages(actor,conversation,limit).stream().map(m->"assistant".equals(m.role())&&!fingerprint.equals(m.accessFingerprint())?new MessageVO(m.id(),m.conversationId(),m.role(),"资料权限或版本已变化，此历史回答已隐藏，请重新提问。",m.createdAt(),fingerprint):m).toList();}
  public List<MessageVO> history(String actor,String conversation){accounts.requireActive(actor);return safeHistory(actor,conversation,scope(knowledge.readableDocuments(actor)),100);}
- public List<ConversationVO> conversations(String actor){accounts.requireActive(actor);return state.conversations(actor);}
- public List<ProposalVO> proposals(String actor,String conversation){accounts.requireActive(actor);return state.proposals(actor,conversation);}
+ public List<ConversationVO> conversations(String actor){accounts.requireActive(actor);return conversations.conversations(actor);}
+ public List<ProposalVO> proposals(String actor,String conversation){accounts.requireActive(actor);return proposals.proposals(actor,conversation);}
  @Transactional(rollbackFor=Exception.class)
  public ProposalVO confirm(String actor,String id,List<String> selected){
   accounts.requireActive(actor);require(selected!=null&&!selected.isEmpty()&&selected.size()<=20&&selected.stream().allMatch(Objects::nonNull),ResponseCode.ILLEGAL_PARAMETER);
-  List<String> ids=selected.stream().distinct().sorted().toList();require(ids.size()==selected.size(),ResponseCode.ILLEGAL_PARAMETER);ProposalVO p=state.proposal(actor,id,true);
+  List<String> ids=selected.stream().distinct().sorted().toList();require(ids.size()==selected.size(),ResponseCode.ILLEGAL_PARAMETER);ProposalVO p=proposals.proposal(actor,id,true);
   Map<String,ProposalItemVO> proposed=p.items().stream().collect(Collectors.toMap(ProposalItemVO::skuId,i->i));require(ids.stream().allMatch(proposed::containsKey),ResponseCode.ILLEGAL_PARAMETER);String hash=Fingerprints.of(ids.toArray());
   ProposalAggregate aggregate=new ProposalAggregate(p.userId(),p.expiresAt(),p.status(),p.selectionHash());if(!aggregate.confirm(actor,hash,clock.instant()))return p;
   cart.lockCart(actor);ids.stream().map(s->proposed.get(s).merchantId()).distinct().sorted().forEach(merchants::requireActiveForNewTrade);
   var offers=catalog.offers(ids,true,true).stream().collect(Collectors.toMap(SkuOfferVO::skuId,o->o));var stocks=inventory.stocks(ids).stream().collect(Collectors.toMap(StockVO::skuId,s->s));
   for(String sku:ids){var item=proposed.get(sku);var o=offers.get(sku);require(o.priceCent()==item.priceCent()&&o.version()==item.quoteVersion()&&o.merchantId().equals(item.merchantId()),ResponseCode.PRICE_CHANGED);var stock=stocks.get(sku);require(stock!=null&&stock.onHand()-stock.reserved()>=item.quantity(),ResponseCode.STOCK_NOT_ENOUGH);cart.addCart(actor,o.merchantId(),sku,item.quantity());}
-  state.confirm(id,hash);return state.proposal(actor,id,false);
+  proposals.confirm(id,hash);return proposals.proposal(actor,id,false);
  }
- public void reject(String actor,String proposal){accounts.requireActive(actor);state.reject(actor,proposal);}
+ public void reject(String actor,String proposal){accounts.requireActive(actor);proposals.reject(actor,proposal);}
 }

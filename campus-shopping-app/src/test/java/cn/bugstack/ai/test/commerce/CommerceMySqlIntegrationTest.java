@@ -14,7 +14,8 @@ import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.catalog.model.entity.*;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
-import cn.bugstack.ai.domain.shoppingai.service.IAiStateService;
+import cn.bugstack.ai.domain.shoppingai.service.IConversationStateService;
+import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeStateService;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
 import cn.bugstack.ai.types.exception.AppException;
@@ -56,7 +57,8 @@ class CommerceMySqlIntegrationTest {
     @Autowired ICartCase cart;
     @Autowired IKnowledgeCase knowledge;
     @Autowired IShoppingAiCase ai;
-    @Autowired IAiStateService aiState;
+    @Autowired IConversationStateService conversations;
+    @Autowired IKnowledgeStateService knowledgeState;
     @Autowired MutableClock clock;
     @SpyBean AccessRepository accessRepository;
     String admin,owner,buyer,other;
@@ -295,15 +297,15 @@ class CommerceMySqlIntegrationTest {
         life.prepare(owner,merchant.id(),o.getId(),true);var token=life.token(buyer,o.getId());life.verify(owner,merchant.id(),o.getId(),token.token());assertEquals("COMPLETED",jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?",String.class,o.getId()));
     }
     @Test void proposalConfirmationIsOwnedVersionedAndExactlyOnce(){
-        var p=product(4);var conversation=aiState.conversation(buyer,null,"买笔");var proposal=new ProposalVO(UUID.randomUUID().toString(),buyer,conversation.id(),"PENDING",List.of(new ProposalItemVO(item(p).skuId(),merchant.id(),p.getTitle(),"一盒",1200,p.getVersion(),1)),null,clock.instant().plusSeconds(600));
-        aiState.appendTurn(buyer,conversation.id(),"买笔","仅测试提案，不调用模型",proposal,"scope");
+        var p=product(4);var conversation=conversations.conversation(buyer,null,"买笔");var proposal=new ProposalVO(UUID.randomUUID().toString(),buyer,conversation.id(),"PENDING",List.of(new ProposalItemVO(item(p).skuId(),merchant.id(),p.getTitle(),"一盒",1200,p.getVersion(),1)),null,clock.instant().plusSeconds(600));
+        conversations.appendTurn(buyer,conversation.id(),"买笔","仅测试提案，不调用模型",proposal,"scope");
         assertEquals("G0001",code(()->ai.confirm(other,proposal.id(),List.of(item(p).skuId()))));
         ai.confirm(buyer,proposal.id(),List.of(item(p).skuId()));ai.confirm(buyer,proposal.id(),List.of(item(p).skuId()));assertEquals(1,cart.list(buyer).get(0).quantity());
     }
     @Test void knowledgeInternalScopeAndWithdrawalAreEffectiveImmediately(){
-        var base=knowledge.createBase(owner,merchant.id(),"内部资料","MERCHANT_INTERNAL");var doc=aiState.createDocument(null,base.id(),"内部说明","不得给普通买家看的内容");
+        var base=knowledge.createBase(owner,merchant.id(),"内部资料","MERCHANT_INTERNAL");var doc=knowledgeState.createDocument(null,base.id(),"内部说明","不得给普通买家看的内容");
         // 这里只验证 Java ACL/版本状态，索引构建由 Python 独立测试，不假装已调用向量库。
-        aiState.indexState(doc.id(),"READY","");knowledge.publish(owner,doc.id());assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(doc.id())));assertTrue(knowledge.readableDocuments(buyer).stream().noneMatch(d->d.id().equals(doc.id())));
+        knowledgeState.indexState(doc.id(),"READY","");knowledge.publish(owner,doc.id());assertTrue(knowledge.readableDocuments(owner).stream().anyMatch(d->d.id().equals(doc.id())));assertTrue(knowledge.readableDocuments(buyer).stream().noneMatch(d->d.id().equals(doc.id())));
         knowledge.withdraw(owner,doc.id());assertTrue(knowledge.readableDocuments(owner).stream().noneMatch(d->d.id().equals(doc.id())));
     }
     @Test void replenishRetryDoesNotAddTwice(){var p=product(0);String sku=item(p).skuId();catalog.replenish(owner,merchant.id(),sku,5,"once");catalog.replenish(owner,merchant.id(),sku,5,"once");assertEquals(5,scalar("SELECT on_hand FROM inv_stock_balance"));assertEquals("G0003",code(()->catalog.replenish(owner,merchant.id(),sku,6,"once")));}
