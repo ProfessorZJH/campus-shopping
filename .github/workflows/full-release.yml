@@ -138,7 +138,9 @@ jobs:
             >var/ci/app.log 2>&1 &
           echo $! >var/ci/app.pid
           for attempt in $(seq 1 120); do
-            if curl -fsS http://127.0.0.1:8091/api/v1/categories | grep -q '"code":"0000"'; then exit 0; fi
+            if curl -fsS http://127.0.0.1:8091/api/v1/categories | grep -q '"code":"0000"' \
+              && [ "$(docker exec -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -N -s -ucampus_app \
+                -e "SELECT COUNT(*) FROM iam_user u JOIN iam_platform_role r ON r.user_id=u.id WHERE u.username='ci_admin' AND r.role='PLATFORM_ADMIN'" campus_shopping)" = "1" ]; then exit 0; fi
             sleep 1
           done
           echo 'Spring HTTP health check did not pass'; exit 1
