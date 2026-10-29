@@ -26,14 +26,35 @@ public class ProductImageRepository implements IProductImageRepository {
     private String uploadDir;
 
     @Override
-public String storeImage(byte[] data){
-  if(data==null||data.length==0||data.length>2*1024*1024)throw new AppException(ResponseCode.UPLOAD_INVALID);
-  try(ImageInputStream in=ImageIO.createImageInputStream(new ByteArrayInputStream(data))){
-   Iterator<ImageReader> rs=ImageIO.getImageReaders(in);if(!rs.hasNext())throw new AppException(ResponseCode.UPLOAD_INVALID);
-   ImageReader r=rs.next();try{r.setInput(in);if((long)r.getWidth(0)*r.getHeight(0)>12000000L)throw new AppException(ResponseCode.UPLOAD_INVALID);
-    String name=UUID.randomUUID()+".png";Path dir=Path.of(uploadDir).toAbsolutePath().normalize();Files.createDirectories(dir);
-    if(!ImageIO.write(r.read(0),"png",dir.resolve(name).toFile()))throw new IOException("图片编码失败");return "/media/"+name;
-   }finally{r.dispose();}
-  }catch(IOException e){throw new IllegalStateException("商品图片存储失败",e);}
- }
+    public String storeImage(byte[] data) {
+        if (data == null || data.length == 0 || data.length > 2 * 1024 * 1024) {
+            throw new AppException(ResponseCode.UPLOAD_INVALID);
+        }
+        try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
+            if (!readers.hasNext()) {
+                throw new AppException(ResponseCode.UPLOAD_INVALID);
+            }
+
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(in);
+                if ((long) reader.getWidth(0) * reader.getHeight(0) > 12000000L) {
+                    throw new AppException(ResponseCode.UPLOAD_INVALID);
+                }
+
+                String name = UUID.randomUUID() + ".png";
+                Path dir = Path.of(uploadDir).toAbsolutePath().normalize();
+                Files.createDirectories(dir);
+                if (!ImageIO.write(reader.read(0), "png", dir.resolve(name).toFile())) {
+                    throw new IOException("图片编码失败");
+                }
+                return "/media/" + name;
+            } finally {
+                reader.dispose();
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("商品图片存储失败", e);
+        }
+    }
 }
