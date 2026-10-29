@@ -10,6 +10,8 @@ public final class AiGatewayDTO {
  public record RecallResponse(String query,List<String> terms){}
  public record ProductIndex(String productId,String merchantId,String title,String description,String categoryCode,List<String> specs){}
  public record ProductIndexRequest(List<ProductIndex> products){}
+ /** Python 商品索引真实处理数量；DISABLED 不是同步成功。 */
+ public record ProductIndexResult(int indexed,int unchanged,String mode){}
  public record ProductSearch(String query,int limit){}
  public record ProductSearchResult(List<String> productIds,String mode){}
  public record Citation(String documentId,String chunkId,String title,String snippet,double score){}

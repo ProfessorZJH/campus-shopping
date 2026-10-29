@@ -32,7 +32,7 @@
 
 由 opt-in `ProductVectorSyncJob` 周期扫描 Java 公共 Catalog（每批 40 件）。Java 仅发送商品 ID、名称、公开描述、品类与活动规格，未发布或被停用商户不会被同步。Python 根据文本 + embedding 模型生成 SHA-256 指纹，对 Milvus 已存在的同指纹行不重复调用 Embedding；更新后使用 upsert（不是新建重复数据）。不对未知第三方集合执行 drop/delete。
 
-索引中旧的下架商品可能短期残留，但 `Catalog.recallByIds` 必须按**当前 MySQL 的 PUBLISHED/商户 ACTIVE/规格 ACTIVE**校验并剔除，绝不能因向量命中突破交易规则。索引同步失败时下一次调度重试；向量查询失败时 Java 降级为词面召回，不撤销已完成的事务。该版本尚未增加 tombstone/全量清理，后续可在独立索引任务中处理，不得在不完整扫描后删除整个集合。
+索引中旧的下架商品可能短期残留，但 `Catalog.recallByIds` 必须按**当前 MySQL 的 PUBLISHED/商户 ACTIVE/规格 ACTIVE**校验并剔除，绝不能因向量命中突破交易规则。索引同步失败时下一次调度重试；向量查询失败时 Java 降级为词面召回，不撤销已完成的事务。**启用商品索引同步时，Python `/v1/products/index` 的 `mode=DISABLED`、非法响应或处理数量与请求数量不符，都视为失败而不是成功；Job 只记录已扫描/成功提交数量和异常类型，不记录凭据、异常消息或商品详情。**该版本尚未增加 tombstone/全量清理，后续可在独立索引任务中处理，不得在不完整扫描后删除整个集合。
 
 Spring 调度线程池不少于 2，避免慢向量索引占住订单到期扫描。默认 `AI_PRODUCT_VECTOR_SYNC_ENABLED=false`，安全配置验证后再明确启用。
 
