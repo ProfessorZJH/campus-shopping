@@ -152,7 +152,7 @@ class CommerceMySqlIntegrationTest {
     private CheckoutItemEntity item(ProductAggregate p){return new CheckoutItemEntity(p.getSkus().get(0).id(),1,p.getSkus().get(0).priceCent(),p.getVersion());}
     private OrderAggregate order(ProductAggregate p){return checkout.checkout(buyer,merchant.id(),List.of(item(p)),UUID.randomUUID().toString());}
     private long scalar(String sql,Object...args){return Objects.requireNonNull(jdbc.queryForObject(sql,Long.class,args));}
-    private String code(Runnable action){try{action.run();return "0000";}catch(AppException e){if("0002".equals(e.getCode())) {System.err.println("CI_CHECKOUT_DEBUG: "+e.getInfo());e.printStackTrace(System.err);}return e.getCode();}}
+    private String code(Runnable action){try{action.run();return "0000";}catch(AppException e){return e.getCode();}}
     private List<String> race(Runnable a,Runnable b)throws Exception{
         var pool=Executors.newFixedThreadPool(2);var ready=new CountDownLatch(2);var start=new CountDownLatch(1);
         java.util.function.Function<Runnable,Callable<String>> call=work->()->{ready.countDown();if(!start.await(10,TimeUnit.SECONDS))throw new IllegalStateException("等待超时");return code(work);};

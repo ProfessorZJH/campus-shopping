@@ -198,7 +198,7 @@ def run(args):
         check(secret not in reply['answer'] and all(c['documentId']!=private['id'] for c in reply['citations']),'普通买家回答及引用不包含商户内部资料')
         check(reply['proposal'] and reply['proposal']['items'],'有真实商品的待确认提案')
         proposal=reply['proposal'];selected=[i['skuId'] for i in proposal['items']]
-        other.call('POST','/ai/proposals/'+proposal['id']+'/confirm',{'selectedSkuIds':selected},code='A0006')
+        other.call('POST','/ai/proposals/'+proposal['id']+'/confirm',{'selectedSkuIds':selected},code='G0001')
         buyer.call('POST','/ai/proposals/'+proposal['id']+'/confirm',{'selectedSkuIds':selected})
         before=buyer.call('GET','/cart')
         buyer.call('POST','/ai/proposals/'+proposal['id']+'/confirm',{'selectedSkuIds':selected})
