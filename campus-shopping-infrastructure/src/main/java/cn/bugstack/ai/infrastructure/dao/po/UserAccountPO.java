@@ -17,7 +17,6 @@ public class UserAccountPO {
     private String id;
     private String username;
     @ToString.Exclude
-    @lombok.ToString.Exclude
     private String passwordHash;
     private String displayName;
     private String status;
