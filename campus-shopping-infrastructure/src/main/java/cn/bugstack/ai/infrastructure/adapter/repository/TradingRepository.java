@@ -20,7 +20,7 @@ public class TradingRepository implements ITradingRepository {
   dao.insertOrder(OrderPO.builder().id(o.getId()).buyerId(o.getBuyerId()).merchantId(o.getMerchantId()).storeId(o.getStoreId()).totalCent(o.getTotalCent()).status(o.getStatus()).deadline(o.getDeadline()).createdAt(o.getCreatedAt()).build());
   for(OrderItemEntity i:o.getItems())dao.insertItem(OrderItemPO.builder().orderId(o.getId()).skuId(i.skuId()).title(i.title()).specKey(i.specKey()).imageUrl(i.imageUrl()==null?"":i.imageUrl()).unitPriceCent(i.unitPriceCent()).quantity(i.quantity()).build());
  }
- public OrderAggregate order(String id,boolean lock){return convert(dao.order(id,lock));}
+ public OrderAggregate order(String id,boolean lock){return convert(dao.order(id,lock),lock);}
  public void save(OrderAggregate o){require(dao.saveOrder(o.getId(),o.getStatus())==1,ResponseCode.NOT_FOUND);}
  public List<OrderAggregate> orders(String buyer,String merchant,String status,int offset,int size){return orders(buyer,merchant,status,offset,size,"");}
  public List<OrderAggregate> orders(String buyer,String merchant,String status,int offset,int size,String q){return dao.orders(buyer,merchant,status,offset,size,q).stream().map(this::convert).toList();}
