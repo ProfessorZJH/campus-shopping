@@ -18,10 +18,10 @@ public class InventoryServiceImpl implements IInventoryService {
  @Transactional(propagation=Propagation.MANDATORY)
  public void replenish(String merchant,String store,String sku,int quantity,String requestKey){
   String key=text(requestKey,"补货请求标识",64);StockVO s=required(store,sku);require(merchant.equals(s.merchantId()),ResponseCode.AUTH_FORBIDDEN);
-  Integer previous=repository.movementQuantity(store,sku,"REPLENISH",key);
+  Integer previous=repository.movementQuantity(store,sku,StockMovementTypeEnumVO.REPLENISH,key);
   if(previous!=null){require(previous==quantity,ResponseCode.REQUEST_CONFLICT);return;}
   StockBalanceAggregate balance=new StockBalanceAggregate(s.onHand(),s.reserved());balance.replenish(quantity);
-  save(s,balance);repository.movement(s,"REPLENISH",quantity,key);
+  save(s,balance);repository.movement(s,StockMovementTypeEnumVO.REPLENISH,quantity,key);
  }
  @Transactional(propagation=Propagation.MANDATORY)
  public void reserve(String order,String merchant,String store,List<SkuQuantityVO> items){
@@ -32,20 +32,20 @@ public class InventoryServiceImpl implements IInventoryService {
  private void reserveOne(String order,String merchant,String store,SkuQuantityVO item){
   StockVO s=required(store,item.skuId());require(merchant.equals(s.merchantId()),ResponseCode.AUTH_FORBIDDEN);
   ReservationVO old=repository.reservation(order,item.skuId());
-  if(old!=null){require("RESERVED".equals(old.status())&&old.quantity()==item.quantity()&&store.equals(old.storeId()),ResponseCode.REQUEST_CONFLICT);return;}
+  if(old!=null){require(old.statusEnum() == ReservationStatusEnumVO.RESERVED&&old.quantity()==item.quantity()&&store.equals(old.storeId()),ResponseCode.REQUEST_CONFLICT);return;}
   StockBalanceAggregate balance=new StockBalanceAggregate(s.onHand(),s.reserved());balance.reserve(item.quantity());save(s,balance);
-  repository.reserve(new ReservationVO(order,store,item.skuId(),item.quantity(),"RESERVED"));repository.movement(s,"RESERVE",item.quantity(),order);
+  repository.reserve(new ReservationVO(order,store,item.skuId(),item.quantity(),ReservationStatusEnumVO.RESERVED.name()));repository.movement(s,StockMovementTypeEnumVO.RESERVE,item.quantity(),order);
  }
  @Transactional(propagation=Propagation.MANDATORY) public void release(String order){finish(order,false);}
  @Transactional(propagation=Propagation.MANDATORY) public void consume(String order){finish(order,true);}
  private void finish(String order,boolean consumed){
   List<ReservationVO> reservations=repository.reservations(order);require(!reservations.isEmpty(),ResponseCode.STOCK_STATE_INVALID);
-  String next=consumed?"CONSUMED":"RELEASED";
+  ReservationStatusEnumVO next=consumed?ReservationStatusEnumVO.CONSUMED:ReservationStatusEnumVO.RELEASED;
   for(ReservationVO r:reservations){
-   if(next.equals(r.status()))continue;
-   require("RESERVED".equals(r.status()),ResponseCode.STOCK_STATE_INVALID);StockVO s=required(r.storeId(),r.skuId());
+   if(next==r.statusEnum())continue;
+   require(r.statusEnum()==ReservationStatusEnumVO.RESERVED,ResponseCode.STOCK_STATE_INVALID);StockVO s=required(r.storeId(),r.skuId());
    StockBalanceAggregate balance=new StockBalanceAggregate(s.onHand(),s.reserved());if(consumed)balance.consume(r.quantity());else balance.release(r.quantity());
-   save(s,balance);repository.transition(order,r.skuId(),next);repository.movement(s,consumed?"CONSUME":"RELEASE",r.quantity(),order);
+   save(s,balance);repository.transition(order,r.skuId(),next);repository.movement(s,consumed?StockMovementTypeEnumVO.CONSUME:StockMovementTypeEnumVO.RELEASE,r.quantity(),order);
   }
  }
  private StockVO required(String store,String sku){StockVO s=repository.stock(store,sku,true);require(s!=null,ResponseCode.NOT_FOUND);return s;}

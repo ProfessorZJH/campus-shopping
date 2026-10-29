@@ -14,7 +14,7 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
  @Transactional(propagation=Propagation.MANDATORY)
  public void create(String order,String merchant,String store,String buyer){
   PickupVO old=repository.pickup(order,true);if(old!=null){require(old.merchantId().equals(merchant)&&old.storeId().equals(store)&&old.buyerId().equals(buyer),ResponseCode.STATE_CONFLICT);return;}
-  repository.insert(new PickupVO(UUID.randomUUID().toString(),order,merchant,store,buyer,"WAIT_PREP",null,null));
+  repository.insert(new PickupVO(UUID.randomUUID().toString(),order,merchant,store,buyer,PickupStatusEnumVO.WAIT_PREP.name(),null,null));
  }
  public PickupVO pickup(String order,boolean lock){return repository.pickup(order,lock);}
  private PickupAggregate required(String order){PickupVO p=repository.pickup(order,true);require(p!=null,ResponseCode.NOT_FOUND);return new PickupAggregate(p);}

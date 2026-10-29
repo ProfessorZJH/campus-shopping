@@ -24,12 +24,12 @@ public class CatalogServiceImpl implements ICatalogService {
  }
  public ProductAggregate create(String merchant,String store,ProductCreateEntity c){
   require(c!=null&&c.skus()!=null&&!c.skus().isEmpty(),ResponseCode.ILLEGAL_PARAMETER);validCategory(c.categoryCode());
-  List<ProductSkuEntity> skus=c.skus().stream().map(s->new ProductSkuEntity(UUID.randomUUID().toString(),s.specKey(),s.priceCent(),"ACTIVE",0)).toList();
-  ProductAggregate p=new ProductAggregate(UUID.randomUUID().toString(),merchant,store,c.title(),c.description(),c.categoryCode(),c.imageUrl(),"DRAFT",0,skus);repository.insert(p);return p;
+  List<ProductSkuEntity> skus=c.skus().stream().map(s->new ProductSkuEntity(UUID.randomUUID().toString(),s.specKey(),s.priceCent(),SkuStatusEnumVO.ACTIVE.name(),0)).toList();
+  ProductAggregate p=new ProductAggregate(UUID.randomUUID().toString(),merchant,store,c.title(),c.description(),c.categoryCode(),c.imageUrl(),ProductStatusEnumVO.DRAFT.name(),0,skus);repository.insert(p);return p;
  }
  public ProductAggregate find(String id){ProductAggregate p=repository.find(id,false);require(p!=null,ResponseCode.NOT_FOUND);return p;}
  private ProductAggregate owned(String merchant,String id){ProductAggregate p=repository.find(id,true);require(p!=null,ResponseCode.NOT_FOUND);p.requireOwner(merchant);return p;}
- public ProductAggregate addSku(String merchant,String id,String spec,long price){ProductAggregate p=owned(merchant,id);p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(),spec,price,"ACTIVE",0));repository.save(p);return repository.find(id,false);}
+ public ProductAggregate addSku(String merchant,String id,String spec,long price){ProductAggregate p=owned(merchant,id);p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(),spec,price,SkuStatusEnumVO.ACTIVE.name(),0));repository.save(p);return repository.find(id,false);}
  public void changePrice(String merchant,String id,String sku,long price,long expected){ProductAggregate p=owned(merchant,id);p.changePrice(sku,price,expected);repository.save(p);}
  public void edit(String merchant,String id,String title,String desc,String category,String image,long expected){validCategory(category);ProductAggregate p=owned(merchant,id);p.changeInfo(title,desc,category,image,expected);repository.save(p);}
  public void publish(String merchant,String id,boolean onShelf){ProductAggregate p=owned(merchant,id);if(onShelf){validCategory(p.getCategoryCode());p.publish();}else p.unpublish();repository.save(p);}
@@ -49,7 +49,7 @@ public class CatalogServiceImpl implements ICatalogService {
  public List<SkuOfferVO> offers(List<String> ids,boolean sale,boolean lock){
   require(ids!=null&&ids.size()<=1000,ResponseCode.ILLEGAL_PARAMETER);List<String> unique=ids.stream().distinct().sorted().toList();
   List<SkuOfferVO> offers=repository.offers(unique,lock);require(offers.size()==unique.size(),ResponseCode.PRODUCT_UNAVAILABLE);
-  if(sale)for(SkuOfferVO o:offers)require("PUBLISHED".equals(o.productStatus())&&"ACTIVE".equals(o.skuStatus()),ResponseCode.PRODUCT_UNAVAILABLE);return offers;
+  if(sale)for(SkuOfferVO o:offers)require(o.productStatusEnum()==ProductStatusEnumVO.PUBLISHED&&o.skuStatusEnum()==SkuStatusEnumVO.ACTIVE,ResponseCode.PRODUCT_UNAVAILABLE);return offers;
  }
  public List<CategoryVO> categories(){return repository.categories();}
  private void validCategory(String code){require(repository.categories().stream().anyMatch(c->c.active()&&c.code().equals(code)),ResponseCode.ILLEGAL_PARAMETER);}

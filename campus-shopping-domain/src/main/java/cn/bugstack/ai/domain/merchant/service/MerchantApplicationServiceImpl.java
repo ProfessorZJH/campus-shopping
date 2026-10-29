@@ -44,7 +44,7 @@ public class MerchantApplicationServiceImpl implements IMerchantApplicationServi
         if(a.getStatus()==MerchantApplicationStatusEnumVO.APPROVED){MerchantVO existing=merchants.find(a.getOpenedMerchantId(),false);Checks.require(existing!=null,ResponseCode.STATE_CONFLICT);return existing;}
         a.requireComplete();a.approve(reviewer);a.attachMerchant(UUID.randomUUID().toString());
         AdmissionCommandEntity c=a.getDetails();
-        MerchantVO m=new MerchantVO(a.getOpenedMerchantId(),a.getApplicationId(),c.name(),c.category(),"ACTIVE",UUID.randomUUID().toString(),c.storeName(),c.location());
+        MerchantVO m=new MerchantVO(a.getOpenedMerchantId(),a.getApplicationId(),c.name(),c.category(),MerchantStatusEnumVO.ACTIVE.name(),UUID.randomUUID().toString(),c.storeName(),c.location());
         repository.saveReview(a);merchants.save(m);return m;
     }
     @Override @Transactional(propagation=Propagation.MANDATORY)

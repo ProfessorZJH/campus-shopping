@@ -16,6 +16,18 @@ files += ['campus-shopping-domain/'+BASE+'domain/'+p for p in [
  'catalog/model/entity/ProductSkuEntity.java','catalog/model/aggregate/ProductAggregate.java',
  'inventory/model/aggregate/StockBalanceAggregate.java','trading/model/entity/OrderItemEntity.java','trading/model/aggregate/OrderAggregate.java',
  'fulfillment/model/valobj/PickupVO.java','fulfillment/model/aggregate/PickupAggregate.java','shoppingai/model/aggregate/ProposalAggregate.java']]
+# 枚举属于纯领域生产源码；编译脚本必须包含聚合/VO 新增的类型依赖。
+files += ['campus-shopping-domain/'+BASE+'domain/'+p for p in [
+  'catalog/model/valobj/ProductStatusEnumVO.java',
+  'catalog/model/valobj/SkuStatusEnumVO.java',
+  'trading/model/valobj/OrderStatusEnumVO.java',
+  'fulfillment/model/valobj/PickupStatusEnumVO.java',
+  'shoppingai/model/valobj/ProposalStatusEnumVO.java',
+  'inventory/model/valobj/ReservationStatusEnumVO.java',
+  'inventory/model/valobj/StockMovementTypeEnumVO.java',
+  'trading/model/valobj/AfterSaleStatusEnumVO.java',
+  'merchant/model/valobj/MerchantStatusEnumVO.java'
+]]
 files += ['scripts/verification/DomainRulesCheck.java']
 with tempfile.TemporaryDirectory(prefix='campus-domain-') as out:
     subprocess.run(['javac','-encoding','UTF-8','--release','17','-d',out,*[str(ROOT/f) for f in files]],check=True)

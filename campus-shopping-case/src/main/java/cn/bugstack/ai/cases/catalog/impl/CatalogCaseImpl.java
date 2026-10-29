@@ -4,6 +4,8 @@ import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
+import cn.bugstack.ai.domain.merchant.model.valobj.MerchantStatusEnumVO;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
@@ -40,7 +42,7 @@ public class CatalogCaseImpl implements ICatalogCase {
  public List<ProductAggregate> managedProductsSorted(String actor,String merchant,String q,String cat,String status,int page,int size,String sort){
   access.requirePermission(actor,merchant,"product.read");return catalog.searchManagedSorted(merchant,q,cat,status,page,size,sort);
  }
- public ProductAggregate publicDetail(String id){ProductAggregate p=catalog.find(id);require("PUBLISHED".equals(p.getStatus())&&"ACTIVE".equals(merchants.find(p.getMerchantId()).status()),ResponseCode.PRODUCT_UNAVAILABLE);return p;}
+ public ProductAggregate publicDetail(String id){ProductAggregate p=catalog.find(id);require(p.getStatusEnum()==ProductStatusEnumVO.PUBLISHED&&merchants.find(p.getMerchantId()).statusEnum()==MerchantStatusEnumVO.ACTIVE,ResponseCode.PRODUCT_UNAVAILABLE);return p;}
  public List<ProductAggregate> managedProducts(String actor,String merchant,int page,int size){access.requirePermission(actor,merchant,"product.read");return catalog.search(merchant,"",null,false,page,size);}
  public Map<String,SkuOfferVO> stockOffers(String actor,String merchant,List<String> skuIds){
   access.requirePermission(actor,merchant,"product.read");
@@ -55,7 +57,7 @@ public class CatalogCaseImpl implements ICatalogCase {
  public List<ProductAggregate> managedProductsFiltered(String actor,String merchant,String q,String category,String status,int page,int size){access.requirePermission(actor,merchant,"product.read");return catalog.searchManaged(merchant,q,category,status,page,size);}
  public long countManagedProductsFiltered(String actor,String merchant,String q,String category,String status){access.requirePermission(actor,merchant,"product.read");return catalog.countManaged(merchant,q,category,status);}
  public long countAdminProducts(String actor,String merchant,String query){access.requireAdmin(actor);return catalog.count(merchant,query,null,false);}
- public String image(String actor,String merchant,byte[] bytes){access.requirePermission(actor,merchant,"product.write");require("ACTIVE".equals(merchants.find(merchant).status()),ResponseCode.MERCHANT_SUSPENDED);return catalog.storeImage(bytes);}
+ public String image(String actor,String merchant,byte[] bytes){access.requirePermission(actor,merchant,"product.write");require(merchants.find(merchant).statusEnum()==MerchantStatusEnumVO.ACTIVE,ResponseCode.MERCHANT_SUSPENDED);return catalog.storeImage(bytes);}
  @Transactional(rollbackFor=Exception.class)
  public void category(String actor,String code,String name,boolean active){access.requireAdmin(actor);catalog.category(code,name,active);access.audit(actor,"CATEGORY_CHANGED",code,null,"维护平台商品类目");}
  public List<ProductAggregate> adminProducts(String actor,String merchant,String query,int page,int size){access.requireAdmin(actor);return catalog.search(merchant,query,null,false,page,size);}

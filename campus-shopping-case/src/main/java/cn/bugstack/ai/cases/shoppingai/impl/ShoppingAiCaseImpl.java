@@ -2,7 +2,8 @@ package cn.bugstack.ai.cases.shoppingai.impl;
 import cn.bugstack.ai.cases.shoppingai.*;import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.domain.shoppingai.service.IAiStateService;import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
 import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;import cn.bugstack.ai.domain.shoppingai.model.valobj.*;import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
+import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;import cn.bugstack.ai.domain.identity.service.IUserAccountService;import cn.bugstack.ai.domain.trading.service.ITradingService;
 import cn.bugstack.ai.types.enums.ResponseCode;import cn.bugstack.ai.types.common.Fingerprints;import static cn.bugstack.ai.types.common.Checks.*;
@@ -43,7 +44,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
   List<String> ids=new ArrayList<>();
   for(int position=0;position<20&&ids.size()<300;position++){
    for(var p:products){
-    var active=p.getSkus().stream().filter(s->"ACTIVE".equals(s.status())).toList();
+    var active=p.getSkus().stream().filter(s->s.statusEnum()==SkuStatusEnumVO.ACTIVE).toList();
     if(position<active.size())ids.add(active.get(position).id());
     if(ids.size()==300)break;
    }
@@ -61,7 +62,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
    var stock=stocks.get(o.skuId());if(stock==null||stock.onHand()-stock.reserved()<recommendation.quantity())continue;
    items.add(new ProposalItemVO(o.skuId(),o.merchantId(),o.title(),o.specKey(),o.priceCent(),o.version(),recommendation.quantity(),o.imageUrl()));if(items.size()==3)break;
   }
-  ProposalVO proposal=items.isEmpty()?null:new ProposalVO(UUID.randomUUID().toString(),actor,conversation,"PENDING",List.copyOf(items),null,clock.instant().plusSeconds(Math.max(1,Math.min(proposalMinutes,30))*60));
+  ProposalVO proposal=items.isEmpty()?null:new ProposalVO(UUID.randomUUID().toString(),actor,conversation,ProposalStatusEnumVO.PENDING.name(),List.copyOf(items),null,clock.instant().plusSeconds(Math.max(1,Math.min(proposalMinutes,30))*60));
   // 不把模型提出但未通过 Java SKU/库存复核的条目输出给前端。
   Map<String,String> reasons=new HashMap<>();
   for(var r:answer.recommendations())if(r.skuId()!=null)reasons.putIfAbsent(r.skuId(),r.reason());
