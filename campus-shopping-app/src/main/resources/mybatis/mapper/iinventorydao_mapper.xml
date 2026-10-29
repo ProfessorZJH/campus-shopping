@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IInventoryDao">
+    <insert id="initialize">
+INSERT INTO inv_stock_balance(merchant_id,store_id,sku_id,on_hand,reserved,version) VALUES(#{merchantId},#{storeId},#{skuId},0,0,0) ON DUPLICATE KEY UPDATE sku_id=sku_id
+    </insert>
+    <select id="stock" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
+SELECT * FROM inv_stock_balance WHERE store_id=#{storeId} AND sku_id=#{skuId}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <select id="stocks" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
+SELECT * FROM inv_stock_balance WHERE sku_id IN <foreach collection="skuIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY sku_id
+    </select>
+    <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
+SELECT * FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if> ORDER BY sku_id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <update id="save">
+UPDATE inv_stock_balance SET on_hand=#{p.onHand},reserved=#{p.reserved},version=version+1 WHERE store_id=#{p.storeId} AND sku_id=#{p.skuId} AND version=#{p.version} AND #{p.onHand} &gt;= #{p.reserved} AND #{p.reserved} &gt;= 0
+    </update>
+    <select id="reservation" resultType="cn.bugstack.ai.infrastructure.dao.po.ReservationPO">
+SELECT * FROM inv_reservation WHERE order_id=#{orderId} AND sku_id=#{skuId} FOR UPDATE
+    </select>
+    <select id="reservations" resultType="cn.bugstack.ai.infrastructure.dao.po.ReservationPO">
+SELECT * FROM inv_reservation WHERE order_id=#{orderId} ORDER BY sku_id FOR UPDATE
+    </select>
+    <insert id="reserve">
+INSERT INTO inv_reservation(order_id,store_id,sku_id,quantity,status) VALUES(#{p.orderId},#{p.storeId},#{p.skuId},#{p.quantity},#{p.status})
+    </insert>
+    <update id="transition">
+UPDATE inv_reservation SET status=#{status} WHERE order_id=#{orderId} AND sku_id=#{skuId} AND status='RESERVED'
+    </update>
+    <select id="movement" resultType="cn.bugstack.ai.infrastructure.dao.po.StockMovementPO">
+SELECT * FROM inv_stock_movement WHERE store_id=#{storeId} AND sku_id=#{skuId} AND type=#{type} AND biz_key=#{bizKey}
+    </select>
+    <insert id="recordMovement">
+INSERT INTO inv_stock_movement(id,merchant_id,store_id,sku_id,type,quantity,biz_key) VALUES(#{p.id},#{p.merchantId},#{p.storeId},#{p.skuId},#{p.type},#{p.quantity},#{p.bizKey})
+    </insert>
+    <select id="movements" resultType="cn.bugstack.ai.infrastructure.dao.po.StockMovementPO">
+SELECT * FROM inv_stock_movement WHERE merchant_id=#{merchantId} ORDER BY created_at DESC,id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countStocks" resultType="long">SELECT COUNT(*) FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if></select>
+    <select id="countMovements" resultType="long">SELECT COUNT(*) FROM inv_stock_movement WHERE merchant_id=#{merchantId}</select>
+</mapper>

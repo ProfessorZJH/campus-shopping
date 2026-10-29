@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IAccessDao">
+    <select id="countAdmin" resultType="int">
+SELECT COUNT(*) FROM iam_platform_role WHERE user_id=#{userId} AND role='PLATFORM_ADMIN'
+    </select>
+    <insert id="grantAdmin">
+INSERT INTO iam_platform_role(user_id,role) VALUES(#{userId},'PLATFORM_ADMIN') ON DUPLICATE KEY UPDATE user_id=user_id
+    </insert>
+    <select id="member" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
+SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND merchant_id=#{merchantId}<if test="lock"> FOR SHARE</if>
+    </select>
+    <select id="memberships" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
+SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND status='ACTIVE' ORDER BY merchant_id LIMIT 100
+    </select>
+    <select id="members" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
+SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE merchant_id=#{merchantId} ORDER BY role,user_id LIMIT 100
+    </select>
+    <insert id="grantOwner">
+INSERT INTO iam_merchant_membership(merchant_id,user_id,role,status,source_application_id) VALUES(#{merchantId},#{userId},'OWNER','ACTIVE',#{applicationId}) ON DUPLICATE KEY UPDATE user_id=user_id
+    </insert>
+    <insert id="grantClerk">
+INSERT INTO iam_merchant_membership(merchant_id,user_id,role,status) VALUES(#{merchantId},#{userId},'CLERK','ACTIVE') ON DUPLICATE KEY UPDATE role='CLERK',status='ACTIVE',version=version+1
+    </insert>
+    <update id="revoke">
+UPDATE iam_merchant_membership SET status='REVOKED',version=version+1 WHERE merchant_id=#{merchantId} AND user_id=#{userId} AND role&lt;&gt;'OWNER'
+    </update>
+    <insert id="invite">
+INSERT INTO iam_invitation(id,merchant_id,target_user_id,invited_by,status,expires_at) VALUES(#{po.id},#{po.merchantId},#{po.targetUserId},#{inviter},#{po.status},#{po.expiresAt})
+    </insert>
+    <select id="invitation" resultType="cn.bugstack.ai.infrastructure.dao.po.InvitationPO">
+SELECT id,merchant_id,target_user_id,status,expires_at FROM iam_invitation WHERE id=#{id} FOR UPDATE
+    </select>
+    <select id="invitations" resultType="cn.bugstack.ai.infrastructure.dao.po.InvitationPO">
+SELECT id,merchant_id,target_user_id,status,expires_at FROM iam_invitation WHERE target_user_id=#{targetUserId} ORDER BY created_at DESC LIMIT 100
+    </select>
+    <update id="accept">
+UPDATE iam_invitation SET status='ACCEPTED' WHERE id=#{id} AND status='PENDING'
+    </update>
+    <update id="cancelInvitations">
+UPDATE iam_invitation SET status='CANCELED' WHERE merchant_id=#{merchantId} AND target_user_id=#{targetUserId} AND status='PENDING'
+    </update>
+    <insert id="audit">
+INSERT INTO sys_audit(id,actor_user_id,action,target_id,merchant_id,detail) VALUES(#{id},#{actor},#{action},#{target},#{merchantId},#{detail})
+    </insert>
+    <select id="roles" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantRolePO">
+SELECT merchant_id,role_code,name FROM iam_merchant_role WHERE merchant_id=#{merchantId} ORDER BY created_at,role_code
+    </select>
+    <select id="role" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantRolePO">
+SELECT merchant_id,role_code,name FROM iam_merchant_role WHERE merchant_id=#{merchantId} AND role_code=#{code}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <select id="rolePermissions" resultType="string">
+SELECT permission FROM iam_merchant_role_permission WHERE merchant_id=#{merchantId} AND role_code=#{code}
+    </select>
+    <insert id="createRole">
+INSERT INTO iam_merchant_role(merchant_id,role_code,name) VALUES(#{merchantId},#{code},#{name})
+    </insert>
+    <update id="updateRole">
+UPDATE iam_merchant_role SET name=#{name},version=version+1 WHERE merchant_id=#{merchantId} AND role_code=#{code}
+    </update>
+    <delete id="deleteRole">
+DELETE FROM iam_merchant_role WHERE merchant_id=#{merchantId} AND role_code=#{code}
+    </delete>
+    <delete id="deletePermissions">
+DELETE FROM iam_merchant_role_permission WHERE merchant_id=#{merchantId} AND role_code=#{code}
+    </delete>
+    <insert id="insertPermissions">
+INSERT INTO iam_merchant_role_permission(merchant_id,role_code,permission) VALUES
+<foreach collection="permissions" item="p" separator=",">(#{merchantId},#{code},#{p})</foreach>
+    </insert>
+    <select id="countRoleMembers" resultType="int">
+SELECT COUNT(*) FROM iam_merchant_membership WHERE merchant_id=#{merchantId} AND role=#{code} AND status='ACTIVE'
+    </select>
+    <update id="assignRole">
+UPDATE iam_merchant_membership SET role=#{code},version=version+1 WHERE merchant_id=#{merchantId} AND user_id=#{userId} AND status='ACTIVE' AND role&lt;&gt;'OWNER'
+    </update>
+</mapper>

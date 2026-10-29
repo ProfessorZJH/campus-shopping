@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IAiDao">
+    <insert id="baseInsert">
+INSERT INTO ai_knowledge_base(id,name,merchant_id,visibility,created_by) VALUES(#{p.id},#{p.name},#{p.merchantId},#{p.visibility},#{creator})
+    </insert>
+    <select id="bases" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO">
+SELECT id,name,merchant_id,visibility FROM ai_knowledge_base ORDER BY created_at DESC,id LIMIT 1000
+    </select>
+    <select id="base" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO">
+SELECT id,name,merchant_id,visibility FROM ai_knowledge_base WHERE id=#{id}
+    </select>
+    <insert id="rootInsert">
+INSERT INTO ai_document_root(id,base_id,version_counter) VALUES(#{id},#{base},0)
+    </insert>
+    <select id="root" resultType="cn.bugstack.ai.infrastructure.dao.po.DocumentRootPO">
+SELECT * FROM ai_document_root WHERE id=#{id} FOR UPDATE
+    </select>
+    <update id="incrementVersion">
+UPDATE ai_document_root SET version_counter=version_counter+1 WHERE id=#{id}
+    </update>
+    <insert id="documentInsert">
+INSERT INTO ai_document(id,root_id,base_id,version,title,status,index_status,content,error,created_at) VALUES(#{p.id},#{p.rootId},#{p.baseId},#{p.version},#{p.title},'DRAFT','PENDING',#{p.content},'',#{p.createdAt})
+    </insert>
+    <select id="document" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
+SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.id=#{id}
+    </select>
+    <select id="documents" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
+SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.base_id=#{base} ORDER BY d.created_at DESC,d.id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="visible" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
+SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id JOIN ai_document_root r ON r.active_document_id=d.id WHERE d.status='PUBLISHED' AND d.index_status='READY' AND d.base_id IN <foreach collection="baseIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY d.id LIMIT 1000
+    </select>
+    <update id="indexState">
+UPDATE ai_document SET index_status=#{status},error=#{error} WHERE id=#{id}
+    </update>
+    <update id="documentState">
+UPDATE ai_document SET status=#{status} WHERE id=#{id}
+    </update>
+    <update id="activeDocument">
+UPDATE ai_document_root SET active_document_id=#{id} WHERE id=#{root}
+    </update>
+    <insert id="conversationInsert">
+INSERT INTO ai_conversation(id,user_id,title,created_at) VALUES(#{p.id},#{p.userId},#{p.title},#{p.createdAt})
+    </insert>
+    <select id="conversation" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationPO">
+SELECT * FROM ai_conversation WHERE id=#{id}
+    </select>
+    <select id="conversations" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationPO">
+SELECT * FROM ai_conversation WHERE user_id=#{user} ORDER BY created_at DESC,id LIMIT 100
+    </select>
+    <select id="messages" resultType="cn.bugstack.ai.infrastructure.dao.po.MessagePO">
+SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
+    </select>
+    <insert id="messageInsert">
+INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint})
+    </insert>
+    <insert id="proposalInsert">
+INSERT INTO ai_proposal(id,user_id,conversation_id,status,items_json,selection_hash,expires_at) VALUES(#{p.id},#{p.userId},#{p.conversationId},#{p.status},#{p.itemsJson},#{p.selectionHash},#{p.expiresAt})
+    </insert>
+    <select id="proposal" resultType="cn.bugstack.ai.infrastructure.dao.po.ProposalPO">
+SELECT * FROM ai_proposal WHERE id=#{id}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <update id="proposalState">
+UPDATE ai_proposal SET status=#{status},selection_hash=#{selectionHash} WHERE id=#{id} AND status='PENDING'
+    </update>
+    <select id="proposals" resultType="cn.bugstack.ai.infrastructure.dao.po.ProposalPO">
+SELECT * FROM ai_proposal WHERE user_id=#{user} AND conversation_id=#{conversation} ORDER BY created_at DESC,id LIMIT 20
+    </select>
+    <select id="countDocuments" resultType="long">SELECT COUNT(*) FROM ai_document WHERE base_id=#{base}</select>
+</mapper>

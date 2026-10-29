@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IMerchantDao">
+    <select id="find" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">
+SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE m.id=#{id}<if test="lock"> FOR UPDATE</if>
+    </select>
+    <insert id="insertMerchant">
+INSERT INTO mer_merchant(id,source_application_id,name,category,status) VALUES(#{po.id},#{po.applicationId},#{po.name},#{po.category},#{po.status})
+    </insert>
+    <insert id="insertStore">
+INSERT INTO mer_store(id,merchant_id,name,location) VALUES(#{po.storeId},#{po.id},#{po.storeName},#{po.location})
+    </insert>
+    <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">
+SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE 1=1 <if test="activeOnly">AND m.status='ACTIVE'</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',m.id,m.name,m.category,s.name,s.location)))>0</if> ORDER BY m.created_at DESC,m.id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="count" resultType="long">
+SELECT COUNT(*) FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE 1=1 <if test="activeOnly">AND m.status='ACTIVE'</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',m.id,m.name,m.category,s.name,s.location)))>0</if>
+    </select>
+    <update id="setStatus">
+UPDATE mer_merchant SET status=#{status},version=version+1 WHERE id=#{id}
+    </update>
+    <update id="updateProfile">UPDATE mer_merchant SET name=#{name},version=version+1 WHERE id=#{id}</update>
+    <update id="updateStore">UPDATE mer_store SET name=#{storeName},location=#{location} WHERE merchant_id=#{id}</update>
+</mapper>

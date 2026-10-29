@@ -1,0 +1,29 @@
+{
+  "name": "campus-shopping",
+  "version": "v1.2.1-ui-polished-source-candidate",
+  "timestamp": "2026-10-29",
+  "baseCommit": "2581cb14575e815d659d9373d7c611589727517d",
+  "javaSourceFiles": 262,
+  "httpRoutes": 93,
+  "mavenModules": 7,
+  "schemaTables": 33,
+  "overallAcceptance": "BLOCKED_NOT_COMPLETED",
+  "sourceImplemented": true,
+  "wholeProjectCompiled": false,
+  "wholeProjectRun": false,
+  "deployed": false,
+  "completedScope": [
+    "merchant custom RBAC and built-in Owner/Clerk restrictions",
+    "permission-aligned frontend navigation and actions",
+    "global server-side catalog sorting",
+    "SDD-05 and OpenAPI contracts",
+    "stubbed Chromium, source and Python regression",
+    "UI-06: concise copy, user-friendly RBAC labels, mobile navigation, read-only role preview; controlled Chromium browser checks"
+  ],
+  "notExecuted": [
+    "Maven full build",
+    "MySQL integration tests",
+    "Spring/MySQL real HTTP E2E",
+    "live LLM and Qdrant"
+  ]
+}

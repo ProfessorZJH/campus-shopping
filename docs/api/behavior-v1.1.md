@@ -1,0 +1,81 @@
+# API 行为契约 v1.1（当前版本）
+
+> 适用范围：`campus-shopping` R1 + SDD-02 + SDD-03。HTTP 路由、字段名和 DTO 结构以[自动生成路由表](http-api.md)及[OpenAPI](openapi.json)为准；本文件补充静态提取无法准确表达的授权、数据语义与业务不变量。**源码已实现不等于真实联调通过**。
+
+## 1. 优先级与来源
+
+1. 已提交的 `Controller`、`Request/Response DTO`、`SessionSecurityConfig` 和领域校验是当前实现事实。
+2. `scripts/generate-api-contract.py` 生成 `route-manifest.json`、`openapi.json`、`http-api.md`，不可手工追加路由。`scripts/verify-api-contract.py` 在 CI 复验安全白名单、路由集合、DTO 字段和查询/统计一致性。
+3. 本文件定义跨接口业务语义；`docs/domains/` 解释领域模型。旧 P1 草案、旧前端模板和示例脚本不能覆盖 v1.1 的路径/语义。重大改变先修改 SDD，再修改代码并重新生成契约。
+
+## 2. HTTP、身份与 CSRF
+
+| 情况 | HTTP 状态 | `Response.code` | 行为 |
+|---|---|---|---|
+| 业务正常 | 200 | `0000` | `data` 为接口指定类型；`Void` 可无内容 |
+| 领域校验/权限失败（请求已进入 Controller） | 通常 200 | 非 `0000` | 按业务码处理，不能只判断 HTTP 200 |
+| 未登录访问私有接口 | 401 | `A0004` | 不允许跳转到 HTML 登录页 |
+| CSRF 无效 | 403 | `A0005` | 前端重新获得有效 token 后再提交；不要无限自动重试 |
+| 已登录用户缺少 ACL（Controller/Case） | 通常 200 | `A0006` | 账号身份与领域角色分别检查 |
+| Spring Security 拒绝其他访问 | 403 | `A0006` | 没有资格访问该接口 |
+
+前端同源发送 `JSESSIONID` Cookie，使用 `GET /api/v1/auth/csrf` 的 `data.headerName` + `data.token` 发起 `POST/PUT/PATCH/DELETE`。注册与登录同样需要 CSRF；登录和退出会刷新 Session/令牌状态。登录后重新调用 CSRF 接口，不复用匿名会话的旧令牌。生产环境需要 HTTPS、合适的 Secure Cookie 配置，不可把浏览器端指定的用户 ID 当成可信身份。
+
+**匿名可访问**：`GET /auth/csrf`、`GET /categories`、`GET /products`、`GET /products/page`、`GET /products/{productId}`、`GET /merchants/public`、`GET /merchants/public/page`、`GET /merchants/public/{merchantId}`，以及匿名状态的 `POST /auth/login`、`POST /auth/register`（含 CSRF）。其他 `/api/v1/**` 要求 Session；平台管理端还要服务端平台管理员身份，商户写操作还要当前商户成员角色。商户公开详情只返回营业中商户。
+
+`/media/**` 静态图片允许 GET，但上传图片必须验证商户写权限。所有 `/admin/**` 与 `/merchants/{merchantId}/**` 私有操作禁止只凭客户端选择的 merchantId 授权。
+
+## 3. 分页与服务端搜索
+
+分页请求参数 `page` 从 1 开始，`size` 范围 1–100（默认以生成路由表为准）。新版 `/page` 响应：
+
+```json
+{"code":"0000","info":"成功","data":{"items":[],"page":1,"size":20,"total":0,"hasNext":false}}
+```
+
+`total` 必须是与当前 `state`、`status`、`category`、`merchantId`、`q` **同一过滤条件**下的数据库 `COUNT`，不能使用当前页 `items.length`。`hasNext` 基于 `page*size<total`。查询过滤在 SQL 分页之前生效，列表与 COUNT 保持等价条件。旧 `List<T>` 路由保留兼容，但新前端应使用 `/page`。
+
+当前支持 `q` 的长列表：平台商户、平台入驻申请、商户/平台订单、商户商品、商户库存、平台/公共商品。其余没有声明 `q` 的接口不能在 UI 中声称“跨所有页全文搜索”。`q` 为可选关键字，采用字面子串搜索，而不是让用户传入 SQL 通配符。建议在前端搜索时防抖，旧请求返回不得覆盖新一轮查询。
+
+**SDD-04 商品搜索语义**：公共商品 `/products/page` 和平台商品 `/admin/products/page` 的 `q` 搜索商品标题、描述、商户名称、SKU ID、规格；商户自身 `/merchants/{mid}/products/page` 搜索商品标题、描述、SKU ID、规格。公开搜索仅从有效 SKU 参与匹配，匹配多规格仍只返回一条商品记录。`%` 和 `_` 在这些商品接口中均按普通字符字面查找。商品列表/COUNT 的动态筛选必须保持一致。
+
+**SDD-05 全局排序**：`GET /products/page` 与 `GET /merchants/{mid}/products/page` 支持 `sort=NEWEST|PRICE_ASC|STOCK_DESC`（默认 `NEWEST`），由 MySQL 在 LIMIT/OFFSET 前统一排序；`PRICE_ASC` 使用商品有效 SKU 最低价，`STOCK_DESC` 使用所有有效 SKU 的可售库存总和。前端“全局价格/库存”发送相同枚举，不再只对本页本地排序；COUNT 的过滤条件不变。无效 sort 返回参数错误。见 [SDD-05](../specs/SDD-RBAC-05.md)。
+
+### 3.1 SDD-05 商户 RBAC 权限与角色管理
+
+默认 `OWNER`（15 项商户权限）和 `CLERK`（商品只读、库存读/补货、订单读/备货、自提核销）保持不变。商户 Owner 可创建非空权限集合的自定义角色、编辑权限、删除无 ACTIVE 成员的角色，并为已加入商户的非 Owner 成员改派角色。`team.manage`、`store.manage`、`role.manage` 为 Owner 专属，禁止授予自定义角色；不能通过角色改派创建 Owner 或 PLATFORM_ADMIN。详情见 [SDD-05 权限矩阵](../specs/SDD-RBAC-05.md)。
+
+`GET /workspace` 添加 `merchantPermissions: {merchantId: [permissionCode]}` 供当前前端菜单与操作按钮显示；浏览器权限只是展示快照，后端每次从当前 Session 身份、商户成员状态及数据库角色权限复权。新增 6 条 `/merchants/{merchantId}/rbac/` 路由，统一要求 Owner、CSRF 写保护及商户范围约束。`knowledge.read`、`knowledge.manage` 分离，AI 的商户内部知识可见性不能由前端宣称权限。
+
+## 4. 业务写操作与请求键
+
+| 业务 | 当前接口 | 校验重点 |
+|---|---|---|
+| 入驻申请 | `POST /merchant-applications` | 申请者由 Session 决定；`Idempotency-Key` 业务必填，最长 64 字符，同主体同键同请求返回原申请 |
+| 库存补货 | `POST /merchants/{mid}/stocks/{skuId}/replenish` | 商户成员授权；数量有效；`Idempotency-Key` 必填，最长 64 字符；重放不重复增库存 |
+| 订单创建 | `POST /orders` | 只允许单一商户；每行 `skuId,quantity,expectedPriceCent,expectedVersion` 由 Java 复查；`Idempotency-Key` 必填，最长 64 字符，重放不重复预占 |
+| 商品编辑与规格 | `/merchants/{mid}/products` 及 `/skus` 子路由 | 多 SKU 唯一、报价版本与当前用户权限由 Java 决定；图片 `imageUrl` 来自可信上传接口 |
+| 模拟支付/备货/自提 | `/orders/{id}/pay`、商户 `/orders/{id}/prepare|ready|verify` | 根据状态机校验、重复操作幂等，核销凭证有时效与单次消费约束 |
+| AI 推荐提案确认 | `POST /ai/proposals/{proposalId}/confirm` | AI 输出不是业务执行凭据；Java 在确认时复查所有权、失效时间、SKU、价格、库存 |
+
+Controller 的 `@RequestHeader(required=false)` 是为了在领域层返回统一业务码，**不表示业务键可省略**。请求键不可复用在不同 payload 上。所有金额以整数分 `priceCent/totalCent` 传输，不依赖浏览器浮点数计算为准。
+
+## 5. 图片、引用与 AI 模式
+
+- `CartResponseDTO.merchantName` 从 `mer_merchant` 查出后返回；`imageUrl` 从当前公开商品数据读取。
+- `ProposalItemResponseDTO.imageUrl` 是生成提案时可信 Catalog 数据，不要求新增数据库表；过期提案仍拒绝执行。
+- `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。
+- `POST /ai/chat` 首版返回完整 JSON，**不支持 SSE 流式 token**。未配置真实模型时，响应 `mode` 必须正确标识本地检索/降级；禁止用演示结果宣称真实模型评测通过。知识库有发布状态与权限范围，外部引用只显示可授权的信息。
+
+## 6. 前端、CI 与验收证据
+
+- 前端当前 Vue 源码在 `frontend/src/`，同源预编译产物在 `campus-shopping-app/src/main/resources/static/`。旧 `static/assets/app.js` 只作为 legacy 兼容入口。
+- 浏览器视觉测试（`?demo=1` 或测试替身）只能证明 UI 和请求构造，不证明 Java/MySQL 实际响应正确。
+- **SDD-04 前端上下文**：消费者登录/退出会使旧请求失效并重新加载公开商品；商户切换和从商户端返回购物端时，旧商户请求不得写回新视图；商户知识库页面在后端主体授权的基础上仅展示当前选中商户的知识库；非 Owner 仅展示有权访问的管理菜单。
+- **退款审批**：商户和平台的同意/驳回都必须提交非空审核说明，前端禁用空白理由的提交控件；服务端始终独立校验。
+- 真实验收链路：`mvn -B -ntp clean verify` → Spring Boot + MySQL 服务 → `python scripts/smoke-full.py` → `python frontend/tests/live_ui.py`，输出只在这些命令真正执行后记为 `PASS`；缺少依赖/环境时标为 `NOT_RUN`。
+- 契约门禁：`python scripts/verify-api-contract.py`。CI 因旧选择器报错不能视为后端功能失败；本项目必须使用新版 Vue 的选择器。
+
+## 7. 常见业务码
+
+`0002` 参数非法，`A0004` 未登录，`A0005` CSRF 无效，`A0006` 权限不足，`G0003` 幂等键冲突，`C0002` 商品报价变化，`I0001` 库存不足，`T0001` 订单状态冲突，`AI0002` AI 提案已过期。完整码表见 [错误码](error-codes.md) 和 Java `ResponseCode`。
