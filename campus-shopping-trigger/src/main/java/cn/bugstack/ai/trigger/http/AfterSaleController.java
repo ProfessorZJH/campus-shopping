@@ -19,7 +19,7 @@ import java.security.Principal;import java.util.*;import java.util.function.Supp
 @RequestMapping("/api/v1")
 public class AfterSaleController implements IAfterSaleApi {
     @Resource private IOrderLifecycleCase lifecycle;
-    @Resource private ITradingService trading;
+    @Resource private IAfterSaleService afterSales;
     @Resource private IAccessService access;
 
     /** 申请未提货全额模拟退款。 */
@@ -45,13 +45,13 @@ public class AfterSaleController implements IAfterSaleApi {
     @GetMapping("/merchants/{merchantId}/aftersales")
     public Response<List<AfterSaleResponseDTO>> merchantAfterSales(@PathVariable("merchantId") String merchantId, @RequestParam(required=false) String state, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int size, Principal principal) {
         return execute(() -> {
-            access.requirePermission(actor(principal),merchantId,"aftersale.read");return trading.afterSales(null,merchantId,state,page,size).stream().map(ApiViews::afterSale).toList();
+            access.requirePermission(actor(principal),merchantId,"aftersale.read");return afterSales.afterSales(null,merchantId,state,page,size).stream().map(ApiViews::afterSale).toList();
         });
     }
 
     @Override @GetMapping("/merchants/{merchantId}/aftersales/page")
     public Response<PageResponseDTO<AfterSaleResponseDTO>> merchantAfterSalesPage(@PathVariable("merchantId") String merchantId,@RequestParam(required=false) String state,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="20") int size,Principal principal){
-        return execute(()->{access.requirePermission(actor(principal),merchantId,"aftersale.read");return PageResponseDTO.of(trading.afterSales(null,merchantId,state,page,size).stream().map(ApiViews::afterSale).toList(),page,size,trading.countAfterSales(null,merchantId,state));});
+        return execute(()->{access.requirePermission(actor(principal),merchantId,"aftersale.read");return PageResponseDTO.of(afterSales.afterSales(null,merchantId,state,page,size).stream().map(ApiViews::afterSale).toList(),page,size,afterSales.countAfterSales(null,merchantId,state));});
     }
 
     /** 商户审核退款；进入争议后只允许平台处理。 */
@@ -68,7 +68,7 @@ public class AfterSaleController implements IAfterSaleApi {
     @GetMapping("/admin/aftersales")
     public Response<List<AfterSaleResponseDTO>> platformAfterSales(@RequestParam(required=false) String state, @RequestParam(defaultValue="1") int page, @RequestParam(defaultValue="20") int size, Principal principal) {
         return execute(() -> {
-            access.requireAdmin(actor(principal));return trading.afterSales(null,null,state,page,size).stream().map(ApiViews::afterSale).toList();
+            access.requireAdmin(actor(principal));return afterSales.afterSales(null,null,state,page,size).stream().map(ApiViews::afterSale).toList();
         });
     }
 
@@ -83,7 +83,7 @@ public class AfterSaleController implements IAfterSaleApi {
 
     @Override @GetMapping("/admin/aftersales/page")
     public Response<PageResponseDTO<AfterSaleResponseDTO>> platformAfterSalesPage(@RequestParam(required=false) String state,@RequestParam(defaultValue="1") int page,@RequestParam(defaultValue="20") int size,Principal principal){
-        return execute(()->{access.requireAdmin(actor(principal));return PageResponseDTO.of(trading.afterSales(null,null,state,page,size).stream().map(ApiViews::afterSale).toList(),page,size,trading.countAfterSales(null,null,state));});
+        return execute(()->{access.requireAdmin(actor(principal));return PageResponseDTO.of(afterSales.afterSales(null,null,state,page,size).stream().map(ApiViews::afterSale).toList(),page,size,afterSales.countAfterSales(null,null,state));});
     }
 
     private <T> Response<T> execute(Supplier<T> action) {

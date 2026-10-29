@@ -5,17 +5,17 @@ import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;import cn.bug
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
-import cn.bugstack.ai.domain.merchant.service.IMerchantService;import cn.bugstack.ai.domain.identity.service.IUserAccountService;import cn.bugstack.ai.domain.trading.service.ITradingService;
+import cn.bugstack.ai.domain.merchant.service.IMerchantService;import cn.bugstack.ai.domain.identity.service.IUserAccountService;import cn.bugstack.ai.domain.trading.service.ICartService;
 import cn.bugstack.ai.types.enums.ResponseCode;import cn.bugstack.ai.types.common.Fingerprints;import static cn.bugstack.ai.types.common.Checks.*;
 import org.springframework.stereotype.Service;import org.springframework.transaction.annotation.Transactional;import org.springframework.beans.factory.annotation.Value;
 import java.time.*;import java.util.*;import java.util.concurrent.locks.ReentrantLock;import java.util.stream.Collectors;
 /** Java 负责复权、商品事实和用户确认；模型文本从不直接变成写命令。 */
 @Service
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
- private final IAiStateService state;private final IAiEnginePort engine;private final IKnowledgeCase knowledge;private final ICatalogService catalog;private final IInventoryService inventory;private final IMerchantService merchants;private final IUserAccountService accounts;private final ITradingService trading;private final Clock clock;
+ private final IAiStateService state;private final IAiEnginePort engine;private final IKnowledgeCase knowledge;private final ICatalogService catalog;private final IInventoryService inventory;private final IMerchantService merchants;private final IUserAccountService accounts;private final ICartService cart;private final Clock clock;
  private final ReentrantLock[] locks=new ReentrantLock[64];
  @Value("${campus.proposal.minutes:10}")private long proposalMinutes=10;
- public ShoppingAiCaseImpl(IAiStateService state,IAiEnginePort engine,IKnowledgeCase knowledge,ICatalogService catalog,IInventoryService inventory,IMerchantService merchants,IUserAccountService accounts,ITradingService trading,Clock clock){this.state=state;this.engine=engine;this.knowledge=knowledge;this.catalog=catalog;this.inventory=inventory;this.merchants=merchants;this.accounts=accounts;this.trading=trading;this.clock=clock;for(int i=0;i<locks.length;i++)locks[i]=new ReentrantLock();}
+ public ShoppingAiCaseImpl(IAiStateService state,IAiEnginePort engine,IKnowledgeCase knowledge,ICatalogService catalog,IInventoryService inventory,IMerchantService merchants,IUserAccountService accounts,ICartService cart,Clock clock){this.state=state;this.engine=engine;this.knowledge=knowledge;this.catalog=catalog;this.inventory=inventory;this.merchants=merchants;this.accounts=accounts;this.cart=cart;this.clock=clock;for(int i=0;i<locks.length;i++)locks[i]=new ReentrantLock();}
  public ChatResult chat(String actor,String conversationId,String question){
   accounts.requireActive(actor);String q=text(question,"问题",2000);var conversation=state.conversation(actor,conversationId,q);var lock=locks[Math.floorMod(conversation.id().hashCode(),locks.length)];require(lock.tryLock(),ResponseCode.STATE_CONFLICT);
   try{return answer(actor,conversation.id(),q);}finally{lock.unlock();}
@@ -83,9 +83,9 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
   List<String> ids=selected.stream().distinct().sorted().toList();require(ids.size()==selected.size(),ResponseCode.ILLEGAL_PARAMETER);ProposalVO p=state.proposal(actor,id,true);
   Map<String,ProposalItemVO> proposed=p.items().stream().collect(Collectors.toMap(ProposalItemVO::skuId,i->i));require(ids.stream().allMatch(proposed::containsKey),ResponseCode.ILLEGAL_PARAMETER);String hash=Fingerprints.of(ids.toArray());
   ProposalAggregate aggregate=new ProposalAggregate(p.userId(),p.expiresAt(),p.status(),p.selectionHash());if(!aggregate.confirm(actor,hash,clock.instant()))return p;
-  trading.lockCart(actor);ids.stream().map(s->proposed.get(s).merchantId()).distinct().sorted().forEach(merchants::requireActiveForNewTrade);
+  cart.lockCart(actor);ids.stream().map(s->proposed.get(s).merchantId()).distinct().sorted().forEach(merchants::requireActiveForNewTrade);
   var offers=catalog.offers(ids,true,true).stream().collect(Collectors.toMap(SkuOfferVO::skuId,o->o));var stocks=inventory.stocks(ids).stream().collect(Collectors.toMap(StockVO::skuId,s->s));
-  for(String sku:ids){var item=proposed.get(sku);var o=offers.get(sku);require(o.priceCent()==item.priceCent()&&o.version()==item.quoteVersion()&&o.merchantId().equals(item.merchantId()),ResponseCode.PRICE_CHANGED);var stock=stocks.get(sku);require(stock!=null&&stock.onHand()-stock.reserved()>=item.quantity(),ResponseCode.STOCK_NOT_ENOUGH);trading.addCart(actor,o.merchantId(),sku,item.quantity());}
+  for(String sku:ids){var item=proposed.get(sku);var o=offers.get(sku);require(o.priceCent()==item.priceCent()&&o.version()==item.quoteVersion()&&o.merchantId().equals(item.merchantId()),ResponseCode.PRICE_CHANGED);var stock=stocks.get(sku);require(stock!=null&&stock.onHand()-stock.reserved()>=item.quantity(),ResponseCode.STOCK_NOT_ENOUGH);cart.addCart(actor,o.merchantId(),sku,item.quantity());}
   state.confirm(id,hash);return state.proposal(actor,id,false);
  }
  public void reject(String actor,String proposal){accounts.requireActive(actor);state.reject(actor,proposal);}

@@ -241,6 +241,49 @@ class CommerceMySqlIntegrationTest {
         var p=product(2);var o=order(p);life.pay(buyer,o.getId());life.requestRefund(buyer,o.getId(),"取消购买");life.decideRefund(owner,merchant.id(),o.getId(),true,"同意",false);life.decideRefund(owner,merchant.id(),o.getId(),true,"同意",false);
         assertEquals(1,scalar("SELECT COUNT(*) FROM trd_refund"));assertEquals(2,scalar("SELECT on_hand FROM inv_stock_balance"));assertEquals(0,scalar("SELECT reserved FROM inv_stock_balance"));assertEquals("T0001",code(()->life.verify(owner,merchant.id(),o.getId(),"invalid")));
     }
+    /** 商户驳回后只能本人申诉，争议售后必须由平台裁决；退款仍只提交一次。 */
+    @Test void rejectedAfterSaleAppealAndPlatformDecisionAreAtomic(){
+        var p=product(2);
+        var order=order(p);
+        life.pay(buyer,order.getId());
+        var first=life.requestRefund(buyer,order.getId(),"未提货");
+        var duplicate=life.requestRefund(buyer,order.getId(),"未提货");
+        assertEquals(first.id(),duplicate.id());
+        assertEquals("T0004",code(()->life.requestRefund(buyer,order.getId(),"另一个理由")));
+
+        life.decideRefund(owner,merchant.id(),order.getId(),false,"门店驳回",false);
+        assertEquals("REJECTED",jdbc.queryForObject("SELECT status FROM trd_after_sale WHERE order_id=?",String.class,order.getId()));
+        assertEquals("A0006",code(()->life.appeal(other,order.getId())));
+        life.appeal(buyer,order.getId());
+        life.appeal(buyer,order.getId());
+        assertEquals("DISPUTED",jdbc.queryForObject("SELECT status FROM trd_after_sale WHERE order_id=?",String.class,order.getId()));
+        assertEquals("A0006",code(()->life.decideRefund(owner,merchant.id(),order.getId(),true,"商户越权裁决",false)));
+
+        life.decideRefund(admin,null,order.getId(),true,"平台核准",true);
+        life.decideRefund(admin,null,order.getId(),true,"重复批准不会重复退款",true);
+        assertEquals("APPROVED",jdbc.queryForObject("SELECT status FROM trd_after_sale WHERE order_id=?",String.class,order.getId()));
+        assertEquals("平台核准",jdbc.queryForObject("SELECT decision_reason FROM trd_after_sale WHERE order_id=?",String.class,order.getId()));
+        assertEquals("REFUNDED",jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?",String.class,order.getId()));
+        assertEquals(1,scalar("SELECT COUNT(*) FROM trd_refund"));
+        assertEquals(0,scalar("SELECT reserved FROM inv_stock_balance"));
+        assertEquals(1,scalar("SELECT COUNT(*) FROM inv_stock_movement WHERE type='RELEASE'"));
+    }
+
+    /** 审核意见不合法应整体回滚，不能留下已批准售后、已退款订单或已释放库存。 */
+    @Test void rejectedDecisionInputMustNotPartiallyApproveRefund(){
+        var p=product(2);
+        var order=order(p);
+        life.pay(buyer,order.getId());
+        life.requestRefund(buyer,order.getId(),"未提货");
+        assertEquals("0002",code(()->life.decideRefund(owner,merchant.id(),order.getId(),true,"  ",false)));
+        assertEquals("REQUESTED",jdbc.queryForObject("SELECT status FROM trd_after_sale WHERE order_id=?",String.class,order.getId()));
+        assertEquals("PAID",jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?",String.class,order.getId()));
+        assertEquals(1,scalar("SELECT reserved FROM inv_stock_balance"));
+        assertEquals(0,scalar("SELECT COUNT(*) FROM trd_refund"));
+        life.decideRefund(owner,merchant.id(),order.getId(),true,"审核同意",false);
+        assertEquals("REFUNDED",jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?",String.class,order.getId()));
+    }
+
     @Test void merchantIsolationAndRevocationAreCheckedAtOperationTime(){
         var p=product(2);assertEquals("A0006",code(()->catalog.replenish(other,merchant.id(),p.getSkus().get(0).id(),1,"bad")));
         var invitation=access.invite(owner,merchant.id(),"testother");access.accept(other,invitation.id());access.requireMember(other,merchant.id(),false);

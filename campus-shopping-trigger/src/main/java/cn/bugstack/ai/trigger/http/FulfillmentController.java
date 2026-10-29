@@ -20,7 +20,7 @@ import java.security.Principal;import java.util.*;import java.util.function.Supp
 public class FulfillmentController implements IFulfillmentApi {
     @Resource private IOrderLifecycleCase lifecycle;
     @Resource private IFulfillmentService fulfillment;
-    @Resource private ITradingService trading;
+    @Resource private IAfterSaleService afterSales;
 
     /** 开始备货。 */
     @Override
@@ -54,7 +54,7 @@ public class FulfillmentController implements IFulfillmentApi {
     @PostMapping("/merchants/{merchantId}/orders/{orderId}/verify")
     public Response<OrderResponseDTO> verify(@PathVariable("merchantId") String merchantId, @PathVariable("orderId") String orderId, @RequestBody VerifyPickupRequestDTO request, Principal principal) {
         return execute(() -> {
-            var o=lifecycle.verify(actor(principal),merchantId,orderId,required(request).getToken());return ApiViews.order(o,fulfillment.pickup(orderId,false),trading.afterSale(orderId,false));
+            var o=lifecycle.verify(actor(principal),merchantId,orderId,required(request).getToken());return ApiViews.order(o,fulfillment.pickup(orderId,false),afterSales.afterSale(orderId,false));
         });
     }
 
