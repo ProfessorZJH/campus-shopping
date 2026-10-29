@@ -37,9 +37,10 @@ public class TradingRepository implements ITradingRepository {
  public void saveAfterSale(String id,String status,String reason){require(dao.saveAfterSale(id,status,reason)==1,ResponseCode.NOT_FOUND);}
  public List<AfterSaleVO> afterSales(String buyer,String merchant,String status,int offset,int size){return dao.afterSales(buyer,merchant,status,offset,size).stream().map(this::afterSale).toList();}
  public TradingStatsVO statistics(String merchant){TradingStatsPO p=dao.statistics(merchant);return new TradingStatsVO(p.getTotalOrders(),p.getPendingCount(),p.getPaidCount(),p.getCompletedCount(),p.getRefundedCount(),p.getCompletedAmountCent());}
- private OrderAggregate convert(OrderPO p){
+ private OrderAggregate convert(OrderPO p){return convert(p,false);}
+ private OrderAggregate convert(OrderPO p,boolean lock){
   if(p==null)return null;
-  List<OrderItemEntity> items=dao.items(p.getId()).stream().map(i->new OrderItemEntity(i.getSkuId(),i.getTitle(),i.getSpecKey(),i.getUnitPriceCent(),i.getQuantity(),i.getImageUrl()==null?"":i.getImageUrl())).toList();
+  List<OrderItemEntity> items=dao.items(p.getId(),lock).stream().map(i->new OrderItemEntity(i.getSkuId(),i.getTitle(),i.getSpecKey(),i.getUnitPriceCent(),i.getQuantity(),i.getImageUrl()==null?"":i.getImageUrl())).toList();
   OrderAggregate order=new OrderAggregate(p.getId(),p.getBuyerId(),p.getMerchantId(),p.getStoreId(),items,p.getStatus(),p.getDeadline(),p.getCreatedAt());
   require(order.getTotalCent()==p.getTotalCent(),ResponseCode.UN_ERROR);return order;
  }
