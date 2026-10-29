@@ -14,7 +14,7 @@ public interface ITradingDao {
     int insertOrder(@Param("p") OrderPO p);
     int insertItem(@Param("p") OrderItemPO p);
     OrderPO order(@Param("id") String id, @Param("lock") boolean lock);
-    List<OrderItemPO> items(@Param("id") String id);
+    List<OrderItemPO> items(@Param("id") String id, @Param("lock") boolean lock);
     int saveOrder(@Param("id") String id, @Param("status") String status);
     List<OrderPO> orders(@Param("buyer") String buyer, @Param("merchant") String merchant, @Param("status") String status, @Param("offset") int offset, @Param("limit") int limit, @Param("q") String q);
     long countOrders(@Param("buyer") String buyer,@Param("merchant") String merchant,@Param("status") String status,@Param("q") String q);
