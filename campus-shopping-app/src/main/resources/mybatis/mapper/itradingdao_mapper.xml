@@ -20,7 +20,7 @@ INSERT INTO trd_order_item(order_id,sku_id,title,spec_key,image_url,unit_price_c
 SELECT * FROM trd_order WHERE id=#{id}<if test="lock"> FOR UPDATE</if>
     </select>
     <select id="items" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderItemPO">
-SELECT * FROM trd_order_item WHERE order_id=#{id} ORDER BY sku_id
+SELECT * FROM trd_order_item WHERE order_id=#{id} ORDER BY sku_id<if test="lock"> FOR UPDATE</if>
     </select>
     <update id="saveOrder">
 UPDATE trd_order SET status=#{status},version=version+1 WHERE id=#{id}
