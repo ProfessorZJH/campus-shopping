@@ -29,6 +29,7 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     private final IInventoryService inventoryService;
     private final IMerchantService merchantService;
 
+    @Override
     public CatalogQueryCaseImpl(
         ICatalogCase catalogCase,
         ICatalogService catalogService,
@@ -41,37 +42,45 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
         this.merchantService = merchantService;
     }
 
+    @Override
     public List<ProductReadModel> publicProducts(String merchant, String query, String category, int page, int size) {
         return views(catalogCase.publicProducts(merchant, query, category, page, size));
     }
 
+    @Override
     public ProductPage publicPage(String merchant, String query, String category, int page, int size, String sort) {
         List<ProductReadModel> items = views(catalogCase.publicProductsSorted(merchant, query, category, page, size, sort));
         return new ProductPage(items, catalogCase.countPublicProducts(merchant, query, category));
     }
 
+    @Override
     public ProductReadModel detail(String product) {
         return views(List.of(catalogCase.publicDetail(product))).get(0);
     }
 
+    @Override
     public List<ProductReadModel> managedProducts(String actor, String merchant, int page, int size) {
         return views(catalogCase.managedProducts(actor, merchant, page, size));
     }
 
+    @Override
     public ProductPage managedPage(String actor, String merchant, String query, String category, String status, int page, int size, String sort) {
         List<ProductReadModel> items = views(catalogCase.managedProductsSorted(actor, merchant, query, category, status, page, size, sort));
         return new ProductPage(items, catalogCase.countManagedProductsFiltered(actor, merchant, query, category, status));
     }
 
+    @Override
     public List<ProductReadModel> adminProducts(String actor, String merchant, String query, int page, int size) {
         return views(catalogCase.adminProducts(actor, merchant, query, page, size));
     }
 
+    @Override
     public ProductPage adminPage(String actor, String merchant, String query, int page, int size) {
         List<ProductReadModel> items = views(catalogCase.adminProducts(actor, merchant, query, page, size));
         return new ProductPage(items, catalogCase.countAdminProducts(actor, merchant, query));
     }
 
+    @Override
     public List<CategoryVO> categories() {
         return catalogService.categories();
     }

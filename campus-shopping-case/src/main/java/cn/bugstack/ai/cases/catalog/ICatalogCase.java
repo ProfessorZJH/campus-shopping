@@ -3,9 +3,11 @@ package cn.bugstack.ai.cases.catalog;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import java.util.List;
+import java.util.Map;
 
 /** 商品与库存用例边界。 */
 public interface ICatalogCase {
@@ -24,14 +26,12 @@ public interface ICatalogCase {
     List<ProductAggregate> publicProducts(String merchant, String query, String category, int page, int size);
     ProductAggregate publicDetail(String id);
     List<ProductAggregate> managedProducts(String actor, String merchant, int page, int size);
-    java.util.Map<String, cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO> stockOffers(String actor, String merchant, java.util.List<String> skuIds);
+    Map<String, SkuOfferVO> stockOffers(String actor, String merchant, List<String> skuIds);
     long countStocks(String actor, String merchant);
     long countStocks(String actor, String merchant, String q);
     long countMovements(String actor, String merchant);
     long countPublicProducts(String merchant, String query, String category);
-
     List<ProductAggregate> publicProductsSorted(String merchant, String query, String category, int page, int size, String sort);
-
     List<ProductAggregate> managedProductsSorted(String actor, String merchant, String q, String category, String status, int page, int size, String sort);
 
     long countManagedProducts(String actor, String merchant);
