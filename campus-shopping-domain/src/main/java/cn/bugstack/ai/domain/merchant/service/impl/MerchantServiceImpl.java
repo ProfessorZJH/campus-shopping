@@ -60,7 +60,8 @@ public class MerchantServiceImpl implements IMerchantService {
     public void changeStatus(String id, boolean active) {
         MerchantVO m = repository.find(id, true);
         Checks.require(m != null, ResponseCode.NOT_FOUND);
-        repository.setStatus(id, (active ? MerchantStatusEnumVO.ACTIVE : MerchantStatusEnumVO.SUSPENDED).getCode());
+        MerchantStatusEnumVO state = active ? MerchantStatusEnumVO.ACTIVE : MerchantStatusEnumVO.SUSPENDED;
+        repository.setStatus(id, state.getCode());
     }
 
     /** 先验证所有字段，再锁定并写入商户与门店，避免失败时留下部分变更。 */

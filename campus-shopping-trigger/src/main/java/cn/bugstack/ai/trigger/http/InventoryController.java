@@ -59,7 +59,8 @@ public class InventoryController implements IInventoryApi {
     ) {
         return execute(() -> {
             var stockPage = catalogQuery.stockPage(actor(principal), merchantId, page, size, q);
-            var items = stockPage.items()
+            var items = stockPage
+                .items()
                 .stream()
                 .map(s -> {
                     var dto = ApiViews.stock(s);
