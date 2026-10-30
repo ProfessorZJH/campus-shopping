@@ -10,6 +10,7 @@ import cn.bugstack.ai.api.dto.StockMovementResponseDTO;
 import cn.bugstack.ai.api.dto.StockResponseDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
+import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.types.exception.AppException;
@@ -29,6 +30,9 @@ public class InventoryController implements IInventoryApi {
 
     @Resource
     private ICatalogCase catalogCase;
+
+    @Resource
+    private ICatalogQueryCase catalogQuery;
 
     /** 商户库存三量查询。 */
     @Override
@@ -54,14 +58,12 @@ public class InventoryController implements IInventoryApi {
         Principal principal
     ) {
         return execute(() -> {
-            String who = actor(principal);
-            List<StockVO> rows = catalogCase.stocks(who, merchantId, page, size, q);
-            Map<String, SkuOfferVO> offers = catalogCase.stockOffers(who, merchantId, rows.stream().map(StockVO::skuId).toList());
-            var items = rows
+            var stockPage = catalogQuery.stockPage(actor(principal), merchantId, page, size, q);
+            var items = stockPage.items()
                 .stream()
                 .map(s -> {
                     var dto = ApiViews.stock(s);
-                    var offer = offers.get(s.skuId());
+                    var offer = stockPage.offers().get(s.skuId());
                     if (offer != null) {
                         dto.setProductId(offer.productId());
                         dto.setProductTitle(offer.title());
@@ -71,7 +73,7 @@ public class InventoryController implements IInventoryApi {
                     return dto;
                 })
                 .toList();
-            return PageResponseDTO.of(items, page, size, catalogCase.countStocks(who, merchantId, q));
+            return PageResponseDTO.of(items, page, size, stockPage.total());
         });
     }
 
