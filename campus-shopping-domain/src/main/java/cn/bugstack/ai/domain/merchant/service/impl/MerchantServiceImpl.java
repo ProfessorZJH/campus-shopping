@@ -2,11 +2,14 @@ package cn.bugstack.ai.domain.merchant.service.impl;
 
 import cn.bugstack.ai.domain.merchant.adapter.repository.IMerchantRepository;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
+import cn.bugstack.ai.domain.merchant.model.valobj.MerchantStatusEnumVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.util.*;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /** 新交易持有商户行锁，与停用操作形成明确的先后顺序。 */
 @Service
@@ -29,10 +32,11 @@ public class MerchantServiceImpl implements IMerchantService {
         return m;
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public MerchantVO requireActiveForNewTrade(String id) {
         MerchantVO m = repository.find(id, true);
         Checks.require(m != null, ResponseCode.NOT_FOUND);
-        Checks.require("ACTIVE".equals(m.status()), ResponseCode.MERCHANT_SUSPENDED);
+        Checks.require(m.state() == MerchantStatusEnumVO.ACTIVE, ResponseCode.MERCHANT_SUSPENDED);
         return m;
     }
 
@@ -52,10 +56,11 @@ public class MerchantServiceImpl implements IMerchantService {
         return repository.count(activeOnly, Checks.optional(q, 100));
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public void changeStatus(String id, boolean active) {
         MerchantVO m = repository.find(id, true);
         Checks.require(m != null, ResponseCode.NOT_FOUND);
-        repository.setStatus(id, active ? "ACTIVE" : "SUSPENDED");
+        repository.setStatus(id, (active ? MerchantStatusEnumVO.ACTIVE : MerchantStatusEnumVO.SUSPENDED).getCode());
     }
 
     /** 先验证所有字段，再锁定并写入商户与门店，避免失败时留下部分变更。 */

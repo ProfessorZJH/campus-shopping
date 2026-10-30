@@ -33,7 +33,7 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
             require(old.merchantId().equals(merchant) && old.storeId().equals(store) && old.buyerId().equals(buyer), ResponseCode.STATE_CONFLICT);
             return;
         }
-        repository.insert(new PickupVO(UUID.randomUUID().toString(), order, merchant, store, buyer, "WAIT_PREP", null, null));
+        repository.insert(new PickupVO(UUID.randomUUID().toString(), order, merchant, store, buyer, PickupStatusEnumVO.WAIT_PREP.getCode(), null, null));
     }
 
     public List<PickupVO> pickupsByOrders(List<String> orders) {

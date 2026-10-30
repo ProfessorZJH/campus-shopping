@@ -6,6 +6,7 @@ import cn.bugstack.ai.domain.shoppingai.adapter.repository.IProposalRepository;
 import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalStatusEnumVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IProposalService;
 import cn.bugstack.ai.types.common.Fingerprints;
@@ -74,7 +75,7 @@ public class ProposalServiceImpl implements IProposalService {
     @Transactional(rollbackFor = Exception.class)
     public void reject(String actor, String id) {
         ProposalVO p = required(actor, id, true);
-        if ("REJECTED".equals(p.status())) return;
+        if (p.state() == ProposalStatusEnumVO.REJECTED) return;
         ProposalAggregate aggregate = new ProposalAggregate(p.userId(), p.expiresAt(), p.status(), p.selectionHash());
         aggregate.reject(actor);
         repository.proposalState(id, aggregate.getStatus(), null);
