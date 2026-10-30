@@ -172,7 +172,7 @@ class DddRulesTest {
             new AiRecommendationVO("sku", 2, "建议"),
             new AiRecommendationVO("sku", 1, "重复")
         );
-        assertTrue(RecommendationPolicy.select(suggestions, List.of(quote), Map.of("sku", 1L)).isEmpty());
+        assertEquals(1, RecommendationPolicy.select(suggestions, List.of(quote), Map.of("sku", 1L)).get(0).quantity());
         var selected = RecommendationPolicy.select(suggestions, List.of(quote), Map.of("sku", 2L));
         assertEquals(1, selected.size());
         assertEquals(123, selected.get(0).priceCent());
