@@ -1,0 +1,22 @@
+name: DDD format preview
+on:
+  push:
+    branches:
+      - codex/ddd-three-batch-hardening
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --prefix frontend --ignore-scripts
+      - name: Print exact Prettier Java diff
+        run: |
+          cd frontend
+          npx prettier --config .prettierrc.json --write "../campus-shopping-*/src/{main,test}/java/**/*.java"
+          cd ..
+          echo DDD_FORMAT_DIFF_START
+          git diff -- . ':(exclude)frontend'
+          echo DDD_FORMAT_DIFF_END
