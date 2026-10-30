@@ -7,8 +7,10 @@ import java.util.*;
 public interface IFulfillmentService {
     List<PickupVO> pickupsByOrders(List<String> orders);
     void create(String order, String merchant, String store, String buyer);
-    PickupVO pickup(String order, boolean lock);
-    void prepare(String order, boolean ready);
+    PickupVO pickup(String order);
+    PickupVO pickupForUpdate(String order);
+    void startPreparing(String order);
+    void markReady(String order);
     PickupTokenVO issue(String order);
     boolean verify(String order, String token, String actor);
     void cancel(String order);

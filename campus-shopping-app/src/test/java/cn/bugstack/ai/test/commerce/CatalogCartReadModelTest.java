@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.ICartCase;
 import cn.bugstack.ai.cases.trading.impl.CartQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
@@ -13,6 +14,8 @@ import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
+import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
@@ -157,5 +160,62 @@ class CatalogCartReadModelTest {
         assertThrows(AppException.class, () -> query.list("disabled"));
         assertTrue(query.list("empty").isEmpty());
         verifyNoInteractions(catalog, inventory, merchants);
+    }
+
+    @Test
+    void stockPageLoadsOnlyAuthorizedMerchantFacts() {
+        var stock = new StockVO("m", "store", "sku", 5, 2, 3);
+        var offer = new SkuOfferVO("sku", "product", "m", "store", "笔", "黑色", 150, 1, "PUBLISHED", "ACTIVE", "", "");
+        when(products.stocks("u", "m", 1, 20, "")).thenReturn(List.of(stock));
+        when(products.stockOffers("u", "m", List.of("sku"))).thenReturn(Map.of("sku", offer));
+        when(products.countStocks("u", "m", "")).thenReturn(1L);
+        var query = new CatalogQueryCaseImpl(products, catalog, inventory, merchants);
+        var page = query.stockPage("u", "m", 1, 20, "");
+        assertEquals(1L, page.total());
+        assertEquals(List.of(stock), page.items());
+        assertEquals(offer, page.offers().get("sku"));
+        verify(products).stocks("u", "m", 1, 20, "");
+        verify(products).stockOffers("u", "m", List.of("sku"));
+    }
+
+    @Test
+    void workspaceQueryLoadsMerchantDetailsInOneBatch() {
+        var access = mock(IAccessService.class);
+        when(access.memberships("actor")).thenReturn(
+            List.of(new MembershipVO("m1", "actor", "OWNER", "ACTIVE"), new MembershipVO("m2", "actor", "CLERK", "ACTIVE"))
+        );
+        when(merchants.findAll(List.of("m1", "m2"))).thenReturn(List.of(merchant("m2", "ACTIVE"), merchant("m1", "ACTIVE")));
+        when(access.permissions("actor", "m1")).thenReturn(java.util.Set.of("product.read"));
+        var query = new WorkspaceQueryCaseImpl(access, merchants);
+        var result = query.workspace("actor");
+        assertEquals(List.of("m1", "m2"), result.merchants().stream().map(MerchantVO::id).toList());
+        assertEquals(java.util.Set.of("product.read"), result.merchantPermissions().get("m1"));
+        verify(merchants).findAll(List.of("m1", "m2"));
+        verify(merchants, never()).find(anyString());
+    }
+
+    @Test
+    void workspaceQuerySplitsMerchantsWhenMembershipsExceedSingleBatchLimit() {
+        var access = mock(IAccessService.class);
+        var memberships = new ArrayList<MembershipVO>();
+        var stores = new ArrayList<MerchantVO>();
+        for (int i = 0; i < 101; i++) {
+            memberships.add(new MembershipVO("m" + i, "actor", "CLERK", "ACTIVE"));
+            stores.add(merchant("m" + i, "ACTIVE"));
+        }
+        when(access.memberships("actor")).thenReturn(memberships);
+        when(merchants.findAll(anyList())).thenAnswer(invocation -> {
+            List<String> ids = invocation.getArgument(0);
+            assertTrue(ids.size() <= 100);
+            return stores
+                .stream()
+                .filter(store -> ids.contains(store.id()))
+                .toList();
+        });
+        var query = new WorkspaceQueryCaseImpl(access, merchants);
+        var result = query.workspace("actor");
+        assertEquals(101, result.merchants().size());
+        assertEquals("m100", result.merchants().get(100).id());
+        verify(merchants, times(2)).findAll(anyList());
     }
 }

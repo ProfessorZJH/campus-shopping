@@ -2,6 +2,7 @@ package cn.bugstack.ai.cases.catalog;
 
 import cn.bugstack.ai.cases.catalog.model.ProductPage;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.catalog.model.StockPage;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
 import java.util.List;
 
@@ -15,4 +16,5 @@ public interface ICatalogQueryCase {
     List<ProductReadModel> adminProducts(String actor, String merchant, String query, int page, int size);
     ProductPage adminPage(String actor, String merchant, String query, int page, int size);
     List<CategoryVO> categories();
+    StockPage stockPage(String actor, String merchant, int page, int size, String query);
 }

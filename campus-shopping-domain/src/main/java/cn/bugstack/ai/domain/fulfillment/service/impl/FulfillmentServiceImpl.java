@@ -33,7 +33,7 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
             require(old.merchantId().equals(merchant) && old.storeId().equals(store) && old.buyerId().equals(buyer), ResponseCode.STATE_CONFLICT);
             return;
         }
-        repository.insert(new PickupVO(UUID.randomUUID().toString(), order, merchant, store, buyer, "WAIT_PREP", null, null));
+        repository.insert(new PickupVO(UUID.randomUUID().toString(), order, merchant, store, buyer, PickupStatusEnumVO.WAIT_PREP.getCode(), null, null));
     }
 
     public List<PickupVO> pickupsByOrders(List<String> orders) {
@@ -41,8 +41,15 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
         return repository.pickupsByOrders(orders);
     }
 
-    public PickupVO pickup(String order, boolean lock) {
-        return repository.pickup(order, lock);
+    @Override
+    public PickupVO pickup(String order) {
+        return repository.pickup(order, false);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public PickupVO pickupForUpdate(String order) {
+        return repository.pickup(order, true);
     }
 
     private PickupAggregate required(String order) {
@@ -51,11 +58,19 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
         return new PickupAggregate(p);
     }
 
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void prepare(String order, boolean ready) {
+    public void startPreparing(String order) {
         PickupAggregate p = required(order);
-        if (ready) p.ready();
-        else p.prepare();
+        p.prepare();
+        repository.save(p.view());
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void markReady(String order) {
+        PickupAggregate p = required(order);
+        p.ready();
         repository.save(p.view());
     }
 

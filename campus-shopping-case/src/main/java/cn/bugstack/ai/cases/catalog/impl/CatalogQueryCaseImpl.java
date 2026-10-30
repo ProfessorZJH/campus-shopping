@@ -4,9 +4,11 @@ import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.catalog.model.ProductPage;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.catalog.model.StockPage;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
@@ -82,6 +84,13 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     @Override
     public List<CategoryVO> categories() {
         return catalogService.categories();
+    }
+
+    @Override
+    public StockPage stockPage(String actor, String merchant, int page, int size, String query) {
+        List<StockVO> stocks = catalogCase.stocks(actor, merchant, page, size, query);
+        Map<String, SkuOfferVO> offers = catalogCase.stockOffers(actor, merchant, stocks.stream().map(StockVO::skuId).toList());
+        return new StockPage(stocks, offers, catalogCase.countStocks(actor, merchant, query));
     }
 
     private List<ProductReadModel> views(List<ProductAggregate> products) {
