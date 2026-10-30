@@ -4,18 +4,18 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
-import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.ICartCase;
 import cn.bugstack.ai.cases.trading.impl.CartQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
+import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
@@ -161,6 +161,7 @@ class CatalogCartReadModelTest {
         assertTrue(query.list("empty").isEmpty());
         verifyNoInteractions(catalog, inventory, merchants);
     }
+
     @Test
     void stockPageLoadsOnlyAuthorizedMerchantFacts() {
         var stock = new StockVO("m", "store", "sku", 5, 2, 3);
@@ -192,5 +193,4 @@ class CatalogCartReadModelTest {
         verify(merchants).findAll(List.of("m1", "m2"));
         verify(merchants, never()).find(anyString());
     }
-
 }
