@@ -45,7 +45,7 @@ public class AccessServiceImpl implements IAccessService {
     public void requireMember(String userId, String merchantId, boolean ownerOnly) {
         accounts.requireActive(userId);
         MembershipVO m = repository.member(userId, merchantId, true);
-        require(m != null && "ACTIVE".equals(m.status()) && (!ownerOnly || "OWNER".equals(m.role())), ResponseCode.AUTH_FORBIDDEN);
+        require(m != null && m.state() == MembershipStatusEnumVO.ACTIVE && (!ownerOnly || "OWNER".equals(m.role())), ResponseCode.AUTH_FORBIDDEN);
     }
 
     public List<MembershipVO> memberships(String userId) {
@@ -62,7 +62,7 @@ public class AccessServiceImpl implements IAccessService {
         accounts.requireActive(userId);
         repository.grantOwner(merchantId, userId, applicationId);
         MembershipVO m = repository.member(userId, merchantId, true);
-        require(m != null && "OWNER".equals(m.role()) && "ACTIVE".equals(m.status()), ResponseCode.STATE_CONFLICT);
+        require(m != null && "OWNER".equals(m.role()) && m.state() == MembershipStatusEnumVO.ACTIVE, ResponseCode.STATE_CONFLICT);
     }
 
     /** 仅由启动初始化用例调用，不提供 HTTP 入口。 */
@@ -76,8 +76,8 @@ public class AccessServiceImpl implements IAccessService {
         String target = accounts.findUserId(username);
         require(!actor.equals(target), ResponseCode.ILLEGAL_PARAMETER);
         MembershipVO m = repository.member(target, merchantId, true);
-        require(m == null || !"ACTIVE".equals(m.status()), ResponseCode.STATE_CONFLICT);
-        InvitationVO invite = new InvitationVO(UUID.randomUUID().toString(), merchantId, target, "PENDING", clock.instant().plus(Duration.ofHours(24)));
+        require(m == null || !m.state() == MembershipStatusEnumVO.ACTIVE, ResponseCode.STATE_CONFLICT);
+        InvitationVO invite = new InvitationVO(UUID.randomUUID().toString(), merchantId, target, InvitationStatusEnumVO.PENDING.getCode(), clock.instant().plus(Duration.ofHours(24)));
         repository.invite(invite, actor);
         audit(actor, "MEMBER_INVITED", invite.id(), merchantId, "邀请店员");
         return invite;
@@ -89,8 +89,8 @@ public class AccessServiceImpl implements IAccessService {
         InvitationVO i = repository.invitation(invitationId);
         require(i != null, ResponseCode.NOT_FOUND);
         require(actor.equals(i.targetUserId()), ResponseCode.AUTH_FORBIDDEN);
-        if ("ACCEPTED".equals(i.status())) return;
-        require("PENDING".equals(i.status()) && clock.instant().isBefore(i.expiresAt()), ResponseCode.STATE_CONFLICT);
+        if (i.state() == InvitationStatusEnumVO.ACCEPTED) return;
+        require(i.state() == InvitationStatusEnumVO.PENDING && clock.instant().isBefore(i.expiresAt()), ResponseCode.STATE_CONFLICT);
         MembershipVO m = repository.member(actor, i.merchantId(), true);
         require(m == null || !"OWNER".equals(m.role()), ResponseCode.STATE_CONFLICT);
         repository.grantClerk(i.merchantId(), actor);
@@ -125,7 +125,7 @@ public class AccessServiceImpl implements IAccessService {
     public Set<String> permissions(String actor, String merchantId) {
         accounts.requireActive(actor);
         MembershipVO m = repository.member(actor, merchantId, false);
-        if (m == null || !"ACTIVE".equals(m.status())) return Set.of();
+        if (m == null || !m.state() == MembershipStatusEnumVO.ACTIVE) return Set.of();
         return switch (m.role()) {
             case "OWNER" -> MerchantPermissions.OWNER;
             case "CLERK" -> MerchantPermissions.CLERK;
