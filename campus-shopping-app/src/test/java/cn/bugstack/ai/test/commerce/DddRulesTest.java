@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.identity.model.valobj.MerchantPermissionEnumVO;
 import cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate;
+import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
@@ -183,6 +184,31 @@ class DddRulesTest {
     void fusionDeduplicatesEachSourceAndBreaksTiesDeterministically() {
         assertEquals(List.of("a", "b"), RecommendationPolicy.fuse(List.of("a", "a", "b"), List.of("b", "a")));
         assertEquals(List.of("a", "b"), RecommendationPolicy.fuse(List.of("b"), List.of("a")));
+    }
+
+    @Test
+    void proposalAggregateEnforcesFrozenChoicesAndIdempotentReplay() {
+        var one = new ProposalItemVO("sku", "m", "笔", "黑色", 123, 9, 1, "/media/test.png");
+        var two = new ProposalItemVO("other", "m", "笔", "蓝色", 125, 9, 1, "/media/test.png");
+        var original = ProposalAggregate.create("buyer", "conversation", List.of(one, two), now.plusSeconds(300), now);
+        var aggregate = new ProposalAggregate(original);
+        code("A0006", () -> aggregate.confirm("foreign", List.of("sku"), now));
+        code("0002", () -> aggregate.confirm("buyer", List.of("not-quoted"), now));
+        assertTrue(aggregate.confirm("buyer", List.of("sku"), now));
+        assertFalse(aggregate.confirm("buyer", List.of("sku"), now));
+        code("G0003", () -> aggregate.confirm("buyer", List.of("other"), now));
+
+        var expired = new ProposalAggregate(original);
+        code("AI0002", () -> expired.confirm("buyer", List.of("sku"), now.plusSeconds(301)));
+    }
+
+    @Test
+    void rejectedModelQuantityDoesNotConsumeLaterValidSkuChoice() {
+        var quote = new ProposalItemVO("sku", "m", "笔", "黑色", 123, 9, 1, "/media/test.png");
+        var recommendations = List.of(new AiRecommendationVO("sku", 99, "超出库存"), new AiRecommendationVO("sku", 2, "有效数量"));
+        var selected = RecommendationPolicy.select(recommendations, List.of(quote), Map.of("sku", 2L));
+        assertEquals(1, selected.size());
+        assertEquals(2, selected.get(0).quantity());
     }
 
     @Test

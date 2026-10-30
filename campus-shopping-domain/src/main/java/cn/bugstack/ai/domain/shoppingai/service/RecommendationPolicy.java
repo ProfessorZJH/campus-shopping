@@ -53,11 +53,12 @@ public final class RecommendationPolicy {
             var quote = allowed.get(recommendation.skuId());
             if (
                 quote == null ||
-                !seen.add(quote.skuId()) ||
+                seen.contains(quote.skuId()) ||
                 recommendation.quantity() < 1 ||
                 recommendation.quantity() > 99 ||
                 available.getOrDefault(quote.skuId(), 0L) < recommendation.quantity()
             ) continue;
+            seen.add(quote.skuId());
             result.add(
                 new ProposalItemVO(
                     quote.skuId(),

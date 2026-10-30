@@ -5,26 +5,32 @@ import static cn.bugstack.ai.types.common.Checks.require;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalStatusEnumVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
+import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.UUID;
 
 /** 建议确认幂等状态；已确认结果可重放，但不能更换选择再次加购。 */
 public final class ProposalAggregate {
 
+    private final ProposalVO original;
     private final String owner;
     private final Instant expiresAt;
     private ProposalStatusEnumVO status;
     private String selectionHash;
 
-    public ProposalAggregate(String owner, Instant expiresAt, String status, String selectionHash) {
-        this.owner = Objects.requireNonNull(owner);
-        this.expiresAt = Objects.requireNonNull(expiresAt);
-        this.status = ProposalStatusEnumVO.fromCode(status);
-        this.selectionHash = selectionHash;
+    /** 从完整提案快照恢复领域身份和冻结的商品选择范围。 */
+    public ProposalAggregate(ProposalVO proposal) {
+        this.original = Objects.requireNonNull(proposal);
+        this.owner = Objects.requireNonNull(proposal.userId());
+        this.expiresAt = Objects.requireNonNull(proposal.expiresAt());
+        this.status = proposal.state();
+        this.selectionHash = proposal.selectionHash();
     }
 
     /** 创建身份、归属和冻结商品快照统一在领域入口建立。 */
@@ -51,9 +57,12 @@ public final class ProposalAggregate {
         return new ProposalVO(UUID.randomUUID().toString(), owner, conversation, ProposalStatusEnumVO.PENDING.getCode(), List.copyOf(items), null, expiresAt);
     }
 
-    public boolean confirm(String actor, String choiceHash, Instant now) {
+    public boolean confirm(String actor, List<String> ids, Instant now) {
         require(owner.equals(actor), ResponseCode.AUTH_FORBIDDEN);
-        require(choiceHash != null && !choiceHash.isBlank(), ResponseCode.ILLEGAL_PARAMETER);
+        require(ids != null && !ids.isEmpty() && ids.size() <= original.items().size(), ResponseCode.ILLEGAL_PARAMETER);
+        Set<String> allowed = original.items().stream().map(ProposalItemVO::skuId).collect(Collectors.toSet());
+        require(allowed.containsAll(ids) && new HashSet<>(ids).size() == ids.size(), ResponseCode.ILLEGAL_PARAMETER);
+        String choiceHash = Fingerprints.of(ids.toArray());
         if (status == ProposalStatusEnumVO.CONFIRMED) {
             require(choiceHash.equals(selectionHash), ResponseCode.REQUEST_CONFLICT);
             return false;

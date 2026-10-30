@@ -5,11 +5,10 @@ import static cn.bugstack.ai.types.common.Checks.*;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IProposalRepository;
 import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalStatusEnumVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IProposalService;
-import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Clock;
 import java.time.Instant;
@@ -64,10 +63,8 @@ public class ProposalServiceImpl implements IProposalService {
         var ids = selected.stream().distinct().sorted().toList();
         require(ids.size() == selected.size(), ResponseCode.ILLEGAL_PARAMETER);
         ProposalVO p = required(actor, id, true);
-        var proposed = p.items().stream().map(ProposalItemVO::skuId).collect(java.util.stream.Collectors.toSet());
-        require(proposed.containsAll(ids), ResponseCode.ILLEGAL_PARAMETER);
-        var aggregate = new ProposalAggregate(p.userId(), p.expiresAt(), p.status(), p.selectionHash());
-        if (!aggregate.confirm(actor, Fingerprints.of(ids.toArray()), clock.instant())) return null;
+        var aggregate = new ProposalAggregate(p);
+        if (!aggregate.confirm(actor, ids, clock.instant())) return null;
         repository.proposalState(id, aggregate.getStatus(), aggregate.getSelectionHash());
         return p;
     }
@@ -76,7 +73,7 @@ public class ProposalServiceImpl implements IProposalService {
     public void reject(String actor, String id) {
         ProposalVO p = required(actor, id, true);
         if (p.state() == ProposalStatusEnumVO.REJECTED) return;
-        ProposalAggregate aggregate = new ProposalAggregate(p.userId(), p.expiresAt(), p.status(), p.selectionHash());
+        ProposalAggregate aggregate = new ProposalAggregate(p);
         aggregate.reject(actor);
         repository.proposalState(id, aggregate.getStatus(), null);
     }

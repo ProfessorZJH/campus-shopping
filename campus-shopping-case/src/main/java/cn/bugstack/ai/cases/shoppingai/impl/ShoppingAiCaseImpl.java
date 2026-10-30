@@ -190,21 +190,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
         var current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
-        Set<String> allowedIds = current.stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
-        List<String> citedIds = answer.citations().stream().map(AiCitationVO::documentId).distinct().toList();
-        require(allowedIds.containsAll(citedIds), ResponseCode.KNOWLEDGE_NOT_READY);
-        Map<String, KnowledgeDocumentVO> byId = knowledge
-            .citationDocuments(actor, citedIds)
-            .stream()
-            .collect(Collectors.toMap(KnowledgeDocumentVO::id, d -> d));
-        List<AiCitationVO> citations = new ArrayList<>();
-        for (var c : answer.citations()) {
-            var d = byId.get(c.documentId());
-            require(d != null && c.snippet() != null && c.snippet().length() <= 500 && d.content().contains(c.snippet()), ResponseCode.KNOWLEDGE_NOT_READY);
-            citations.add(
-                new AiCitationVO(d.id(), c.chunkId(), d.title(), "PUBLIC".equals(d.visibility()) ? c.snippet() : "内部资料来源，原文片段不公开展示", c.score())
-            );
-        }
+        List<AiCitationVO> citations = verifyCitations(actor, answer.citations(), current);
         List<ProposalItemVO> quotes = offers
             .stream()
             .map(o -> new ProposalItemVO(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.priceCent(), o.version(), 1, o.imageUrl()))
@@ -242,6 +228,38 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             fingerprint
         );
         return new ChatResult(conversation, safe, proposal);
+    }
+
+    /** 只返回当前授权知识范围中的可核实引用，内部文档始终隐藏原文。 */
+    private List<AiCitationVO> verifyCitations(String actor, List<AiCitationVO> requested, List<KnowledgeScopeVO> readable) {
+        Set<String> allowedIds = readable.stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
+        List<String> citedIds = requested.stream().map(AiCitationVO::documentId).distinct().toList();
+        require(allowedIds.containsAll(citedIds), ResponseCode.KNOWLEDGE_NOT_READY);
+        Map<String, KnowledgeDocumentVO> byId = knowledge
+            .citationDocuments(actor, citedIds)
+            .stream()
+            .collect(Collectors.toMap(KnowledgeDocumentVO::id, d -> d));
+        List<AiCitationVO> citations = new ArrayList<>();
+        for (var citation : requested) {
+            var document = byId.get(citation.documentId());
+            require(
+                document != null &&
+                    citation.snippet() != null &&
+                    citation.snippet().length() <= 500 &&
+                    document.content().contains(citation.snippet()),
+                ResponseCode.KNOWLEDGE_NOT_READY
+            );
+            citations.add(
+                new AiCitationVO(
+                    document.id(),
+                    citation.chunkId(),
+                    document.title(),
+                    "PUBLIC".equals(document.visibility()) ? citation.snippet() : "内部资料来源，原文片段不公开展示",
+                    citation.score()
+                )
+            );
+        }
+        return citations;
     }
 
     private String scope(List<KnowledgeScopeVO> docs) {
