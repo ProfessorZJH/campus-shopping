@@ -78,6 +78,9 @@ class CommerceMySqlIntegrationTest {
     ICatalogService catalogSearch;
 
     @Autowired
+    IMerchantService merchantService;
+
+    @Autowired
     ICheckoutCase checkout;
 
     @Autowired
@@ -250,6 +253,16 @@ class CommerceMySqlIntegrationTest {
     }
 
     /** 排序必须发生在 SQL LIMIT/OFFSET 之前：价格与库存结果跨页稳定，COUNT 不受影响。 */
+    @Test
+    void merchantRowLockServicesRejectCallsWithoutOuterTransaction() {
+        assertThrows(IllegalTransactionStateException.class, () -> merchantService.requireActiveForNewTrade(merchant.id()));
+        assertThrows(IllegalTransactionStateException.class, () -> merchantService.changeStatus(merchant.id(), false));
+        new TransactionTemplate(transactionManager).execute(status -> {
+            assertEquals("ACTIVE", merchantService.requireActiveForNewTrade(merchant.id()).status());
+            return null;
+        });
+    }
+
     @Test
     void catalogGlobalSortOrdersEntireResultBeforePaging() {
         List<String> ids = new ArrayList<>();
