@@ -2,7 +2,7 @@
 
 > **R1 对齐说明（2026-10-28）**：本文保留需求来源与历史设计；当前冻结规则以 [R1 实施规格](../specs/RELEASE-01.md) 为准，实际实现/验证状态见 [R1 交付清单](../DELIVERY-R1.md)。历史“下一批/待开发/已通过”描述不作为本次执行证据。
 
-> 版本 v1.0 · 2026-10-26 · **业务边界设计，不代表 Java API 已存在**  
+> 版本 v1.1 · 2026-10-30 · **当前 R1 的业务边界与真实调用链**  
 > 本文件只记录本项目的限界上下文协作；Java 包结构由 `xfg-ddd-skills` 决定。源业务约束：[PRD](../requirements/PRD.md)。
 
 ## 1. 七个上下文的业务边界
@@ -32,7 +32,7 @@ flowchart TB
     F[Fulfillment]
     A[ShoppingAI]
     P[Python AI Engine]
-    Q[(Qdrant)]
+    V[(Milvus 商品向量索引)]
 
     T --> I
     T --> M
@@ -43,12 +43,13 @@ flowchart TB
     T --> A
     A -.->|商品查询能力| C
     A -.->|可售量查询能力| N
-    D -.->|OrderPaid 可靠消息| F
     A -->|Port| P
-    P --> Q
+    P -->|商品语义索引| V
 ```
 
 图中的虚线表示**业务协作/查询依赖**，不是 Domain 源码直接 import 另一领域 Repository；Case 的公开能力接口不应引发 Maven 依赖环。
+
+**当前付款链路不是 OrderPaid 消息驱动**：`OrderLifecycleCaseImpl.pay` 在同一个 MySQL 本地事务内调用 Trading 记账、Fulfillment 创建自提任务、Trading 保存支付状态；任一写入失败会整体回滚。消息/Outbox 仅在后续需要可靠异步集成时引入。知识文档检索使用独立 AI 引擎；商品语义检索可以调用 Milvus，Milvus 不承载业务事实。
 
 ## 3. 上下游协作矩阵
 
@@ -59,24 +60,24 @@ flowchart TB
 | 商品创建/改价 | Catalog Application | Identity、Merchant | Catalog | 商品归属、营业许可、SKU 规则 |
 | 商户补货 | Inventory Application | Identity、Merchant、Catalog SKU | Inventory | 成员权限、SKU 归属、数量 |
 | 下单 | CheckoutCase | Merchant、Catalog、Inventory、Trading | Inventory + Trading | 当前报价、可售量、金额/状态 |
-| 付款确认 | ConfirmPaymentCase | Trading | Trading | Order 支付状态与期限 |
+| 付款确认 | OrderLifecycleCase.pay | Trading、Fulfillment、Merchant | Trading + Fulfillment | 买家身份、订单支付状态与期限、商户营业资格 |
 | 超时关单 | ExpireOrderCase | Trading、Inventory | Trading + Inventory | 订单期限与预占状态 |
 | 自提核销 | ConfirmPickupCase | Identity、Fulfillment、Trading、Inventory | 三域相关聚合 | 核销授权、一次性码、状态竞争 |
 | 未提货退款 | RefundCase | Identity、Trading、Fulfillment、Inventory | 三域相关聚合 | 审核资格、订单/核销状态 |
 | AI 推荐 | ShoppingAI Application | Catalog、Inventory、Knowledge Port | ShoppingAI 会话/Proposal | 当前商品事实与知识访问范围 |
 | AI 确认加购 | ConfirmRecommendationCase | ShoppingAI、Trading、Catalog | ShoppingAI + Trading | 本人确认、版本/时限与 SKU 资格 |
 
-## 4. 公开业务能力（候选接口）
+## 4. 公开业务能力（当前实现）
 
 | 上下文 | 公开 Domain 服务接口（名称候选） | 返回对象 |
 |---|---|---|
-| Identity | `IIdentityAccessService.requirePlatformAdmin`、`requireMerchantPermission`、`grantInitialOwner` | 权限/授权结果值对象 |
-| Merchant | `IMerchantAdmissionService`、`IMerchantEligibilityService` | MerchantView/StoreView |
-| Catalog | `ICatalogQueryService.quoteForCheckout`、`IProductService.publish` | CheckoutQuote/SkuInfo |
-| Inventory | `IInventoryService.reserveBatch/releaseByOrder/consumeByOrder` | ReservationResult |
-| Trading | `IOrderService.create/confirmPayment/cancel/complete`、`ICartService.add`、`IAfterSaleService` | OrderResult/CartResult |
-| Fulfillment | `IPickupService.createOnce/markReady/verifyOnce/cancelForRefund` | PickupResult |
-| ShoppingAI | `IRecommendationService.create/confirm/reject`、`IKnowledgeService` | ProposalResult/Evidence |
+| Identity | `IAccessService`、`IUserAccountService`、`IRoleService` | 成员权限、账号及角色视图 |
+| Merchant | `IMerchantApplicationService`、`IMerchantService` | 申请与商户只读视图 |
+| Catalog | `ICatalogService`、`ICatalogQueryCase`（用例查询） | 商品聚合、SKU 报价、展示读模型 |
+| Inventory | `IInventoryService` | 库存、预占与流水快照 |
+| Trading | `IOrderService`、`ICartService`、`IAfterSaleService` | 订单聚合、购物车、售后 |
+| Fulfillment | `IFulfillmentService` | 自提任务与凭证 |
+| ShoppingAI | `IKnowledgeService`、`IConversationService`、`IProposalService` | 知识、会话、提案快照 |
 
 这些是**公开服务入口**，不代表 Domain 层允许彼此直接 import 和修改对方内部实体；跨域消费可通过 Case 层注入各上下文的应用/领域服务公开接口。接口定义位置以当前 Maven 依赖拓扑核对，杜绝循环依赖。若真正外置为 RPC 服务，才考虑通过 Port 做防腐适配。
 
@@ -85,7 +86,7 @@ flowchart TB
 - 跨聚合只引用稳定 ID、不可变交易快照或公开查询视图，不持有他域内部可变聚合对象。
 - 事务需要同时修改不同域的聚合时，由 Case 的一个本地事务编排，但每项业务状态转换仍走原领域方法。
 - 不能让 Domain Service 调用另一个域的 DAO、PO、Infrastructure Repository。
-- 真正异步的索引和通知由 Outbox 发送集成事件。强一致流程完成后才能通知，不让异步消费者来补必要库存预占。
+- 当前关键交易通过 Case 内的 MySQL 本地事务维护强一致，不能把库存预占或支付后的自提任务异步化。未来真正需要可靠异步通知/索引时，评审后再按 ADR-004 引入 Outbox 与幂等消费；不为尚不存在的异步链路预建基础设施。
 - 多商户所有权： `merchantId` 是隔离边界，`storeId` 是履约/库存的实体位置；同一个用户可以属于多个商户。
 
 ## 6. 上下文边界变更条件
