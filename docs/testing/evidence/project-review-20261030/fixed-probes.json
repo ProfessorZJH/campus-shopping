@@ -1,0 +1,87 @@
+{
+  "commit": "37124d0a114a0d79611528c69684276c1685f7e2",
+  "existingDatabaseUsed": false,
+  "externalModelUsed": false,
+  "probes": [
+    {
+      "id": "INVITATION_ROLE_OVERRIDE",
+      "status": "FIXED",
+      "beforeCode": "A0006",
+      "afterCode": "A0006",
+      "roleAfter": "R61257298cb5e",
+      "secondAcceptCode": "G0002"
+    },
+    {
+      "id": "PRODUCT_LOST_UPDATE",
+      "status": "FIXED",
+      "writerCommittedPrice": 2000,
+      "afterPublishPrice": 2000,
+      "afterPublishSkuVersion": 1,
+      "responseCode": "0000"
+    },
+    {
+      "id": "CART_LINE_LIMIT_RACE",
+      "status": "FIXED",
+      "actualRows": 100,
+      "visibleRows": 100,
+      "responseCode": "T0006"
+    },
+    {
+      "id": "PROPOSAL_STALE_STOCK",
+      "status": "FIXED",
+      "responseCode": "I0001",
+      "currentAvailable": 0,
+      "proposedCartRows": 0
+    },
+    {
+      "id": "MEMBERSHIP_TRUNCATION",
+      "status": "FIXED",
+      "actualActiveMemberships": 105,
+      "returnedMemberships": 105,
+      "returnedMerchants": 105,
+      "returnedPermissionSets": 105
+    },
+    {
+      "id": "MERCHANT_MEMBER_TRUNCATION",
+      "status": "FIXED",
+      "actualMembers": 103,
+      "returnedMembers": 103
+    },
+    {
+      "id": "BATCHED_WORKSPACE_PERMISSIONS",
+      "status": "FIXED",
+      "customPermissions": [
+        "product.read"
+      ]
+    },
+    {
+      "id": "FORWARDED_RATE_BYPASS",
+      "status": "FIXED",
+      "ordinaryBlocked": 4,
+      "forwardedBlocked": 32,
+      "forwardedRequests": 32,
+      "profile": "prod",
+      "boundToLoopback": true
+    },
+    {
+      "id": "AI_QUANTITY",
+      "status": "FIXED",
+      "parsed": {
+        "买十二瓶矿泉水": 12,
+        "买二十瓶矿泉水": 20,
+        "买100瓶矿泉水": null
+      },
+      "recommendedQuantity": 12
+    },
+    {
+      "id": "AI_FALLBACK",
+      "status": "FIXED",
+      "mode": "LOCAL_FALLBACK",
+      "answerLength": 38,
+      "externalModelUsed": false
+    }
+  ],
+  "isolation": "REPEATABLE-READ",
+  "status": "FIXED",
+  "temporaryDatabaseCleaned": true
+}

@@ -21,7 +21,7 @@ public class CatalogRepository implements ICatalogRepository {
 
     public ProductAggregate find(String id, boolean lock) {
         ProductPO p = dao.product(id, lock);
-        return p == null ? null : aggregate(p, dao.skus(List.of(id)));
+        return p == null ? null : aggregate(p, lock ? dao.skusForUpdate(id) : dao.skus(List.of(id)));
     }
 
     public void insert(ProductAggregate p) {
@@ -31,7 +31,7 @@ public class CatalogRepository implements ICatalogRepository {
 
     public void save(ProductAggregate p) {
         if (dao.saveProduct(po(p)) != 1) throw new AppException(ResponseCode.STATE_CONFLICT);
-        Set<String> old = new HashSet<>(dao.skus(List.of(p.getId())).stream().map(SkuPO::getId).toList());
+        Set<String> old = new HashSet<>(dao.skusForUpdate(p.getId()).stream().map(SkuPO::getId).toList());
         for (ProductSkuEntity s : p.getSkus()) {
             if (old.contains(s.id())) dao.saveSku(sku(p, s));
             else dao.insertSku(sku(p, s));

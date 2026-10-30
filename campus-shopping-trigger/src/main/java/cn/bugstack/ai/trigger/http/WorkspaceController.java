@@ -71,9 +71,13 @@ public class WorkspaceController implements IWorkspaceApi {
     /** 查看本人收到的邀请。 */
     @Override
     @GetMapping("/invitations")
-    public Response<List<InvitationResponseDTO>> invitations(Principal principal) {
+    public Response<List<InvitationResponseDTO>> invitations(
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "100") int size,
+        Principal principal
+    ) {
         return execute(() -> {
-            return access.invitations(actor(principal)).stream().map(ApiViews::invitation).toList();
+            return access.invitations(actor(principal), page, size).stream().map(ApiViews::invitation).toList();
         });
     }
 

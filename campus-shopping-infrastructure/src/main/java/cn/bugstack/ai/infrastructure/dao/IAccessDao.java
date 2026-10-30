@@ -13,12 +13,13 @@ public interface IAccessDao {
     MembershipPO member(@Param("userId") String userId, @Param("merchantId") String merchantId, @Param("lock") boolean lock);
     List<MembershipPO> memberships(@Param("userId") String userId);
     List<MembershipPO> members(@Param("merchantId") String merchantId);
+    List<PermissionGrantPO> activeCustomPermissions(@Param("userId") String userId);
     int grantOwner(@Param("merchantId") String merchantId, @Param("userId") String userId, @Param("applicationId") String applicationId);
     int grantClerk(@Param("merchantId") String merchantId, @Param("userId") String userId);
     int revoke(@Param("merchantId") String merchantId, @Param("userId") String userId);
     int invite(@Param("po") InvitationPO po, @Param("inviter") String inviter);
     InvitationPO invitation(@Param("id") String id);
-    List<InvitationPO> invitations(@Param("targetUserId") String targetUserId);
+    List<InvitationPO> invitations(@Param("targetUserId") String targetUserId, @Param("offset") int offset, @Param("size") int size);
     int accept(@Param("id") String id);
     int cancelInvitations(@Param("merchantId") String merchantId, @Param("targetUserId") String targetUserId);
     List<MerchantRolePO> roles(@Param("merchantId") String merchantId);

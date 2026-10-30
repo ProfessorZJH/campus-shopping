@@ -35,7 +35,7 @@ public class CartServiceImpl implements ICartService {
         repository.lockCart(user);
         require(quantity > 0 && quantity <= 99, ResponseCode.ILLEGAL_PARAMETER);
         CartItemVO old = repository.cartItem(user, sku);
-        require(old != null || repository.cart(user).size() < 100, ResponseCode.CART_LINE_LIMIT);
+        require(old != null || repository.cartSizeForUpdate(user) < 100, ResponseCode.CART_LINE_LIMIT);
         repository.setCart(user, merchant, sku, quantity);
     }
 
@@ -46,7 +46,7 @@ public class CartServiceImpl implements ICartService {
         CartItemVO old = repository.cartItem(user, sku);
         int total = quantity + (old == null ? 0 : old.quantity());
         require(total <= 99, ResponseCode.CART_QUANTITY_LIMIT);
-        require(old != null || repository.cart(user).size() < 100, ResponseCode.CART_LINE_LIMIT);
+        require(old != null || repository.cartSizeForUpdate(user) < 100, ResponseCode.CART_LINE_LIMIT);
         repository.setCart(user, merchant, sku, total);
     }
 

@@ -93,15 +93,16 @@ public class AccessServiceImpl implements IAccessService {
         if (i.state() == InvitationStatusEnumVO.ACCEPTED) return;
         require(i.state() == InvitationStatusEnumVO.PENDING && clock.instant().isBefore(i.expiresAt()), ResponseCode.STATE_CONFLICT);
         MembershipVO m = repository.member(actor, i.merchantId(), true);
-        require(m == null || !"OWNER".equals(m.role()), ResponseCode.STATE_CONFLICT);
+        require(m == null || m.state() != MembershipStatusEnumVO.ACTIVE, ResponseCode.STATE_CONFLICT);
         repository.grantClerk(i.merchantId(), actor);
         repository.accept(i.id());
+        repository.cancelPendingInvitations(i.merchantId(), actor);
         audit(actor, "INVITATION_ACCEPTED", i.id(), i.merchantId(), "接受店员邀请");
     }
 
-    public List<InvitationVO> invitations(String actor) {
+    public List<InvitationVO> invitations(String actor, int page, int size) {
         accounts.requireActive(actor);
-        return repository.invitations(actor);
+        return repository.invitations(actor, cn.bugstack.ai.types.common.Checks.offset(page, size), size);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -132,5 +133,21 @@ public class AccessServiceImpl implements IAccessService {
             case "CLERK" -> MerchantPermissions.CLERK;
             default -> roles.customPermissions(merchantId, m.role());
         };
+    }
+
+    public Map<String, Set<String>> workspacePermissions(String actor, List<MembershipVO> memberships) {
+        accounts.requireActive(actor);
+        Map<String, Set<String>> custom = repository.activeCustomPermissions(actor);
+        Map<String, Set<String>> result = new HashMap<>();
+        for (MembershipVO membership : memberships) {
+            if (!actor.equals(membership.userId()) || membership.state() != MembershipStatusEnumVO.ACTIVE) continue;
+            Set<String> permissions = switch (membership.role()) {
+                case "OWNER" -> MerchantPermissions.OWNER;
+                case "CLERK" -> MerchantPermissions.CLERK;
+                default -> custom.getOrDefault(membership.merchantId(), Set.of());
+            };
+            result.put(membership.merchantId(), Set.copyOf(permissions));
+        }
+        return result;
     }
 }

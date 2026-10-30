@@ -3319,7 +3319,32 @@
         "x-java-controller": "ShoppingAiController.java",
         "x-java-method": "conversations",
         "x-authorization": "authenticated + domain ACL",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
@@ -5610,7 +5635,32 @@
         "x-java-controller": "WorkspaceController.java",
         "x-java-method": "invitations",
         "x-authorization": "authenticated + domain ACL",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1,
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          {
+            "name": "size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 100,
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
@@ -19136,7 +19186,8 @@
           "AI0001",
           "AI0002",
           "AI0003",
-          "AI0004"
+          "AI0004",
+          "AI0005"
         ],
         "x-enumNames": [
           "SUCCESS",
@@ -19179,7 +19230,8 @@
           "AI_UNAVAILABLE",
           "PROPOSAL_EXPIRED",
           "KNOWLEDGE_NOT_READY",
-          "UPLOAD_INVALID"
+          "UPLOAD_INVALID",
+          "KNOWLEDGE_SCOPE_TOO_LARGE"
         ],
         "x-enumDescriptions": [
           "成功",
@@ -19222,7 +19274,8 @@
           "智能服务暂不可用，普通购物不受影响",
           "推荐建议已过期，请重新生成",
           "知识索引尚未就绪",
-          "文件格式、大小或内容不符合要求"
+          "文件格式、大小或内容不符合要求",
+          "可访问知识文档超过单次检索上限，请联系管理员整理知识库"
         ]
       },
       "FailureCode": {
@@ -19267,7 +19320,8 @@
           "AI0001",
           "AI0002",
           "AI0003",
-          "AI0004"
+          "AI0004",
+          "AI0005"
         ]
       },
       "ErrorResponse": {

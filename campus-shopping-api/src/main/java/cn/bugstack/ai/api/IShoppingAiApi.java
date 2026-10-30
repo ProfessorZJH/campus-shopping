@@ -10,7 +10,7 @@ public interface IShoppingAiApi {
     /** 授权检索和导购建议；此接口不执行购物车写入。 */
     Response<ChatResponseDTO> chat(ChatRequestDTO request, Principal principal);
     /** 本人会话列表。 */
-    Response<List<ConversationResponseDTO>> conversations(Principal principal);
+    Response<List<ConversationResponseDTO>> conversations(int page, int size, Principal principal);
     /** 加载已重新核验知识权限的历史回答。 */
     Response<List<MessageResponseDTO>> history(String conversationId, Principal principal);
     /** 本人会话产生的提案。 */

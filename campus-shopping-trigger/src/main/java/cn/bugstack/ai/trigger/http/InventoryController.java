@@ -44,7 +44,7 @@ public class InventoryController implements IInventoryApi {
         Principal principal
     ) {
         return execute(() -> {
-            return catalogCase.stocks(actor(principal), merchantId, page, size).stream().map(ApiViews::stock).toList();
+            return catalogQuery.stockRows(actor(principal), merchantId, page, size).stream().map(ApiViews::stock).toList();
         });
     }
 
@@ -89,7 +89,7 @@ public class InventoryController implements IInventoryApi {
         Principal principal
     ) {
         return execute(() -> {
-            catalogCase.replenish(actor(principal), merchantId, skuId, required(required(request).getQuantity()), key);
+            catalogCase.replenishStock(actor(principal), merchantId, skuId, required(required(request).getQuantity()), key);
             return null;
         });
     }
@@ -104,8 +104,8 @@ public class InventoryController implements IInventoryApi {
         Principal principal
     ) {
         return execute(() -> {
-            return catalogCase
-                .movements(actor(principal), merchantId, page, size)
+            return catalogQuery
+                .stockMovements(actor(principal), merchantId, page, size)
                 .stream()
                 .map(m ->
                     StockMovementResponseDTO.builder()
@@ -131,8 +131,8 @@ public class InventoryController implements IInventoryApi {
     ) {
         return execute(() ->
             PageResponseDTO.of(
-                catalogCase
-                    .movements(actor(principal), merchantId, page, size)
+                catalogQuery
+                    .stockMovements(actor(principal), merchantId, page, size)
                     .stream()
                     .map(m ->
                         StockMovementResponseDTO.builder()
@@ -147,7 +147,7 @@ public class InventoryController implements IInventoryApi {
                     .toList(),
                 page,
                 size,
-                catalogCase.countMovements(actor(principal), merchantId)
+                catalogQuery.countStockMovements(actor(principal), merchantId)
             )
         );
     }

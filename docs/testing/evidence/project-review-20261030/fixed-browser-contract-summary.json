@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "backend": "contract doubles",
+  "browser": "local Chromium",
+  "suites": {
+    "contract_ui.py": 20,
+    "ui_audit_contract.py": 4,
+    "ui_sdd_integration.py": 15,
+    "ui_contract_v11.py": 3,
+    "ui_fix_regression.py": 10,
+    "ui_rbac_regression.py": 14,
+    "ui_global_sort.py": 4
+  },
+  "checks": 70,
+  "date": "2026-10-30"
+}

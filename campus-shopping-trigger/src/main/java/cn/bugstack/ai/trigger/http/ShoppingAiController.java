@@ -63,10 +63,14 @@ public class ShoppingAiController implements IShoppingAiApi {
     /** 本人会话列表。 */
     @Override
     @GetMapping("/ai/conversations")
-    public Response<List<ConversationResponseDTO>> conversations(Principal principal) {
+    public Response<List<ConversationResponseDTO>> conversations(
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "100") int size,
+        Principal principal
+    ) {
         return execute(() -> {
             return shopping
-                .conversations(actor(principal))
+                .conversations(actor(principal), page, size)
                 .stream()
                 .map(c -> ConversationResponseDTO.builder().id(c.id()).title(c.title()).createdAt(c.createdAt()).build())
                 .toList();

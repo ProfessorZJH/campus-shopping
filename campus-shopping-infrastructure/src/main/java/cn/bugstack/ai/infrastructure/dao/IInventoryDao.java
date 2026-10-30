@@ -12,6 +12,7 @@ public interface IInventoryDao {
     int initialize(@Param("merchantId") String merchantId, @Param("storeId") String storeId, @Param("skuId") String skuId);
     StockPO stock(@Param("storeId") String storeId, @Param("skuId") String skuId, @Param("lock") boolean lock);
     List<StockPO> stocks(@Param("skuIds") List<String> skuIds);
+    List<StockPO> stocksForUpdate(@Param("skuIds") List<String> skuIds);
     int save(@Param("p") StockPO p);
     ReservationPO reservation(@Param("orderId") String orderId, @Param("skuId") String skuId);
     List<ReservationPO> reservations(@Param("orderId") String orderId);

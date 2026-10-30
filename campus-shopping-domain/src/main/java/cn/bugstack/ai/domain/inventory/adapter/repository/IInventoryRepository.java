@@ -9,6 +9,7 @@ public interface IInventoryRepository {
     void initialize(String merchant, String store, String sku);
     StockVO stock(String store, String sku, boolean lock);
     List<StockVO> stocks(List<String> skus);
+    List<StockVO> stocksForUpdate(List<String> skus);
     void save(StockVO stock);
     ReservationVO reservation(String order, String sku);
     List<ReservationVO> reservations(String order);

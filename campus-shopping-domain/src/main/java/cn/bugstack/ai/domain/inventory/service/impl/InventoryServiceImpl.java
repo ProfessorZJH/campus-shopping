@@ -127,6 +127,12 @@ public class InventoryServiceImpl implements IInventoryService {
         return repository.stocks(ids);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<StockVO> stocksForConfirmation(List<String> ids) {
+        require(ids != null && !ids.isEmpty() && ids.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
+        return repository.stocksForUpdate(ids.stream().sorted().toList());
+    }
+
     public List<StockVO> list(String merchant, int page, int size) {
         return list(merchant, page, size, "");
     }

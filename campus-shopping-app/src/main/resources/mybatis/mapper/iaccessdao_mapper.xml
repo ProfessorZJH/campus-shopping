@@ -11,10 +11,15 @@ INSERT INTO iam_platform_role(user_id,role) VALUES(#{userId},'PLATFORM_ADMIN') O
 SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND merchant_id=#{merchantId}<if test="lock"> FOR SHARE</if>
     </select>
     <select id="memberships" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
-SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND status='ACTIVE' ORDER BY merchant_id LIMIT 100
+SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND status='ACTIVE' ORDER BY merchant_id
     </select>
     <select id="members" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
-SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE merchant_id=#{merchantId} ORDER BY role,user_id LIMIT 100
+SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE merchant_id=#{merchantId} ORDER BY role,user_id
+    </select>
+    <select id="activeCustomPermissions" resultType="cn.bugstack.ai.infrastructure.dao.po.PermissionGrantPO">
+SELECT m.merchant_id,rp.permission FROM iam_merchant_membership m
+JOIN iam_merchant_role_permission rp ON rp.merchant_id=m.merchant_id AND rp.role_code=m.role
+WHERE m.user_id=#{userId} AND m.status='ACTIVE' ORDER BY m.merchant_id,rp.permission
     </select>
     <insert id="grantOwner">
 INSERT INTO iam_merchant_membership(merchant_id,user_id,role,status,source_application_id) VALUES(#{merchantId},#{userId},'OWNER','ACTIVE',#{applicationId}) ON DUPLICATE KEY UPDATE user_id=user_id
@@ -32,7 +37,7 @@ INSERT INTO iam_invitation(id,merchant_id,target_user_id,invited_by,status,expir
 SELECT id,merchant_id,target_user_id,status,expires_at FROM iam_invitation WHERE id=#{id} FOR UPDATE
     </select>
     <select id="invitations" resultType="cn.bugstack.ai.infrastructure.dao.po.InvitationPO">
-SELECT id,merchant_id,target_user_id,status,expires_at FROM iam_invitation WHERE target_user_id=#{targetUserId} ORDER BY created_at DESC LIMIT 100
+SELECT id,merchant_id,target_user_id,status,expires_at FROM iam_invitation WHERE target_user_id=#{targetUserId} ORDER BY created_at DESC,id LIMIT #{size} OFFSET #{offset}
     </select>
     <update id="accept">
 UPDATE iam_invitation SET status='ACCEPTED' WHERE id=#{id} AND status='PENDING'

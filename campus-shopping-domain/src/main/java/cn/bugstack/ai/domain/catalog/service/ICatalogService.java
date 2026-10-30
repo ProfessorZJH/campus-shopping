@@ -1,13 +1,13 @@
 package cn.bugstack.ai.domain.catalog.service;
 
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
-import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.*;
 import java.util.*;
 
 /** 商品业务能力；跨域权限和库存初始化由 Case 协作。 */
 public interface ICatalogService {
-    ProductAggregate create(String merchant, String store, ProductCreateEntity c);
+    ProductAggregate create(String merchant, String store, ProductCreateCommandEntity c);
     ProductAggregate find(String id);
     ProductAggregate addSku(String merchant, String product, String spec, long price);
     void changePrice(String merchant, String product, String sku, long price, long expectedVersion);

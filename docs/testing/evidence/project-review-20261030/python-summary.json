@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "command": "python -B -m pytest -q",
+  "workdir": "ai-service",
+  "tests": 42,
+  "warnings": 1,
+  "externalModelUsed": false,
+  "date": "2026-10-30"
+}

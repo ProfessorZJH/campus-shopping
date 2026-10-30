@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.*;
 public interface ICatalogDao {
     ProductPO product(@Param("id") String id, @Param("lock") boolean lock);
     List<SkuPO> skus(@Param("productIds") List<String> productIds);
+    List<SkuPO> skusForUpdate(@Param("productId") String productId);
     int insertProduct(@Param("p") ProductPO p);
     int insertSku(@Param("s") SkuPO s);
     int saveProduct(@Param("p") ProductPO p);

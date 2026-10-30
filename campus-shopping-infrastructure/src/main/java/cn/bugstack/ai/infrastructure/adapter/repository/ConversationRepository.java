@@ -26,8 +26,8 @@ public class ConversationRepository implements IConversationRepository {
         return conversation(dao.conversation(id));
     }
 
-    public List<ConversationVO> conversations(String user) {
-        return dao.conversations(user).stream().map(this::conversation).toList();
+    public List<ConversationVO> conversations(String user, int offset, int size) {
+        return dao.conversations(user, offset, size).stream().map(this::conversation).toList();
     }
 
     public List<MessageVO> messages(String id, int limit) {

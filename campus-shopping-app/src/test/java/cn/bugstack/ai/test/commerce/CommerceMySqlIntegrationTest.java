@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 
 import cn.bugstack.ai.Application;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
+import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.merchant.IMerchantAdmissionCase;
 import cn.bugstack.ai.cases.shoppingai.*;
 import cn.bugstack.ai.cases.trading.*;
@@ -23,6 +24,7 @@ import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeService;
 import cn.bugstack.ai.domain.shoppingai.service.impl.ConversationServiceImpl;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
+import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
@@ -75,9 +77,12 @@ class CommerceMySqlIntegrationTest {
     ICatalogCase catalog;
 
     @Autowired
-    ICatalogService catalogSearch;
+    ICatalogQueryCase catalogQuery;
 
     @Autowired
+    ICatalogService catalogSearch;
+
+    @SpyBean
     IMerchantService merchantService;
 
     @Autowired
@@ -85,6 +90,9 @@ class CommerceMySqlIntegrationTest {
 
     @Autowired
     IOrderLifecycleCase life;
+
+    @Autowired
+    IOrderService orderStore;
 
     @Autowired
     ICartCase cart;
@@ -201,23 +209,25 @@ class CommerceMySqlIntegrationTest {
     }
 
     private ProductAggregate product(int quantity) {
-        var p = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("考试中性笔", "黑色书写", "stationery", "", List.of(new ProductSkuEntity(null, "一盒", 1200, "ACTIVE", 0)))
-        );
-        catalog.publish(owner, merchant.id(), p.getId(), true);
-        if (quantity > 0) catalog.replenish(owner, merchant.id(), p.getSkus().get(0).id(), quantity, UUID.randomUUID().toString());
-        return catalog.publicDetail(p.getId());
+        var p = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity("考试中性笔", "黑色书写", "stationery", "", List.of(new ProductSkuEntity(null, "一盒", 1200, "ACTIVE", 0)))
+            )
+            .product();
+        catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
+        if (quantity > 0) catalog.replenishStock(owner, merchant.id(), p.getSkus().get(0).id(), quantity, UUID.randomUUID().toString());
+        return catalogQuery.detail(p.getId()).product();
     }
 
     @Test
     void creationViewUsesKnownFactsWithoutReadingInventoryAfterCommit() {
         doThrow(new IllegalStateException("unexpected inventory read")).when(inventoryService).stocks(anyList());
-        var result = catalog.createView(
+        var result = catalog.createProduct(
             owner,
             merchant.id(),
-            new ProductCreateEntity("完整创建响应", "", "stationery", "", List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)))
+            new ProductCreateCommandEntity("完整创建响应", "", "stationery", "", List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)))
         );
         assertEquals(merchant.name(), result.merchantName());
         assertTrue(
@@ -233,13 +243,15 @@ class CommerceMySqlIntegrationTest {
 
     @Test
     void addSkuViewFailureRollsBackNewSkuAndProductVersion() {
-        var product = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("事务响应测试", "", "stationery", "", List.of(new ProductSkuEntity(null, "原规格", 100, "ACTIVE", 0)))
-        );
+        var product = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity("事务响应测试", "", "stationery", "", List.of(new ProductSkuEntity(null, "原规格", 100, "ACTIVE", 0)))
+            )
+            .product();
         doThrow(new IllegalStateException("inventory query unavailable")).when(inventoryService).stocks(anyList());
-        assertThrows(IllegalStateException.class, () -> catalog.addSkuView(owner, merchant.id(), product.getId(), "新增规格", 200));
+        assertThrows(IllegalStateException.class, () -> catalog.addSkuToProduct(owner, merchant.id(), product.getId(), "新增规格", 200));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM cat_sku WHERE product_id=?", Integer.class, product.getId()));
         assertEquals(product.getVersion(), jdbc.queryForObject("SELECT version FROM cat_product WHERE id=?", Long.class, product.getId()));
         assertEquals(
@@ -267,54 +279,70 @@ class CommerceMySqlIntegrationTest {
     void catalogGlobalSortOrdersEntireResultBeforePaging() {
         List<String> ids = new ArrayList<>();
         for (int i = 0; i < 22; i++) {
-            var p = catalog.create(
-                owner,
-                merchant.id(),
-                new ProductCreateEntity("排序测试商品" + i, "", "stationery", "", List.of(new ProductSkuEntity(null, "单规格", 1000L + i * 20L, "ACTIVE", 0)))
-            );
-            catalog.publish(owner, merchant.id(), p.getId(), true);
-            catalog.replenish(owner, merchant.id(), p.getSkus().get(0).id(), i + 1, "sort-" + i);
+            var p = catalog
+                .createProduct(
+                    owner,
+                    merchant.id(),
+                    new ProductCreateCommandEntity(
+                        "排序测试商品" + i,
+                        "",
+                        "stationery",
+                        "",
+                        List.of(new ProductSkuEntity(null, "单规格", 1000L + i * 20L, "ACTIVE", 0))
+                    )
+                )
+                .product();
+            catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
+            catalog.replenishStock(owner, merchant.id(), p.getSkus().get(0).id(), i + 1, "sort-" + i);
             ids.add(p.getId());
         }
-        assertEquals(22L, catalog.countPublicProducts(null, "排序测试商品", null));
+        assertEquals(22L, catalogSearch.count(null, "排序测试商品", null, true));
         assertEquals(
             ids.subList(0, 20),
-            catalog.publicProductsSorted(null, "排序测试商品", null, 1, 20, "PRICE_ASC").stream().map(ProductAggregate::getId).toList()
+            catalogSearch.searchSorted(null, "排序测试商品", null, true, 1, 20, "PRICE_ASC").stream().map(ProductAggregate::getId).toList()
         );
         assertEquals(
             ids.subList(20, 22),
-            catalog.publicProductsSorted(null, "排序测试商品", null, 2, 20, "PRICE_ASC").stream().map(ProductAggregate::getId).toList()
+            catalogSearch.searchSorted(null, "排序测试商品", null, true, 2, 20, "PRICE_ASC").stream().map(ProductAggregate::getId).toList()
         );
         List<String> reversed = new ArrayList<>(ids);
         Collections.reverse(reversed);
         assertEquals(
             reversed.subList(0, 20),
-            catalog.publicProductsSorted(null, "排序测试商品", null, 1, 20, "STOCK_DESC").stream().map(ProductAggregate::getId).toList()
+            catalogSearch.searchSorted(null, "排序测试商品", null, true, 1, 20, "STOCK_DESC").stream().map(ProductAggregate::getId).toList()
         );
         assertEquals(
             reversed.subList(20, 22),
-            catalog.publicProductsSorted(null, "排序测试商品", null, 2, 20, "STOCK_DESC").stream().map(ProductAggregate::getId).toList()
+            catalogSearch.searchSorted(null, "排序测试商品", null, true, 2, 20, "STOCK_DESC").stream().map(ProductAggregate::getId).toList()
         );
         assertEquals(
             ids.subList(0, 20),
-            catalog
-                .managedProductsSorted(owner, merchant.id(), "排序测试商品", null, "PUBLISHED", 1, 20, "PRICE_ASC")
+            catalogSearch
+                .searchManagedSorted(merchant.id(), "排序测试商品", null, "PUBLISHED", 1, 20, "PRICE_ASC")
                 .stream()
                 .map(ProductAggregate::getId)
                 .toList()
         );
-        assertThrows(AppException.class, () -> catalog.publicProductsSorted(null, "排序测试商品", null, 1, 20, "UNKNOWN"));
+        assertThrows(AppException.class, () -> catalogSearch.searchSorted(null, "排序测试商品", null, true, 1, 20, "UNKNOWN"));
     }
 
     /** 商品超过 100 条时仍可召回老商品；召回只读取公开、已上架、有效 SKU。 */
     @Test
     void aiRecallSearchesWholePublishedCatalogInsteadOfNewestHundred() {
-        var old = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("无糖乌龙茶", "无糖健康茶饮", "stationery", "", List.of(new ProductSkuEntity(null, "500ml瓶装", 500, "ACTIVE", 0)))
-        );
-        catalog.publish(owner, merchant.id(), old.getId(), true);
+        var old = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity(
+                    "无糖乌龙茶",
+                    "无糖健康茶饮",
+                    "stationery",
+                    "",
+                    List.of(new ProductSkuEntity(null, "500ml瓶装", 500, "ACTIVE", 0))
+                )
+            )
+            .product();
+        catalog.setProductPublished(owner, merchant.id(), old.getId(), true);
         jdbc.update("UPDATE cat_product SET created_at='2025-01-01 00:00:00' WHERE id=?", old.getId());
         for (int i = 0; i < 120; i++) {
             String productId = UUID.randomUUID().toString();
@@ -337,18 +365,20 @@ class CommerceMySqlIntegrationTest {
             );
         }
         assertTrue(
-            catalog
-                .publicProducts(null, "", null, 1, 100)
+            catalogSearch
+                .search(null, "", null, true, 1, 100)
                 .stream()
                 .noneMatch(p -> p.getId().equals(old.getId()))
         );
         var results = catalogSearch.recall(List.of("无糖", "乌龙"), 200);
         assertEquals(List.of(old.getId()), results.stream().map(ProductAggregate::getId).toList());
-        var draft = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("无糖草莓茶", "", "stationery", "", List.of(new ProductSkuEntity(null, "单瓶", 500, "ACTIVE", 0)))
-        );
+        var draft = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity("无糖草莓茶", "", "stationery", "", List.of(new ProductSkuEntity(null, "单瓶", 500, "ACTIVE", 0)))
+            )
+            .product();
         assertEquals(List.of(old.getId()), catalogSearch.recall(List.of("无糖"), 200).stream().map(ProductAggregate::getId).toList());
         assertThrows(AppException.class, () -> catalogSearch.recall(List.of("%' OR 1=1 --"), 200));
     }
@@ -357,16 +387,18 @@ class CommerceMySqlIntegrationTest {
     @Test
     void semanticRecallMustRevalidateCurrentCatalogPublicationAndMerchantStatus() {
         var published = product(2);
-        var draft = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("待发布语义商品", "", "stationery", "", List.of(new ProductSkuEntity(null, "单份", 500, "ACTIVE", 0)))
-        );
+        var draft = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity("待发布语义商品", "", "stationery", "", List.of(new ProductSkuEntity(null, "单份", 500, "ACTIVE", 0)))
+            )
+            .product();
         var ids = List.of(published.getId(), draft.getId());
         assertEquals(List.of(published.getId()), catalogSearch.recallByIds(ids).stream().map(ProductAggregate::getId).toList());
-        catalog.publish(owner, merchant.id(), published.getId(), false);
+        catalog.setProductPublished(owner, merchant.id(), published.getId(), false);
         assertTrue(catalogSearch.recallByIds(ids).isEmpty());
-        catalog.publish(owner, merchant.id(), published.getId(), true);
+        catalog.setProductPublished(owner, merchant.id(), published.getId(), true);
         jdbc.update("UPDATE mer_merchant SET status='SUSPENDED' WHERE id=?", merchant.id());
         assertTrue(catalogSearch.recallByIds(ids).isEmpty());
     }
@@ -376,7 +408,7 @@ class CommerceMySqlIntegrationTest {
     }
 
     private OrderAggregate order(ProductAggregate p) {
-        return checkout.checkout(buyer, merchant.id(), List.of(item(p)), UUID.randomUUID().toString());
+        return orderStore.order(checkout.checkout(buyer, merchant.id(), List.of(item(p)), UUID.randomUUID().toString()).orderId());
     }
 
     private long scalar(String sql, Object... args) {
@@ -390,6 +422,78 @@ class CommerceMySqlIntegrationTest {
         } catch (AppException e) {
             return e.getCode();
         }
+    }
+
+    @Test
+    void conversationAndInvitationPagingCanReachTheOldestRecord() {
+        var conversationRows = new ArrayList<Object[]>();
+        var invitationRows = new ArrayList<Object[]>();
+        for (int i = 0; i < 101; i++) {
+            String suffix = String.format("%03d", i);
+            conversationRows.add(new Object[] { "conversation-" + suffix, buyer, "会话" + i });
+            invitationRows.add(new Object[] { "invitation-" + suffix, merchant.id(), buyer, owner });
+        }
+        jdbc.batchUpdate("INSERT INTO ai_conversation(id,user_id,title,created_at) VALUES(?,?,?,'2025-01-01')", conversationRows);
+        jdbc.batchUpdate(
+            "INSERT INTO iam_invitation(id,merchant_id,target_user_id,invited_by,status,expires_at,created_at) VALUES(?,?,?,?,'PENDING','2027-01-01','2025-01-01')",
+            invitationRows
+        );
+        assertEquals(100, ai.conversations(buyer, 1, 100).size());
+        assertEquals("conversation-100", ai.conversations(buyer, 2, 100).get(0).id());
+        assertTrue(ai.conversations(other, 1, 100).isEmpty());
+        assertEquals(100, access.invitations(buyer, 1, 100).size());
+        assertEquals("invitation-100", access.invitations(buyer, 2, 100).get(0).id());
+        assertTrue(access.invitations(other, 1, 100).isEmpty());
+        assertEquals("0002", code(() -> ai.conversations(buyer, 0, 100)));
+        assertEquals("0002", code(() -> access.invitations(buyer, 1, 101)));
+    }
+
+    @Test
+    void knowledgeScopeIncludesTheOldestBaseAndRejectsOverflowExplicitly() {
+        var baseRows = new ArrayList<Object[]>();
+        for (int i = 0; i < 1001; i++) baseRows.add(new Object[] { String.format("scope-base-%04d", i), admin });
+        jdbc.batchUpdate("INSERT INTO ai_knowledge_base(id,name,visibility,created_by,created_at) VALUES(?,'知识','PUBLIC',?,'2025-01-01')", baseRows);
+        jdbc.update(
+            "INSERT INTO ai_document_root(id,base_id,version_counter,active_document_id) VALUES('scope-root-last','scope-base-1000',1,'scope-doc-last')"
+        );
+        jdbc.update(
+            "INSERT INTO ai_document(id,root_id,base_id,version,title,status,index_status,content) VALUES('scope-doc-last','scope-root-last','scope-base-1000',1,'较早知识','PUBLISHED','READY','可见正文')"
+        );
+        assertEquals(List.of("scope-doc-last"), knowledge.readableScope(buyer).stream().map(KnowledgeScopeVO::id).toList());
+        var roots = new ArrayList<Object[]>();
+        var documents = new ArrayList<Object[]>();
+        for (int i = 0; i < 1000; i++) {
+            roots.add(new Object[] { "scope-root-" + i, "scope-doc-" + i });
+            documents.add(new Object[] { "scope-doc-" + i, "scope-root-" + i });
+        }
+        jdbc.batchUpdate("INSERT INTO ai_document_root(id,base_id,version_counter,active_document_id) VALUES(?,'scope-base-1000',1,?)", roots);
+        jdbc.batchUpdate(
+            "INSERT INTO ai_document(id,root_id,base_id,version,title,status,index_status,content) VALUES(?,?,'scope-base-1000',1,'知识','PUBLISHED','READY','正文')",
+            documents
+        );
+        assertEquals("AI0005", code(() -> knowledge.readableScope(buyer)));
+        jdbc.update("UPDATE ai_document SET status='WITHDRAWN' WHERE id='scope-doc-last'");
+        assertEquals(1000, knowledge.readableScope(buyer).size());
+    }
+
+    @Test
+    void checkoutReadModelFailureRollsBackOrderReservationAndRequestKey() {
+        var p = product(3);
+        doThrow(new IllegalStateException("read model unavailable")).when(merchantService).findAll(anyList());
+        assertThrows(IllegalStateException.class, () -> checkout.checkout(buyer, merchant.id(), List.of(item(p)), "read-model-failure"));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM trd_order"));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM trd_checkout_request"));
+        assertEquals(0L, scalar("SELECT SUM(reserved) FROM inv_stock_balance"));
+    }
+
+    @Test
+    void paymentReadModelFailureRollsBackPaymentAndPickupTogether() {
+        var o = order(product(3));
+        doThrow(new IllegalStateException("read model unavailable")).when(merchantService).findAll(anyList());
+        assertThrows(IllegalStateException.class, () -> life.pay(buyer, o.getId()));
+        assertEquals("PENDING_PAYMENT", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM trd_payment"));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM ful_pickup_task"));
     }
 
     private List<String> race(Runnable a, Runnable b) throws Exception {
@@ -416,31 +520,47 @@ class CommerceMySqlIntegrationTest {
     /** 关键字是字面子串，商品/商户/SKU/规格搜索及列表和 COUNT 必须等价。 */
     @Test
     void catalogLiteralSearchAndCountCoverMerchantSkuAndSpecification() {
-        var percent = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("校园100%果茶", "特价批次", "stationery", "", List.of(new ProductSkuEntity(null, "限量规格搜索A", 1200, "ACTIVE", 0)))
-        );
-        var underscore = catalog.create(
-            owner,
-            merchant.id(),
-            new ProductCreateEntity("校园_书写套装", "规格说明", "stationery", "", List.of(new ProductSkuEntity(null, "限量规格搜索B", 1300, "ACTIVE", 0)))
-        );
-        catalog.publish(owner, merchant.id(), percent.getId(), true);
-        catalog.publish(owner, merchant.id(), underscore.getId(), true);
-        assertEquals(List.of(percent.getId()), catalog.publicProducts(null, "%", null, 1, 100).stream().map(ProductAggregate::getId).toList());
-        assertEquals(1L, catalog.countPublicProducts(null, "%", null));
-        assertEquals(List.of(underscore.getId()), catalog.publicProducts(null, "_", null, 1, 100).stream().map(ProductAggregate::getId).toList());
-        assertEquals(1L, catalog.countPublicProducts(null, "_", null));
-        assertEquals(2, catalog.publicProducts(null, "测试文具商户", null, 1, 100).size());
-        assertEquals(2L, catalog.countPublicProducts(null, "测试文具商户", null));
-        assertEquals(1, catalog.publicProducts(null, "限量规格搜索A", null, 1, 100).size());
-        assertEquals(1L, catalog.countPublicProducts(null, "限量规格搜索A", null));
+        var percent = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity(
+                    "校园100%果茶",
+                    "特价批次",
+                    "stationery",
+                    "",
+                    List.of(new ProductSkuEntity(null, "限量规格搜索A", 1200, "ACTIVE", 0))
+                )
+            )
+            .product();
+        var underscore = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity(
+                    "校园_书写套装",
+                    "规格说明",
+                    "stationery",
+                    "",
+                    List.of(new ProductSkuEntity(null, "限量规格搜索B", 1300, "ACTIVE", 0))
+                )
+            )
+            .product();
+        catalog.setProductPublished(owner, merchant.id(), percent.getId(), true);
+        catalog.setProductPublished(owner, merchant.id(), underscore.getId(), true);
+        assertEquals(List.of(percent.getId()), catalogSearch.search(null, "%", null, true, 1, 100).stream().map(ProductAggregate::getId).toList());
+        assertEquals(1L, catalogSearch.count(null, "%", null, true));
+        assertEquals(List.of(underscore.getId()), catalogSearch.search(null, "_", null, true, 1, 100).stream().map(ProductAggregate::getId).toList());
+        assertEquals(1L, catalogSearch.count(null, "_", null, true));
+        assertEquals(2, catalogSearch.search(null, "测试文具商户", null, true, 1, 100).size());
+        assertEquals(2L, catalogSearch.count(null, "测试文具商户", null, true));
+        assertEquals(1, catalogSearch.search(null, "限量规格搜索A", null, true, 1, 100).size());
+        assertEquals(1L, catalogSearch.count(null, "限量规格搜索A", null, true));
         String skuId = percent.getSkus().get(0).id();
-        assertEquals(List.of(percent.getId()), catalog.publicProducts(null, skuId, null, 1, 100).stream().map(ProductAggregate::getId).toList());
-        assertEquals(1L, catalog.countPublicProducts(null, skuId, null));
-        assertEquals(1, catalog.managedProductsFiltered(owner, merchant.id(), "限量规格搜索B", null, "", 1, 100).size());
-        assertEquals(1L, catalog.countManagedProductsFiltered(owner, merchant.id(), "限量规格搜索B", null, ""));
+        assertEquals(List.of(percent.getId()), catalogSearch.search(null, skuId, null, true, 1, 100).stream().map(ProductAggregate::getId).toList());
+        assertEquals(1L, catalogSearch.count(null, skuId, null, true));
+        assertEquals(1, catalogQuery.managedPage(owner, merchant.id(), "限量规格搜索B", null, "", 1, 100, "NEWEST").items().size());
+        assertEquals(1L, catalogQuery.managedPage(owner, merchant.id(), "限量规格搜索B", null, "", 1, 100, "NEWEST").total());
     }
 
     @Test
@@ -498,7 +618,7 @@ class CommerceMySqlIntegrationTest {
     @Test
     void stalePriceFailsWithoutLeavingReservationOrRequestGate() {
         var p = product(3);
-        catalog.price(owner, merchant.id(), p.getId(), p.getSkus().get(0).id(), 1500, p.getVersion());
+        catalog.changeSkuPrice(owner, merchant.id(), p.getId(), p.getSkus().get(0).id(), 1500, p.getVersion());
         assertEquals("C0002", code(() -> order(p)));
         assertEquals(0, scalar("SELECT COUNT(*) FROM trd_order"));
         assertEquals(0, scalar("SELECT COUNT(*) FROM trd_checkout_request"));
@@ -549,12 +669,12 @@ class CommerceMySqlIntegrationTest {
         var p = product(2);
         var o = order(p);
         life.pay(buyer, o.getId());
-        life.prepare(owner, merchant.id(), o.getId(), true);
-        var old = life.token(buyer, o.getId());
-        var current = life.token(buyer, o.getId());
-        assertEquals("F0001", code(() -> life.verify(owner, merchant.id(), o.getId(), old.token())));
-        life.verify(owner, merchant.id(), o.getId(), current.token());
-        life.verify(owner, merchant.id(), o.getId(), current.token());
+        life.markReady(owner, merchant.id(), o.getId());
+        var old = life.issuePickupToken(buyer, o.getId());
+        var current = life.issuePickupToken(buyer, o.getId());
+        assertEquals("F0001", code(() -> life.verifyPickup(owner, merchant.id(), o.getId(), old.token())));
+        life.verifyPickup(owner, merchant.id(), o.getId(), current.token());
+        life.verifyPickup(owner, merchant.id(), o.getId(), current.token());
         assertEquals(1, scalar("SELECT on_hand FROM inv_stock_balance"));
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
         assertEquals(1, scalar("SELECT COUNT(*) FROM ful_pickup_verification"));
@@ -565,13 +685,13 @@ class CommerceMySqlIntegrationTest {
         var p = product(2);
         var o = order(p);
         life.pay(buyer, o.getId());
-        life.prepare(owner, merchant.id(), o.getId(), true);
-        var token = life.token(buyer, o.getId());
-        var result = race(() -> life.requestRefund(buyer, o.getId(), "未提货退款"), () -> life.verify(owner, merchant.id(), o.getId(), token.token()));
+        life.markReady(owner, merchant.id(), o.getId());
+        var token = life.issuePickupToken(buyer, o.getId());
+        var result = race(() -> life.requestRefund(buyer, o.getId(), "未提货退款"), () -> life.verifyPickup(owner, merchant.id(), o.getId(), token.token()));
         assertEquals(1, result.stream().filter("0000"::equals).count());
         long requests = scalar("SELECT COUNT(*) FROM trd_after_sale");
         if (requests == 1) {
-            life.merchantDecideRefund(owner, merchant.id(), o.getId(), true, "同意");
+            life.merchantApproveRefund(owner, merchant.id(), o.getId(), "同意");
             assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
         } else assertEquals(1, scalar("SELECT on_hand FROM inv_stock_balance"));
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
@@ -583,22 +703,22 @@ class CommerceMySqlIntegrationTest {
         var o = order(p);
         life.pay(buyer, o.getId());
         life.requestRefund(buyer, o.getId(), "取消购买");
-        life.merchantDecideRefund(owner, merchant.id(), o.getId(), true, "同意");
-        life.merchantDecideRefund(owner, merchant.id(), o.getId(), true, "同意");
+        life.merchantApproveRefund(owner, merchant.id(), o.getId(), "同意");
+        life.merchantApproveRefund(owner, merchant.id(), o.getId(), "同意");
         assertEquals(1, scalar("SELECT COUNT(*) FROM trd_refund"));
         assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
-        assertEquals("T0001", code(() -> life.verify(owner, merchant.id(), o.getId(), "invalid")));
+        assertEquals("T0001", code(() -> life.verifyPickup(owner, merchant.id(), o.getId(), "invalid")));
     }
 
     @Test
     void merchantIsolationAndRevocationAreCheckedAtOperationTime() {
         var p = product(2);
-        assertEquals("A0006", code(() -> catalog.replenish(other, merchant.id(), p.getSkus().get(0).id(), 1, "bad")));
+        assertEquals("A0006", code(() -> catalog.replenishStock(other, merchant.id(), p.getSkus().get(0).id(), 1, "bad")));
         var invitation = access.invite(owner, merchant.id(), "testother");
         access.accept(other, invitation.id());
         access.requireMember(other, merchant.id(), false);
-        assertEquals("A0006", code(() -> catalog.price(other, merchant.id(), p.getId(), p.getSkus().get(0).id(), 1600, p.getVersion())));
+        assertEquals("A0006", code(() -> catalog.changeSkuPrice(other, merchant.id(), p.getId(), p.getSkus().get(0).id(), 1600, p.getVersion())));
         access.revoke(owner, merchant.id(), other);
         assertEquals("A0006", code(() -> access.requireMember(other, merchant.id(), false)));
     }
@@ -610,9 +730,9 @@ class CommerceMySqlIntegrationTest {
         life.pay(buyer, o.getId());
         admission.setActive(admin, merchant.id(), false, "监管暂停");
         assertEquals("M0004", code(() -> order(p)));
-        life.prepare(owner, merchant.id(), o.getId(), true);
-        var token = life.token(buyer, o.getId());
-        life.verify(owner, merchant.id(), o.getId(), token.token());
+        life.markReady(owner, merchant.id(), o.getId());
+        var token = life.issuePickupToken(buyer, o.getId());
+        life.verifyPickup(owner, merchant.id(), o.getId(), token.token());
         assertEquals("COMPLETED", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
     }
 
@@ -669,10 +789,10 @@ class CommerceMySqlIntegrationTest {
     void replenishRetryDoesNotAddTwice() {
         var p = product(0);
         String sku = item(p).skuId();
-        catalog.replenish(owner, merchant.id(), sku, 5, "once");
-        catalog.replenish(owner, merchant.id(), sku, 5, "once");
+        catalog.replenishStock(owner, merchant.id(), sku, 5, "once");
+        catalog.replenishStock(owner, merchant.id(), sku, 5, "once");
         assertEquals(5, scalar("SELECT on_hand FROM inv_stock_balance"));
-        assertEquals("G0003", code(() -> catalog.replenish(owner, merchant.id(), sku, 6, "once")));
+        assertEquals("G0003", code(() -> catalog.replenishStock(owner, merchant.id(), sku, 6, "once")));
     }
 
     @Test
@@ -690,17 +810,17 @@ class CommerceMySqlIntegrationTest {
         assertEquals("更新商户", jdbc.queryForObject("SELECT name FROM mer_merchant WHERE id=?", String.class, merchant.id()));
         assertEquals("西门三楼", jdbc.queryForObject("SELECT location FROM mer_store WHERE merchant_id=?", String.class, merchant.id()));
         var p = product(2);
-        assertFalse(catalog.adminProducts(admin, null, "", 1, 20).isEmpty());
-        assertEquals("A0006", code(() -> catalog.adminProducts(other, null, "", 1, 20)));
-        catalog.forceUnpublish(admin, p.getId());
-        assertEquals("C0001", code(() -> catalog.publicDetail(p.getId())));
+        assertFalse(catalogQuery.adminProducts(admin, null, "", 1, 20).isEmpty());
+        assertEquals("A0006", code(() -> catalogQuery.adminProducts(other, null, "", 1, 20)));
+        catalog.forceUnpublishProduct(admin, p.getId());
+        assertEquals("C0001", code(() -> catalogQuery.detail(p.getId())));
     }
 
     @Test
     void proposalConfirmationRollsBackStateWhenPriceChanges() {
         var product = product(4);
         var proposal = proposal(product);
-        catalog.price(owner, merchant.id(), product.getId(), item(product).skuId(), 1500, product.getVersion());
+        catalog.changeSkuPrice(owner, merchant.id(), product.getId(), item(product).skuId(), 1500, product.getVersion());
         assertEquals("C0002", code(() -> ai.confirm(buyer, proposal.id(), List.of(item(product).skuId()))));
         assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM ai_proposal WHERE id=?", String.class, proposal.id()));
         assertNull(jdbc.queryForObject("SELECT selection_hash FROM ai_proposal WHERE id=?", String.class, proposal.id()));
@@ -764,7 +884,7 @@ class CommerceMySqlIntegrationTest {
         var byId = result
             .items()
             .stream()
-            .collect(java.util.stream.Collectors.toMap(m -> m.order().getId(), m -> m));
+            .collect(java.util.stream.Collectors.toMap(m -> m.orderId(), m -> m));
         assertEquals(merchant.name(), byId.get(first.getId()).merchantName());
         assertEquals("WAIT_PREP", byId.get(first.getId()).pickup().status());
         assertEquals("REQUESTED", byId.get(first.getId()).afterSale().status());

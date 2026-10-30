@@ -140,15 +140,6 @@ jobs:
           (cd ai-service && python -m pytest -q --junitxml=../docs/testing/evidence/ai-unit-tests.xml)
           python ai-service/evaluate.py
           python scripts/smoke-ai-local.py
-      - name: Chromium contract tests (mocked backend)
-        run: |
-          python frontend/tests/contract_ui.py
-          python frontend/tests/ui_audit_contract.py
-          python frontend/tests/ui_sdd_integration.py
-          python frontend/tests/ui_contract_v11.py
-          python frontend/tests/ui_fix_regression.py
-          python frontend/tests/ui_rbac_regression.py
-          python frontend/tests/ui_global_sort.py
       - name: Start independent real MySQL / Spring / FastAPI
         shell: bash
         run: |
@@ -215,6 +206,53 @@ jobs:
             if [ -f "$file" ]; then kill "$(cat "$file")" || true; fi
           done
           docker rm -f campus-mysql-it campus-mysql-e2e || true
+
+  browser-contract:
+    name: Chromium contract / ${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [legacy, current]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ai-service/requirements-dev.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install browser contract dependencies
+        run: |
+          python -m pip install --require-hashes -r ai-service/requirements-dev.lock
+          python -m playwright install --with-deps chromium
+          npm ci --prefix frontend --no-audit --no-fund
+          python scripts/build-ui-bundle.py --check
+      - name: Legacy browser contract
+        if: matrix.suite == 'legacy'
+        run: python frontend/tests/contract_ui.py
+      - name: Current browser contracts
+        if: matrix.suite == 'current'
+        shell: bash
+        run: |
+          status=0
+          for script in ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py; do
+            python "frontend/tests/$script" || status=1
+          done
+          exit "$status"
+      - name: Upload browser contract evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: campus-browser-${{ matrix.suite }}-evidence
+          if-no-files-found: warn
+          retention-days: 7
+          path: docs/testing/evidence/**
 
   delivery-images:
     name: Actual delivery images / isolated Compose transaction chain

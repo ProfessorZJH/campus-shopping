@@ -10,6 +10,9 @@ SELECT * FROM inv_stock_balance WHERE store_id=#{storeId} AND sku_id=#{skuId}<if
     <select id="stocks" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
 SELECT * FROM inv_stock_balance WHERE sku_id IN <foreach collection="skuIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY sku_id
     </select>
+    <select id="stocksForUpdate" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
+SELECT * FROM inv_stock_balance WHERE sku_id IN <foreach collection="skuIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY sku_id FOR UPDATE
+    </select>
 
     <update id="save">
 UPDATE inv_stock_balance SET on_hand=#{p.onHand},reserved=#{p.reserved},version=version+1 WHERE store_id=#{p.storeId} AND sku_id=#{p.skuId} AND version=#{p.version} AND #{p.onHand} &gt;= #{p.reserved} AND #{p.reserved} &gt;= 0

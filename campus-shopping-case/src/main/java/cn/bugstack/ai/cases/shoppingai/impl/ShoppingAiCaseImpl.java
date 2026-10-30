@@ -280,9 +280,9 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         return safeHistory(actor, conversation, scope(knowledge.readableScope(actor)), 100);
     }
 
-    public List<ConversationVO> conversations(String actor) {
+    public List<ConversationVO> conversations(String actor, int page, int size) {
         accounts.requireActive(actor);
-        return state.conversations(actor);
+        return state.conversations(actor, page, size);
     }
 
     public List<ProposalVO> proposals(String actor, String conversation) {

@@ -19,7 +19,7 @@ import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
-import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
@@ -146,10 +146,10 @@ public class CatalogController implements ICatalogApi {
                 .stream()
                 .map(s -> new ProductSkuEntity(null, required(s).getSpecKey(), required(s.getPriceCent()), "ACTIVE", 0))
                 .toList();
-            var product = catalogCase.createView(
+            var product = catalogCase.createProduct(
                 actor(principal),
                 merchantId,
-                new ProductCreateEntity(request.getTitle(), request.getDescription(), request.getCategoryCode(), request.getImageUrl(), skus)
+                new ProductCreateCommandEntity(request.getTitle(), request.getDescription(), request.getCategoryCode(), request.getImageUrl(), skus)
             );
             return ApiViews.product(product);
         });
@@ -166,7 +166,7 @@ public class CatalogController implements ICatalogApi {
     ) {
         return execute(() -> {
             required(request);
-            catalogCase.edit(
+            catalogCase.editProduct(
                 actor(principal),
                 merchantId,
                 productId,
@@ -191,7 +191,9 @@ public class CatalogController implements ICatalogApi {
     ) {
         return execute(() -> {
             required(request);
-            return ApiViews.product(catalogCase.addSkuView(actor(principal), merchantId, productId, request.getSpecKey(), required(request.getPriceCent())));
+            return ApiViews.product(
+                catalogCase.addSkuToProduct(actor(principal), merchantId, productId, request.getSpecKey(), required(request.getPriceCent()))
+            );
         });
     }
 
@@ -207,7 +209,14 @@ public class CatalogController implements ICatalogApi {
     ) {
         return execute(() -> {
             required(request);
-            catalogCase.price(actor(principal), merchantId, productId, skuId, required(request.getPriceCent()), required(request.getExpectedVersion()));
+            catalogCase.changeSkuPrice(
+                actor(principal),
+                merchantId,
+                productId,
+                skuId,
+                required(request.getPriceCent()),
+                required(request.getExpectedVersion())
+            );
             return null;
         });
     }
@@ -222,7 +231,7 @@ public class CatalogController implements ICatalogApi {
         Principal principal
     ) {
         return execute(() -> {
-            catalogCase.publish(actor(principal), merchantId, productId, required(required(request).getPublished()));
+            catalogCase.setProductPublished(actor(principal), merchantId, productId, required(required(request).getPublished()));
             return null;
         });
     }
@@ -233,7 +242,7 @@ public class CatalogController implements ICatalogApi {
     public Response<ImageResponseDTO> image(@PathVariable("merchantId") String merchantId, @RequestBody FileUploadRequestDTO request, Principal principal) {
         return execute(() -> {
             return ImageResponseDTO.builder()
-                .url(catalogCase.image(actor(principal), merchantId, file(required(request).getBase64())))
+                .url(catalogCase.uploadProductImage(actor(principal), merchantId, file(required(request).getBase64())))
                 .build();
         });
     }
@@ -243,7 +252,7 @@ public class CatalogController implements ICatalogApi {
     @PostMapping("/admin/products/{productId}/unpublish")
     public Response<Void> forceUnpublish(@PathVariable("productId") String productId, Principal principal) {
         return execute(() -> {
-            catalogCase.forceUnpublish(actor(principal), productId);
+            catalogCase.forceUnpublishProduct(actor(principal), productId);
             return null;
         });
     }
@@ -254,7 +263,7 @@ public class CatalogController implements ICatalogApi {
     public Response<Void> category(@RequestBody CategoryRequestDTO request, Principal principal) {
         return execute(() -> {
             required(request);
-            catalogCase.category(actor(principal), request.getCode(), request.getName(), required(request.getActive()));
+            catalogCase.upsertCategory(actor(principal), request.getCode(), request.getName(), required(request.getActive()));
             return null;
         });
     }

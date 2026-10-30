@@ -1,0 +1,40 @@
+{
+  "externalModelUsed": false,
+  "source": "production Python answer() with temporary SQLite",
+  "cases": [
+    {
+      "id": "CHINESE_BUDGET",
+      "question": "预算二十元买一瓶矿泉水",
+      "budgetCent": null,
+      "recommendedPriceCent": 3000
+    },
+    {
+      "id": "APPROX_QUANTITY",
+      "question": "买十几瓶矿泉水",
+      "quantityIntent": [
+        null,
+        "UNSPECIFIED"
+      ],
+      "recommendedQuantity": 1
+    },
+    {
+      "id": "FOLLOWUP_QUANTITY",
+      "question": "换一个",
+      "previousQuestion": "预算20元买两瓶矿泉水",
+      "rewrittenQuery": "预算20元买两瓶矿泉水 换一个",
+      "inheritedBudgetCent": 2000,
+      "recommendedQuantity": 1
+    }
+  ],
+  "httpBudgetCase": {
+    "statusCode": 200,
+    "mode": "LOCAL_RETRIEVAL_DEMO",
+    "recommendations": [
+      {
+        "skuId": "premium",
+        "quantity": 1,
+        "reason": "与当前需求相关，数量、库存和预算已校验"
+      }
+    ]
+  }
+}

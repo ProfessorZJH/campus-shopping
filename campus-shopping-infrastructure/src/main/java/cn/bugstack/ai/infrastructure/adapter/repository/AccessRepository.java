@@ -40,6 +40,14 @@ public class AccessRepository implements IAccessRepository {
         return accsessDao.members(merchantId).stream().map(this::toMember).toList();
     }
 
+    public Map<String, Set<String>> activeCustomPermissions(String userId) {
+        Map<String, Set<String>> permissions = new HashMap<>();
+        for (PermissionGrantPO row : accsessDao.activeCustomPermissions(userId)) {
+            permissions.computeIfAbsent(row.getMerchantId(), ignored -> new HashSet<>()).add(row.getPermission());
+        }
+        return permissions;
+    }
+
     public void grantOwner(String merchantId, String userId, String applicationId) {
         accsessDao.grantOwner(merchantId, userId, applicationId);
     }
@@ -64,12 +72,16 @@ public class AccessRepository implements IAccessRepository {
         return toInvitation(accsessDao.invitation(id));
     }
 
-    public List<InvitationVO> invitations(String userId) {
-        return accsessDao.invitations(userId).stream().map(this::toInvitation).toList();
+    public List<InvitationVO> invitations(String userId, int offset, int size) {
+        return accsessDao.invitations(userId, offset, size).stream().map(this::toInvitation).toList();
     }
 
     public void accept(String id) {
         accsessDao.accept(id);
+    }
+
+    public void cancelPendingInvitations(String merchantId, String userId) {
+        accsessDao.cancelInvitations(merchantId, userId);
     }
 
     public void audit(String actor, String action, String target, String merchantId, String detail) {

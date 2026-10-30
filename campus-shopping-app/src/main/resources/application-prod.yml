@@ -1,6 +1,7 @@
 server:
   address: 0.0.0.0
-  forward-headers-strategy: framework
+  # 来源地址必须是实际连接对端；边缘代理负责清洗客户端转发头。
+  forward-headers-strategy: none
 spring:
   datasource:
     url: ${DB_URL}

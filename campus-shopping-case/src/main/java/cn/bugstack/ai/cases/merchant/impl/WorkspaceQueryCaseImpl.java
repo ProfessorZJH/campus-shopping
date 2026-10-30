@@ -45,7 +45,7 @@ public class WorkspaceQueryCaseImpl implements IWorkspaceQueryCase {
                 return merchant;
             })
             .toList();
-        Map<String, Set<String>> permissions = merchantIds.stream().collect(Collectors.toMap(Function.identity(), id -> access.permissions(actor, id)));
+        Map<String, Set<String>> permissions = access.workspacePermissions(actor, memberships);
         return new WorkspaceSnapshot(access.isAdmin(actor), memberships, permissions, orderedMerchants);
     }
 }

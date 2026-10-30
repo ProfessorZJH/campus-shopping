@@ -10,7 +10,7 @@ import java.util.List;
 public interface IShoppingAiCase {
     ChatResult chat(String actor, String conversation, String question);
     List<MessageVO> history(String actor, String conversation);
-    List<ConversationVO> conversations(String actor);
+    List<ConversationVO> conversations(String actor, int page, int size);
     List<ProposalVO> proposals(String actor, String conversation);
     ProposalVO confirm(String actor, String proposal, List<String> selectedSkus);
     void reject(String actor, String proposal);

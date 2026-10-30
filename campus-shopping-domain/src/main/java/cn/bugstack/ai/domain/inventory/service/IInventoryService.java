@@ -14,6 +14,7 @@ public interface IInventoryService {
     void release(String order);
     void consume(String order);
     List<StockVO> stocks(List<String> skus);
+    List<StockVO> stocksForConfirmation(List<String> skus);
     List<StockVO> list(String merchant, int page, int size);
     List<StockVO> list(String merchant, int page, int size, String q);
     List<StockMovementVO> movements(String merchant, int page, int size);
