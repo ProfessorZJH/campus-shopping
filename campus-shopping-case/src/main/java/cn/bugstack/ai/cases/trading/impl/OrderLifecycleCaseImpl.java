@@ -144,9 +144,18 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void decideRefund(String actor, String merchant, String id, boolean approved, String reason, boolean platform) {
-        if (platform) access.requireAdmin(actor);
-        else access.requirePermission(actor, merchant, "aftersale.review");
+    public void merchantDecideRefund(String actor, String merchant, String id, boolean approved, String reason) {
+        access.requirePermission(actor, merchant, "aftersale.review");
+        decideRefund(actor, merchant, id, approved, reason, false);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void platformDecideRefund(String actor, String id, boolean approved, String reason) {
+        access.requireAdmin(actor);
+        decideRefund(actor, null, id, approved, reason, true);
+    }
+
+    private void decideRefund(String actor, String merchant, String id, boolean approved, String reason, boolean platform) {
         OrderAggregate o = trading.orderForUpdate(id);
         if (!platform) require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
         AfterSaleVO a = afterSales.afterSale(id, true);

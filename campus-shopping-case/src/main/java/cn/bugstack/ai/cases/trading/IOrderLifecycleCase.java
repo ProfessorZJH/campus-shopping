@@ -14,5 +14,6 @@ public interface IOrderLifecycleCase {
     OrderAggregate verify(String actor, String merchant, String order, String token);
     AfterSaleVO requestRefund(String buyer, String order, String reason);
     void appeal(String buyer, String order);
-    void decideRefund(String actor, String merchant, String order, boolean approved, String reason, boolean platform);
+    void merchantDecideRefund(String actor, String merchant, String order, boolean approved, String reason);
+    void platformDecideRefund(String actor, String order, boolean approved, String reason);
 }

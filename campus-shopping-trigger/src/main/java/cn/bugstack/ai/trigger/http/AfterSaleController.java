@@ -94,7 +94,7 @@ public class AfterSaleController implements IAfterSaleApi {
     ) {
         return execute(() -> {
             required(request);
-            lifecycle.decideRefund(actor(principal), merchantId, orderId, required(request.getApproved()), request.getReason(), false);
+            lifecycle.merchantDecideRefund(actor(principal), merchantId, orderId, required(request.getApproved()), request.getReason());
             return null;
         });
     }
@@ -119,7 +119,7 @@ public class AfterSaleController implements IAfterSaleApi {
     public Response<Void> platformDecide(@PathVariable("orderId") String orderId, @RequestBody ReviewRequestDTO request, Principal principal) {
         return execute(() -> {
             required(request);
-            lifecycle.decideRefund(actor(principal), null, orderId, required(request.getApproved()), request.getReason(), true);
+            lifecycle.platformDecideRefund(actor(principal), orderId, required(request.getApproved()), request.getReason());
             return null;
         });
     }

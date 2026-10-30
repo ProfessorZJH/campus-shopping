@@ -571,7 +571,7 @@ class CommerceMySqlIntegrationTest {
         assertEquals(1, result.stream().filter("0000"::equals).count());
         long requests = scalar("SELECT COUNT(*) FROM trd_after_sale");
         if (requests == 1) {
-            life.decideRefund(owner, merchant.id(), o.getId(), true, "同意", false);
+            life.merchantDecideRefund(owner, merchant.id(), o.getId(), true, "同意");
             assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
         } else assertEquals(1, scalar("SELECT on_hand FROM inv_stock_balance"));
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
@@ -583,8 +583,8 @@ class CommerceMySqlIntegrationTest {
         var o = order(p);
         life.pay(buyer, o.getId());
         life.requestRefund(buyer, o.getId(), "取消购买");
-        life.decideRefund(owner, merchant.id(), o.getId(), true, "同意", false);
-        life.decideRefund(owner, merchant.id(), o.getId(), true, "同意", false);
+        life.merchantDecideRefund(owner, merchant.id(), o.getId(), true, "同意");
+        life.merchantDecideRefund(owner, merchant.id(), o.getId(), true, "同意");
         assertEquals(1, scalar("SELECT COUNT(*) FROM trd_refund"));
         assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
