@@ -193,6 +193,7 @@ class CatalogCartReadModelTest {
         verify(merchants).findAll(List.of("m1", "m2"));
         verify(merchants, never()).find(anyString());
     }
+
     @Test
     void workspaceQuerySplitsMerchantsWhenMembershipsExceedSingleBatchLimit() {
         var access = mock(IAccessService.class);
@@ -206,7 +207,10 @@ class CatalogCartReadModelTest {
         when(merchants.findAll(anyList())).thenAnswer(invocation -> {
             List<String> ids = invocation.getArgument(0);
             assertTrue(ids.size() <= 100);
-            return stores.stream().filter(store -> ids.contains(store.id())).toList();
+            return stores
+                .stream()
+                .filter(store -> ids.contains(store.id()))
+                .toList();
         });
         var query = new WorkspaceQueryCaseImpl(access, merchants);
         var result = query.workspace("actor");
@@ -214,6 +218,4 @@ class CatalogCartReadModelTest {
         assertEquals("m100", result.merchants().get(100).id());
         verify(merchants, times(2)).findAll(anyList());
     }
-
-
 }
