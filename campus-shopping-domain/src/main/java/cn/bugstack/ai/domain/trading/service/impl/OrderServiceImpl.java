@@ -45,11 +45,19 @@ public class OrderServiceImpl implements IOrderService {
         return o;
     }
 
+    @Override
     public OrderAggregate order(String id) {
-        return order(id, false);
+        return loadOrder(id, false);
     }
 
-    public OrderAggregate order(String id, boolean lock) {
+    /** 付款、核销、取消等状态变更统一通过事务内锁定入口。 */
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public OrderAggregate orderForUpdate(String id) {
+        return loadOrder(id, true);
+    }
+
+    private OrderAggregate loadOrder(String id, boolean lock) {
         OrderAggregate o = repository.order(text(id, "订单编号", 64), lock);
         require(o != null, ResponseCode.NOT_FOUND);
         return o;

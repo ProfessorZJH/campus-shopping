@@ -83,7 +83,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
             fp.add(i.expectedVersion());
         }
         String existing = trading.beginCheckout(buyer, key, Fingerprints.of(fp.toArray()));
-        if (existing != null) return trading.order(existing, true);
+        if (existing != null) return trading.orderForUpdate(existing);
         cart.lockCart(buyer);
         var m = merchants.requireActiveForNewTrade(merchant);
         Map<String, SkuOfferVO> offers = catalog

@@ -57,7 +57,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     @Transactional(rollbackFor = Exception.class)
     public OrderAggregate pay(String buyer, String id) {
         accounts.requireActive(buyer);
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         o.requireBuyer(buyer);
         if (o.pay(clock.instant())) {
             merchants.requireActiveForNewTrade(o.getMerchantId());
@@ -71,7 +71,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     @Transactional(rollbackFor = Exception.class)
     public OrderAggregate cancel(String buyer, String id) {
         accounts.requireActive(buyer);
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         o.requireBuyer(buyer);
         if (o.cancel()) {
             inventory.release(id);
@@ -82,7 +82,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
 
     @Transactional(rollbackFor = Exception.class)
     public void expire(String id) {
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         if (o.expire(clock.instant())) {
             inventory.release(id);
             trading.save(o);
@@ -92,7 +92,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     @Transactional(rollbackFor = Exception.class)
     public void prepare(String actor, String merchant, String id, boolean ready) {
         access.requirePermission(actor, merchant, "order.prepare");
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
         require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.ORDER_STATE_INVALID);
         fulfillment.prepare(id, ready);
@@ -101,7 +101,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     @Transactional(rollbackFor = Exception.class)
     public PickupTokenVO token(String buyer, String id) {
         accounts.requireActive(buyer);
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         o.requireBuyer(buyer);
         require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.ORDER_STATE_INVALID);
         requireNoPendingRefund(id);
@@ -111,7 +111,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     @Transactional(rollbackFor = Exception.class)
     public OrderAggregate verify(String actor, String merchant, String id, String token) {
         access.requirePermission(actor, merchant, "pickup.verify");
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
         require(o.state() == OrderStatusEnumVO.PAID || o.state() == OrderStatusEnumVO.COMPLETED, ResponseCode.ORDER_STATE_INVALID);
         requireNoPendingRefund(id);
@@ -131,14 +131,14 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     @Transactional(rollbackFor = Exception.class)
     public AfterSaleVO requestRefund(String buyer, String id, String reason) {
         accounts.requireActive(buyer);
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         return afterSales.requestAfterSale(o, buyer, reason);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void appeal(String buyer, String id) {
         accounts.requireActive(buyer);
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         afterSales.appeal(o, buyer);
     }
 
@@ -146,7 +146,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     public void decideRefund(String actor, String merchant, String id, boolean approved, String reason, boolean platform) {
         if (platform) access.requireAdmin(actor);
         else access.requirePermission(actor, merchant, "aftersale.review");
-        OrderAggregate o = trading.order(id, true);
+        OrderAggregate o = trading.orderForUpdate(id);
         if (!platform) require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
         AfterSaleVO a = afterSales.afterSale(id, true);
         require(a != null, ResponseCode.NOT_FOUND);
