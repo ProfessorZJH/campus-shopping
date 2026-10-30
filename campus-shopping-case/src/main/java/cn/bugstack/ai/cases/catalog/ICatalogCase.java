@@ -30,22 +30,9 @@ public interface ICatalogCase {
     long countMovements(String actor, String merchant);
     long countPublicProducts(String merchant, String query, String category);
 
-    default List<ProductAggregate> publicProductsSorted(String merchant, String query, String category, int page, int size, String sort) {
-        return publicProducts(merchant, query, category, page, size);
-    }
+    List<ProductAggregate> publicProductsSorted(String merchant, String query, String category, int page, int size, String sort);
 
-    default List<ProductAggregate> managedProductsSorted(
-        String actor,
-        String merchant,
-        String q,
-        String category,
-        String status,
-        int page,
-        int size,
-        String sort
-    ) {
-        return managedProductsFiltered(actor, merchant, q, category, status, page, size);
-    }
+    List<ProductAggregate> managedProductsSorted(String actor, String merchant, String q, String category, String status, int page, int size, String sort);
 
     long countManagedProducts(String actor, String merchant);
     List<ProductAggregate> managedProductsFiltered(String actor, String merchant, String q, String category, String status, int page, int size);

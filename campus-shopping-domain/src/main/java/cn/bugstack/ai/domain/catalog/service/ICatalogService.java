@@ -21,13 +21,9 @@ public interface ICatalogService {
     List<ProductAggregate> recallByIds(List<String> ids);
     long count(String merchant, String query, String category, boolean publicOnly);
 
-    default List<ProductAggregate> searchSorted(String merchant, String query, String category, boolean publicOnly, int page, int size, String sort) {
-        return search(merchant, query, category, publicOnly, page, size);
-    }
+    List<ProductAggregate> searchSorted(String merchant, String query, String category, boolean publicOnly, int page, int size, String sort);
 
-    default List<ProductAggregate> searchManagedSorted(String merchant, String query, String category, String status, int page, int size, String sort) {
-        return searchManaged(merchant, query, category, status, page, size);
-    }
+    List<ProductAggregate> searchManagedSorted(String merchant, String query, String category, String status, int page, int size, String sort);
 
     List<ProductAggregate> searchManaged(String merchant, String query, String category, String status, int page, int size);
     long countManaged(String merchant, String query, String category, String status);
