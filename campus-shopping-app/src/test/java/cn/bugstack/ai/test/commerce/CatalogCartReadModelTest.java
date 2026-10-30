@@ -193,4 +193,27 @@ class CatalogCartReadModelTest {
         verify(merchants).findAll(List.of("m1", "m2"));
         verify(merchants, never()).find(anyString());
     }
+    @Test
+    void workspaceQuerySplitsMerchantsWhenMembershipsExceedSingleBatchLimit() {
+        var access = mock(IAccessService.class);
+        var memberships = new ArrayList<MembershipVO>();
+        var stores = new ArrayList<MerchantVO>();
+        for (int i = 0; i < 101; i++) {
+            memberships.add(new MembershipVO("m" + i, "actor", "CLERK", "ACTIVE"));
+            stores.add(merchant("m" + i, "ACTIVE"));
+        }
+        when(access.memberships("actor")).thenReturn(memberships);
+        when(merchants.findAll(anyList())).thenAnswer(invocation -> {
+            List<String> ids = invocation.getArgument(0);
+            assertTrue(ids.size() <= 100);
+            return stores.stream().filter(store -> ids.contains(store.id())).toList();
+        });
+        var query = new WorkspaceQueryCaseImpl(access, merchants);
+        var result = query.workspace("actor");
+        assertEquals(101, result.merchants().size());
+        assertEquals("m100", result.merchants().get(100).id());
+        verify(merchants, times(2)).findAll(anyList());
+    }
+
+
 }

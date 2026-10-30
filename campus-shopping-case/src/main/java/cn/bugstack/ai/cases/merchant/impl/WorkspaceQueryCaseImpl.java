@@ -6,6 +6,7 @@ import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,7 +31,12 @@ public class WorkspaceQueryCaseImpl implements IWorkspaceQueryCase {
     public WorkspaceSnapshot workspace(String actor) {
         List<MembershipVO> memberships = access.memberships(actor);
         List<String> merchantIds = memberships.stream().map(MembershipVO::merchantId).distinct().toList();
-        Map<String, MerchantVO> merchantById = merchants.findAll(merchantIds).stream().collect(Collectors.toMap(MerchantVO::id, Function.identity()));
+        // 商户领域查询单批限制 100 条，用户同时加入更多商户时依然完整返回。
+        List<MerchantVO> loaded = new ArrayList<>();
+        for (int start = 0; start < merchantIds.size(); start += 100) {
+            loaded.addAll(merchants.findAll(merchantIds.subList(start, Math.min(start + 100, merchantIds.size()))));
+        }
+        Map<String, MerchantVO> merchantById = loaded.stream().collect(Collectors.toMap(MerchantVO::id, Function.identity()));
         List<MerchantVO> orderedMerchants = merchantIds
             .stream()
             .map(id -> {
