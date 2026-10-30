@@ -203,12 +203,6 @@ public class CatalogCaseImpl implements ICatalogCase {
     }
 
     @Override
-    public long countManagedProducts(String actor, String merchant) {
-        access.requirePermission(actor, merchant, "product.read");
-        return catalog.count(merchant, "", null, false);
-    }
-
-    @Override
     public List<ProductAggregate> managedProductsFiltered(String actor, String merchant, String q, String category, String status, int page, int size) {
         access.requirePermission(actor, merchant, "product.read");
         return catalog.searchManaged(merchant, q, category, status, page, size);

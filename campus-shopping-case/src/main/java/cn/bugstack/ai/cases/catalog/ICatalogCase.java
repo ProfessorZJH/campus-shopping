@@ -34,7 +34,6 @@ public interface ICatalogCase {
     List<ProductAggregate> publicProductsSorted(String merchant, String query, String category, int page, int size, String sort);
     List<ProductAggregate> managedProductsSorted(String actor, String merchant, String q, String category, String status, int page, int size, String sort);
 
-    long countManagedProducts(String actor, String merchant);
     List<ProductAggregate> managedProductsFiltered(String actor, String merchant, String q, String category, String status, int page, int size);
     long countManagedProductsFiltered(String actor, String merchant, String q, String category, String status);
     long countAdminProducts(String actor, String merchant, String query);
