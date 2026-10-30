@@ -30,10 +30,7 @@ public class WorkspaceQueryCaseImpl implements IWorkspaceQueryCase {
     public WorkspaceSnapshot workspace(String actor) {
         List<MembershipVO> memberships = access.memberships(actor);
         List<String> merchantIds = memberships.stream().map(MembershipVO::merchantId).distinct().toList();
-        Map<String, MerchantVO> merchantById = merchants
-            .findAll(merchantIds)
-            .stream()
-            .collect(Collectors.toMap(MerchantVO::id, Function.identity()));
+        Map<String, MerchantVO> merchantById = merchants.findAll(merchantIds).stream().collect(Collectors.toMap(MerchantVO::id, Function.identity()));
         List<MerchantVO> orderedMerchants = merchantIds
             .stream()
             .map(id -> {
@@ -42,9 +39,7 @@ public class WorkspaceQueryCaseImpl implements IWorkspaceQueryCase {
                 return merchant;
             })
             .toList();
-        Map<String, Set<String>> permissions = merchantIds
-            .stream()
-            .collect(Collectors.toMap(Function.identity(), id -> access.permissions(actor, id)));
+        Map<String, Set<String>> permissions = merchantIds.stream().collect(Collectors.toMap(Function.identity(), id -> access.permissions(actor, id)));
         return new WorkspaceSnapshot(access.isAdmin(actor), memberships, permissions, orderedMerchants);
     }
 }

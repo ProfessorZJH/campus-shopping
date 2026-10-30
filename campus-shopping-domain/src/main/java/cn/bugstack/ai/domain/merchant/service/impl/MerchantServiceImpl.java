@@ -1,8 +1,8 @@
 package cn.bugstack.ai.domain.merchant.service.impl;
 
 import cn.bugstack.ai.domain.merchant.adapter.repository.IMerchantRepository;
-import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantStatusEnumVO;
+import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;

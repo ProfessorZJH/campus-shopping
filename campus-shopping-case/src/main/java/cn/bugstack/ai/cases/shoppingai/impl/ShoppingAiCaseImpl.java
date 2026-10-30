@@ -243,10 +243,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         for (var citation : requested) {
             var document = byId.get(citation.documentId());
             require(
-                document != null &&
-                    citation.snippet() != null &&
-                    citation.snippet().length() <= 500 &&
-                    document.content().contains(citation.snippet()),
+                document != null && citation.snippet() != null && citation.snippet().length() <= 500 && document.content().contains(citation.snippet()),
                 ResponseCode.KNOWLEDGE_NOT_READY
             );
             citations.add(

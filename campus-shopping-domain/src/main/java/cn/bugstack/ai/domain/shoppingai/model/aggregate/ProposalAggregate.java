@@ -12,8 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /** 建议确认幂等状态；已确认结果可重放，但不能更换选择再次加购。 */
 public final class ProposalAggregate {
