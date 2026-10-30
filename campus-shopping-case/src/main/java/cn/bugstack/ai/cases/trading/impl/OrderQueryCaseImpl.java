@@ -82,6 +82,30 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         return orders.statistics(merchant);
     }
 
+    @Override
+    public List<AfterSaleVO> merchantAfterSales(String actor, String merchant, String state, int page, int size) {
+        access.requirePermission(actor, merchant, "aftersale.read");
+        return afterSales.afterSales(null, merchant, state, page, size);
+    }
+
+    @Override
+    public long countMerchantAfterSales(String actor, String merchant, String state) {
+        access.requirePermission(actor, merchant, "aftersale.read");
+        return afterSales.countAfterSales(null, merchant, state);
+    }
+
+    @Override
+    public List<AfterSaleVO> platformAfterSales(String actor, String state, int page, int size) {
+        access.requireAdmin(actor);
+        return afterSales.afterSales(null, null, state, page, size);
+    }
+
+    @Override
+    public long countPlatformAfterSales(String actor, String state) {
+        access.requireAdmin(actor);
+        return afterSales.countAfterSales(null, null, state);
+    }
+
     private List<OrderReadModel> views(List<OrderAggregate> page) {
         if (page.isEmpty()) return List.of();
         var ids = page.stream().map(OrderAggregate::getId).toList();

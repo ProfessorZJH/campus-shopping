@@ -9,8 +9,7 @@ import cn.bugstack.ai.api.dto.RefundRequestDTO;
 import cn.bugstack.ai.api.dto.ReviewRequestDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.trading.IOrderLifecycleCase;
-import cn.bugstack.ai.domain.identity.service.IAccessService;
-import cn.bugstack.ai.domain.trading.service.IAfterSaleQueryService;
+import cn.bugstack.ai.cases.trading.IOrderQueryCase;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
@@ -29,10 +28,7 @@ public class AfterSaleController implements IAfterSaleApi {
     private IOrderLifecycleCase lifecycle;
 
     @Resource
-    private IAfterSaleQueryService afterSaleQueryService;
-
-    @Resource
-    private IAccessService access;
+    private IOrderQueryCase query;
 
     /** 申请未提货全额模拟退款。 */
     @Override
@@ -64,8 +60,7 @@ public class AfterSaleController implements IAfterSaleApi {
         Principal principal
     ) {
         return execute(() -> {
-            access.requirePermission(actor(principal), merchantId, "aftersale.read");
-            return afterSaleQueryService.afterSales(null, merchantId, state, page, size).stream().map(ApiViews::afterSale).toList();
+            return query.merchantAfterSales(actor(principal), merchantId, state, page, size).stream().map(ApiViews::afterSale).toList();
         });
     }
 
@@ -79,12 +74,11 @@ public class AfterSaleController implements IAfterSaleApi {
         Principal principal
     ) {
         return execute(() -> {
-            access.requirePermission(actor(principal), merchantId, "aftersale.read");
             return PageResponseDTO.of(
-                afterSaleQueryService.afterSales(null, merchantId, state, page, size).stream().map(ApiViews::afterSale).toList(),
+                query.merchantAfterSales(actor(principal), merchantId, state, page, size).stream().map(ApiViews::afterSale).toList(),
                 page,
                 size,
-                afterSaleQueryService.countAfterSales(null, merchantId, state)
+                query.countMerchantAfterSales(actor(principal), merchantId, state)
             );
         });
     }
@@ -115,8 +109,7 @@ public class AfterSaleController implements IAfterSaleApi {
         Principal principal
     ) {
         return execute(() -> {
-            access.requireAdmin(actor(principal));
-            return afterSaleQueryService.afterSales(null, null, state, page, size).stream().map(ApiViews::afterSale).toList();
+            return query.platformAfterSales(actor(principal), state, page, size).stream().map(ApiViews::afterSale).toList();
         });
     }
 
@@ -140,12 +133,11 @@ public class AfterSaleController implements IAfterSaleApi {
         Principal principal
     ) {
         return execute(() -> {
-            access.requireAdmin(actor(principal));
             return PageResponseDTO.of(
-                afterSaleQueryService.afterSales(null, null, state, page, size).stream().map(ApiViews::afterSale).toList(),
+                query.platformAfterSales(actor(principal), state, page, size).stream().map(ApiViews::afterSale).toList(),
                 page,
                 size,
-                afterSaleQueryService.countAfterSales(null, null, state)
+                query.countPlatformAfterSales(actor(principal), state)
             );
         });
     }
