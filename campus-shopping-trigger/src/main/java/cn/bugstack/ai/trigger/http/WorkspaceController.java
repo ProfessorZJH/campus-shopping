@@ -9,14 +9,13 @@ import cn.bugstack.ai.api.dto.InvitationResponseDTO;
 import cn.bugstack.ai.api.dto.MembershipResponseDTO;
 import cn.bugstack.ai.api.dto.WorkspaceResponseDTO;
 import cn.bugstack.ai.api.response.Response;
+import cn.bugstack.ai.cases.merchant.IWorkspaceQueryCase;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
-import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,25 +29,19 @@ public class WorkspaceController implements IWorkspaceApi {
     private IAccessService access;
 
     @Resource
-    private IMerchantService merchants;
+    private IWorkspaceQueryCase workspaceQuery;
 
     /** 返回当前工作台角色和商户范围。 */
     @Override
     @GetMapping("/workspace")
     public Response<WorkspaceResponseDTO> workspace(Principal principal) {
         return execute(() -> {
-            String user = actor(principal);
-            var memberships = access.memberships(user);
+            var snapshot = workspaceQuery.workspace(actor(principal));
             return WorkspaceResponseDTO.builder()
-                .platformAdmin(access.isAdmin(user))
-                .merchantPermissions(memberships.stream().collect(Collectors.toMap(m -> m.merchantId(), m -> access.permissions(user, m.merchantId()))))
-                .memberships(memberships.stream().map(ApiViews::membership).toList())
-                .merchants(
-                    memberships
-                        .stream()
-                        .map(m -> ApiViews.merchant(merchants.find(m.merchantId())))
-                        .toList()
-                )
+                .platformAdmin(snapshot.platformAdmin())
+                .merchantPermissions(snapshot.merchantPermissions())
+                .memberships(snapshot.memberships().stream().map(ApiViews::membership).toList())
+                .merchants(snapshot.merchants().stream().map(ApiViews::merchant).toList())
                 .build();
         });
     }
