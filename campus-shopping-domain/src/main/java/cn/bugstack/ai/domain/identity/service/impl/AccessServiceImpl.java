@@ -77,7 +77,8 @@ public class AccessServiceImpl implements IAccessService {
         require(!actor.equals(target), ResponseCode.ILLEGAL_PARAMETER);
         MembershipVO m = repository.member(target, merchantId, true);
         require(m == null || m.state() != MembershipStatusEnumVO.ACTIVE, ResponseCode.STATE_CONFLICT);
-        InvitationVO invite = new InvitationVO(UUID.randomUUID().toString(), merchantId, target, InvitationStatusEnumVO.PENDING.getCode(), clock.instant().plus(Duration.ofHours(24)));
+        Instant expiresAt = clock.instant().plus(Duration.ofHours(24));
+        InvitationVO invite = new InvitationVO(UUID.randomUUID().toString(), merchantId, target, InvitationStatusEnumVO.PENDING.getCode(), expiresAt);
         repository.invite(invite, actor);
         audit(actor, "MEMBER_INVITED", invite.id(), merchantId, "邀请店员");
         return invite;
