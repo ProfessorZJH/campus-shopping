@@ -130,11 +130,15 @@ class DomainStatusEnumTest {
 
     @Test
     void proposalAndAfterSaleHaveValidatedStateCodes() {
-        ProposalAggregate proposal = new ProposalAggregate("buyer", NOW.plusSeconds(600), "PENDING", null);
-        assertTrue(proposal.confirm("buyer", "hash", NOW));
-        assertFalse(proposal.confirm("buyer", "hash", NOW));
+        var quotes = List.of(
+            new ProposalItemVO("sku1", "merchant", "笔", "黑色", 100, 1, 1, ""),
+            new ProposalItemVO("sku2", "merchant", "笔", "蓝色", 100, 1, 1, "")
+        );
+        ProposalAggregate proposal = new ProposalAggregate(new ProposalVO("proposal", "buyer", "chat", "PENDING", quotes, null, NOW.plusSeconds(600)));
+        assertTrue(proposal.confirm("buyer", List.of("sku1"), NOW));
+        assertFalse(proposal.confirm("buyer", List.of("sku1"), NOW));
         assertEquals("CONFIRMED", proposal.getStatus());
-        assertThrows(AppException.class, () -> proposal.confirm("buyer", "other", NOW));
+        assertThrows(AppException.class, () -> proposal.confirm("buyer", List.of("sku2"), NOW));
 
         ProposalVO view = new ProposalVO("proposal", "buyer", "chat", "PENDING", List.of(), null, NOW.plusSeconds(600));
         assertEquals(ProposalStatusEnumVO.PENDING, view.state());
