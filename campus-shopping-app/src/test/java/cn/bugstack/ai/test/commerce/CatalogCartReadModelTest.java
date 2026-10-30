@@ -129,7 +129,7 @@ class CatalogCartReadModelTest {
     @Test
     void cartUsesBatchFactsAndPreservesUnavailableRows() {
         when(cart.list("u")).thenReturn(List.of(new CartItemVO("u", "m1", "s1", 2), new CartItemVO("u", "m2", "s2", 1), new CartItemVO("u", "m1", "s3", 1)));
-        when(catalog.offers(List.of("s1", "s2", "s3"), false, false)).thenReturn(
+        when(catalog.offers(List.of("s1", "s2", "s3"))).thenReturn(
             List.of(
                 new SkuOfferVO("s1", "p1", "m1", "store", "商品1", "默认", 100, 2, "PUBLISHED", "ACTIVE", "", ""),
                 new SkuOfferVO("s2", "p2", "m2", "store", "商品2", "默认", 200, 3, "PUBLISHED", "ACTIVE", "", ""),

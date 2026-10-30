@@ -161,7 +161,29 @@ public class CatalogServiceImpl implements ICatalogService {
         return queries.countManaged(merchant, Checks.optional(q, 100), category, ProductStatusEnumVO.filter(status));
     }
 
-    public List<SkuOfferVO> offers(List<String> ids, boolean sale, boolean lock) {
+    @Override
+    public List<SkuOfferVO> offers(List<String> ids) {
+        return loadOffers(ids, false, false);
+    }
+
+    @Override
+    public List<SkuOfferVO> saleOffers(List<String> ids) {
+        return loadOffers(ids, true, false);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public List<SkuOfferVO> saleOffersForUpdate(List<String> ids) {
+        return loadOffers(ids, true, true);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public List<SkuOfferVO> offersForUpdate(List<String> ids) {
+        return loadOffers(ids, false, true);
+    }
+
+    private List<SkuOfferVO> loadOffers(List<String> ids, boolean sale, boolean lock) {
         require(
             ids != null && ids.size() <= 1000 && ids.stream().allMatch(id -> id != null && !id.isBlank() && id.length() <= 64),
             ResponseCode.ILLEGAL_PARAMETER

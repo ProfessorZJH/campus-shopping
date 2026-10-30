@@ -45,7 +45,7 @@ class AiConversationBoundaryTest {
         when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
         when(catalog.recall(anyList(), anyInt())).thenReturn(List.of());
         when(catalog.recallByIds(anyList())).thenReturn(List.of());
-        when(catalog.offers(anyList(), anyBoolean(), anyBoolean())).thenReturn(List.of());
+        when(catalog.saleOffers(anyList())).thenReturn(List.of());
         when(inventory.stocks(anyList())).thenReturn(List.of());
         when(engine.query(any())).thenReturn(
             new AiAnswerVO(

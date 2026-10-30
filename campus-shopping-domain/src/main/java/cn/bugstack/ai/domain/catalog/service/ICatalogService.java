@@ -27,7 +27,14 @@ public interface ICatalogService {
 
     List<ProductAggregate> searchManaged(String merchant, String query, String category, String status, int page, int size);
     long countManaged(String merchant, String query, String category, String status);
-    List<SkuOfferVO> offers(List<String> skuIds, boolean requireSale, boolean lock);
+    /** 展示与校验使用普通报价；不在读取阶段锁定 SKU。 */
+    List<SkuOfferVO> offers(List<String> skuIds);
+    /** 仅返回当前可销售报价。 */
+    List<SkuOfferVO> saleOffers(List<String> skuIds);
+    /** 事务内锁定并验证可销售报价，用于结算与提案确认。 */
+    List<SkuOfferVO> saleOffersForUpdate(List<String> skuIds);
+    /** 事务内锁定 SKU 报价，用于补货授权核对。 */
+    List<SkuOfferVO> offersForUpdate(List<String> skuIds);
     List<CategoryVO> categories();
     void category(String code, String name, boolean active);
     String storeImage(byte[] bytes);

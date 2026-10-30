@@ -40,7 +40,7 @@ class InvalidInputContractTest {
             mock(cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository.class),
             mock(cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository.class)
         );
-        assertEquals("0002", assertThrows(AppException.class, () -> catalog.offers(Arrays.asList("sku", null), true, false)).getCode());
+        assertEquals("0002", assertThrows(AppException.class, () -> catalog.saleOffers(Arrays.asList("sku", null))).getCode());
         verifyNoInteractions(repository);
         var aiRepository = mock(IKnowledgeRepository.class);
         var state = new KnowledgeServiceImpl(aiRepository);

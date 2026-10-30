@@ -108,7 +108,7 @@ public class CatalogCaseImpl implements ICatalogCase {
     public void replenish(String actor, String merchant, String sku, int quantity, String key) {
         access.requirePermission(actor, merchant, "stock.replenish");
         MerchantVO m = merchants.requireActiveForNewTrade(merchant);
-        SkuOfferVO offer = catalog.offers(List.of(sku), false, true).get(0);
+        SkuOfferVO offer = catalog.offersForUpdate(List.of(sku)).get(0);
         require(offer.merchantId().equals(merchant) && offer.storeId().equals(m.storeId()), ResponseCode.AUTH_FORBIDDEN);
         inventory.replenish(merchant, m.storeId(), sku, quantity, key);
     }
@@ -155,7 +155,7 @@ public class CatalogCaseImpl implements ICatalogCase {
         access.requirePermission(actor, merchant, "product.read");
         if (skuIds.isEmpty()) return Map.of();
         return catalog
-            .offers(skuIds, false, false)
+            .offers(skuIds)
             .stream()
             .filter(o -> merchant.equals(o.merchantId()))
             .collect(java.util.stream.Collectors.toMap(SkuOfferVO::skuId, o -> o));

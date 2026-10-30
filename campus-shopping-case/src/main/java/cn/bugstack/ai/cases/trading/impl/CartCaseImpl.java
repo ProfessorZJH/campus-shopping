@@ -39,9 +39,9 @@ public class CartCaseImpl implements ICartCase {
         String checked = Checks.text(sku, "SKU", 64);
         Checks.require(quantity > 0 && quantity <= 99, ResponseCode.ILLEGAL_PARAMETER);
         trading.lockCart(user);
-        var hint = catalog.offers(List.of(checked), true, false).get(0);
+        var hint = catalog.saleOffers(List.of(checked)).get(0);
         merchants.requireActiveForNewTrade(hint.merchantId());
-        var offer = catalog.offers(List.of(checked), true, true).get(0);
+        var offer = catalog.saleOffersForUpdate(List.of(checked)).get(0);
         trading.setCart(user, offer.merchantId(), checked, quantity);
     }
 

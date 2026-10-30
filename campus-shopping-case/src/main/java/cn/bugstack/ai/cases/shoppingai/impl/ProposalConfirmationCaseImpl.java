@@ -64,7 +64,7 @@ public class ProposalConfirmationCaseImpl implements IProposalConfirmationCase {
             .sorted()
             .forEach(merchants::requireActiveForNewTrade);
         var offers = catalog
-            .offers(ids, true, true)
+            .saleOffersForUpdate(ids)
             .stream()
             .collect(Collectors.toMap(SkuOfferVO::skuId, o -> o));
         var stocks = inventory

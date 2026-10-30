@@ -87,7 +87,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
         cart.lockCart(buyer);
         var m = merchants.requireActiveForNewTrade(merchant);
         Map<String, SkuOfferVO> offers = catalog
-            .offers(sorted.stream().map(CheckoutItemEntity::skuId).toList(), true, true)
+            .saleOffersForUpdate(sorted.stream().map(CheckoutItemEntity::skuId).toList())
             .stream()
             .collect(Collectors.toMap(SkuOfferVO::skuId, o -> o));
         List<OrderItemEntity> snapshots = new ArrayList<>();

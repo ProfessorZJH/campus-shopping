@@ -41,7 +41,7 @@ public class CartQueryCaseImpl implements ICartQueryCase {
         if (items.isEmpty()) return List.of();
         List<String> skuIds = items.stream().map(CartItemVO::skuId).distinct().toList();
         Map<String, SkuOfferVO> offers = catalogService
-            .offers(skuIds, false, false)
+            .offers(skuIds)
             .stream()
             .collect(Collectors.toMap(SkuOfferVO::skuId, offer -> offer));
         Map<String, StockVO> stocks = inventoryService
