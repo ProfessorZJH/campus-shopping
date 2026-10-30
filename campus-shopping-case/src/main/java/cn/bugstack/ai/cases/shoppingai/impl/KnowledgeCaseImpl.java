@@ -19,13 +19,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** 知识发布指针是权限事实，Qdrant 里的旧向量不决定可见性。 */
-@lombok.extern.slf4j.Slf4j
 @Service
 public class KnowledgeCaseImpl implements IKnowledgeCase {
+
+    private static final Logger log = LoggerFactory.getLogger(KnowledgeCaseImpl.class);
 
     private final IKnowledgeService state;
     private final IAiEnginePort engine;

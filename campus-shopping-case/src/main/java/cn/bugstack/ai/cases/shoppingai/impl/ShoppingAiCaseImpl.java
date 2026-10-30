@@ -39,13 +39,16 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Java 负责复权、商品事实和用户确认；模型文本从不直接变成写命令。 */
-@lombok.extern.slf4j.Slf4j
 @Service
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
+
+    private static final Logger log = LoggerFactory.getLogger(ShoppingAiCaseImpl.class);
 
     private final IConversationService state;
     private final IProposalService proposals;

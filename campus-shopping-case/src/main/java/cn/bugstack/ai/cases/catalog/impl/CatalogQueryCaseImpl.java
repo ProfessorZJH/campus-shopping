@@ -29,7 +29,6 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     private final IInventoryService inventoryService;
     private final IMerchantService merchantService;
 
-    @Override
     public CatalogQueryCaseImpl(
         ICatalogCase catalogCase,
         ICatalogService catalogService,

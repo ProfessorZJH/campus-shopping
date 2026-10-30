@@ -29,7 +29,6 @@ public class CatalogCaseImpl implements ICatalogCase {
     private final IMerchantService merchants;
     private final IAccessService access;
 
-    @Override
     public CatalogCaseImpl(ICatalogService catalog, IInventoryService inventory, IMerchantService merchants, IAccessService access) {
         this.catalog = catalog;
         this.inventory = inventory;
