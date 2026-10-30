@@ -1,62 +1,72 @@
 package cn.bugstack.ai.infrastructure.adapter.repository;
 
+import static cn.bugstack.ai.types.common.Checks.require;
+
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IProposalRepository;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
 import cn.bugstack.ai.infrastructure.dao.po.ProposalPO;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
+import java.util.List;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
-import static cn.bugstack.ai.types.common.Checks.require;
-
-/** 导购提案快照的本地存储；反序列化失败不能用空提案掩盖历史数据损坏。 */
+/** 本地持久化适配器；业务规则由对应领域服务维护。 */
 @Repository
 public class ProposalRepository implements IProposalRepository {
-    @Resource private IAiDao dao;
-    @Resource private ObjectMapper mapper;
 
-    @Override
-    public void insertProposal(ProposalVO proposal) {
+    @Resource
+    private IAiDao dao;
+
+    @Resource
+    private ObjectMapper mapper;
+
+    public void insert(ProposalVO p) {
         try {
-            dao.proposalInsert(ProposalPO.builder().id(proposal.id())
-                    .userId(proposal.userId()).conversationId(proposal.conversationId())
-                    .status(proposal.status()).itemsJson(mapper.writeValueAsString(proposal.items()))
-                    .selectionHash(proposal.selectionHash()).expiresAt(proposal.expiresAt()).build());
-        } catch (JsonProcessingException e) {
+            dao.proposalInsert(
+                ProposalPO.builder()
+                    .id(p.id())
+                    .userId(p.userId())
+                    .conversationId(p.conversationId())
+                    .status(p.status())
+                    .itemsJson(mapper.writeValueAsString(p.items()))
+                    .selectionHash(p.selectionHash())
+                    .expiresAt(p.expiresAt())
+                    .build()
+            );
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("提案序列化失败", e);
         }
     }
 
-    @Override
-    public ProposalVO proposal(String id, boolean lock) { return convert(dao.proposal(id, lock)); }
-
-    @Override
-    public void proposalState(String id, String status, String selectionHash) {
-        require(dao.proposalState(id, status, selectionHash) == 1, ResponseCode.STATE_CONFLICT);
+    public ProposalVO proposal(String id, boolean lock) {
+        return proposal(dao.proposal(id, lock));
     }
 
-    @Override
+    public void proposalState(String id, String status, String hash) {
+        require(dao.proposalState(id, status, hash) == 1, ResponseCode.STATE_CONFLICT);
+    }
+
     public List<ProposalVO> proposals(String user, String conversation) {
-        return dao.proposals(user, conversation).stream().map(this::convert).toList();
+        return dao.proposals(user, conversation).stream().map(this::proposal).toList();
     }
 
-    private ProposalVO convert(ProposalPO po) {
-        if (po == null) {
-            return null;
-        }
+    private ProposalVO proposal(ProposalPO p) {
+        if (p == null) return null;
         try {
-            return new ProposalVO(po.getId(), po.getUserId(), po.getConversationId(),
-                    po.getStatus(), mapper.readValue(po.getItemsJson(),
-                            new TypeReference<List<ProposalItemVO>>() {}), po.getSelectionHash(),
-                    po.getExpiresAt());
-        } catch (JsonProcessingException e) {
+            return new ProposalVO(
+                p.getId(),
+                p.getUserId(),
+                p.getConversationId(),
+                p.getStatus(),
+                mapper.readValue(p.getItemsJson(), new TypeReference<List<ProposalItemVO>>() {}),
+                p.getSelectionHash(),
+                p.getExpiresAt()
+            );
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
             throw new IllegalStateException("提案数据损坏", e);
         }
     }

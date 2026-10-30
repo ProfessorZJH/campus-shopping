@@ -1,6 +1,7 @@
 import com.sun.source.tree.*;
 import com.sun.source.util.JavacTask;
 import javax.tools.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
 
@@ -8,10 +9,22 @@ import java.util.*;
 public class SourceIndex {
     public static void main(String[] args) throws Exception {
         Path root=Path.of(args[0]);List<Path> files;
-        try(var paths=Files.walk(root)) { files=paths.filter(p->p.toString().contains("src/") && p.toString().endsWith(".java") && !p.toString().contains("/target/")).toList(); }
+        List<Path> found = new ArrayList<>();
+        Files.walkFileTree(root, new SimpleFileVisitor<Path>() {
+            @Override public FileVisitResult preVisitDirectory(Path dir, java.nio.file.attribute.BasicFileAttributes attrs) {
+                return Set.of("target", "node_modules", "var", "artifacts", ".git", ".idea", ".venv", "venv").contains(dir.getFileName().toString())
+                    ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+            }
+            @Override public FileVisitResult visitFile(Path p, java.nio.file.attribute.BasicFileAttributes attrs) {
+            String path=p.toString().replace('\\','/');
+            if (path.contains("/src/") && path.endsWith(".java")) found.add(p);
+            return FileVisitResult.CONTINUE;
+            }
+        });
+        files = found;
         JavaCompiler compiler=ToolProvider.getSystemJavaCompiler();
         DiagnosticCollector<JavaFileObject> diagnostics=new DiagnosticCollector<>();
-        try(StandardJavaFileManager manager=compiler.getStandardFileManager(diagnostics,null,null)) {
+        try(StandardJavaFileManager manager=compiler.getStandardFileManager(diagnostics,null,StandardCharsets.UTF_8)) {
             JavacTask task=(JavacTask)compiler.getTask(null,manager,diagnostics,List.of("--release","17","-proc:none"),null,manager.getJavaFileObjectsFromPaths(files));
             for(CompilationUnitTree unit:task.parse()) {
                 String pkg=unit.getPackageName()==null?"":unit.getPackageName()+".";

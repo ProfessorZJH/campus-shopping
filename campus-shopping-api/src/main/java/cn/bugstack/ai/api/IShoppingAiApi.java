@@ -1,8 +1,10 @@
 package cn.bugstack.ai.api;
+
 import cn.bugstack.ai.api.dto.*;
 import cn.bugstack.ai.api.response.Response;
-import java.util.*;
 import java.security.Principal;
+import java.util.*;
+
 /** 对外接口契约，由 Trigger 的 ShoppingAiController 实现。 */
 public interface IShoppingAiApi {
     /** 授权检索和导购建议；此接口不执行购物车写入。 */

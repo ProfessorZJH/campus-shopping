@@ -1,29 +1,42 @@
 package cn.bugstack.ai.cases.shoppingai.impl;
 
+import static cn.bugstack.ai.types.common.Checks.*;
+
 import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
-import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeStateService;
-import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
-import cn.bugstack.ai.domain.identity.service.*;
+import cn.bugstack.ai.domain.identity.service.IAccessService;
+import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
+import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeBaseVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
+import cn.bugstack.ai.domain.shoppingai.service.IKnowledgeService;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
-import static cn.bugstack.ai.types.common.Checks.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.*;
-import java.util.stream.Collectors;
 
 /** 知识发布指针是权限事实，Qdrant 里的旧向量不决定可见性。 */
 @Service
 public class KnowledgeCaseImpl implements IKnowledgeCase {
-    private final IKnowledgeStateService state;
+
+    private static final Logger log = LoggerFactory.getLogger(KnowledgeCaseImpl.class);
+
+    private final IKnowledgeService state;
     private final IAiEnginePort engine;
     private final IAccessService access;
     private final IUserAccountService accounts;
     private final IMerchantService merchants;
-    public KnowledgeCaseImpl(IKnowledgeStateService state, IAiEnginePort engine, IAccessService access, IUserAccountService accounts,
-        IMerchantService merchants) {
+
+    public KnowledgeCaseImpl(IKnowledgeService state, IAiEnginePort engine, IAccessService access, IUserAccountService accounts, IMerchantService merchants) {
         this.state = state;
         this.engine = engine;
         this.access = access;
@@ -43,15 +56,23 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     public List<KnowledgeBaseVO> managedBases(String actor) {
         accounts.requireActive(actor);
         boolean admin = access.isAdmin(actor);
-        Set<String> managed = access.memberships(actor).stream().map(m -> m.merchantId()).filter(id -> access.permissions(actor,
-            id).contains("knowledge.read")).collect(Collectors.toSet());
-        return state.bases().stream().filter(b -> admin || managed.contains(b.merchantId())).toList();
+        Set<String> managed = access
+            .memberships(actor)
+            .stream()
+            .map(m -> m.merchantId())
+            .filter(id -> access.permissions(actor, id).contains("knowledge.read"))
+            .collect(Collectors.toSet());
+        return state
+            .bases()
+            .stream()
+            .filter(b -> admin || managed.contains(b.merchantId()))
+            .toList();
     }
 
     @Transactional(rollbackFor = Exception.class)
     public KnowledgeBaseVO createBase(String actor, String merchant, String name, String visibility) {
         accounts.requireActive(actor);
-        require(state.bases().size()<1000, ResponseCode.ILLEGAL_PARAMETER);
+        require(state.bases().size() < 1000, ResponseCode.ILLEGAL_PARAMETER);
         if (merchant == null || merchant.isBlank()) {
             access.requireAdmin(actor);
             merchant = null;
@@ -79,25 +100,33 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         manage(actor, d.baseId(), "knowledge.read");
         return d;
     }
+
     /** 提取和建索引发生在数据库短事务之外，不持锁等待模型/向量库。 */
-    public KnowledgeDocumentVO upload(String actor, String base, String root, String title, String filename, String mime, byte[]bytes) {
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
+    public KnowledgeDocumentVO upload(String actor, String base, String root, String title, String filename, String mime, byte[] bytes) {
         manage(actor, base, "knowledge.manage");
-        require(bytes != null && bytes.length> 0 && bytes.length <= 2000000, ResponseCode.UPLOAD_INVALID);
+        require(bytes != null && bytes.length > 0 && bytes.length <= 2000000, ResponseCode.UPLOAD_INVALID);
         String content = engine.extract(text(filename, "文件名", 120), optional(mime, 100), bytes);
         manage(actor, base, "knowledge.manage");
         var d = state.createDocument(root == null || root.isBlank() ? null : root, base, title, content);
         return index(actor, d.id());
     }
-    /** Python 索引属于外部副作用；索引失败只标记 FAILED，不伪造 READY。 */
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
     public KnowledgeDocumentVO index(String actor, String id) {
         var d = document(actor, id);
         manage(actor, d.baseId(), "knowledge.manage");
-        state.indexState(id, "PENDING", "");
+        var attempt = state.beginIndex(id);
         try {
             engine.index(id, d.title(), d.content());
-            state.indexState(id, "READY", "");
-        } catch (Exception e) {
-            state.indexState(id, "FAILED", "索引构建失败，可检查服务配置后重试");
+            state.completeIndex(attempt, true, "");
+        } catch (AppException e) {
+            if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;
+            state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试");
+            log.error("知识索引构建失败 documentId={} diagnostic={}", id, cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
+        } catch (RuntimeException e) {
+            state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试");
+            throw e;
         }
         return state.document(id);
     }
@@ -106,7 +135,6 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     public void publish(String actor, String id) {
         var d = document(actor, id);
         manage(actor, d.baseId(), "knowledge.manage");
-        require("READY".equals(d.indexStatus()), ResponseCode.KNOWLEDGE_NOT_READY);
         state.publish(id);
         access.audit(actor, "KNOWLEDGE_PUBLISHED", id, d.merchantId(), "发布生效知识版本");
     }
@@ -118,24 +146,35 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         state.withdraw(id);
         access.audit(actor, "KNOWLEDGE_WITHDRAWN", id, d.merchantId(), "撤回知识版本，后续检索立即排除");
     }
-    /** 按当前用户成员关系及文档生效指针计算可读集，不信任向量库的历史 ACL。 */
-    public List<KnowledgeDocumentVO> readableDocuments(String actor) {
+
+    public List<KnowledgeScopeVO> readableScope(String actor) {
         accounts.requireActive(actor);
         boolean admin = access.isAdmin(actor);
-        Set<String> member = access.memberships(actor).stream().map(m -> m.merchantId()).filter(id -> access.permissions(actor,
-            id).contains("knowledge.read")).collect(Collectors.toSet());
+        Set<String> member = access
+            .memberships(actor)
+            .stream()
+            .map(m -> m.merchantId())
+            .filter(id -> access.permissions(actor, id).contains("knowledge.read"))
+            .collect(Collectors.toSet());
         Map<String, Boolean> active = new HashMap<>();
         List<String> allowed = new ArrayList<>();
         for (KnowledgeBaseVO b : state.bases()) {
             boolean readable = switch (b.visibility()) {
-                case "PUBLIC" -> b.merchantId() == null || active.computeIfAbsent(b.merchantId(), m -> "ACTIVE".equals(merchants
-                    .find(m).status()));
+                case "PUBLIC" -> b.merchantId() == null || active.computeIfAbsent(b.merchantId(), m -> "ACTIVE".equals(merchants.find(m).status()));
                 case "MERCHANT_INTERNAL" -> member.contains(b.merchantId());
                 case "PLATFORM_INTERNAL" -> admin;
                 default -> false;
             };
             if (readable) allowed.add(b.id());
         }
-        return state.visible(allowed);
+        return state.visibleScope(allowed);
+    }
+
+    /** 原文仅按模型实际引用批量加载，调用者不能借此越过当前授权。 */
+    public List<KnowledgeDocumentVO> citationDocuments(String actor, List<String> ids) {
+        require(ids != null && ids.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
+        Set<String> allowed = readableScope(actor).stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
+        require(allowed.containsAll(ids), ResponseCode.KNOWLEDGE_NOT_READY);
+        return state.documentsByIds(ids);
     }
 }

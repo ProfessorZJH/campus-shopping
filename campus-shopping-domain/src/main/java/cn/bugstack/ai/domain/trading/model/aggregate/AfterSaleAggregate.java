@@ -1,110 +1,79 @@
 package cn.bugstack.ai.domain.trading.model.aggregate;
 
+import static cn.bugstack.ai.types.common.Checks.*;
+
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleStatusEnumVO;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
-import cn.bugstack.ai.domain.trading.model.valobj.OrderStatusEnumVO;
 import cn.bugstack.ai.types.enums.ResponseCode;
-
 import java.time.Instant;
-import java.util.EnumSet;
-import java.util.Objects;
 
-import static cn.bugstack.ai.types.common.Checks.require;
-import static cn.bugstack.ai.types.common.Checks.text;
-
-/**
- * 售后聚合根：负责退款申请、驳回、申诉和批准的合法状态转换。
- * 不直接操作订单、付款、库存、自提；它们的同库原子变更由 OrderLifecycleCase 编排。
- */
+/** 退款申请、争议、裁决和提货互斥规则；外层用例负责与订单、库存的原子提交。 */
 public final class AfterSaleAggregate {
-    private final String id;
-    private final String orderId;
-    private final String buyerId;
-    private final String merchantId;
-    private final String reason;
-    private final Instant createdAt;
+
+    private final AfterSaleVO original;
     private AfterSaleStatusEnumVO status;
-    private String decisionReason;
+    private String decision;
 
-    private AfterSaleAggregate(String id, String orderId, String buyerId, String merchantId,
-                               AfterSaleStatusEnumVO status, String reason, String decisionReason,
-                               Instant createdAt) {
-        this.id = Objects.requireNonNull(id);
-        this.orderId = Objects.requireNonNull(orderId);
-        this.buyerId = Objects.requireNonNull(buyerId);
-        this.merchantId = Objects.requireNonNull(merchantId);
-        this.status = Objects.requireNonNull(status);
-        this.reason = Objects.requireNonNull(reason);
-        this.decisionReason = Objects.requireNonNull(decisionReason);
-        this.createdAt = Objects.requireNonNull(createdAt);
+    public AfterSaleAggregate(AfterSaleVO value) {
+        original = java.util.Objects.requireNonNull(value);
+        status = AfterSaleStatusEnumVO.fromCode(value.status());
+        decision = value.decisionReason();
     }
 
-    /** 第一次提交申请时，先验证订单归属及当前支付状态。 */
-    public static AfterSaleAggregate request(String id, OrderAggregate order, String buyer,
-                                             String reason, Instant now) {
-        requirePaidBuyer(order, buyer);
-        return new AfterSaleAggregate(id, order.getId(), buyer, order.getMerchantId(),
-                AfterSaleStatusEnumVO.REQUESTED, text(reason, "退款原因", 500), "", now);
-    }
-
-    /** 从持久化快照重建聚合，不经过新申请的初始状态构造流程。 */
-    public static AfterSaleAggregate restore(AfterSaleVO snapshot) {
-        Objects.requireNonNull(snapshot);
-        return new AfterSaleAggregate(snapshot.id(), snapshot.orderId(), snapshot.buyerId(),
-                snapshot.merchantId(), snapshot.statusEnum(), snapshot.reason(),
-                snapshot.decisionReason(), snapshot.createdAt());
-    }
-
-    /** 同一订单相同原因的待审申请幂等返回；驳回后不能偷偷创建第二份。 */
-    public void requireSameRequest(OrderAggregate order, String buyer, String reason) {
-        requirePaidBuyer(order, buyer);
-        require(status == AfterSaleStatusEnumVO.REQUESTED
-                        && this.reason.equals(text(reason, "退款原因", 500)),
-                ResponseCode.REFUND_STATE_INVALID);
-    }
-
-    /** 重复驳回是幂等的，首次驳回必须携带审核意见。 */
-    public boolean reject(String reason) {
-        if (status == AfterSaleStatusEnumVO.REJECTED) {
-            return false;
+    public static AfterSaleVO request(OrderAggregate order, String buyer, String reason, AfterSaleVO previous, String id, Instant now) {
+        order.requireBuyer(buyer);
+        order.requirePaidForRefund();
+        String clean = text(reason, "退款原因", 500);
+        if (previous != null) {
+            require(previous.state() == AfterSaleStatusEnumVO.REQUESTED && clean.equals(previous.reason()), ResponseCode.REFUND_STATE_INVALID);
+            return previous;
         }
-        require(EnumSet.of(AfterSaleStatusEnumVO.REQUESTED, AfterSaleStatusEnumVO.DISPUTED)
-                .contains(status), ResponseCode.REFUND_STATE_INVALID);
-        decisionReason = text(reason, "驳回理由", 500);
+        return new AfterSaleVO(id, order.getId(), buyer, order.getMerchantId(), AfterSaleStatusEnumVO.REQUESTED.getCode(), clean, "", now);
+    }
+
+    public void reject(String reason) {
+        if (status == AfterSaleStatusEnumVO.REJECTED) return;
+        requireReviewable();
+        decision = text(reason, "驳回理由", 500);
         status = AfterSaleStatusEnumVO.REJECTED;
-        return true;
     }
 
-    /** 只有被驳回的申请可以向平台申诉；重复申诉不得再次变更数据。 */
-    public boolean appeal(OrderAggregate order, String buyer) {
-        requirePaidBuyer(order, buyer);
-        if (status == AfterSaleStatusEnumVO.DISPUTED) {
-            return false;
-        }
+    public void appeal(OrderAggregate order, String buyer) {
+        order.requireBuyer(buyer);
+        order.requirePaidForRefund();
+        if (status == AfterSaleStatusEnumVO.DISPUTED) return;
         require(status == AfterSaleStatusEnumVO.REJECTED, ResponseCode.REFUND_STATE_INVALID);
         status = AfterSaleStatusEnumVO.DISPUTED;
-        return true;
     }
 
-    /** 仅待审或争议状态能批准；退款和库存释放必须由外层同事务完成。 */
     public void approve(String reason) {
-        require(EnumSet.of(AfterSaleStatusEnumVO.REQUESTED, AfterSaleStatusEnumVO.DISPUTED)
-                .contains(status), ResponseCode.REFUND_STATE_INVALID);
-        decisionReason = text(reason, "退款审核说明", 500);
+        requireReviewable();
+        decision = text(reason, "退款审核说明", 500);
         status = AfterSaleStatusEnumVO.APPROVED;
     }
 
+    public void requireMerchantReview() {
+        require(status != AfterSaleStatusEnumVO.DISPUTED, ResponseCode.AUTH_FORBIDDEN);
+    }
+
+    public void requirePickupAllowed() {
+        require(status == AfterSaleStatusEnumVO.REJECTED, ResponseCode.REFUND_STATE_INVALID);
+    }
+
+    private void requireReviewable() {
+        require(status == AfterSaleStatusEnumVO.REQUESTED || status == AfterSaleStatusEnumVO.DISPUTED, ResponseCode.REFUND_STATE_INVALID);
+    }
+
     public AfterSaleVO view() {
-        return new AfterSaleVO(id, orderId, buyerId, merchantId, status.name(),
-                reason, decisionReason, createdAt);
-    }
-
-    public AfterSaleStatusEnumVO getStatus() {
-        return status;
-    }
-
-    private static void requirePaidBuyer(OrderAggregate order, String buyer) {
-        order.requireBuyer(buyer);
-        require(order.getStatusEnum() == OrderStatusEnumVO.PAID, ResponseCode.REFUND_STATE_INVALID);
+        return new AfterSaleVO(
+            original.id(),
+            original.orderId(),
+            original.buyerId(),
+            original.merchantId(),
+            status.getCode(),
+            original.reason(),
+            decision,
+            original.createdAt()
+        );
     }
 }

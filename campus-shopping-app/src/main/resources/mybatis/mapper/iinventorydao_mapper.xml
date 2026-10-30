@@ -10,9 +10,7 @@ SELECT * FROM inv_stock_balance WHERE store_id=#{storeId} AND sku_id=#{skuId}<if
     <select id="stocks" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
 SELECT * FROM inv_stock_balance WHERE sku_id IN <foreach collection="skuIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY sku_id
     </select>
-    <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
-SELECT * FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if> ORDER BY sku_id LIMIT #{limit} OFFSET #{offset}
-    </select>
+
     <update id="save">
 UPDATE inv_stock_balance SET on_hand=#{p.onHand},reserved=#{p.reserved},version=version+1 WHERE store_id=#{p.storeId} AND sku_id=#{p.skuId} AND version=#{p.version} AND #{p.onHand} &gt;= #{p.reserved} AND #{p.reserved} &gt;= 0
     </update>
@@ -37,6 +35,6 @@ INSERT INTO inv_stock_movement(id,merchant_id,store_id,sku_id,type,quantity,biz_
     <select id="movements" resultType="cn.bugstack.ai.infrastructure.dao.po.StockMovementPO">
 SELECT * FROM inv_stock_movement WHERE merchant_id=#{merchantId} ORDER BY created_at DESC,id LIMIT #{limit} OFFSET #{offset}
     </select>
-    <select id="countStocks" resultType="long">SELECT COUNT(*) FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if></select>
+
     <select id="countMovements" resultType="long">SELECT COUNT(*) FROM inv_stock_movement WHERE merchant_id=#{merchantId}</select>
 </mapper>

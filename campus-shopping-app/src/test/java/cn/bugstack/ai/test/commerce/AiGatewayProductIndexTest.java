@@ -1,37 +1,36 @@
 package cn.bugstack.ai.test.commerce;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import cn.bugstack.ai.infrastructure.gateway.AiGatewayService;
 import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /** 真实本机 HTTP 契约：Python 禁用、数量不匹配或无效响应不能被 Java 当成索引成功。 */
 class AiGatewayProductIndexTest {
+
     private HttpServer server;
-    private final AtomicReference<String> body = new AtomicReference<>(
-            "{\"indexed\":1,\"unchanged\":1,\"mode\":\"MILVUS\"}");
+    private final AtomicReference<String> body = new AtomicReference<>("{\"indexed\":1,\"unchanged\":1,\"mode\":\"MILVUS\"}");
     private final AtomicInteger status = new AtomicInteger(200);
     private AiGatewayService gateway;
 
     @BeforeEach
     void start() throws IOException {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
-        server.createContext("/v1/products/index", exchange -> {
+        var productContext = server.createContext("/v1/products/", exchange -> {
             exchange.getRequestBody().readAllBytes();
             byte[] response = body.get().getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
@@ -40,6 +39,7 @@ class AiGatewayProductIndexTest {
                 stream.write(response);
             }
         });
+        server.createContext("/v1/index", productContext.getHandler());
         server.start();
 
         gateway = new AiGatewayService();
@@ -56,9 +56,12 @@ class AiGatewayProductIndexTest {
     }
 
     private AiGatewayDTO.ProductIndexRequest request() {
-        return new AiGatewayDTO.ProductIndexRequest(List.of(
+        return new AiGatewayDTO.ProductIndexRequest(
+            List.of(
                 new AiGatewayDTO.ProductIndex("p1", "m1", "无糖茶", "", "drinks", List.of("500ml")),
-                new AiGatewayDTO.ProductIndex("p2", "m2", "饼干", "", "snacks", List.of("盒装"))));
+                new AiGatewayDTO.ProductIndex("p2", "m2", "饼干", "", "snacks", List.of("盒装"))
+            )
+        );
     }
 
     private void unavailable() {
@@ -82,11 +85,12 @@ class AiGatewayProductIndexTest {
     @Test
     void incompleteOrMalformedResultMustFailClosed() {
         for (String invalid : List.of(
-                "{\"indexed\":1,\"unchanged\":0,\"mode\":\"MILVUS\"}",
-                "{\"indexed\":-1,\"unchanged\":3,\"mode\":\"MILVUS\"}",
-                "{\"indexed\":2,\"unchanged\":1,\"mode\":\"MILVUS\"}",
-                "{\"indexed\":2,\"unchanged\":0,\"mode\":\"UNKNOWN\"}",
-                "{}")) {
+            "{\"indexed\":1,\"unchanged\":0,\"mode\":\"MILVUS\"}",
+            "{\"indexed\":-1,\"unchanged\":3,\"mode\":\"MILVUS\"}",
+            "{\"indexed\":2,\"unchanged\":1,\"mode\":\"MILVUS\"}",
+            "{\"indexed\":2,\"unchanged\":0,\"mode\":\"UNKNOWN\"}",
+            "{}"
+        )) {
             body.set(invalid);
             unavailable();
         }
@@ -97,5 +101,53 @@ class AiGatewayProductIndexTest {
         status.set(503);
         body.set("{\"detail\":\"backend unavailable\"}");
         unavailable();
+    }
+
+    @Test
+    void deletionAcceptsAbsentIndexAndIdempotentResults() {
+        var request = new AiGatewayDTO.ProductDeleteRequest(List.of("p1", "p2"));
+        for (String response : List.of(
+            "{\"deleted\":0,\"mode\":\"EMPTY_INDEX\"}",
+            "{\"deleted\":0,\"mode\":\"MILVUS\"}",
+            "{\"deleted\":2,\"mode\":\"MILVUS\"}"
+        )) {
+            body.set(response);
+            assertDoesNotThrow(() -> gateway.deleteProducts(request));
+        }
+    }
+
+    @Test
+    void deletionRejectsDisabledAndMalformedResults() {
+        var request = new AiGatewayDTO.ProductDeleteRequest(List.of("p1", "p2"));
+        for (String response : List.of(
+            "null",
+            "{}",
+            "{\"deleted\":0,\"mode\":\"DISABLED\"}",
+            "{\"deleted\":-1,\"mode\":\"MILVUS\"}",
+            "{\"deleted\":3,\"mode\":\"MILVUS\"}",
+            "{\"deleted\":1,\"mode\":\"EMPTY_INDEX\"}"
+        )) {
+            body.set(response);
+            assertEquals(ResponseCode.AI_UNAVAILABLE.getCode(), assertThrows(AppException.class, () -> gateway.deleteProducts(request)).getCode());
+        }
+    }
+
+    @Test
+    void knowledgeIndexRequiresTypedNonemptyResult() {
+        var request = new AiGatewayDTO.Index("doc", "title", "content");
+        for (String invalid : List.of(
+            "null",
+            "{}",
+            "{\"chunks\":0,\"mode\":\"REMOTE_EMBEDDING\"}",
+            "{\"chunks\":1,\"mode\":\"UNKNOWN\"}",
+            "{\"chunks\":163,\"mode\":\"REMOTE_EMBEDDING\"}"
+        )) {
+            body.set(invalid);
+            assertEquals(ResponseCode.AI_UNAVAILABLE.getCode(), assertThrows(AppException.class, () -> gateway.index(request)).getCode());
+        }
+        for (String mode : List.of("REMOTE_EMBEDDING", "LOCAL_CHAR_NGRAM_DEMO")) {
+            body.set("{\"chunks\":1,\"mode\":\"" + mode + "\"}");
+            assertDoesNotThrow(() -> gateway.index(request));
+        }
     }
 }

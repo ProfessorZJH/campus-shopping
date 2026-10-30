@@ -1,19 +1,34 @@
 package cn.bugstack.ai.domain.trading.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** 订单状态只允许聚合根的业务行为转换。 */
+/** 订单生命周期；code 保持已有数据库和 HTTP 协议值。 */
 public enum OrderStatusEnumVO {
-    PENDING_PAYMENT, PAID, COMPLETED, CANCELED, REFUNDED;
+    PENDING_PAYMENT("待付款"),
+    PAID("已支付"),
+    COMPLETED("已完成"),
+    CANCELED("已取消"),
+    REFUNDED("已退款");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    OrderStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static OrderStatusEnumVO fromCode(String code) {
-        for (OrderStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.ORDER_STATE_INVALID);
+        return EnumValues.stored(OrderStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(OrderStatusEnumVO.class, code);
     }
 }

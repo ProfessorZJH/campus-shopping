@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "version": "V20261028_01",
+      "file": "V20261028_01__order_item_image_snapshot.sql",
+      "sha256": "7fe7d76b5e4f579b07167a3216af93dbc006216f7ab9a56ff95c3a807e2e95a7"
+    },
+    {
+      "version": "V20261028_02",
+      "file": "V20261028_02__merchant_rbac.sql",
+      "sha256": "271f49d26dd7a5538f32851d6cbe5ccb2a9592be6722da2190b0a329940a39cd"
+    },
+    {
+      "version": "V20261029_01",
+      "file": "V20261029_01__contract_integrity_and_indexes.sql",
+      "sha256": "efdc1a9b032afcea14d4e0ee0198011beb2d9088850da21b5a5ead10881040ef"
+    },
+    {
+      "version": "V20261030_01",
+      "file": "V20261030_01__ai_attempt_and_conversation_lease.sql",
+      "sha256": "436372074fa9cd2fe0cb9c2c00ce29bb3196a93aa8d477042ac3c8437f200e32"
+    }
+  ]
+}

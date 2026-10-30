@@ -1,10 +1,16 @@
 package cn.bugstack.ai.infrastructure.dao.po;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 不可变成交商品快照。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class OrderItemPO {
+
     private String orderId;
     private String skuId;
     private String title;

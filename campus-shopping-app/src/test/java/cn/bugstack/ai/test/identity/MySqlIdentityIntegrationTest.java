@@ -1,8 +1,13 @@
 package cn.bugstack.ai.test.identity;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import cn.bugstack.ai.Application;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.types.exception.AppException;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.*;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
@@ -12,18 +17,19 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
-import java.util.UUID;
-import java.util.List;
-import java.util.concurrent.*;
-import static org.junit.jupiter.api.Assertions.*;
 
 /** 真实 MySQL 测试：必须显式设置专用测试库，未配置时标记跳过。 */
-@SpringBootTest(classes = Application.class, properties={"campus.jobs.enabled=false", "campus.bootstrap.enabled=false"})
+@SpringBootTest(classes = Application.class, properties = { "campus.jobs.enabled=false", "campus.bootstrap.enabled=false" })
 @ActiveProfiles("mysql-integration")
 @EnabledIfEnvironmentVariable(named = "MYSQL_TEST_URL", matches = ".+")
 class MySqlIdentityIntegrationTest {
-    @Autowired IUserAccountService service;
-    @Autowired JdbcTemplate jdbc;
+
+    @Autowired
+    IUserAccountService service;
+
+    @Autowired
+    JdbcTemplate jdbc;
+
     private final String username = "it" + UUID.randomUUID().toString().replace("-", "").substring(0, 24);
     private static final String PASSWORD = "Test-only-password-123!";
 
@@ -69,7 +75,9 @@ class MySqlIdentityIntegrationTest {
             try {
                 service.register(username, PASSWORD, "并发测试");
                 return "0000";
-            } catch (AppException e) { return e.getCode(); }
+            } catch (AppException e) {
+                return e.getCode();
+            }
         };
         try {
             Future<String> first = pool.submit(command);
@@ -80,14 +88,16 @@ class MySqlIdentityIntegrationTest {
             assertEquals(1, codes.stream().filter("0000"::equals).count());
             assertEquals(1, codes.stream().filter("A0001"::equals).count());
             assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM iam_user WHERE username=?", Integer.class, username));
-        } finally { start.countDown(); pool.shutdownNow(); }
+        } finally {
+            start.countDown();
+            pool.shutdownNow();
+        }
     }
 
     @Test
     void currentAccountStatusIsReadFromActualDatabase() {
         var user = service.register(username, PASSWORD, "状态测试");
         jdbc.update("UPDATE iam_user SET status='DISABLED', version=version+1 WHERE id=?", user.getUserId());
-        assertEquals("A0003", assertThrows(AppException.class,
-                () -> service.requireActive(user.getUserId())).getCode());
+        assertEquals("A0003", assertThrows(AppException.class, () -> service.requireActive(user.getUserId())).getCode());
     }
 }

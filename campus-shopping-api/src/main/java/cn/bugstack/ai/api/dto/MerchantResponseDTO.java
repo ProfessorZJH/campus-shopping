@@ -1,10 +1,16 @@
 package cn.bugstack.ai.api.dto;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 商户公开经营信息，不包含申请人私人联系方式。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class MerchantResponseDTO {
+
     private String merchantId;
     private String name;
     private String category;

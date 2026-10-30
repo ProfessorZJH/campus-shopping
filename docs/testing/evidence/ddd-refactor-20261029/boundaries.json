@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "kind": "STATIC_BOUNDARIES_WITH_REJECTION_FIXTURES",
+  "timestamp": "2026-10-29T14:49:28.819288+00:00",
+  "javaSources": 305,
+  "sqlStatements": 128,
+  "rejectedFixtures": [
+    "cross-domain type",
+    "wrong dependency direction",
+    "HTTP SDK in domain",
+    "raw aggregate state",
+    "broad service returns",
+    "cross-domain write",
+    "unapproved read",
+    "query write",
+    "query lock",
+    "new projection table"
+  ],
+  "errors": []
+}

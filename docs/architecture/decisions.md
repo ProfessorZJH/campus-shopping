@@ -21,7 +21,7 @@
 ## ADR-003：Python AI 服务独立，但不拥有交易写权限
 
 - **状态**：Accepted
-- **决定**：Python FastAPI 处理意图、检索和文本生成；Spring Boot 统一处理权限、推荐 Proposal、购物车、订单和库存。Qdrant 只用于检索投影。
+- **决定**：Python FastAPI 处理意图、检索和文本生成；Spring Boot 统一处理权限、推荐 Proposal、购物车、订单和库存。当前商品语义索引使用 Milvus 检索投影；知识检索的 Qdrant 配置仍按各环境实际启用情况判断，两者均不是真实售价、库存或订单的事实来源。
 - **边界**：AI 只能提出写操作建议，确认后由 Java 重新校验并执行；绝不直接连接交易数据库执行写 SQL。AI 不可用时普通购物流程不受影响。
 - **代价**：要维护 Java↔Python 的超时、鉴权、JSON 契约与失败降级。
 
@@ -98,6 +98,15 @@
 - **实现边界**：`infrastructure/config/PasswordEncoderConfig` 统一声明 `PasswordEncoder` 的 Spring Bean，供注册流程和开发环境的 HTTP Basic 测试账号复用。不新增 Case 或远程 Gateway；Domain 不依赖 Spring Security Crypto 或 MyBatis。
 - **安全约束**：原始密码只作临时参数，不允许写入聚合、字段、日志、缓存、消息队列或接口响应。Domain 在持久化前校验 BCrypt 的 72 字节输入上限；MySQL 唯一索引防止并发创建重复用户名。IAM-02 登录、正式权限体系与生产安全控制仍未实现。
 - **权衡**：本方案将密码安全存储与本地仓储适配器放在一起，是本项目的明确选择；其他六边形架构可以用更宽泛的 Port 抽象表达密码技术能力，但我们不把这种选择强加到小傅哥的具体命名规范上。
+
+## ADR-017：R1 付款履约编排与 DAO 查询边界（2026-10-30）
+
+- **状态**：Accepted；依据实际源码 `OrderLifecycleCaseImpl.pay`、`IOrderService`、`IFulfillmentService`、`ICatalogQueryDao`、`IInventoryQueryDao`。
+- **付款链路**：Case 内的一个 MySQL 本地事务依次处理 Trading 支付记账、Fulfillment 自提创建和 Trading 订单持久化。当前不发布 `OrderPaid` 可靠异步事件；任何一步失败均整体回滚。与 [上下文映射](context-map.md) 保持一致。
+- **锁接口**：公开服务按读取目的提供 `orderForUpdate`、`saleOffersForUpdate`、`offersForUpdate` 等事务内方法，而不是由 Case 传入 `boolean lock`；底层 Repository/DAO 的物理锁参数不属于外部业务接口。
+- **领域模型**：Merchant 营业状态、Cart 数量上限及 Identity 实时成员授权继续由现有领域服务负责；在未发现需要统一内存修改的不变量前，不新增空聚合。详见 [领域职责复盘](DDD-QUALITY-FOLLOWUP-20261030.md)。
+- **读模型**：允许经审查的同库跨上下文只读 SQL 投影（商户资格、商品、库存排序），但禁止借此越权写入其他领域，未来数据库拆分时改为显式投影/查询能力。
+- **DAO 耦合**：当前 `ITradingDao` 和 `IAiDao` 为基础设施 MyBatis 映射细节，领域服务经分开的 Repository 接口访问，不按表强制拆分。
 
 ## 决策维护要求
 

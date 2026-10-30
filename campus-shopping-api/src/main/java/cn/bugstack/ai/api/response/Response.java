@@ -1,11 +1,10 @@
 package cn.bugstack.ai.api.response;
 
+import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.io.Serializable;
 
 /** 对外统一响应结构，与 group-buy-market 的 Response<T> 一致。 */
 @Data

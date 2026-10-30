@@ -1,0 +1,206 @@
+{
+  "timestamp": "2026-10-29T14:49:57.653437+00:00",
+  "status": "PASS",
+  "scope": "CURRENT_PRODUCTION_JAVA_WITH_EXPLICIT_REPOSITORY_GATEWAY_AND_ANNOTATION_DOUBLES",
+  "databaseUsed": false,
+  "springStarted": false,
+  "remoteServiceUsed": false,
+  "structure": {
+    "contextJavaFiles": {
+      "catalog": 12,
+      "fulfillment": 7,
+      "identity": 15,
+      "inventory": 11,
+      "merchant": 11,
+      "shoppingai": 32,
+      "trading": 22
+    },
+    "domainEnums": [
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/ProductSortEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/ProductStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/SkuStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/model/valobj/PickupStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/model/valobj/InvitationStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/model/valobj/MembershipStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/model/valobj/MerchantPermissionEnumVO.java",
+        "line": 9
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/model/valobj/UserAccountStatusEnumVO.java",
+        "line": 9
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/model/valobj/ReservationStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/model/valobj/StockMovementTypeEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/model/valobj/MerchantApplicationStatusEnumVO.java",
+        "line": 4
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/model/valobj/MerchantStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeDocumentStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeIndexStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeVisibilityEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/MessageRoleEnumVO.java",
+        "line": 4
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/ProposalStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/AfterSaleStatusEnumVO.java",
+        "line": 6
+      },
+      {
+        "path": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/OrderStatusEnumVO.java",
+        "line": 6
+      }
+    ],
+    "crossContextJavaReferences": [],
+    "duplicatedControllerExecuteMethods": 10
+  },
+  "javaObservations": [
+    {
+      "id": "invalid_order_filter",
+      "actual": "AppException:0002"
+    },
+    {
+      "id": "null_upstream_recall_term",
+      "actual": "AppException:AI0001"
+    },
+    {
+      "id": "invalid_upstream_term_blames_client",
+      "actual": "AppException:AI0001"
+    },
+    {
+      "id": "null_upstream_recommendation",
+      "actual": "AppException:AI0001"
+    },
+    {
+      "id": "pickup_conflict_uses_fulfillment_code",
+      "actual": "AppException:F0003"
+    }
+  ],
+  "schemaObservations": [
+    {
+      "id": "success_missing_data",
+      "actual": "rejected_by_current_order_response_schema"
+    },
+    {
+      "id": "success_null_order",
+      "actual": "rejected_by_current_order_response_schema"
+    },
+    {
+      "id": "success_empty_order",
+      "actual": "rejected_by_current_order_response_schema"
+    }
+  ],
+  "openapiSha256": "e6bf83ffad23b7840f8c026d6d861af6ef29abf631b3c10c0cb96f501df37f1d",
+  "productionSources": {
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/adapter/repository/ICatalogQueryRepository.java": "7bc5032864447f10932765452ccbc69897ffd20d0cc1103ffcbcd7342a3fcc7f",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/adapter/repository/ICatalogRepository.java": "ad5f884f425e97bce25d7321eb11992e0a78fbb3cec18b52c467fc72590c37e9",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/aggregate/ProductAggregate.java": "ff6eaa731052f2442fa24a2b1e2e45e42944bfc0afb72902c988542821a7e27b",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/entity/ProductCreateEntity.java": "05105a1d9b4f43593b598629a6f8ffae86744a154361490b3e39ccf17e83165c",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/entity/ProductSkuEntity.java": "25ff91796b57b058069a208bdce4cd5f7a05fc299fe8e624d3b14e6fe0ea9a75",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/CategoryVO.java": "1dbbc1e05678e6bd4af0ed586493a9cf132248599cd78c1a5fa06092c3ce7d2b",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/ProductSortEnumVO.java": "bd840f4653f9683b79b0efb812c6fa47636938299010c0b8dcea5ffbeb78ba7b",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/ProductStatusEnumVO.java": "6ba6946f8a169e2650d39a1ce742e16d4620b7d3df4b36a42113edba92b60aef",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/SkuOfferVO.java": "a2e438b8bf3cf872dd08a3d5ad27d132a5f4b8ce20af60d7483d472fe85d7b90",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/valobj/SkuStatusEnumVO.java": "43dadaa08844f3f91fdf3ba5303a6aaf15323b445218f27e47e5288c45209efa",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/service/ICatalogService.java": "388555fec3e7b715c2e1e73c2ae177a1dba57b10e9b5ed94b72c78fdec25f21a",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/service/impl/CatalogServiceImpl.java": "b00a926f49729c8800848ae69b63515cfe0dd52f5448092e2dd5e675d6587fb2",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/model/aggregate/PickupAggregate.java": "1f2c64a92a566e5f4bccd4406ad753be82c5ccf5b7ae482c79db9cd4a2517724",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/model/valobj/PickupStatusEnumVO.java": "6ce0a6cef129c93d0491321a3a28aea3ff7976bf20450f73bffae4ac8624a25b",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/model/valobj/PickupTokenVO.java": "e8c0d98c7d1cd2eaae7c08d53f522f23abc46de7e2502f0728ab31ebc7606424",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/model/valobj/PickupVO.java": "936a55f0e0d473402d3d5a0fd0eeab961d706b2480bcf049827ca3faf28bc97e",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/adapter/port/IAiEnginePort.java": "c97d9b7bfb2e4003c00afb71bf34f1e1140069f0154da38f53491d1c2cfa33fc",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/aggregate/KnowledgePublicationAggregate.java": "2d465caebb57a6cea69d4bd3b226ab536b177716204c010a143b8cc66cd5ce47",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/aggregate/ProposalAggregate.java": "184910e4d494c7b38fb76a21ded35ac712a76b6f066d8f5c57d7eecbfed69445",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/entity/AiQueryEntity.java": "3c88db3d560e8fb44333125c4cf6d1e07b1715497b300deef095ebb3ba33c6fc",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/AiAnswerVO.java": "b2e89e0c488ce30918eaf8269e28bf62c2bd40b48b423dc3a17ee6016f5d30ea",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/AiCitationVO.java": "02ee375f3c03ff7d5a331a79bb96a46eaff3398564b6e8ad559a3fca5b5ecd65",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/AiOfferVO.java": "58ff76c5d528a0846ae7dcc250d18f9f371064a5dd41b5ac80988d252606faf3",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/AiRecallVO.java": "a8bf024fbc2ef220e58c194a6620a7ccbe915268603d854e57039712b8a52f69",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/AiRecommendationVO.java": "c4f8635fbe338c00e9419e3a88a73b0e7ec44431a51c4cf3dcaf909afdaab205",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/ConversationVO.java": "a8d9a6ad99182a85664f0fb923c9b0025faa00817ab4cb29c3a8185907d1fa0b",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeBaseVO.java": "0d8f543615939bc9670dfbc862bb538bf124d0ffc8d92e65d798ae3d01350fa3",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeDocumentStatusEnumVO.java": "d98f97fb17a5e0d3d34c61afed946587c91d6c2f556b698ab5ddaa6acad489a5",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeDocumentVO.java": "3b4182f92f25c729da4673e451ab66e3d916d6b34083145939fbaf66b93c0a80",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeIndexStatusEnumVO.java": "a66e2a8600a14b2a416d95d649dfa3da5f528e54e9f2e66e1921f01e73cabac8",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/KnowledgeVisibilityEnumVO.java": "ecd694b69c177cf84a66139adce6cc806213774e807d39c13622778b871bf878",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/MessageRoleEnumVO.java": "582bf3444b06748ade21a91a823e3f612fd086042e2b28916e6ee51e55730e9a",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/MessageVO.java": "5667723e8453d18d40898eb05c7edfec44f5f3d3734ba2d29836b0af1d1f4542",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/ProductIndexVO.java": "1dbdb3e0a55fb3abed4a3719bef9e4bc8a4400ee6c336bef16570dc9d4cda6d1",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/ProposalItemVO.java": "86e1c85a9ab3a55d7672f4c49943d81acd3cb92f3fda8d19629f70a44cca9ffb",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/ProposalStatusEnumVO.java": "1085350ea9320d212c89a068b6a28a3d181027ab7dde9efaf5933c6939df8c88",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/model/valobj/ProposalVO.java": "5ac54f3bdfe8ca07b306b953be3b010f4fd3dc72f86f929f44579e80bb56429a",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/adapter/repository/IAfterSaleRepository.java": "baebba3988043cec8fc18612d94724eccf820677ad9c0d179a2c98b656b88b3c",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/adapter/repository/ICartRepository.java": "039e6e5be93139a22a7193c7395464a6ff10b1473f0831a3722c983807bb2df3",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/adapter/repository/IOrderRepository.java": "3cbae56520d30dd3824c37c855b2146f76f04df35c03b1e4e61834e35e2549ce",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/adapter/repository/ITradingRepository.java": "f333236f1d60c57703bf4aa750bb01461e3106486addbdd4ee1cb8353ccfef18",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/aggregate/AfterSaleAggregate.java": "c25271e52860503693993320d79861d53c03b88026bc17875ff8ef8c77fe38f8",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/aggregate/OrderAggregate.java": "9848a1ed312d3d864bfe80b25678041eeac3343a3cb91f817c06d7daeae164bd",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/entity/CheckoutItemEntity.java": "7eaa0ad962016f5baa6e4fa5246c0b327a24ecb5d97cfa7d7c6c96e78f7223ee",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/entity/OrderItemEntity.java": "948fcf1f8a77e7f2cc17e3e25d016f7d75109b61a1b40aaa66bb1168b3fb0093",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/AfterSaleStatusEnumVO.java": "c37e12de2375f4a94be9a5ca9014ac6a73950685c9544f0cef726e062df2ab1a",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/AfterSaleVO.java": "8c541de73abd35190355cbc0a48adfb5b9be9cbd962703d2a6728dcdbea38988",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/CartItemVO.java": "d8d8832a88dbdc365c0c3fd0063cd9956d05375ce489abafd3016870e775d8ef",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/CheckoutRequestVO.java": "e03ede36d2cfda4fda41efbc16fce35efb4a350ae77c026f81139fa33027e9b4",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/OrderStatusEnumVO.java": "f70734fcac4c0a42e6713b5a1981e87f4e14559140efd21d92a9457666a003a6",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/valobj/TradingStatsVO.java": "01ad94bb2a64f5bdda228da31ff6bcc92c2e31177763b60162ea5120bd5a85a8",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/IAfterSaleQueryService.java": "2df67000f8285948ee245b7675790c943974c1ce3fbe518f6dae16bb93517d0c",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/IAfterSaleService.java": "dbf93df84d3d0de470032a4915b4c3a3d1403943ef58f43fe13a711bd464f3e6",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/ICartService.java": "dd6df92ed8ec1ccb2e347f2451952690adde2f7091f3f5bffaad6cea37fb7de8",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/AfterSaleServiceImpl.java": "6a466b02d0e3277ab9cc41057e4b24da591c5c74b79b138db41bfa8a3edfbdf2",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/CartServiceImpl.java": "6d867c8c99094b1c0dbb0f84ca79fc150a2ceeb8426893016151176331afc303",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/OrderServiceImpl.java": "b57be4f03c27f9969122191b06a5ccb83ec219da760d949024096f1c4c26152e",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/IOrderQueryService.java": "d7fb426713085ac99c052df1dd15b31294e370f9bb28d127da9a1b4d088cda74",
+    "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/IOrderService.java": "6b5ae16ea963cf704dfe36a7b9c1812802b7aad86629afa4f27a83d5517ad9f6",
+    "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/port/AiEnginePort.java": "06f1368cd85cd5aac6a595685ffbd2e7d9a5b55b4fb6c10f0a644aaaa42e74a2",
+    "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/gateway/dto/AiGatewayDTO.java": "c20794c5140b3e8d1c4239451a1c5e174cd516832027a4b6370837507b5c197b",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/common/Checks.java": "6da66ba34eb0df06399e44862e5b762db445a195edc98a7bb0396c66c78930a8",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/common/Constants.java": "aedc7dbf0c75eb537cec566357a0ce49f6b9068e778ef7008ece2cdb911b9f9b",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/common/EnumValues.java": "4dde9e142567f5b1a9bf309971e81a579342d06791776200324b5756f1548b81",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/common/FailureDiagnostics.java": "40b85e15cd7576b0794b985c6d773facb67fbac382a2344a56b5c0e4c80df666",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/common/Fingerprints.java": "2e4f5baab24f085a5258e60192926108f83f168358dda29e0a0bdec7cfaafd85",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/enums/ResponseCode.java": "da67c75a333614fba34e01925091d365d503cc8ae40c2b5e8eff3968f5dd421c",
+    "campus-shopping-types/src/main/java/cn/bugstack/ai/types/exception/AppException.java": "ee9fcfe742304a250995847e2c68bd30343b7dadc5e50285e413a9079af13052"
+  }
+}

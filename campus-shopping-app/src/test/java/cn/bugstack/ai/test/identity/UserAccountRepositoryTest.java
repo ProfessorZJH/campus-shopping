@@ -1,5 +1,9 @@
 package cn.bugstack.ai.test.identity;
 
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
 import cn.bugstack.ai.domain.identity.model.aggregate.UserAccountAggregate;
 import cn.bugstack.ai.infrastructure.adapter.repository.UserAccountRepository;
 import cn.bugstack.ai.infrastructure.config.PasswordEncoderConfig;
@@ -12,10 +16,6 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
 
 /** 基础设施单元测试：验证执行 DAO 插入前已完成 BCrypt 哈希。 */
 class UserAccountRepositoryTest {
@@ -53,8 +53,7 @@ class UserAccountRepositoryTest {
         IUserAccountDao dao = mock(IUserAccountDao.class);
         when(dao.insert(any(UserAccountPO.class))).thenThrow(new DuplicateKeyException("duplicate"));
         when(dao.countByUsername("student001")).thenReturn(1);
-        AppException e = assertThrows(AppException.class,
-                () -> repository(dao).save(account(), "MySecurePass123!"));
+        AppException e = assertThrows(AppException.class, () -> repository(dao).save(account(), "MySecurePass123!"));
         assertEquals(ResponseCode.AUTH_USERNAME_EXISTS.getCode(), e.getCode());
     }
 
@@ -63,7 +62,6 @@ class UserAccountRepositoryTest {
         IUserAccountDao dao = mock(IUserAccountDao.class);
         when(dao.insert(any(UserAccountPO.class))).thenThrow(new DuplicateKeyException("duplicate"));
         when(dao.countByUsername("student001")).thenReturn(0);
-        assertThrows(DuplicateKeyException.class,
-                () -> repository(dao).save(account(), "MySecurePass123!"));
+        assertThrows(DuplicateKeyException.class, () -> repository(dao).save(account(), "MySecurePass123!"));
     }
 }

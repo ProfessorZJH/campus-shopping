@@ -51,7 +51,64 @@
     </dependencies>
     <build>
         <finalName>campus-shopping-app</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>static/src/**</exclude><exclude>static/vendor/**</exclude><exclude>static/images/**</exclude>
+                    <exclude>static/index.html</exclude><exclude>static/ui.bundle.js</exclude><exclude>static/ui-build.json</exclude>
+                </excludes>
+            </resource>
+            <resource><directory>${project.build.directory}/generated-ui</directory><targetPath>static</targetPath></resource>
+        </resources>
         <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.5.0</version>
+                <configuration><skip>${frontend.skip}</skip></configuration>
+                <executions>
+                    <execution>
+                        <id>verify-schema-contract</id><phase>validate</phase><goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>false</skip><executable>${python.executable}</executable>
+                            <arguments><argument>${maven.multiModuleProjectDirectory}/scripts/schema_contract.py</argument><argument>--check</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>record-build-source</id><phase>validate</phase><goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>false</skip><executable>${python.executable}</executable>
+                            <arguments><argument>${maven.multiModuleProjectDirectory}/scripts/generate-release-manifest.py</argument><argument>--begin-build</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>install-locked-ui-dependencies</id><phase>generate-resources</phase><goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>${npm.executable}</executable>
+                            <workingDirectory>${maven.multiModuleProjectDirectory}/frontend</workingDirectory>
+                            <arguments><argument>ci</argument><argument>--no-audit</argument><argument>--no-fund</argument></arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>build-ui-from-source</id><phase>generate-resources</phase><goals><goal>exec</goal></goals>
+                        <configuration>
+                            <executable>node</executable>
+                            <arguments>
+                                <argument>${maven.multiModuleProjectDirectory}/frontend/scripts/build.mjs</argument>
+                                <argument>--out=${project.build.directory}/generated-ui</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>generate-delivery-manifest</id><phase>verify</phase><goals><goal>exec</goal></goals>
+                        <configuration>
+                            <skip>false</skip><executable>${python.executable}</executable>
+                            <arguments><argument>${maven.multiModuleProjectDirectory}/scripts/generate-release-manifest.py</argument></arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

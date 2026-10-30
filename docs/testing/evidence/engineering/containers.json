@@ -1,0 +1,6 @@
+{
+  "status": "NOT_RUN",
+  "reason": "Docker Engine unavailable (dockerDesktopLinuxEngine pipe missing)",
+  "ciConfigured": true,
+  "remoteCiExecuted": false
+}

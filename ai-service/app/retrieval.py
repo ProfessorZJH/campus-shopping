@@ -6,6 +6,7 @@ from dataclasses import asdict
 from typing import Any
 import httpx
 from .config import Settings
+from .observability import observed, failure
 
 def tokens(text: str) -> list[str]:
     text=text.lower()
@@ -49,6 +50,7 @@ class Provider:
     def vector_mode(self):return 'REMOTE_EMBEDDING' if self.settings.embedding_key else 'LOCAL_CHAR_NGRAM_DEMO'
     @property
     def model_tag(self):return self.settings.embedding_model or 'local-char-ngram-v1'
+    @observed('embedding')
     def embed(self,texts: list[str],input_type: str="passage") -> list[list[float]]:
         s=self.settings
         if not s.embedding_key:return [local_vector(t) for t in texts]
@@ -68,6 +70,7 @@ class Provider:
                     result.append(vector)
         if len({len(v) for v in result})!=1:raise ValueError('向量维度不一致')
         return result
+    @observed('llm')
     def complete(self,system: str,payload: dict[str,Any]) -> dict[str,Any]:
         s=self.settings
         if not s.llm_key:raise RuntimeError('未配置真实模型')
@@ -76,7 +79,7 @@ class Provider:
         # 星火兼容接口无须强制 response_format/temperature；其余供应商保留 JSON mode。
         if not s.llm_model.startswith('spark-'):
             data['response_format']={'type':'json_object'}
-        with httpx.Client(timeout=30.0,follow_redirects=False,trust_env=False) as client:
+        with httpx.Client(timeout=httpx.Timeout(30.0,read=s.llm_timeout_seconds),follow_redirects=False,trust_env=False) as client:
             r=client.post(s.llm_url+'/chat/completions',headers={'Authorization':'Bearer '+s.llm_key},json=data)
             r.raise_for_status()
             content=r.json()['choices'][0]['message']['content']
@@ -162,7 +165,9 @@ class KnowledgeStore:
                         score=sum(a*b for a,b in zip(v,vector))/(math.sqrt(sum(x*x for x in v))*math.sqrt(sum(x*x for x in vector)) or 1)
                         if score>0.05:dense.append((i,score))
                 dense=sorted(dense,key=lambda x:-x[1])[:30]
-        except (httpx.HTTPError,ValueError,KeyError,TypeError):mode='BM25_DEGRADED'
+        except (httpx.HTTPError,ValueError,KeyError,TypeError) as error:
+            failure('knowledge.vector_fallback', error)
+            mode='BM25_DEGRADED'
         scores:dict[int,float]={}
         for ranking in (sparse,dense):
             for rank,(i,_) in enumerate(ranking,1):scores[i]=scores.get(i,0)+1/(60+rank)

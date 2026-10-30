@@ -69,3 +69,14 @@ class ProductIndex:
                            limit=limit,output_fields=[],consistency_level='Strong')
         ids=[str(hit['id']) for hit in hits[0] if hit.get('id')]
         return {'productIds':list(dict.fromkeys(ids))[:limit],'mode':'MILVUS'}
+
+    def delete(self,product_ids: list[str]) -> dict:
+        """删除 Java 从实时目录中确认不再公开的 ID，不接受客户端商品事实。"""
+        if not 1 <= len(product_ids) <= 100 or any(not isinstance(value, str) or not 1 <= len(value) <= 64 for value in product_ids):
+            raise ValueError('商品 ID 列表无效')
+        if not self.enabled:return {'deleted':0,'mode':'DISABLED'}
+        client = self._connect()
+        if not client.has_collection(collection_name=self.settings.product_collection):
+            return {'deleted':0,'mode':'EMPTY_INDEX'}
+        client.delete(collection_name=self.settings.product_collection, ids=list(dict.fromkeys(product_ids)))
+        return {'deleted':len(set(product_ids)),'mode':'MILVUS'}

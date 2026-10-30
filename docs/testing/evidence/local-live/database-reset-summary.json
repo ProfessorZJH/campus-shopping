@@ -1,0 +1,12 @@
+{
+  "database": "campus_shopping",
+  "userAuthorizedTableReset": true,
+  "backup": "var\\local-live\\campus_shopping_before_reset_20261029_205940.sql",
+  "backupBytes": 36021,
+  "executedSql": [
+    "campus-shopping-app/src/main/resources/schema.sql",
+    "campus-shopping-app/src/main/resources/data.sql"
+  ],
+  "otherDatabasesModified": false,
+  "tableCountDropped": 34
+}

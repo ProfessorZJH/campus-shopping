@@ -1,47 +1,76 @@
 package cn.bugstack.ai.domain.catalog.service.impl;
 
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import static cn.bugstack.ai.types.common.Checks.require;
+
+import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
-import cn.bugstack.ai.domain.catalog.model.entity.*;
-import cn.bugstack.ai.domain.catalog.model.valobj.*;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
+import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
+import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import static cn.bugstack.ai.types.common.Checks.require;
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.stereotype.Service;
 
-/** 售价、规格与发布规则，不越过仓储直接访问数据表。 */
+/**
+ * 售价、规格与发布规则，不越过仓储直接访问数据表。
+ */
 @Service
 public class CatalogServiceImpl implements ICatalogService {
+
     private final ICatalogRepository repository;
     private final IProductImageRepository images;
-    public CatalogServiceImpl(ICatalogRepository repository, IProductImageRepository images) {
+    private final ICatalogQueryRepository queries;
+
+    public CatalogServiceImpl(ICatalogRepository repository, ICatalogQueryRepository queries, IProductImageRepository images) {
         this.repository = repository;
+        this.queries = queries;
         this.images = images;
     }
-    /** AI 只通过公开商品词面召回候选；最终可售资格由实时 SKU 报价再次校验。 */
+
     public List<ProductAggregate> recall(List<String> terms, int limit) {
         require(terms != null && terms.size() <= 8 && limit >= 1 && limit <= 200, ResponseCode.ILLEGAL_PARAMETER);
-        for (String term : terms) require(term != null && term.length() >= 2 && term.length() <= 20 && term.matches("[\\p{L}\\p{N}_-]+"),
-            ResponseCode.ILLEGAL_PARAMETER);
-        return terms.isEmpty() ? search(null, "", null, true, 1, 30) : repository.recall(terms, limit);
+        for (String term : terms)
+            require(term != null && term.length() >= 2 && term.length() <= 20 && term.matches("[\\p{L}\\p{N}_-]+"), ResponseCode.ILLEGAL_PARAMETER);
+        return terms.isEmpty() ? search(null, "", null, true, 1, 30) : queries.recall(terms, limit);
     }
 
     public List<ProductAggregate> recallByIds(List<String> ids) {
-        require(ids != null && ids.size() <= 100 && ids.stream().allMatch(id -> id != null && id.length()> 0 && id.length() <= 64),
-            ResponseCode.ILLEGAL_PARAMETER);
-        return ids.isEmpty() ? List.of() : repository.publicByIds(ids.stream().distinct().toList());
+        require(
+            ids != null && ids.size() <= 100 && ids.stream().allMatch(id -> id != null && id.length() > 0 && id.length() <= 64),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
+        return ids.isEmpty() ? List.of() : queries.publicByIds(ids.stream().distinct().toList());
     }
 
     public ProductAggregate create(String merchant, String store, ProductCreateEntity c) {
         require(c != null && c.skus() != null && !c.skus().isEmpty(), ResponseCode.ILLEGAL_PARAMETER);
         validCategory(c.categoryCode());
-        List<ProductSkuEntity> skus = c.skus().stream().map(s -> new ProductSkuEntity(UUID.randomUUID().toString(), s.specKey(),
-            s.priceCent(), SkuStatusEnumVO.ACTIVE.name(), 0)).toList();
-        ProductAggregate p = new ProductAggregate(UUID.randomUUID().toString(), merchant, store, c.title(), c.description(),
-            c.categoryCode(), c.imageUrl(), ProductStatusEnumVO.DRAFT.name(), 0, skus);
+        List<ProductSkuEntity> skus = c
+            .skus()
+            .stream()
+            .map(s -> new ProductSkuEntity(UUID.randomUUID().toString(), s.specKey(), s.priceCent(), SkuStatusEnumVO.ACTIVE.getCode(), 0))
+            .toList();
+        ProductAggregate p = new ProductAggregate(
+            UUID.randomUUID().toString(),
+            merchant,
+            store,
+            c.title(),
+            c.description(),
+            c.categoryCode(),
+            c.imageUrl(),
+            ProductStatusEnumVO.DRAFT.getCode(),
+            0,
+            skus
+        );
         repository.insert(p);
         return p;
     }
@@ -61,7 +90,7 @@ public class CatalogServiceImpl implements ICatalogService {
 
     public ProductAggregate addSku(String merchant, String id, String spec, long price) {
         ProductAggregate p = owned(merchant, id);
-        p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(), spec, price, SkuStatusEnumVO.ACTIVE.name(), 0));
+        p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(), spec, price, SkuStatusEnumVO.ACTIVE.getCode(), 0));
         repository.save(p);
         return repository.find(id, false);
     }
@@ -96,45 +125,74 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public List<ProductAggregate> search(String merchant, String q, String category, boolean pub, int page, int size) {
-        return repository.search(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size);
+        return queries.search(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size);
     }
 
     private String checkedSort(String sort) {
-        String value = sort == null || sort.isBlank() ? "NEWEST" : sort;
-        require(Set.of("NEWEST", "PRICE_ASC", "STOCK_DESC").contains(value), ResponseCode.ILLEGAL_PARAMETER);
-        return value;
+        String value = sort == null || sort.isBlank() ? ProductSortEnumVO.NEWEST.getCode() : sort;
+        return ProductSortEnumVO.filter(value);
     }
 
-    public List<ProductAggregate> searchSorted(String merchant, String q, String category, boolean pub, int page, int size,
-        String sort) {
-        return repository.searchSorted(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size, checkedSort(sort));
+    public List<ProductAggregate> searchSorted(String merchant, String q, String category, boolean pub, int page, int size, String sort) {
+        return queries.searchSorted(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size, checkedSort(sort));
     }
 
-    public List<ProductAggregate> searchManagedSorted(String merchant, String q, String cat, String status, int page, int size,
-        String sort) {
-        return repository.searchManagedSorted(merchant, Checks.optional(q, 100), cat, status, Checks.offset(page, size), size,
-            checkedSort(sort));
+    public List<ProductAggregate> searchManagedSorted(String merchant, String q, String cat, String status, int page, int size, String sort) {
+        return queries.searchManagedSorted(
+            merchant,
+            Checks.optional(q, 100),
+            cat,
+            ProductStatusEnumVO.filter(status),
+            Checks.offset(page, size),
+            size,
+            checkedSort(sort)
+        );
     }
 
     public long count(String merchant, String q, String category, boolean pub) {
-        return repository.count(merchant, Checks.optional(q, 100), category, pub);
+        return queries.count(merchant, Checks.optional(q, 100), category, pub);
     }
 
     public List<ProductAggregate> searchManaged(String merchant, String q, String category, String status, int page, int size) {
-        return repository.searchManaged(merchant, Checks.optional(q, 100), category, status, Checks.offset(page, size), size);
+        return queries.searchManaged(merchant, Checks.optional(q, 100), category, ProductStatusEnumVO.filter(status), Checks.offset(page, size), size);
     }
 
     public long countManaged(String merchant, String q, String category, String status) {
-        return repository.countManaged(merchant, Checks.optional(q, 100), category, status);
+        return queries.countManaged(merchant, Checks.optional(q, 100), category, ProductStatusEnumVO.filter(status));
     }
-    /** 交易报价按 SKU 逐条重检商品发布态和 SKU 状态；lock=true 时要求调用方持有事务。 */
-    public List<SkuOfferVO> offers(List<String> ids, boolean sale, boolean lock) {
-        require(ids != null && ids.size() <= 1000, ResponseCode.ILLEGAL_PARAMETER);
+
+    @Override
+    public List<SkuOfferVO> offers(List<String> ids) {
+        return loadOffers(ids, false, false);
+    }
+
+    @Override
+    public List<SkuOfferVO> saleOffers(List<String> ids) {
+        return loadOffers(ids, true, false);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public List<SkuOfferVO> saleOffersForUpdate(List<String> ids) {
+        return loadOffers(ids, true, true);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public List<SkuOfferVO> offersForUpdate(List<String> ids) {
+        return loadOffers(ids, false, true);
+    }
+
+    private List<SkuOfferVO> loadOffers(List<String> ids, boolean sale, boolean lock) {
+        require(
+            ids != null && ids.size() <= 1000 && ids.stream().allMatch(id -> id != null && !id.isBlank() && id.length() <= 64),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
         List<String> unique = ids.stream().distinct().sorted().toList();
         List<SkuOfferVO> offers = repository.offers(unique, lock);
         require(offers.size() == unique.size(), ResponseCode.PRODUCT_UNAVAILABLE);
-        if (sale) for (SkuOfferVO o : offers) require(o.productStatusEnum() == ProductStatusEnumVO.PUBLISHED && o.skuStatusEnum() == SkuStatusEnumVO
-            .ACTIVE, ResponseCode.PRODUCT_UNAVAILABLE);
+        if (sale) for (SkuOfferVO o : offers)
+            require(o.productStatusEnum() == ProductStatusEnumVO.PUBLISHED && o.skuStatusEnum() == SkuStatusEnumVO.ACTIVE, ResponseCode.PRODUCT_UNAVAILABLE);
         return offers;
     }
 
@@ -143,7 +201,13 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     private void validCategory(String code) {
-        require(repository.categories().stream().anyMatch(c -> c.active() && c.code().equals(code)), ResponseCode.ILLEGAL_PARAMETER);
+        require(
+            repository
+                .categories()
+                .stream()
+                .anyMatch(c -> c.active() && c.code().equals(code)),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
     }
 
     public void category(String code, String name, boolean active) {
@@ -152,7 +216,7 @@ public class CatalogServiceImpl implements ICatalogService {
         repository.category(c, Checks.text(name, "类目名称", 50), active);
     }
 
-    public String storeImage(byte[]data) {
+    public String storeImage(byte[] data) {
         return images.storeImage(data);
     }
 }

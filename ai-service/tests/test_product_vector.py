@@ -29,6 +29,8 @@ class FakeMilvus:
         return [{k:v for k,v in row.items() if k in output_fields} for row in self.collections[collection_name].values()]
     def upsert(self,collection_name,data):
         self.collections[collection_name].update({row['id']:row for row in data})
+    def delete(self,collection_name,ids):
+        for id in ids:self.collections[collection_name].pop(id,None)
     def search(self,collection_name,data,filter,limit,output_fields,consistency_level):
         self.searched.append((filter,consistency_level))
         q=data[0]
@@ -132,3 +134,20 @@ def test_fastapi_product_index_and_search_with_fake_milvus(tmp_path):
         assert client.post('/v1/products/index',json={'products':ITEMS}).json()['unchanged']==2
         search=client.post('/v1/products/search',json={'query':'我想喝无糖茶饮','limit':2})
         assert search.status_code==200 and search.json()['productIds'][0]=='old-101'
+
+
+def test_unpublished_product_is_removed_and_delete_retry_is_safe(tmp_path):
+    s=settings(tmp_path,milvus_uri='http://milvus:19530',milvus_token='test:fake',embedding_url='https://integrate.api.nvidia.com/v1',embedding_key='test',embedding_model='nvidia/nemotron-3.5-embed-1b')
+    app=create_app(s)
+    app.state.products._client=FakeMilvus()
+    app.state.products.provider=FakeEmbedding()
+    with TestClient(app,headers={'X-Service-Key':KEY}) as client:
+        assert client.post('/v1/products/index',json={'products':ITEMS}).status_code==200
+        for _ in range(2):
+            assert client.post('/v1/products/delete',json={'productIds':['old-101']}).status_code==200
+        result=client.post('/v1/products/search',json={'query':'无糖茶饮','limit':2}).json()
+        assert 'old-101' not in result['productIds'] and 'new-001' in result['productIds']
+        assert client.post('/v1/products/delete',json={'productIds':['x'*65]}).status_code==400
+        assert client.post('/v1/products/delete',json={'productIds':[]}).status_code==422
+    with TestClient(create_app(settings(tmp_path))) as client:
+        assert client.post('/v1/products/delete',json={'productIds':['old-101']}).status_code==401

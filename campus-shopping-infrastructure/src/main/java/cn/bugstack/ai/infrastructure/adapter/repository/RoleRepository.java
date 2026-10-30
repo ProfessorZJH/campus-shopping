@@ -1,65 +1,74 @@
 package cn.bugstack.ai.infrastructure.adapter.repository;
 
 import cn.bugstack.ai.domain.identity.adapter.repository.IRoleRepository;
-import cn.bugstack.ai.domain.identity.model.valobj.MerchantRoleVO;
+import cn.bugstack.ai.domain.identity.model.valobj.*;
 import cn.bugstack.ai.infrastructure.dao.IAccessDao;
+import cn.bugstack.ai.infrastructure.dao.po.*;
+import cn.bugstack.ai.types.enums.ResponseCode;
+import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
+import java.util.*;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Set;
-
-/** 角色与授权关系的 MyBatis 映射；不保存或读取用户密码。 */
 @Repository
 public class RoleRepository implements IRoleRepository {
+
     @Resource
-    private IAccessDao dao;
+    private IAccessDao accsessDao;
 
-    @Override
     public List<MerchantRoleVO> customRoles(String merchantId) {
-        return dao.roles(merchantId).stream()
-                .map(role -> new MerchantRoleVO(role.getRoleCode(), role.getName(),
-                        dao.rolePermissions(merchantId, role.getRoleCode()), false)).toList();
+        return accsessDao
+            .roles(merchantId)
+            .stream()
+            .map(r -> new MerchantRoleVO(r.getRoleCode(), r.getName(), accsessDao.rolePermissions(merchantId, r.getRoleCode()), false))
+            .toList();
     }
 
-    @Override
     public MerchantRoleVO customRole(String merchantId, String code, boolean lock) {
-        var role = dao.role(merchantId, code, lock);
-        return role == null ? null : new MerchantRoleVO(
-                code, role.getName(), dao.rolePermissions(merchantId, code), false);
+        var r = accsessDao.role(merchantId, code, lock);
+        return r == null ? null : new MerchantRoleVO(code, r.getName(), accsessDao.rolePermissions(merchantId, code), false);
     }
 
-    @Override
     public Set<String> customPermissions(String merchantId, String code) {
-        return dao.rolePermissions(merchantId, code);
+        return accsessDao.rolePermissions(merchantId, code);
     }
 
-    @Override
-    public void createRole(String merchantId, String code, String name, Set<String> permissions) {
-        dao.createRole(merchantId, code, name);
-        dao.insertPermissions(merchantId, code, permissions);
+    public void createRole(String mid, String code, String name, Set<String> permissions) {
+        try {
+            accsessDao.createRole(mid, code, name);
+        } catch (DuplicateKeyException e) {
+            throw roleConflict(e);
+        }
+        accsessDao.insertPermissions(mid, code, permissions);
     }
 
-    @Override
-    public void updateRole(String merchantId, String code, String name, Set<String> permissions) {
-        dao.updateRole(merchantId, code, name);
-        dao.deletePermissions(merchantId, code);
-        dao.insertPermissions(merchantId, code, permissions);
+    public void updateRole(String mid, String code, String name, Set<String> permissions) {
+        try {
+            accsessDao.updateRole(mid, code, name);
+        } catch (DuplicateKeyException e) {
+            throw roleConflict(e);
+        }
+        accsessDao.deletePermissions(mid, code);
+        accsessDao.insertPermissions(mid, code, permissions);
     }
 
-    @Override
-    public void deleteRole(String merchantId, String code) {
-        dao.deletePermissions(merchantId, code);
-        dao.deleteRole(merchantId, code);
+    private RuntimeException roleConflict(DuplicateKeyException error) {
+        String detail = error.getMostSpecificCause().getMessage();
+        if (detail != null && detail.contains("uk_merchant_role_name")) return new AppException(ResponseCode.MERCHANT_ROLE_NAME_EXISTS, error);
+        return error;
     }
 
-    @Override
-    public int countRoleMembers(String merchantId, String code) {
-        return dao.countRoleMembers(merchantId, code);
+    public void deleteRole(String mid, String code) {
+        accsessDao.deletePermissions(mid, code);
+        accsessDao.deleteRole(mid, code);
     }
 
-    @Override
-    public void assignRole(String merchantId, String userId, String code) {
-        dao.assignRole(merchantId, userId, code);
+    public int countRoleMembers(String mid, String code) {
+        return accsessDao.countRoleMembers(mid, code);
+    }
+
+    public void assignRole(String mid, String uid, String code) {
+        accsessDao.assignRole(mid, uid, code);
     }
 }

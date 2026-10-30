@@ -1,8 +1,30 @@
 # 校园智能导购及商品交易平台 · R1 交付候选版
 
-> **当前 CI 验收基线（2026-10-29）**：`main` 于 PR #5 合并后，GitHub Actions [#40888061664](https://github.com/ProfessorZJH/campus-shopping/actions/runs/40888061664) 完整成功。Java/Maven + MySQL 集成、Python 本地测试、真实 Spring/MySQL/FastAPI HTTP 和 Chromium 浏览器验收均已执行；**不等于生产部署或真实 NVIDIA/讯飞/Milvus 联通验收**。
->
-> **历史记录提示**：以下 10 月 28 日至 29 日早期小节中“未运行 Maven/未联调”的说明是当时的验收状态，已被上述 CI 证据更新，不代表当前 `main` 没有跑通本地全栈。外部 AI 与生产上线尚待独立验收。Java 代码风格及知识版本发布规则治理见 [PR4 规范](docs/development/JAVA-STYLE.md)。
+> **本地真实 Spring/MySQL、真实 AI 导购与浏览器交易闭环已完成列明范围的验收。** Docker、Qdrant、生产部署与性能验收不在本次通过范围，具体证据见下文。
+
+## 当前工程化流程（2026-10-29）
+
+- JDK17 / Node22.16.0 / Python3.11；使用仓库 Maven Wrapper3.9.9、npm lock 和带哈希的 Python lock。`mvnw clean verify` 从 `frontend/src` 重新编译 UI，禁止手改生成静态副本。前端改动后运行 `python scripts/build-ui-bundle.py`，CI 用 `--check` 全量比对。
+- 新增迁移后运行 `python scripts/schema_contract.py` 并审查生成文件。已有库先备份，在维护窗口显式运行 `scripts/migrate-database.py`；应用默认只读核对版本/校验和，不执行升级 DDL。此前已手工执行 SQL 也须登记迁移历史。
+- `npm run format:check --prefix frontend` 检查 Java/前端格式；Maven verify 生成 `campus-shopping-app/target/release-manifest.json`，不再维护根目录静态清单。日志不得包含凭据、提示词或下游异常正文。
+- 本轮工程化验证使用全新临时 MySQL/构建目录，不连接既有业务库或真实 AI。实际证据和 Docker NOT_RUN 边界见 [ENGINEERING-10](docs/testing/ENGINEERING-10.md)。以下历史验收记录保留当时范围，不能混记成本轮通过。
+
+## 本地真实导购与页面验收（2026-10-29）
+
+用户明确授权后，备份并只重建本机 `campus_shopping`，执行 schema/data 及最新增量 SQL；未配置隔离测试库。真实 HTTP 173 项、严格 AI 事务 19 项、浏览器商品 5 项、交易闭环 12 项、路由/权限/移动端 40 项（含 28 条路由）、基础浏览器 8 项、只读 MySQL 核对 8 项通过。最新 Maven `verify` 为 63 通过、29 跳过；Python 40 通过。原始模型超时、验收脚本误判与复测均保留。
+
+- [实际范围、证据与复现](docs/testing/LOCAL-LIVE-20261029.md) · [数据库结果](docs/testing/evidence/local-live/database-readback.json) · [浏览器证据](docs/testing/evidence/local-live/browser/)
+- Java 周期同步已将明确标记的验收商品写入现有 Milvus 商品集合；仅本地验收启动器显式允许用户指定的 HTTP 主机并绑定回环，正常应用仍拒绝公网 HTTP，默认同步配置不变。凭据、备份和验收账号仅在忽略目录。
+- 本轮复测沿用重建后的数据，新增交易会带来实际库存消耗；报告保留原始失败。不要将本轮跳过的 MySQL JUnit 写为通过。
+
+以下阶段记录保留当时的验证边界；后续本地端到端结果以上节报告为准。
+
+## 前序真实 AI 子系统验收（2026-10-29）
+
+NVIDIA 2048 维 Embedding、Milvus 2.5.4 和讯飞 `spark-x2.6` 已真实调用；121 件合成商品索引、语义召回、幂等/增量同步、真实 Uvicorn → 讯飞推荐及预算/库存/知识白名单等复测后 21 项有效检查通过。Maven `verify` 成功：48 通过、28 MySQL 测试跳过；Python 单测 40 通过。原始失败和复测均保留，不能误写为全栈通过。
+
+- [真实验收范围、证据与复现](docs/testing/AI-LIVE-20261029.md) · [汇总](docs/testing/evidence/ai-live-summary.json) · [验收脚本](scripts/smoke-ai-live.py)
+- 本轮在向用户说明 TLS 不可用后，按其指定的现有 HTTP Milvus 连接仅对验收脚本显式例外；报告记录 `encrypted=false`。正常应用仍拒绝公网 HTTP，正式同步默认关闭；此例外不视为后续部署授权。凭据仅在 Git 忽略的本地 `.env`。正式商品集合未写入，验收临时集合已清理。
 
 在已有小傅哥 DDD 工程上持续实现，保留 Java17 / Spring Boot3.4.3 / MyBatis3.0.4；因真实跨域事务增加 Case 模块。前端为同源 Vue3，AI 为独立 Python FastAPI。
 
@@ -92,7 +114,7 @@ python scripts/smoke-full.py
 - `cd ai-service && python -m pytest -q`：真实Python应用/SQLite检索；外部LLM故障等使用标注清楚的测试替身。
 - `python scripts/smoke-ai-local.py`：启动真实Uvicorn并通过本机TCP验证共享密钥、索引、白名单和删除。
 - `python frontend/tests/contract_ui.py`：真实Vue/Chromium，**后端是接口替身**，不是Java数据库联调。
-- `mvn clean verify`、`scripts/smoke-full.py`、`frontend/tests/live_ui.py`：真实全栈验收入口，**本次未执行成功**，需要依赖和MySQL环境。
+- `mvn clean verify`：SDD-11 在全新临时 MySQL 中 116 通过、0 失败、0 跳过，随后真实 HTTP 173 项、严格响应 117 份与浏览器 8 项通过，AI 使用本地检索；详情见 [本轮报告](docs/testing/DDD-REFACTOR-20261029.md)。此前本机真实模型验收的 63 通过、29 跳过及 `live_shopping.py` 等结果保留在上方历史报告，不能混记成本轮通过或将有限用例等同穷尽验证。
 
 ## 工程目录
 
@@ -114,3 +136,33 @@ python scripts/smoke-full.py
 - Python `Provider.embed` 对 NVIDIA 使用 `input_type=passage/query`，Milvus 不可达降级词面，未索引不得假装语义命中。
 - 商品索引同步默认关闭，只在安全私有 Milvus 连接已设置后开启；公网明文 HTTP 根密码一律拒绝。各项凭据仅存私有 .env / secrets。
 - 精确设计与尚未验证项见 docs/specs/SDD-AI-HYBRID-08.md。
+
+## SDD-11：枚举、异常与领域能力（2026-10-29）
+
+- 状态与固定权限字典归本领域 EnumVO；聚合内部使用枚举，HTTP/数据库字符串值兼容；不得将未知状态放行到仓储。
+- Trading 服务按购物车/订单/售后，ShoppingAI 按知识/会话/提案拆分；调用方依赖窄能力。跨域事务、锁顺序和实时事实复验继续由 Case 保证。
+- AfterSaleAggregate、KnowledgePublicationAggregate、ProposalAggregate 维护状态规则；RecommendationPolicy 维护融合、配额和建议约束；不得重新放回 Controller 或远程模型。
+- 响应字段必须同步 scripts/api_response_rules.py；禁止恢复所有响应字段可缺失/可空。业务异常仍由 Controller 内捕获，ApiResponses 仅构造信封，ControllerFailures/FailureDiagnostics 记录安全诊断。
+- Catalog/Inventory 跨域读取只允许 QueryRepository/QueryDao 白名单；禁止查询适配器写入/锁定或跨域写表。scripts/verify-release.py 已调用 verify-ddd-boundaries.py。
+- 本轮全新隔离 MySQL/Maven 116 项零失败零跳过、真实 HTTP 173 项、严格响应 117 份、真实浏览器 8 项通过；AI 本轮为本地检索，远程模型/Milvus、Docker 与性能未重新验收。详情见 docs/testing/DDD-REFACTOR-20261029.md。
+
+## 远端与本地整合（2026-10-29）
+
+- 角色治理归 IRoleService/IRoleRepository，图片文件归 IProductImageRepository；交易与 AI 的各窄仓储有独立适配器，组合仓储接口已移除。
+- 保留 SDD-11 的查询能力、批量读模型与严格契约；知识发布聚合调用 KnowledgePublicationPolicy，仓储继续在根行锁下装载并保存。
+- 商品索引写入必须校验 MILVUS 模式与完整数量；删除拒绝 DISABLED，允许 EMPTY_INDEX/幂等删除。同步失败不得更新成功时间。
+- Java 自动格式化为 4 空格/160 列，前端维持单独规则。
+- 本次隔离 clean verify 140 通过、0 跳过；HTTP 173、严格响应 117、真实浏览器 8、Python 42 通过。Docker、远程模型/Milvus与性能本次未验收。见 docs/testing/INTEGRATION-20261029.md。
+
+## 代码职责与并发修复（2026-10-30）
+
+- Catalog/Cart Controller 只依赖 Case；跨域查询返回完整读模型，商户批量查询，必填响应字段在 ApiViews 一次组装。商品新增响应事实在事务内完成。
+- AI 长调用入口使用 NEVER；会话按完整 ID 领取数据库时间裁决的 10 分钟租约，完成和失败释放均校验 token。消息、提案与租约完成由短事务原子提交；提案确认保持独立事务实时复验。
+- 知识索引完成必须匹配当前 index_attempt；知识权限列表不加载正文，仅按实际引用批量查询。权限授予规则统一归 MerchantPermissionEnumVO。
+- 新增 V20261030_01，已有库须备份并显式迁移；旧进程锁版本与新版不能混跑。此次只操作临时测试库，没有升级业务库或替换运行服务。
+- Maven Wrapper 3.9.9 隔离 clean verify 175 通过、0 跳过；HTTP 173、严格响应 117、真实浏览器 8、Python 42 通过。Docker NOT_RUN，远程模型/Milvus、性能与生产集群本次未验收。详见 [本轮报告](docs/testing/CODE-QUALITY-20261030.md)。
+
+## CI 跨平台构建收尾（2026-10-30）
+
+- UI 文本输入摘要与输出统一 LF，二进制保持原字节，路径使用规范相对路径排序。新增 `node --test frontend/tests/build-reproducibility.test.mjs` 已接入 CI，仍须运行 UI 快照完整比对。
+- `a3fa07c` 远端生成检查失败，已从干净 Git 检出复现并修复；同轮独立 Docker/Compose 交易链路通过。后续远端结果与本地验收分开记录，见 [CI 收尾报告](docs/testing/CI-FOLLOWUP-20261030.md)。

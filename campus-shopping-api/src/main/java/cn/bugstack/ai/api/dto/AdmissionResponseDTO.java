@@ -1,10 +1,16 @@
 package cn.bugstack.ai.api.dto;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 仅本人和平台审核人员可查看的申请资料。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class AdmissionResponseDTO {
+
     private String applicationId;
     private String merchantName;
     private String category;

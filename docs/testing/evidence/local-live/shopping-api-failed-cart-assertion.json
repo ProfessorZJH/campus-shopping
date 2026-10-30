@@ -1,0 +1,118 @@
+{
+  "testType": "REAL_JAVA_MYSQL_AI",
+  "apiMockUsed": false,
+  "database": "campus_shopping",
+  "merchantId": "b8902e9d-080b-444b-9d16-ab76b072a4e4",
+  "status": "FAILED",
+  "checks": [
+    {
+      "name": "java_scheduled_sync_real_product_to_milvus",
+      "status": "PASS",
+      "productId": "959db025-2039-4886-bab1-e42abab7d500"
+    },
+    {
+      "name": "remote_llm_and_java_proposal",
+      "status": "PASS",
+      "mode": "LLM",
+      "retrievalMode": "REMOTE_EMBEDDING",
+      "proposalId": "eee769ee-d9d9-4d8e-a632-f6ae7e29caf9"
+    },
+    {
+      "name": "trusted_catalog_quantity_and_budget",
+      "status": "PASS",
+      "proposal": {
+        "id": "eee769ee-d9d9-4d8e-a632-f6ae7e29caf9",
+        "status": "PENDING",
+        "items": [
+          {
+            "skuId": "7035a07c-15ba-4f0c-9996-1d5ab0be60d1",
+            "merchantId": "b8902e9d-080b-444b-9d16-ab76b072a4e4",
+            "title": "真实联调无糖乌龙茶",
+            "specKey": "500ml瓶装",
+            "imageUrl": "/media/dbc6fc50-d97b-49cf-9e45-1af6db0b8a74.png",
+            "priceCent": 600,
+            "quoteVersion": 1,
+            "quantity": 2
+          }
+        ],
+        "expiresAt": "2026-10-29T13:29:34.140031200Z"
+      }
+    },
+    {
+      "name": "java_proposal_total_within_budget",
+      "status": "PASS"
+    },
+    {
+      "name": "java_knowledge_acl_no_private_document",
+      "status": "PASS",
+      "citations": [
+        {
+          "documentId": "9b992a57-0625-413b-bbb5-072d12ab4ebb",
+          "title": "真实联调茶饮自提规则",
+          "snippet": "真实联调校园茶饮店的无糖乌龙茶每天09:00到21:00在图书馆一层真实验收柜台自提，付款后等待商户备货。"
+        }
+      ]
+    },
+    {
+      "name": "other_user_cannot_confirm_proposal",
+      "status": "PASS"
+    },
+    {
+      "name": "confirmed_proposal_persists_cart_quantity",
+      "status": "PASS",
+      "beforeQuantity": 4,
+      "afterQuantity": 6
+    },
+    {
+      "name": "repeat_confirmation_idempotent",
+      "status": "PASS"
+    },
+    {
+      "name": "remote_llm_and_java_proposal",
+      "status": "PASS",
+      "mode": "LLM",
+      "retrievalMode": "REMOTE_EMBEDDING",
+      "proposalId": "49b27db5-f97d-4830-8b8a-77a8e6c12b48"
+    },
+    {
+      "name": "trusted_catalog_quantity_and_budget",
+      "status": "PASS",
+      "proposal": {
+        "id": "49b27db5-f97d-4830-8b8a-77a8e6c12b48",
+        "status": "PENDING",
+        "items": [
+          {
+            "skuId": "7035a07c-15ba-4f0c-9996-1d5ab0be60d1",
+            "merchantId": "b8902e9d-080b-444b-9d16-ab76b072a4e4",
+            "title": "真实联调无糖乌龙茶",
+            "specKey": "500ml瓶装",
+            "imageUrl": "/media/dbc6fc50-d97b-49cf-9e45-1af6db0b8a74.png",
+            "priceCent": 600,
+            "quoteVersion": 1,
+            "quantity": 2
+          }
+        ],
+        "expiresAt": "2026-10-29T13:30:40.254655500Z"
+      }
+    },
+    {
+      "name": "java_proposal_total_within_budget",
+      "status": "PASS"
+    },
+    {
+      "name": "java_knowledge_acl_no_private_document",
+      "status": "PASS",
+      "citations": [
+        {
+          "documentId": "9b992a57-0625-413b-bbb5-072d12ab4ebb",
+          "title": "真实联调茶饮自提规则",
+          "snippet": "真实联调校园茶饮店的无糖乌龙茶每天09:00到21:00在图书馆一层真实验收柜台自提，付款后等待商户备货。"
+        }
+      ]
+    },
+    {
+      "name": "price_changed_rejects_without_cart_mutation",
+      "status": "FAILED"
+    }
+  ]
+}

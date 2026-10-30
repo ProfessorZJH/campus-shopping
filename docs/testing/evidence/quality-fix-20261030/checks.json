@@ -1,0 +1,50 @@
+{
+  "recordedAt": "2026-10-29T16:35:08.459372+00:00",
+  "scope": "Observed checks for this change; external services were not used",
+  "checks": [
+    {
+      "command": "python -X utf8 -B -m pytest -q (cwd ai-service)",
+      "passed": 42,
+      "warnings": 1,
+      "warning": "PendingDeprecationWarning: Please use import python_multipart instead."
+    },
+    {
+      "command": "npm run format:check --prefix frontend",
+      "status": "PASS"
+    },
+    {
+      "command": "python scripts/build-ui-bundle.py --check",
+      "status": "PASS"
+    },
+    {
+      "command": "python scripts/schema_contract.py --check",
+      "status": "PASS"
+    },
+    {
+      "command": "python scripts/verify-java-readability.py",
+      "status": "PASS",
+      "guardedFiles": 11
+    },
+    {
+      "command": "python scripts/verify-sdd-model.py",
+      "status": "PASS",
+      "javaChecks": 8,
+      "sqlMappingChecks": 9
+    },
+    {
+      "command": "python scripts/verify-fix-regressions.py",
+      "status": "PASS"
+    }
+  ],
+  "toolchain": {
+    "maven": "3.9.9 (repository wrapper)",
+    "java": "17.0.12",
+    "mysql": "8.0.31"
+  },
+  "notClaimed": [
+    "Docker delivery images",
+    "remote LLM or Milvus",
+    "performance",
+    "production cluster or deployment"
+  ]
+}

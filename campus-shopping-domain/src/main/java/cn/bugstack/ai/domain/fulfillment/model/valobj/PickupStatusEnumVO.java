@@ -1,19 +1,34 @@
 package cn.bugstack.ai.domain.fulfillment.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** 自提状态机，禁止用原始字符串绕开单次核销规则。 */
+/** 自提任务生命周期；code 保持已有数据库和 HTTP 协议值。 */
 public enum PickupStatusEnumVO {
-    WAIT_PREP, PREPARING, READY, COMPLETED, CANCELED;
+    WAIT_PREP("待备货"),
+    PREPARING("备货中"),
+    READY("待自提"),
+    COMPLETED("已核销"),
+    CANCELED("已取消");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    PickupStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static PickupStatusEnumVO fromCode(String code) {
-        for (PickupStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.ORDER_STATE_INVALID);
+        return EnumValues.stored(PickupStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(PickupStatusEnumVO.class, code);
     }
 }

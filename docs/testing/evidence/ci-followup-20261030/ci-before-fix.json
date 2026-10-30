@@ -1,0 +1,159 @@
+{
+  "head": "a3fa07c55147534739a29bbf35509aca9642b51d",
+  "run": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/40914299566",
+  "jobs": [
+    {
+      "name": "Maven / MySQL / FastAPI / Browser E2E",
+      "conclusion": "failure",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Require full project checkout",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-java@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-python@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-node@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install test dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Formatting / generated UI / schema drift checks",
+          "conclusion": "failure"
+        },
+        {
+          "name": "API / SDD / source safety checks",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Start isolated MySQL for JUnit",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Real fresh / upgrade / replay / checksum migration checks",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Real Maven build + MySQL tests",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Java domain / HTTP / Python AI tests",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Chromium contract tests (mocked backend)",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Start independent real MySQL / Spring / FastAPI",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Real cross-service HTTP business E2E",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Real Spring frontend browser E2E",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Record this build and its acceptance evidence",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Upload reports and failure diagnostics",
+          "conclusion": "success"
+        },
+        {
+          "name": "Stop isolated services",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-node@v4",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/setup-python@v5",
+          "conclusion": "skipped"
+        },
+        {
+          "name": "Post Run actions/setup-java@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "Actual delivery images / isolated Compose transaction chain",
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Set up job",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Run actions/setup-python@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Install locked verification dependencies",
+          "conclusion": "success"
+        },
+        {
+          "name": "Build and verify delivery images",
+          "conclusion": "success"
+        },
+        {
+          "name": "Upload image acceptance evidence",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/setup-python@v5",
+          "conclusion": "success"
+        },
+        {
+          "name": "Post Run actions/checkout@v4",
+          "conclusion": "success"
+        },
+        {
+          "name": "Complete job",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "Optional live NVIDIA / XFYUN / Milvus smoke",
+      "conclusion": "skipped",
+      "steps": []
+    }
+  ]
+}

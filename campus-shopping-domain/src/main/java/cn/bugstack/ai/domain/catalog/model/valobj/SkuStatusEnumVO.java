@@ -1,19 +1,31 @@
 package cn.bugstack.ai.domain.catalog.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** SKU 销售状态；商品上架不代表所有 SKU 都可售。 */
+/** 规格销售状态；code 保持已有数据库和 HTTP 协议值。 */
 public enum SkuStatusEnumVO {
-    ACTIVE, INACTIVE;
+    ACTIVE("可售"),
+    INACTIVE("停用");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    SkuStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static SkuStatusEnumVO fromCode(String code) {
-        for (SkuStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.PRODUCT_UNAVAILABLE);
+        return EnumValues.stored(SkuStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(SkuStatusEnumVO.class, code);
     }
 }

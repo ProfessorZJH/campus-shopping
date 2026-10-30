@@ -1,69 +1,111 @@
 package cn.bugstack.ai.trigger.job;
 
-import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProductIndexVO;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.HashSet;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
+import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
-/**
- * 仅同步公开可售商品的向量索引，不以向量库作为价格、库存或权限真值。
- * 下游故障不阻塞订单作业，下次定时调度重试；日志不能包含商品正文、密钥或下游异常消息。
- */
+/** 周期核对所有商品（含下架商品），实时复核公开状态后增量写入或删除索引。 */
+@Slf4j
 @Component
 @ConditionalOnProperty(name = "campus.ai.product-sync.enabled", havingValue = "true")
 public class ProductVectorSyncJob {
-    private static final Logger log = LoggerFactory.getLogger(ProductVectorSyncJob.class);
+
+    private volatile java.time.Instant lastSuccess;
+    private volatile java.time.Instant lastFailure;
+
+    public java.time.Instant lastSuccess() {
+        return lastSuccess;
+    }
+
+    public java.time.Instant lastFailure() {
+        return lastFailure;
+    }
+
     private final ICatalogService catalog;
     private final IAiEnginePort ai;
+    private final AtomicLong failures = new AtomicLong();
 
     public ProductVectorSyncJob(ICatalogService catalog, IAiEnginePort ai) {
         this.catalog = catalog;
         this.ai = ai;
     }
 
-    @Scheduled(
-            initialDelayString = "${campus.ai.product-sync.initial-delay-ms:60000}",
-            fixedDelayString = "${campus.ai.product-sync.period-ms:600000}")
+    @Scheduled(initialDelayString = "${campus.ai.product-sync.initial-delay-ms:60000}", fixedDelayString = "${campus.ai.product-sync.period-ms:600000}")
     public void refresh() {
+        long started = System.nanoTime();
+        String previous = MDC.get("requestId");
+        MDC.put("requestId", UUID.randomUUID().toString());
         int scanned = 0;
-        int submitted = 0;
         try {
             for (int page = 1; page <= 1000; page++) {
-                var products = catalog.search(null, "", null, true, page, 40);
-                scanned += products.size();
-                List<ProductIndexVO> batch = products.stream()
-                        .filter(p -> p.getSkus().stream()
-                                .anyMatch(s -> s.statusEnum() == SkuStatusEnumVO.ACTIVE))
-                        .map(p -> new ProductIndexVO(
-                                p.getId(), p.getMerchantId(), p.getTitle(), p.getDescription(),
-                                p.getCategoryCode(), p.getSkus().stream()
-                                        .filter(s -> s.statusEnum() == SkuStatusEnumVO.ACTIVE)
-                                        .map(s -> s.specKey()).toList()))
-                        .toList();
-
-                // 返回 DISABLED、数量不符或下游异常都由 Port 报错；不得假装已写入。
-                if (!batch.isEmpty()) {
-                    ai.indexProducts(batch);
-                    submitted += batch.size();
-                }
-                if (products.size() < 40) {
-                    log.info("商品向量同步完成：扫描 {} 件，成功提交 {} 件", scanned, submitted);
+                // 当前商品业务只做上下架，不物理删除目录行；全目录扫描也覆盖失效索引。
+                var all = catalog.search(null, "", null, false, page, 40);
+                var ids = all
+                    .stream()
+                    .map(product -> product.getId())
+                    .toList();
+                var active = catalog.recallByIds(ids);
+                var liveIds = new HashSet<>(
+                    active
+                        .stream()
+                        .map(product -> product.getId())
+                        .toList()
+                );
+                var stale = ids
+                    .stream()
+                    .filter(id -> !liveIds.contains(id))
+                    .toList();
+                var batch = active
+                    .stream()
+                    .map(product ->
+                        new ProductIndexVO(
+                            product.getId(),
+                            product.getMerchantId(),
+                            product.getTitle(),
+                            product.getDescription(),
+                            product.getCategoryCode(),
+                            product
+                                .getSkus()
+                                .stream()
+                                .filter(sku -> "ACTIVE".equals(sku.status()))
+                                .map(sku -> sku.specKey())
+                                .toList()
+                        )
+                    )
+                    .toList();
+                if (!batch.isEmpty()) ai.indexProducts(batch);
+                if (!stale.isEmpty()) ai.deleteProducts(stale);
+                scanned += all.size();
+                if (all.size() < 40) {
+                    lastSuccess = java.time.Instant.now();
+                    lastFailure = null;
+                    log.info("product_vector_sync_completed scanned={} duration_ms={}", scanned, (System.nanoTime() - started) / 1_000_000);
                     return;
                 }
             }
-            log.warn("商品向量扫描达到页数上限，可能未覆盖全部商品：已扫描 {} 件，已提交 {} 件",
-                    scanned, submitted);
-        } catch (RuntimeException e) {
-            // 不输出 e.getMessage() 或堆栈：下游异常可能包含凭据、HTTP 请求体等敏感内容。
-            log.warn("商品向量同步失败，将在下一周期重试：已扫描 {} 件，已提交 {} 件，异常类型 {}",
-                    scanned, submitted, e.getClass().getSimpleName());
+            throw new IllegalStateException("Product sync scan capacity exceeded");
+        } catch (RuntimeException error) {
+            lastFailure = java.time.Instant.now();
+            // 不打印下游异常正文，避免 URL、密钥或商品内容进入日志。
+            log.error(
+                "product_vector_sync_failed scanned={} diagnostic={} failure_total={} duration_ms={} last_success={}",
+                scanned,
+                cn.bugstack.ai.types.common.FailureDiagnostics.describe(error),
+                failures.incrementAndGet(),
+                (System.nanoTime() - started) / 1_000_000,
+                lastSuccess
+            );
+        } finally {
+            if (previous == null) MDC.remove("requestId");
+            else MDC.put("requestId", previous);
         }
     }
 }

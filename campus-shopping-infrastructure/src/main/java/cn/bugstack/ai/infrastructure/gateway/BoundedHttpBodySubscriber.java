@@ -11,6 +11,7 @@ import java.util.concurrent.Flow;
 
 /** HTTP 响应体硬上限；超过上限立即取消订阅，避免先完整接收再检查大小。 */
 public final class BoundedHttpBodySubscriber implements HttpResponse.BodySubscriber<byte[]> {
+
     private final int limit;
     private final ByteArrayOutputStream output = new ByteArrayOutputStream();
     private final CompletableFuture<byte[]> result = new CompletableFuture<>();
@@ -21,14 +22,19 @@ public final class BoundedHttpBodySubscriber implements HttpResponse.BodySubscri
         this.limit = limit;
     }
 
-    @Override public CompletionStage<byte[]> getBody() { return result; }
+    @Override
+    public CompletionStage<byte[]> getBody() {
+        return result;
+    }
 
-    @Override public void onSubscribe(Flow.Subscription subscription) {
+    @Override
+    public void onSubscribe(Flow.Subscription subscription) {
         this.subscription = subscription;
         subscription.request(Long.MAX_VALUE);
     }
 
-    @Override public void onNext(List<ByteBuffer> buffers) {
+    @Override
+    public void onNext(List<ByteBuffer> buffers) {
         if (result.isDone()) return;
         for (ByteBuffer buffer : buffers) {
             if (buffer.remaining() > limit - output.size()) {
@@ -42,6 +48,13 @@ public final class BoundedHttpBodySubscriber implements HttpResponse.BodySubscri
         }
     }
 
-    @Override public void onError(Throwable failure) { result.completeExceptionally(failure); }
-    @Override public void onComplete() { result.complete(output.toByteArray()); }
+    @Override
+    public void onError(Throwable failure) {
+        result.completeExceptionally(failure);
+    }
+
+    @Override
+    public void onComplete() {
+        result.complete(output.toByteArray());
+    }
 }

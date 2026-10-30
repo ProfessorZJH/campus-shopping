@@ -1,3 +1,4 @@
+from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 """全局排序前端契约测试：真实打包的 Vue + 可控分页 API 替身（非 MySQL 验证）。"""
 import json
@@ -49,7 +50,7 @@ def main():
         expect(page.locator('.home-product').first).to_contain_text('全局价序 035')
         assert f.queries[-1] == ('/products/page',1,20,'STOCK_DESC')
         checks.append('全局库存排序发出 STOCK_DESC 并重置分页')
-        page.close()
+        close_page(page)
         page=browser_page(browser,'/merchant/products',f)
         expect(page.locator('.product-table tbody tr')).to_have_count(9,timeout=12000)
         # The backoffice select exposes supported server order values.
@@ -59,8 +60,8 @@ def main():
         expect(page.locator('.product-table tbody tr').first).to_contain_text('全局价序 001')
         assert f.queries[-1][0]=='/merchants/m1/products/page' and f.queries[-1][-1]=='PRICE_ASC'
         checks.append('商户商品页与购物端使用同一套排序枚举')
-        page.close()
+        close_page(page)
         assert not ERRORS,ERRORS
-        browser.close()
+        close_browser(browser)
     print('PASSED',len(checks),'GLOBAL SORT UI CONTRACT CHECKS',json.dumps(checks,ensure_ascii=False))
 if __name__=='__main__':main()

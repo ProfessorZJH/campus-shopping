@@ -11,6 +11,14 @@ on:
       - 'scripts/**'
       - 'docs/**'
       - 'compose.yml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/**'
+      - '.mvn/**'
+      - 'mvnw*'
+      - '.gitattributes'
+      - '.python-version'
+      - '.env.example'
   pull_request:
     paths:
       - 'pom.xml'
@@ -20,6 +28,14 @@ on:
       - 'scripts/**'
       - 'docs/**'
       - 'compose.yml'
+      - 'Dockerfile'
+      - '.dockerignore'
+      - '.github/workflows/**'
+      - '.mvn/**'
+      - 'mvnw*'
+      - '.gitattributes'
+      - '.python-version'
+      - '.env.example'
   workflow_dispatch:
     inputs:
       external_ai:
@@ -54,25 +70,40 @@ jobs:
         with:
           python-version: '3.11'
           cache: pip
-          cache-dependency-path: ai-service/requirements*.txt
+          cache-dependency-path: ai-service/requirements*.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - name: Install test dependencies
         run: |
-          python -m pip install -r ai-service/requirements-dev.txt playwright==1.58.0 pyyaml==6.0.3
+          python -m pip install --require-hashes -r ai-service/requirements-dev.lock
           python -m playwright install --with-deps chromium
+          npm ci --prefix frontend --no-audit --no-fund
+      - name: Formatting / generated UI / schema drift checks
+        run: |
+          npm run format:check --prefix frontend
+          node --test frontend/tests/build-reproducibility.test.mjs
+          npm audit --prefix frontend --audit-level=high
+          python scripts/build-ui-bundle.py --check
+          python scripts/schema_contract.py --check
       - name: API / SDD / source safety checks
         run: |
+          python scripts/verify-java-readability.py
           python scripts/verify-api-contract.py
+          python scripts/verify-api-schemas.py
           python scripts/verify-fix-regressions.py
           python scripts/verify-source.py
-          python scripts/verify-java-readability.py
       - name: Start isolated MySQL for JUnit
         shell: bash
         run: |
           set -euo pipefail
           PASSWORD=$(openssl rand -hex 24)
+          ROOT_PASSWORD=$(openssl rand -hex 32)
           ADMIN_PASSWORD=$(openssl rand -hex 24)
           AI_SERVICE_KEY=$(openssl rand -hex 32)
-          for secret in "$PASSWORD" "$ADMIN_PASSWORD" "$AI_SERVICE_KEY"; do echo "::add-mask::$secret"; done
+          for secret in "$PASSWORD" "$ROOT_PASSWORD" "$ADMIN_PASSWORD" "$AI_SERVICE_KEY"; do echo "::add-mask::$secret"; done
           {
             echo 'MYSQL_TEST_URL=jdbc:mysql://127.0.0.1:3307/campus_shopping_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC'
             echo 'MYSQL_TEST_USERNAME=campus_it'
@@ -83,16 +114,23 @@ jobs:
             echo "AI_SERVICE_KEY=$AI_SERVICE_KEY"
           } >> "$GITHUB_ENV"
           docker run -d --name campus-mysql-it -p 127.0.0.1:3307:3306 \
-            -e MYSQL_RANDOM_ROOT_PASSWORD=yes -e MYSQL_DATABASE=campus_shopping_it \
+            -e MYSQL_ROOT_PASSWORD="$ROOT_PASSWORD" -e MYSQL_DATABASE=campus_shopping_it \
             -e MYSQL_USER=campus_it -e MYSQL_PASSWORD="$PASSWORD" mysql:8.0.36
+          READY=0
           for attempt in $(seq 1 90); do
             if docker exec -e MYSQL_PWD="$PASSWORD" campus-mysql-it mysql -ucampus_it \
-              -e 'SELECT 1' campus_shopping_it >/dev/null 2>&1; then exit 0; fi
+              -e 'SELECT 1' campus_shopping_it >/dev/null 2>&1; then READY=1; break; fi
             sleep 2
           done
-          echo 'MySQL IT did not become ready'; exit 1
+          test "$READY" = 1 || { echo 'MySQL IT did not become ready'; exit 1; }
+          docker exec -e MYSQL_PWD="$ROOT_PASSWORD" campus-mysql-it mysql -uroot \
+            -e "GRANT ALL ON campus_shopping_migration_it.* TO 'campus_it'@'%'"
+      - name: Real fresh / upgrade / replay / checksum migration checks
+        run: python scripts/verify-migrations.py
       - name: Real Maven build + MySQL tests
-        run: mvn -B -ntp clean verify
+        run: |
+          bash ./mvnw -B -ntp clean verify
+          python scripts/generate-release-manifest.py --require-full-tests
       - name: Java domain / HTTP / Python AI tests
         run: |
           python scripts/verify-domain.py
@@ -105,6 +143,7 @@ jobs:
       - name: Chromium contract tests (mocked backend)
         run: |
           python frontend/tests/contract_ui.py
+          python frontend/tests/ui_audit_contract.py
           python frontend/tests/ui_sdd_integration.py
           python frontend/tests/ui_contract_v11.py
           python frontend/tests/ui_fix_regression.py
@@ -146,9 +185,16 @@ jobs:
           done
           echo 'Spring HTTP health check did not pass'; exit 1
       - name: Real cross-service HTTP business E2E
-        run: python scripts/smoke-full.py
+        run: python scripts/smoke-full.py --check-contract
       - name: Real Spring frontend browser E2E
         run: python frontend/tests/live_ui.py
+      - name: Record this build and its acceptance evidence
+        run: |
+          python scripts/generate-release-manifest.py --require-full-tests \
+            --evidence migrations=docs/testing/evidence/engineering/migrations.json \
+            --evidence python=docs/testing/evidence/ai-unit-tests.xml \
+            --evidence http=docs/testing/evidence/full-http.json \
+            --evidence browser=docs/testing/evidence/frontend-live/results.json
       - name: Upload reports and failure diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -158,6 +204,7 @@ jobs:
           retention-days: 7
           path: |
             **/target/surefire-reports/*
+            campus-shopping-app/target/release-manifest.json
             docs/testing/evidence/**
             var/ci/*.log
       - name: Stop isolated services
@@ -168,6 +215,29 @@ jobs:
             if [ -f "$file" ]; then kill "$(cat "$file")" || true; fi
           done
           docker rm -f campus-mysql-it campus-mysql-e2e || true
+
+  delivery-images:
+    name: Actual delivery images / isolated Compose transaction chain
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: ai-service/requirements-dev.lock
+      - name: Install locked verification dependencies
+        run: python -m pip install --require-hashes -r ai-service/requirements-dev.lock
+      - name: Build and verify delivery images
+        run: python scripts/verify-containers.py
+      - name: Upload image acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: campus-delivery-images-evidence
+          retention-days: 7
+          path: docs/testing/evidence/engineering/**
 
   external-ai:
     name: Optional live NVIDIA / XFYUN / Milvus smoke
@@ -196,7 +266,7 @@ jobs:
             if [ -z "$(printenv "$key" 2>/dev/null || true)" ]; then echo "Missing required secret or variable: $key"; exit 1; fi
           done
       - name: Install AI service
-        run: python -m pip install -r ai-service/requirements.txt
+        run: python -m pip install --require-hashes -r ai-service/requirements.lock
       - name: Live provider connectivity (read-only)
         run: |
           (cd ai-service && python -m app.smoke_model)

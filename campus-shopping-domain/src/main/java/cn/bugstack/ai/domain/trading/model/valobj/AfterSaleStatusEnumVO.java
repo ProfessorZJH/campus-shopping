@@ -1,19 +1,33 @@
 package cn.bugstack.ai.domain.trading.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** 售后申请与裁决状态，不等同于订单退款状态。 */
+/** 售后申请生命周期；code 保持已有数据库和 HTTP 协议值。 */
 public enum AfterSaleStatusEnumVO {
-    REQUESTED, REJECTED, DISPUTED, APPROVED;
+    REQUESTED("待处理"),
+    REJECTED("已驳回"),
+    DISPUTED("平台介入"),
+    APPROVED("已同意");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    AfterSaleStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static AfterSaleStatusEnumVO fromCode(String code) {
-        for (AfterSaleStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.REFUND_STATE_INVALID);
+        return EnumValues.stored(AfterSaleStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(AfterSaleStatusEnumVO.class, code);
     }
 }

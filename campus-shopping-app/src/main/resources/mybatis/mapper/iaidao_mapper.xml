@@ -28,11 +28,17 @@ SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base 
     <select id="documents" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
 SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.base_id=#{base} ORDER BY d.created_at DESC,d.id LIMIT #{limit} OFFSET #{offset}
     </select>
-    <select id="visible" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
-SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id JOIN ai_document_root r ON r.active_document_id=d.id WHERE d.status='PUBLISHED' AND d.index_status='READY' AND d.base_id IN <foreach collection="baseIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY d.id LIMIT 1000
+    <select id="visibleScope" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
+SELECT d.id,d.title,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id JOIN ai_document_root r ON r.active_document_id=d.id WHERE d.status='PUBLISHED' AND d.index_status='READY' AND d.base_id IN <foreach collection="baseIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY d.id LIMIT 1000
     </select>
-    <update id="indexState">
-UPDATE ai_document SET index_status=#{status},error=#{error} WHERE id=#{id}
+    <select id="documentsByIds" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
+SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
+    <update id="beginIndex">
+UPDATE ai_document SET index_status='PENDING',index_attempt=#{attempt},error='' WHERE id=#{id}
+    </update>
+    <update id="completeIndex">
+UPDATE ai_document SET index_status=#{status},error=#{error},index_attempt=NULL WHERE id=#{id} AND index_attempt=#{attempt} AND index_status='PENDING'
     </update>
     <update id="documentState">
 UPDATE ai_document SET status=#{status} WHERE id=#{id}
@@ -52,6 +58,17 @@ SELECT * FROM ai_conversation WHERE user_id=#{user} ORDER BY created_at DESC,id 
     <select id="messages" resultType="cn.bugstack.ai.infrastructure.dao.po.MessagePO">
 SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
     </select>
+    <update id="claimTurn">
+UPDATE ai_conversation SET turn_token=#{token},turn_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3))
+WHERE id=#{id} AND user_id=#{actor} AND (turn_token IS NULL OR turn_expires_at &lt;= CURRENT_TIMESTAMP(3))
+    </update>
+    <update id="finishTurn">
+UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL
+WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token} AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
+    </update>
+    <update id="releaseTurn">
+UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token}
+    </update>
     <insert id="messageInsert">
 INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint})
     </insert>

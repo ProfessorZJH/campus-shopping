@@ -1,0 +1,40 @@
+{
+  "database": "campus_shopping",
+  "readOnly": true,
+  "missingIndexes": [],
+  "checkConstraints": [
+    {
+      "CONSTRAINT_NAME": "ck_sku_price",
+      "CHECK_CLAUSE": "(`price_cent` > 0)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_reservation_qty",
+      "CHECK_CLAUSE": "(`quantity` > 0)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_cart_quantity",
+      "CHECK_CLAUSE": "(`quantity` between 1 and 99)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_order_total",
+      "CHECK_CLAUSE": "(`total_cent` > 0)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_stock_balance",
+      "CHECK_CLAUSE": "((`on_hand` >= `reserved`) and (`reserved` >= 0))"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_order_item_values",
+      "CHECK_CLAUSE": "((`unit_price_cent` > 0) and (`quantity` between 1 and 99))"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_payment_amount",
+      "CHECK_CLAUSE": "(`amount_cent` > 0)"
+    },
+    {
+      "CONSTRAINT_NAME": "ck_refund_amount",
+      "CHECK_CLAUSE": "(`amount_cent` > 0)"
+    }
+  ],
+  "status": "PASS"
+}

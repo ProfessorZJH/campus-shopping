@@ -1,0 +1,1 @@
+PASSED 3 UI SEARCH CONTRACT CHECKS ["/admin/merchants 远端跨页搜索与准确 total", "/admin/applications 远端跨页搜索与准确 total", "/admin/orders 远端跨页搜索与准确 total"]

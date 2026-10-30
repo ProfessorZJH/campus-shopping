@@ -16,4 +16,7 @@ SELECT * FROM ful_pickup_task WHERE merchant_id=#{merchant} <if test="status != 
     <insert id="verify">
 INSERT INTO ful_pickup_verification(id,pickup_id,operator_user_id) VALUES(#{id},#{pickup},#{actor})
     </insert>
+    <select id="pickupsByOrders" resultType="cn.bugstack.ai.infrastructure.dao.po.PickupPO">
+SELECT * FROM ful_pickup_task WHERE order_id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
 </mapper>

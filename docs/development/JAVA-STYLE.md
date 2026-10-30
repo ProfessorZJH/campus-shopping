@@ -29,3 +29,7 @@ mvn -B -ntp clean verify
 ```
 
 GitHub Actions 继续执行原有 Java 领域规则、Python AI、真实 MySQL、173 项 HTTP 和 8 项浏览器检查。以上测试不代表生产已部署，也不代表 NVIDIA/讯飞/Milvus 外部联通验收完成。
+
+## 整合后的自动格式化
+
+本地/远端整合已将 Java 的 Prettier override 统一为 4 空格、160 列，前端仍为 2 空格、100 列。运行 `npm run format --prefix frontend`，CI 运行 `format:check`；原 11 个核心类可读性门禁继续保留。纯排版文件按 Java 语法树核对后单独提交。

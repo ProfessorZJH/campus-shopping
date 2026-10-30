@@ -1,6 +1,6 @@
-# R1 业务错误码与边界
+# R1 业务与协议错误码
 
-> 从当前 `ResponseCode` 核对；这是一组项目业务码，不是小傅哥原仓库全部预设值。
+> 由 `python scripts/generate-api-contract.py` 从 `ResponseCode.java` 生成，CI 检查漂移。
 
 | 枚举名 | 业务码 | 安全提示 |
 |---|---|---|
@@ -17,11 +17,16 @@
 | `NOT_FOUND` | `G0001` | 资源不存在或不可访问 |
 | `STATE_CONFLICT` | `G0002` | 状态已经变化，请刷新后重试 |
 | `REQUEST_CONFLICT` | `G0003` | 同一请求键不能用于不同内容 |
+| `REQUEST_TOO_LARGE` | `G0004` | 请求体超过允许大小 |
+| `METHOD_NOT_ALLOWED` | `G0005` | 请求方法不支持 |
+| `MEDIA_TYPE_UNSUPPORTED` | `G0006` | 请求内容类型不支持 |
+| `MEDIA_TYPE_NOT_ACCEPTABLE` | `G0007` | 响应内容类型不支持 |
 | `MERCHANT_REQUEST_CONFLICT` | `M0001` | 幂等键已用于另一份申请 |
 | `MERCHANT_ALREADY_REVIEWED` | `M0002` | 申请已经审核，不能重复处理 |
 | `MERCHANT_SELF_REVIEW_FORBIDDEN` | `M0003` | 申请人不能审核自己的入驻申请 |
 | `MERCHANT_SUSPENDED` | `M0004` | 商户当前暂停经营 |
 | `MERCHANT_PROFILE_INCOMPLETE` | `M0005` | 申请资料不完整，不能开通门店 |
+| `MERCHANT_ROLE_NAME_EXISTS` | `M0006` | 本商户已存在同名角色 |
 | `PRODUCT_UNAVAILABLE` | `C0001` | 商品已下架或规格不可售 |
 | `PRICE_CHANGED` | `C0002` | 商品价格或版本已变化，请重新确认 |
 | `SKU_DUPLICATE` | `C0003` | 商品规格重复 |
@@ -31,15 +36,22 @@
 | `ORDER_EXPIRED` | `T0002` | 订单已超过付款期限 |
 | `ORDER_MIXED_MERCHANT` | `T0003` | 一次只能结算一个商户 |
 | `REFUND_STATE_INVALID` | `T0004` | 售后状态不允许此操作 |
+| `CART_QUANTITY_LIMIT` | `T0005` | 同一规格最多可加入99件，请调整购物车数量 |
+| `CART_LINE_LIMIT` | `T0006` | 购物车已满，请先清理部分商品 |
 | `PICKUP_INVALID` | `F0001` | 自提凭证无效或过期 |
 | `PICKUP_NOT_READY` | `F0002` | 商品尚未备货完成 |
+| `PICKUP_STATE_INVALID` | `F0003` | 自提任务当前状态不允许此操作 |
 | `AI_UNAVAILABLE` | `AI0001` | 智能服务暂不可用，普通购物不受影响 |
 | `PROPOSAL_EXPIRED` | `AI0002` | 推荐建议已过期，请重新生成 |
 | `KNOWLEDGE_NOT_READY` | `AI0003` | 知识索引尚未就绪 |
 | `UPLOAD_INVALID` | `AI0004` | 文件格式、大小或内容不符合要求 |
 
-业务判断由 Domain/Case 完成，领域异常穿过事务代理后在 Controller 捕获。不能在事务方法内吞掉异常并返回成功。
+Domain/Case 抛出 AppException，异常穿过事务代理后由 Controller 内部捕获；禁止在事务方法内吞异常返回成功。
 
-数据库重复键只有确认对应用户名/业务键时才转为业务冲突；其他 SQL 故障保持系统失败。账号状态检查、CSRF 与认证失败发生在安全过滤器时，由独立安全处理器返回 JSON，不依赖 Controller catch。
+数据库唯一约束冲突在明确的仓储写操作处翻译：用户名 A0001、同商户角色重名 M0006；其他 SQL 故障仍为系统失败。
 
-`EnumVO` 用于账号、商品、订单等领域状态/类型，不为每个错误新增领域错误枚举。`AppException` 位于 Types，不反向依赖 Domain。
+ApiProtocolExceptionResolver 只适配 /api 下的 MVC 协议错误，不处理 AppException 或普通运行异常；没有新增全局业务异常处理器。
+Security 独立处理 401/403，账号状态服务不可用返回 503/0001；入口限流为 429/A0007。
+
+协议映射：400/0002、404/G0001、405/G0005、406/G0007、413/G0004、415/G0006；业务失败通常仍为 HTTP 200。
+请求体上限 3,000,000 字节（包括分块上传）；文件解码后上限 2,000,000 字节。错误响应不回显正文、SQL 或异常堆栈。

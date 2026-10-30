@@ -1,8 +1,17 @@
-# 从现有七模块构建，不重新初始化脚手架；构建阶段会执行 JUnit（MySQL 类需另设变量）。
+FROM node:22.16.0-bookworm-slim AS frontend
+WORKDIR /workspace/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# 从现有七模块构建，前端使用上一步从锁定依赖编译的产物。
 FROM maven:3.9.9-eclipse-temurin-17 AS build
 WORKDIR /workspace
 COPY . .
-RUN mvn -B -ntp clean verify
+RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+COPY --from=frontend /workspace/frontend/dist /workspace/campus-shopping-app/target/generated-ui
+RUN mvn -B -ntp verify -Dfrontend.skip=true
 
 FROM eclipse-temurin:17-jre-jammy
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
@@ -10,6 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
     && groupadd --gid 10001 campus && useradd --uid 10001 --gid campus --no-create-home campus
 WORKDIR /app
 COPY --from=build /workspace/campus-shopping-app/target/campus-shopping-app.jar app.jar
+COPY --from=build /workspace/campus-shopping-app/target/release-manifest.json release-manifest.json
 RUN mkdir -p /app/var/uploads && chown -R campus:campus /app
 USER campus
 EXPOSE 8091

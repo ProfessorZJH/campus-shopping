@@ -1,0 +1,56 @@
+{
+  "kind": "CLEAN_GIT_INDEX_EXPORT_WITH_CANONICAL_CHECKOUT_BYTES",
+  "checks": [
+    {
+      "command": [
+        "ci",
+        "--prefix",
+        "frontend",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "run",
+        "format:check",
+        "--prefix",
+        "frontend"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "audit",
+        "--prefix",
+        "frontend",
+        "--audit-level=high"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "python",
+        "-X",
+        "utf8",
+        "-B",
+        "scripts/build-ui-bundle.py",
+        "--check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "command": [
+        "python",
+        "-X",
+        "utf8",
+        "-B",
+        "scripts/schema_contract.py",
+        "--check"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "status": "PASS"
+}

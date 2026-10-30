@@ -74,4 +74,10 @@ SELECT COUNT(*) total_orders,COALESCE(SUM(status='PENDING_PAYMENT'),0) pending_c
     </select>
 <insert id="ensureCart">INSERT INTO trd_cart_owner(user_id) VALUES(#{user}) ON DUPLICATE KEY UPDATE user_id=user_id</insert>
 <select id="lockCart" resultType="java.lang.String">SELECT user_id FROM trd_cart_owner WHERE user_id=#{user} FOR UPDATE</select>
+    <select id="itemsByOrders" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderItemPO">
+SELECT * FROM trd_order_item WHERE order_id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY order_id,sku_id
+    </select>
+    <select id="afterSalesByOrders" resultType="cn.bugstack.ai.infrastructure.dao.po.AfterSalePO">
+SELECT * FROM trd_after_sale WHERE order_id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
 </mapper>

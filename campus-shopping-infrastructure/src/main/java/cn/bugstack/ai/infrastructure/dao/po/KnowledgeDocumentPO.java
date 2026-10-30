@@ -1,10 +1,16 @@
 package cn.bugstack.ai.infrastructure.dao.po;
-import lombok.*;
-import java.util.*;
+
 import java.time.*;
+import java.util.*;
+import lombok.*;
+
 /** 知识版本持久化投影。 */
-@Data @Builder @NoArgsConstructor @AllArgsConstructor
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class KnowledgeDocumentPO {
+
     private String id;
     private String rootId;
     private String baseId;

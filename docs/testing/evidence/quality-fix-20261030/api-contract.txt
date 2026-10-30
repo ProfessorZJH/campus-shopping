@@ -1,0 +1,54 @@
+[PASS] 当前 Controller/DTO 与生成文档字节一致（无文档漂移）
+[PASS] 93 条 Controller 路由与清单逐条一致且无重复
+[PASS] OpenAPI 路由/方法与 Controller 一致
+[PASS] OpenAPI 所有 DTO schema 引用均可解析
+[PASS] 所有请求 DTO 均有显式必填规则及领域来源
+[PASS] RegisterRequestDTO.username 规范化后长度上限 32
+[PASS] RegisterRequestDTO.displayName 规范化后长度上限 50
+[PASS] SubmitMerchantApplicationRequestDTO.contactName 规范化后长度上限 50
+[PASS] CategoryRequestDTO.code 规范化后长度上限 32
+[PASS] CategoryRequestDTO.name 规范化后长度上限 50
+[PASS] 机器错误码与 Java 枚举逐项一致且无重复
+[PASS] 协议错误、鉴权和认证依赖故障均有 JSON 错误 schema
+[PASS] 商品共享 DTO 仍准确区分创建规格和编辑版本必填
+[PASS] 退款同意/驳回均声明非空审核原因
+[PASS] 应用与 Docker 的完整 DDL 字节一致（数据库创建前缀除外）
+[PASS] 业务权限、CSRF、错误码和幂等语义有单独的现行行为契约
+[PASS] 可读取 Spring Security 公开 GET 匹配规则
+[PASS] 公开 GET 在 Security 白名单：/api/v1/auth/csrf
+[PASS] 公开 GET 在 Security 白名单：/api/v1/categories
+[PASS] 公开 GET 在 Security 白名单：/api/v1/merchants/public
+[PASS] 公开 GET 在 Security 白名单：/api/v1/merchants/public/page
+[PASS] 公开 GET 在 Security 白名单：/api/v1/merchants/public/{merchantId}
+[PASS] 公开 GET 在 Security 白名单：/api/v1/products
+[PASS] 商品详情与 /products/page 被单段通配符覆盖
+[PASS] 私有 Admin/商户路径不会误放行
+[PASS] 注册与登录仅匿名用户开放，且仍经过 CSRF 过滤器
+[PASS] 商户公开接口 ACL 与路由清单一致：GET /api/v1/merchants/public/page
+[PASS] 商户公开接口 ACL 与路由清单一致：GET /api/v1/merchants/public/{merchantId}
+[PASS] SQL 服务端搜索路由声明 q：/api/v1/admin/merchants/page
+[PASS] SQL 服务端搜索路由声明 q：/api/v1/admin/merchant-applications/page
+[PASS] SQL 服务端搜索路由声明 q：/api/v1/admin/orders/page
+[PASS] SQL 服务端搜索路由声明 q：/api/v1/merchants/{merchantId}/orders/page
+[PASS] SQL 服务端搜索路由声明 q：/api/v1/merchants/{merchantId}/stocks/page
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml：分页 SELECT 与 COUNT 均存在
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml：列表和 COUNT 均在分页前按 q 过滤
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml：查询分页与总数单独计算
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml：查询 q 谓词与 COUNT 谓词完全一致
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml：分页 SELECT 与 COUNT 均存在
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml：列表和 COUNT 均在分页前按 q 过滤
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml：查询分页与总数单独计算
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml：查询 q 谓词与 COUNT 谓词完全一致
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml：分页 SELECT 与 COUNT 均存在
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml：列表和 COUNT 均在分页前按 q 过滤
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml：查询分页与总数单独计算
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml：查询 q 谓词与 COUNT 谓词完全一致
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml：分页 SELECT 与 COUNT 均存在
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml：列表和 COUNT 均在分页前按 q 过滤
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml：查询分页与总数单独计算
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml：查询 q 谓词与 COUNT 谓词完全一致
+[PASS] 购物车 API 契约要求商户名必填且非 null，不依赖当前页商户缓存
+[PASS] 真实浏览器测试使用新版 Vue 选择器且不 mock API
+[PASS] CI 在真实 Java/MySQL 阶段之前运行契约门禁，之后运行真实浏览器
+[PASS] 文档索引已指向 SDD-03 当前契约
+完成静态契约检查；注意：不是 Maven / Spring Security / MySQL 真实通过。

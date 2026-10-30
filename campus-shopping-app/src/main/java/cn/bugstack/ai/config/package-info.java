@@ -3,4 +3,3 @@
  * 2. 如果有AOP切面，可以再建一个aop包，来写切面逻辑
  */
 package cn.bugstack.ai.config;
-

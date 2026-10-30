@@ -1,10 +1,10 @@
 package cn.bugstack.ai.test.merchant;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /** 业务错误码集中在 ResponseCode，并由 AppException 承载。 */
 class MerchantExceptionContractTest {

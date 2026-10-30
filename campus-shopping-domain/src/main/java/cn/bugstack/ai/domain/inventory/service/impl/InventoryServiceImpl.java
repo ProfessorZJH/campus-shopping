@@ -1,11 +1,13 @@
 package cn.bugstack.ai.domain.inventory.service.impl;
 
+import static cn.bugstack.ai.types.common.Checks.*;
+
+import cn.bugstack.ai.domain.inventory.adapter.repository.IInventoryQueryRepository;
 import cn.bugstack.ai.domain.inventory.adapter.repository.IInventoryRepository;
 import cn.bugstack.ai.domain.inventory.model.aggregate.StockBalanceAggregate;
 import cn.bugstack.ai.domain.inventory.model.valobj.*;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import static cn.bugstack.ai.types.common.Checks.*;
 import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
@@ -13,9 +15,13 @@ import org.springframework.transaction.annotation.*;
 /** 按 SKU 固定顺序加锁，库存、预占和流水在外层用例同一事务提交。 */
 @Service
 public class InventoryServiceImpl implements IInventoryService {
+
     private final IInventoryRepository repository;
-    public InventoryServiceImpl(IInventoryRepository repository) {
+    private final IInventoryQueryRepository queries;
+
+    public InventoryServiceImpl(IInventoryRepository repository, IInventoryQueryRepository queries) {
         this.repository = repository;
+        this.queries = queries;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -25,12 +31,11 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    /** 补货幂等：同一个业务键只允许同数量重试，其他数量必须拒绝。 */
     public void replenish(String merchant, String store, String sku, int quantity, String requestKey) {
         String key = text(requestKey, "补货请求标识", 64);
         StockVO s = required(store, sku);
         require(merchant.equals(s.merchantId()), ResponseCode.AUTH_FORBIDDEN);
-        Integer previous = repository.movementQuantity(store, sku, StockMovementTypeEnumVO.REPLENISH, key);
+        Integer previous = repository.movementQuantity(store, sku, StockMovementTypeEnumVO.REPLENISH.getCode(), key);
         if (previous != null) {
             require(previous == quantity, ResponseCode.REQUEST_CONFLICT);
             return;
@@ -38,18 +43,16 @@ public class InventoryServiceImpl implements IInventoryService {
         StockBalanceAggregate balance = new StockBalanceAggregate(s.onHand(), s.reserved());
         balance.replenish(quantity);
         save(s, balance);
-        repository.movement(s, StockMovementTypeEnumVO.REPLENISH, quantity, key);
+        repository.movement(s, StockMovementTypeEnumVO.REPLENISH.getCode(), quantity, key);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    /** 多 SKU 按编号排序加锁，预占余额、订单预占和流水随外层事务同提交。 */
     public void reserve(String order, String merchant, String store, List<SkuQuantityVO> items) {
         require(items != null && !items.isEmpty() && items.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
         Set<String> seen = new HashSet<>();
-        for (SkuQuantityVO item : items) require(item != null && seen.add(item.skuId()) && item.quantity()> 0 && item.quantity() <= 99,
-            ResponseCode.ILLEGAL_PARAMETER);
-        for (SkuQuantityVO item : items.stream().sorted(Comparator.comparing(SkuQuantityVO::skuId)).toList()) reserveOne(order,
-            merchant, store, item);
+        for (SkuQuantityVO item : items)
+            require(item != null && seen.add(item.skuId()) && item.quantity() > 0 && item.quantity() <= 99, ResponseCode.ILLEGAL_PARAMETER);
+        for (SkuQuantityVO item : items.stream().sorted(Comparator.comparing(SkuQuantityVO::skuId)).toList()) reserveOne(order, merchant, store, item);
     }
 
     private void reserveOne(String order, String merchant, String store, SkuQuantityVO item) {
@@ -57,15 +60,17 @@ public class InventoryServiceImpl implements IInventoryService {
         require(merchant.equals(s.merchantId()), ResponseCode.AUTH_FORBIDDEN);
         ReservationVO old = repository.reservation(order, item.skuId());
         if (old != null) {
-            require(old.statusEnum() == ReservationStatusEnumVO.RESERVED && old.quantity() == item.quantity() && store.equals(old
-                .storeId()), ResponseCode.REQUEST_CONFLICT);
+            require(
+                old.state() == ReservationStatusEnumVO.RESERVED && old.quantity() == item.quantity() && store.equals(old.storeId()),
+                ResponseCode.REQUEST_CONFLICT
+            );
             return;
         }
         StockBalanceAggregate balance = new StockBalanceAggregate(s.onHand(), s.reserved());
         balance.reserve(item.quantity());
         save(s, balance);
-        repository.reserve(new ReservationVO(order, store, item.skuId(), item.quantity(), ReservationStatusEnumVO.RESERVED.name()));
-        repository.movement(s, StockMovementTypeEnumVO.RESERVE, item.quantity(), order);
+        repository.reserve(new ReservationVO(order, store, item.skuId(), item.quantity(), ReservationStatusEnumVO.RESERVED.getCode()));
+        repository.movement(s, StockMovementTypeEnumVO.RESERVE.getCode(), item.quantity(), order);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -77,22 +82,21 @@ public class InventoryServiceImpl implements IInventoryService {
     public void consume(String order) {
         finish(order, true);
     }
-    /** RELEASED 与 CONSUMED 互斥；重复相同终态不再次修改可售量。 */
+
     private void finish(String order, boolean consumed) {
         List<ReservationVO> reservations = repository.reservations(order);
         require(!reservations.isEmpty(), ResponseCode.STOCK_STATE_INVALID);
         ReservationStatusEnumVO next = consumed ? ReservationStatusEnumVO.CONSUMED : ReservationStatusEnumVO.RELEASED;
         for (ReservationVO r : reservations) {
-            if (next == r.statusEnum()) continue;
-            require(r.statusEnum() == ReservationStatusEnumVO.RESERVED, ResponseCode.STOCK_STATE_INVALID);
+            if (next == r.state()) continue;
+            require(r.state() == ReservationStatusEnumVO.RESERVED, ResponseCode.STOCK_STATE_INVALID);
             StockVO s = required(r.storeId(), r.skuId());
             StockBalanceAggregate balance = new StockBalanceAggregate(s.onHand(), s.reserved());
             if (consumed) balance.consume(r.quantity());
             else balance.release(r.quantity());
             save(s, balance);
-            repository.transition(order, r.skuId(), next);
-            repository.movement(s, consumed ? StockMovementTypeEnumVO.CONSUME : StockMovementTypeEnumVO.RELEASE, r.quantity(),
-                order);
+            repository.transition(order, r.skuId(), next.getCode());
+            repository.movement(s, consumed ? StockMovementTypeEnumVO.CONSUME.getCode() : StockMovementTypeEnumVO.RELEASE.getCode(), r.quantity(), order);
         }
     }
 
@@ -111,7 +115,7 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     public long countStocks(String merchant, String q) {
-        return repository.countStocks(merchant, optional(q, 100));
+        return queries.countStocks(merchant, optional(q, 100));
     }
 
     public long countMovements(String merchant) {
@@ -128,7 +132,7 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     public List<StockVO> list(String merchant, int page, int size, String q) {
-        return repository.list(merchant, offset(page, size), size, optional(q, 100));
+        return queries.list(merchant, offset(page, size), size, optional(q, 100));
     }
 
     public List<StockMovementVO> movements(String merchant, int page, int size) {

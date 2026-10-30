@@ -21,4 +21,7 @@ UPDATE mer_merchant SET status=#{status},version=version+1 WHERE id=#{id}
     </update>
     <update id="updateProfile">UPDATE mer_merchant SET name=#{name},version=version+1 WHERE id=#{id}</update>
     <update id="updateStore">UPDATE mer_store SET name=#{storeName},location=#{location} WHERE merchant_id=#{id}</update>
+    <select id="findAll" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">
+SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE m.id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+    </select>
 </mapper>

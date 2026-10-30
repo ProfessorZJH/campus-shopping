@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "checks": [
+    "No JUnit reports => NOT_RUN",
+    "PARTIAL classification verified",
+    "FAIL classification verified",
+    "PASS classification verified"
+  ]
+}

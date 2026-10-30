@@ -39,7 +39,8 @@ def schema_refs(obj):
 
 
 def verify():
-    proc = subprocess.run([sys.executable, str(SCRIPT), '--check'], cwd=ROOT, capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, '-X', 'utf8', str(SCRIPT), '--check'], cwd=ROOT,
+                          capture_output=True, text=True, encoding='utf-8')
     check(proc.returncode == 0, '当前 Controller/DTO 与生成文档字节一致（无文档漂移）' + ('：' + proc.stderr.strip() if proc.returncode else ''))
     routes = module.routes()
     manifest = json.loads(source('docs/api/route-manifest.json'))
@@ -51,10 +52,41 @@ def verify():
     schemas = spec['components']['schemas']
     check(all(ref.startswith('#/components/schemas/') and ref.split('/')[-1] in schemas
               for ref in schema_refs(spec)), 'OpenAPI 所有 DTO schema 引用均可解析')
+    request_names = {p.stem for p in (ROOT/'campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto').glob('*RequestDTO.java')}
+    check(all(schemas[name].get('required') and schemas[name].get('x-constraint-source')
+              for name in request_names), '所有请求 DTO 均有显式必填规则及领域来源')
+    for name, field, maximum in [('RegisterRequestDTO','username',32), ('RegisterRequestDTO','displayName',50),
+                                 ('SubmitMerchantApplicationRequestDTO','contactName',50),
+                                 ('CategoryRequestDTO','code',32), ('CategoryRequestDTO','name',50)]:
+        check(schemas[name]['properties'][field]['maxLength'] == maximum,
+              f'{name}.{field} 规范化后长度上限 {maximum}')
+    code_values = module.error_codes()
+    check(schemas['ResponseCode']['enum'] == [code for _,code,_ in code_values],
+          '机器错误码与 Java 枚举逐项一致且无重复')
+    for path, verbs in spec['paths'].items():
+        for method, operation in verbs.items():
+            check_statuses = {'400','401','403','404','405','406','413','415','503'}
+            assert check_statuses <= set(operation['responses']), (path, method)
+    check(True, '协议错误、鉴权和认证依赖故障均有 JSON 错误 schema')
+    product_path = spec['paths']['/api/v1/merchants/{merchantId}/products']
+    create = product_path['post']['requestBody']['content']['application/json']['schema']
+    edit = spec['paths']['/api/v1/merchants/{merchantId}/products/{productId}']['put']['requestBody']['content']['application/json']['schema']
+    check(create['allOf'][1]['required'] == ['skus'] and edit['allOf'][1]['required'] == ['expectedVersion'],
+          '商品共享 DTO 仍准确区分创建规格和编辑版本必填')
+    for path in ('/api/v1/merchants/{merchantId}/orders/{orderId}/refund-decision',
+                 '/api/v1/admin/orders/{orderId}/refund-decision'):
+        shape = spec['paths'][path]['post']['requestBody']['content']['application/json']['schema']
+        assert shape['allOf'][1]['required'] == ['reason'], path
+    check(True, '退款同意/驳回均声明非空审核原因')
+    app_schema = source('campus-shopping-app/src/main/resources/schema.sql')
+    docker_schema = source('docs/dev-ops/mysql/sql/00_r1_schema.sql')
+    check(docker_schema.endswith(app_schema),
+          '应用与 Docker 的完整 DDL 字节一致（数据库创建前缀除外）')
     check('behavior-v1.1.md' in source('docs/api/http-api.md') and (ROOT/'docs/api/behavior-v1.1.md').exists(),
           '业务权限、CSRF、错误码和幂等语义有单独的现行行为契约')
 
     sec = source('campus-shopping-app/src/main/java/cn/bugstack/ai/config/SessionSecurityConfig.java')
+    sec = re.sub(r'\s+', '', sec)
     public_get = re.findall(r'\.requestMatchers\(HttpMethod.GET,(.*?)\)\.permitAll\(\)', sec, re.S)
     check(bool(public_get), '可读取 Spring Security 公开 GET 匹配规则')
     public_paths = set(re.findall(r'"(/[^"]+)"', " ".join(public_get)))
@@ -85,7 +117,7 @@ def verify():
         ('campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml', 'list', 'count'),
         ('campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml', 'list', 'count'),
         ('campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml', 'orders', 'countOrders'),
-        ('campus-shopping-app/src/main/resources/mybatis/mapper/iinventorydao_mapper.xml', 'list', 'countStocks'),
+        ('campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml', 'list', 'countStocks'),
     ]
     for path, list_name, count_name in mappers:
         contents = source(path)
@@ -105,9 +137,10 @@ def verify():
               path + '：查询 q 谓词与 COUNT 谓词完全一致')
 
     cart = source('campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/CartResponseDTO.java')
-    cart_controller = source('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/CartController.java')
-    check('merchantName' in cart and '.merchantName(merchant.name())' in cart_controller,
-          '购物车 API 直接返回商户名，不依赖当前页商户缓存')
+    cart_schema = spec['components']['schemas']['CartResponseDTO']
+    check('merchantName' in cart and 'merchantName' in cart_schema['required']
+          and cart_schema['properties']['merchantName'].get('type') == 'string',
+          '购物车 API 契约要求商户名必填且非 null，不依赖当前页商户缓存')
     live = source('frontend/tests/live_ui.py')
     check('form.login-dialog' in live and '.header-login' in live and 'page.route(' not in live
           and 'apiMockUsed' in live, '真实浏览器测试使用新版 Vue 选择器且不 mock API')

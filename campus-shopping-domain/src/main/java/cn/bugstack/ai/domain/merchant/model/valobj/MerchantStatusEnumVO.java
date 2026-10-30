@@ -1,19 +1,31 @@
 package cn.bugstack.ai.domain.merchant.model.valobj;
 
-import cn.bugstack.ai.types.enums.ResponseCode;
-import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.EnumValues;
 
-/** 商户经营状态：停用只阻止新交易，不直接取消已付款履约。 */
+/** 商户经营状态；code 保持已有数据库和 HTTP 协议值。 */
 public enum MerchantStatusEnumVO {
-    ACTIVE, SUSPENDED;
+    ACTIVE("营业中"),
+    SUSPENDED("暂停营业");
 
-    /** 持久化和 HTTP 使用枚举名称；无效/未知值必须显式失败，不静默降级。 */
+    private final String info;
+
+    MerchantStatusEnumVO(String info) {
+        this.info = info;
+    }
+
+    public String getCode() {
+        return name();
+    }
+
+    public String getInfo() {
+        return info;
+    }
+
     public static MerchantStatusEnumVO fromCode(String code) {
-        for (MerchantStatusEnumVO value : values()) {
-            if (value.name().equals(code)) {
-                return value;
-            }
-        }
-        throw new AppException(ResponseCode.MERCHANT_SUSPENDED);
+        return EnumValues.stored(MerchantStatusEnumVO.class, code);
+    }
+
+    public static String filter(String code) {
+        return EnumValues.filter(MerchantStatusEnumVO.class, code);
     }
 }

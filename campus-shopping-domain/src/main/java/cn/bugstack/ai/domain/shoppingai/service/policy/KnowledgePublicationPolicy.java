@@ -1,11 +1,10 @@
 package cn.bugstack.ai.domain.shoppingai.service.policy;
 
+import static cn.bugstack.ai.types.common.Checks.require;
+
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgePublicationVO;
 import cn.bugstack.ai.types.enums.ResponseCode;
-
 import java.util.Objects;
-
-import static cn.bugstack.ai.types.common.Checks.require;
 
 /**
  * 知识文档发布领域规则。
@@ -14,8 +13,8 @@ import static cn.bugstack.ai.types.common.Checks.require;
  * 当前文档被重新索引、存在新版本时，禁止用旧版本覆盖已发布内容。
  */
 public final class KnowledgePublicationPolicy {
-    private KnowledgePublicationPolicy() {
-    }
+
+    private KnowledgePublicationPolicy() {}
 
     /** READY 且与文档根最新版本一致，才允许切换生效版本。 */
     public static void requirePublishable(KnowledgePublicationVO version) {

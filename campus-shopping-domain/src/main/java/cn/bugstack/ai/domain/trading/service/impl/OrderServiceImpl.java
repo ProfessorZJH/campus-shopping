@@ -1,32 +1,23 @@
 package cn.bugstack.ai.domain.trading.service.impl;
 
+import static cn.bugstack.ai.types.common.Checks.*;
+
 import cn.bugstack.ai.domain.trading.adapter.repository.IOrderRepository;
+import cn.bugstack.ai.domain.trading.model.aggregate.AfterSaleAggregate;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
-import cn.bugstack.ai.domain.trading.model.valobj.CheckoutRequestVO;
-import cn.bugstack.ai.domain.trading.model.valobj.OrderStatusEnumVO;
-import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
+import cn.bugstack.ai.domain.trading.model.valobj.*;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import java.time.*;
+import java.util.*;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.*;
 
-import java.time.Clock;
-import java.time.Instant;
-import java.util.List;
-
-import static cn.bugstack.ai.types.common.Checks.offset;
-import static cn.bugstack.ai.types.common.Checks.optional;
-import static cn.bugstack.ai.types.common.Checks.require;
-import static cn.bugstack.ai.types.common.Checks.text;
-
-/**
- * 订单领域服务：维护请求幂等闸门、订单快照和模拟交易记录。
- * 跨商品核价、库存预占、订单建单由 Checkout Case 的一个事务组合。
- */
+/** Order 领域能力；跨领域事务由 Case 编排。 */
 @Service
 public class OrderServiceImpl implements IOrderService {
+
     private final IOrderRepository repository;
     private final Clock clock;
 
@@ -35,83 +26,78 @@ public class OrderServiceImpl implements IOrderService {
         this.clock = clock;
     }
 
-    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public String beginCheckout(String user, String key, String fingerprint) {
-        CheckoutRequestVO request = repository.begin(user, text(key, "幂等键", 64), fingerprint);
-        require(fingerprint.equals(request.fingerprint()), ResponseCode.REQUEST_CONFLICT);
-        return request.orderId();
+        CheckoutRequestVO r = repository.begin(user, text(key, "幂等键", 64), fingerprint);
+        require(fingerprint.equals(r.fingerprint()), ResponseCode.REQUEST_CONFLICT);
+        return r.orderId();
     }
 
-    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void finishCheckout(String user, String key, String orderId) {
         repository.finishRequest(user, key, orderId);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public OrderAggregate create(String id, String buyer, String merchant, String store, List<OrderItemEntity> items, Instant deadline) {
+        OrderAggregate o = new OrderAggregate(id, buyer, merchant, store, items, "PENDING_PAYMENT", deadline, clock.instant());
+        repository.insert(o);
+        return o;
+    }
+
+    @Override
+    public OrderAggregate order(String id) {
+        return loadOrder(id, false);
+    }
+
+    /** 付款、核销、取消等状态变更统一通过事务内锁定入口。 */
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public OrderAggregate create(String id, String buyer, String merchant, String store,
-                                 List<OrderItemEntity> items, Instant deadline) {
-        OrderAggregate order = new OrderAggregate(id, buyer, merchant, store, items,
-                OrderStatusEnumVO.PENDING_PAYMENT.name(), deadline, clock.instant());
-        repository.insert(order);
-        return order;
+    public OrderAggregate orderForUpdate(String id) {
+        return loadOrder(id, true);
     }
 
-    @Override
-    public OrderAggregate order(String id, boolean lock) {
-        OrderAggregate order = repository.order(text(id, "订单编号", 64), lock);
-        require(order != null, ResponseCode.NOT_FOUND);
-        return order;
+    private OrderAggregate loadOrder(String id, boolean lock) {
+        OrderAggregate o = repository.order(text(id, "订单编号", 64), lock);
+        require(o != null, ResponseCode.NOT_FOUND);
+        return o;
     }
 
-    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public void save(OrderAggregate order) {
         repository.save(order);
     }
 
-    @Override
     public List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size) {
         return orders(buyer, merchant, status, page, size, "");
     }
 
-    @Override
-    public List<OrderAggregate> orders(String buyer, String merchant, String status,
-                                        int page, int size, String q) {
-        return repository.orders(buyer, merchant, optional(status, 24), offset(page, size),
-                size, optional(q, 100));
+    public List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size, String q) {
+        return repository.orders(buyer, merchant, OrderStatusEnumVO.filter(status), offset(page, size), size, optional(q, 100));
     }
 
-    @Override
     public long countOrders(String buyer, String merchant, String status) {
         return countOrders(buyer, merchant, status, "");
     }
 
-    @Override
     public long countOrders(String buyer, String merchant, String status, String q) {
-        return repository.countOrders(buyer, merchant, optional(status, 24), optional(q, 100));
+        return repository.countOrders(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100));
     }
 
-    @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void recordPayment(OrderAggregate order) {
-        repository.payment(order.getId(), order.getTotalCent());
+    public void recordPayment(OrderAggregate o) {
+        repository.payment(o.getId(), o.getTotalCent());
     }
 
-    @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void recordRefund(OrderAggregate order) {
-        repository.refund(order.getId(), order.getTotalCent());
+    public void recordRefund(OrderAggregate o) {
+        repository.refund(o.getId(), o.getTotalCent());
     }
 
-    @Override
     public List<String> expired() {
         return repository.expired(clock.instant());
     }
 
-    @Override
     public TradingStatsVO statistics(String merchant) {
         return repository.statistics(merchant);
     }

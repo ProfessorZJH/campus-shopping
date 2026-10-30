@@ -1,0 +1,63 @@
+{
+  "status": "PASS",
+  "executedAt": "2026-10-29T14:42:01.493881+00:00",
+  "testType": "REAL_CHROMIUM_WITH_EXPLICIT_API_DOUBLE",
+  "bundleSha256": "dbf98a553cea4b1a5fa9eed6f118f1aecae38bf1dee02b164e4429fb51748ec6",
+  "uiBuild": {
+    "schemaVersion": 1,
+    "sourceSha256": "52831f8fed922fa3f8fbfdb83685ae497607dfd94c3c635d2f737731e95acf1e",
+    "nodeMajor": 22
+  },
+  "checks": 70,
+  "scripts": [
+    {
+      "script": "contract_ui",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 20,
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_audit_contract",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 4,
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_sdd_integration",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 15,
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_contract_v11",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 3,
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_fix_regression",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 10,
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_rbac_regression",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 14,
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_global_sort",
+      "exitCode": 0,
+      "status": "PASS",
+      "checks": 4,
+      "stderrEmpty": true
+    }
+  ]
+}
