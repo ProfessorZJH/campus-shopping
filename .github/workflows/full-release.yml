@@ -60,7 +60,7 @@ jobs:
       - name: Python and Java deterministic regressions
         run: |
           (cd ai-service && python -m pytest -q)
-          bash ./mvnw -B -ntp test -Dtest=SkuConstraintPolicyTest,DddRulesTest,AiConversationBoundaryTest,ContextPathQuotaTest,ProductionSecurityGuardTest,ProtocolBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false
+          bash ./mvnw -B -ntp test -Dtest=SkuConstraintPolicyTest,PurchaseConstraintTest,DddRulesTest,AiConversationBoundaryTest,ContextPathQuotaTest,ProductionSecurityGuardTest,ProtocolBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false
           python scripts/verify-domain.py
           python scripts/verify-http-body.py
       - name: Upload quick diagnostics

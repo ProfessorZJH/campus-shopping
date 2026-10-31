@@ -25,7 +25,7 @@ FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|贵一点|
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
     patterns=[r'(?:预算|上限)\s*('+NUMBER+r')\s*(?:元|块)?',r'(?:不超过|最多|不到)\s*('+NUMBER+r')\s*(?:元|块)',r'('+NUMBER+r')\s*(?:元|块)\s*(?:以内|以下|左右)']
-    marker=bool(re.search(r'预算|不超过|上限|(?:元|块)\s*(?:以内|以下|左右)',question))
+    marker=bool(re.search(r'预算|不超过|最多|不到|上限|(?:元|块)\s*(?:以内|以下|左右)',question))
     if marker and re.search(r'(?:[零〇一二两三四五六七八九十百千万\d]*[几多来余]|[零〇一二两三四五六七八九十百千万\d]+\s*[到至~-]\s*[零〇一二两三四五六七八九十百千万\d]+)\s*(?:元|块)',question):return None,'AMBIGUOUS'
     amounts=[]
     for pattern in patterns:
@@ -186,7 +186,8 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
             candidate_text=result.get('answer','')
             if not isinstance(candidate_text,str) or not candidate_text.strip() or len(candidate_text)>8000:raise ValueError('回答格式错误')
             # 商品解释采用已过滤报价生成，模型自由文本不能重新引入排除项或虚构商业事实。
-            text='' if offers or specs.active else candidate_text
+            # 无报价/知识问答也不能把模型自述当成交易事实；正文统一由可信报价或引用生成。
+            text=''
             mode='LLM';warning=''
         except Exception:
             text='';recommendations=local_recommendations

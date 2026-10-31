@@ -55,16 +55,14 @@ public final class RecommendationPolicy {
         String question,
         List<String> userHistory
     ) {
-        var specs = SkuConstraintPolicy.resolve(
-            question,
-            userHistory,
-            quotes.stream().map(ProposalItemVO::specKey).toList(),
-            quotes.stream().map(ProposalItemVO::title).toList()
-        );
+        var constraints = ConstraintSet.resolve(question, userHistory, quotes);
+        if (constraints.clarification()) return List.of();
+        var specs = constraints.specs();
         Map<String, ProposalItemVO> allowed = new HashMap<>();
         quotes.forEach(q -> allowed.put(q.skuId(), q));
         List<ProposalItemVO> result = new ArrayList<>();
         Set<String> seen = new HashSet<>();
+        long spent = 0;
         for (var recommendation : recommendations) {
             var quote = allowed.get(recommendation.skuId());
             if (
@@ -74,9 +72,12 @@ public final class RecommendationPolicy {
                 seen.contains(quote.skuId()) ||
                 recommendation.quantity() < 1 ||
                 recommendation.quantity() > 99 ||
+                (constraints.requestedQuantity() != null && recommendation.quantity() != constraints.requestedQuantity()) ||
+                (constraints.budgetCent() != null && quote.priceCent() > (constraints.budgetCent() - spent) / recommendation.quantity()) ||
                 available.getOrDefault(quote.skuId(), 0L) < recommendation.quantity()
             ) continue;
             seen.add(quote.skuId());
+            if (constraints.budgetCent() != null) spent += quote.priceCent() * recommendation.quantity();
             result.add(
                 new ProposalItemVO(
                     quote.skuId(),
@@ -89,7 +90,7 @@ public final class RecommendationPolicy {
                     quote.imageUrl()
                 )
             );
-            if (result.size() == 3) break;
+            if (result.size() == (constraints.requestedQuantity() == null ? 3 : 1)) break;
         }
         return List.copyOf(result);
     }

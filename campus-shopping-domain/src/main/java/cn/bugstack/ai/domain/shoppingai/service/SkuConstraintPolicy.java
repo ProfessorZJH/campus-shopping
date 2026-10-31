@@ -61,7 +61,13 @@ public final class SkuConstraintPolicy {
         var explicit = Pattern.compile("(?<!需)(?:" + CUES + ")([^,，。;；!?？]{1,40})").matcher(text);
         while (explicit.find()) {
             String token = explicit.group(1).split(CUES, -1)[0];
-            if (token.matches("^[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋).*")) continue;
+            String originalToken = token;
+            token = token.replaceAll("^[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋)", "");
+            String quantityTail = token;
+            boolean startsAttribute =
+                vocabulary.stream().anyMatch(quantityTail::startsWith) ||
+                Pattern.compile("^.{1,2}?(?:装|色|码|杯|号|型)|^\\d+(?:\\.\\d+)?(?:ml|kg|cm|mm|l|g)").matcher(token).find();
+            if (!originalToken.equals(token) && !startsAttribute) continue;
             for (String title : titles) {
                 int at = token.indexOf(normalize(title));
                 if (at >= 0) token = token.substring(0, at);
@@ -85,8 +91,10 @@ public final class SkuConstraintPolicy {
                 cursor = attribute.end();
             }
             String remainder = token.substring(cursor).replaceAll("^(?:和|及|与|并且|同时|的|也)+", "");
+            boolean productName = titles.stream().anyMatch(title -> !remainder.isEmpty() && normalize(title).contains(remainder));
             if (
                 !remainder.isEmpty() &&
+                !productName &&
                 (explicit.group().startsWith("规格为") ||
                     explicit.group().startsWith("规格是") ||
                     (explicit.group().matches("^(?:只要|要|换成|改成|改为).*") && remainder.length() <= 8))
