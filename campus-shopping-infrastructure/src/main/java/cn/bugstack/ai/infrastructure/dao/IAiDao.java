@@ -22,6 +22,17 @@ public interface IAiDao {
     int incrementVersion(@Param("id") String id);
     int documentInsert(@Param("p") KnowledgeDocumentPO p);
     KnowledgeDocumentPO document(@Param("id") String id);
+    KnowledgeDocumentPO lockDocument(@Param("id") String id);
+    int ensureUsage(@Param("owner") String owner);
+    String lockUsage(@Param("owner") String owner);
+    int reserveDocumentQuota(
+        @Param("owner") String owner,
+        @Param("bytes") long bytes,
+        @Param("maxDocuments") int maxDocuments,
+        @Param("maxBytes") long maxBytes
+    );
+    int reserveIndexRate(@Param("owner") String owner, @Param("limit") int limit);
+    List<String> activeIndexes(@Param("owner") String owner);
     List<KnowledgeDocumentPO> documents(@Param("base") String base, @Param("offset") int offset, @Param("limit") int limit);
     long countDocuments(@Param("base") String base);
     List<KnowledgeDocumentPO> visibleScope(@Param("baseIds") List<String> baseIds);

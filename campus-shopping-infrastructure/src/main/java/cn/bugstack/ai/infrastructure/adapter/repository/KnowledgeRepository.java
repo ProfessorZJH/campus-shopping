@@ -91,7 +91,29 @@ public class KnowledgeRepository implements IKnowledgeRepository {
     }
 
     public void beginIndex(String id, String attempt) {
-        require(dao.beginIndex(id, attempt) == 1, ResponseCode.NOT_FOUND);
+        require(dao.beginIndex(id, attempt) == 1, ResponseCode.STATE_CONFLICT);
+    }
+
+    public void reserveDocumentQuota(String base, long bytes, int maxDocuments, long maxBytes) {
+        String owner = quotaOwner(base);
+        dao.ensureUsage(owner);
+        require(dao.reserveDocumentQuota(owner, bytes, maxDocuments, maxBytes) == 1, ResponseCode.ILLEGAL_PARAMETER);
+    }
+
+    public void reserveIndexQuota(String id, int maxPerMinute, int maxConcurrent) {
+        var document = dao.document(id);
+        require(document != null, ResponseCode.NOT_FOUND);
+        String owner = quotaOwner(document.getBaseId());
+        dao.ensureUsage(owner);
+        dao.lockUsage(owner);
+        require(dao.activeIndexes(owner).size() < maxConcurrent, ResponseCode.STATE_CONFLICT);
+        require(dao.reserveIndexRate(owner, maxPerMinute) == 1, ResponseCode.AUTH_RATE_LIMITED);
+    }
+
+    private String quotaOwner(String base) {
+        var knowledgeBase = dao.base(base);
+        require(knowledgeBase != null, ResponseCode.NOT_FOUND);
+        return knowledgeBase.getMerchantId() == null ? "__platform__" : knowledgeBase.getMerchantId();
     }
 
     public boolean completeIndex(KnowledgeIndexAttemptVO attempt, String status, String error) {
@@ -104,7 +126,7 @@ public class KnowledgeRepository implements IKnowledgeRepository {
         // 创建版本、发布、撤回统一先锁根，再重读文档，避免旧版本越过最新版本发布。
         DocumentRootPO r = dao.root(d.getRootId());
         if (r == null) throw new IllegalStateException("知识文档根丢失");
-        d = dao.document(id);
+        d = dao.lockDocument(id);
         return new cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate(document(d), r.getVersionCounter(), r.getActiveDocumentId());
     }
 

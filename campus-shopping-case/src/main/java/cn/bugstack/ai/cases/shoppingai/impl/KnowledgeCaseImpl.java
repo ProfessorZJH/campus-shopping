@@ -119,13 +119,13 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         var attempt = state.beginIndex(id);
         try {
             engine.index(id, d.title(), d.content());
-            state.completeIndex(attempt, true, "");
+            require(state.completeIndex(attempt, true, ""), ResponseCode.STATE_CONFLICT);
         } catch (AppException e) {
             if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;
-            state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试");
+            require(state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试"), ResponseCode.STATE_CONFLICT);
             log.error("知识索引构建失败 documentId={} diagnostic={}", id, cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
         } catch (RuntimeException e) {
-            state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试");
+            require(state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试"), ResponseCode.STATE_CONFLICT);
             throw e;
         }
         return state.document(id);
