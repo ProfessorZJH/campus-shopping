@@ -2,7 +2,7 @@
 
 范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 为准。复用生产 KnowledgeStore、engine、ProductIndex 和 Java RecommendationPolicy，不提供交易写接口。数据目前为 **DRAFT，120例均待人工复核**；执行成功不等于正式业务效果通过。
 
-当前评分器为v2，已修复异常案例漏出分母和部分硬约束未阻断的问题。门禁正确检出case-041～044的规格违规，本地dev自动suite返回1/FAILED；导购修复单独跟踪[issue #14](https://github.com/ProfessorZJH/campus-shopping/issues/14)。不能沿用旧评分器四项CI绿色作为当前验收通过；本轮范围见[审查收口](../../docs/testing/AI-EVALUATION-REVIEW-20261031.md)，历史Java权限修复与原始测试见[实施报告](../../docs/testing/AI-EVALUATION-20261031.md)。
+当前评分器为v2，修复异常案例漏出分母和硬约束门禁。门禁曾检出case-041～044规格违规，原始FAILED证据保留在[审查收口](../../docs/testing/AI-EVALUATION-REVIEW-20261031.md)。经补充授权，生产规格/否定过滤已按[SDD-07第7节](../../docs/specs/SDD-AI-RECALL-07.md)修复；同一冻结120例的本地/受控执行退出0，报告仍PARTIAL。最新测试/CI与未验证事项见[Issue #14修复报告](../../docs/testing/AI-SKU-CONSTRAINTS-20261031.md)，不能以历史CI或DRAFT执行成功替代正式业务效果验收。
 
 ## 运行
 

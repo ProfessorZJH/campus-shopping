@@ -22,8 +22,13 @@ def test_repeat_and_recompute_are_deterministic_and_legacy_immutable(tmp_path):
     paths = [new_run(tmp_path / str(i)) for i in range(2)]
     for p in paths:
         result = run(data, p, split='smoke')
-        assert result['exitCode'] == 1 and result['boundaryViolations'] == [['case-041', 'R-RULE', 0]]
-        assert result['status'] == 'FAILED'
+        assert result['exitCode'] == 0 and result['boundaryViolations'] == []
+        assert result['status'] == 'PARTIAL'  # DRAFT仍非正式业务效果通过。
+        rows = [json.loads(l) for l in (p / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
+        spec_row = next(r for r in rows if r['caseId'] == 'case-041' and r['experiment'] == 'R-RULE')
+        assert {r['skuId'] for r in spec_row['result']['recommendations']} == {'s000-0', 's040-0', 's160-0'}
+        assert spec_row['scores']['constraint.attributes']['value'] == 1
+        assert spec_row['scores']['recommendationCoverage']['value'] == 1
         before = json.loads((p / 'metrics.json').read_text(encoding='utf-8'))
         assert recompute(p) == before
     def normalized(path):
@@ -119,14 +124,17 @@ def test_controlled_llm_repeats_fixed_candidates_and_metadata(tmp_path):
     data = load()
     path = new_run(tmp_path / 'controlled')
     result = run(data, path, split='smoke', profile='controlled', experiments=('R-RULE', 'R-LLM'))
-    assert result['exitCode'] == 1
-    assert result['boundaryViolations'] == [['case-041', 'R-RULE', 0]] + [['case-041', 'R-LLM', n] for n in range(3)]
+    assert result['exitCode'] == 0 and result['boundaryViolations'] == []
     rows = [json.loads(l) for l in (path / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
     for cid in data['splits']['smoke']:
         case_rows = [r for r in rows if r['caseId'] == cid]
         assert len(case_rows) == 4
         assert len({r.get('candidatesHash') for r in case_rows}) == 1
         assert all('REAL' not in r['provenance']['llm']['source'] for r in case_rows)
+        if cid == 'case-041':
+            assert all({i['skuId'] for i in r['result']['recommendations']} == {'s000-0', 's040-0', 's160-0'} for r in case_rows)
+            assert all(r['scores']['constraint.attributes']['value'] == 1 for r in case_rows)
+            assert all(r['scores']['recommendationCoverage']['value'] == 1 for r in case_rows)
     with pytest.raises(ValueError, match='incompatible'):
         paired([], [], 'x', metadata_left={'profile': 'local'}, metadata_right={'profile': 'controlled'})
     metadata = dict(datasetHash='x', split='dev', profile='controlled', adapter='python', configuration={})
@@ -173,12 +181,15 @@ def test_cli_dev_results_are_reproducible_across_process_hash_seeds(tmp_path):
         completed = subprocess.run([sys.executable, str(script), '--dataset', 'campus-shopping-v1', '--split', 'dev',
                         '--experiments', 'K-B,K-D,K-H,K-D-R,K-H-R,R-RULE', '--output-dir', str(output)],
                        env=dict(os.environ, PYTHONHASHSEED=seed), capture_output=True)
-        assert completed.returncode == 1
+        assert completed.returncode == 0
         manifest = json.loads((output / 'manifest.json').read_text(encoding='utf-8'))
-        assert manifest['status'] == 'FAILED'
-        assert manifest['boundaryViolations'] == [[f'case-{i:03d}', 'R-RULE', 0] for i in range(41, 45)]
+        assert manifest['status'] == 'PARTIAL' and manifest['boundaryViolations'] == []
         assert manifest['configuration']['pythonHashSeed'] == '20261031'
         rows = [json.loads(line) for line in (output / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
+        spec_rows = [r for r in rows if r['caseId'] in [f'case-{i:03d}' for i in range(41, 45)] and r['experiment'] == 'R-RULE']
+        assert len(spec_rows) == 4
+        assert all(r['result']['recommendations'] and r['scores']['constraint.attributes']['value'] == 1
+                   and r['scores']['recommendationCoverage']['value'] == 1 for r in spec_rows)
         for r in rows:
             r.pop('latencyMs', None)
             r.get('result', {}).pop('latencyMs', None)
