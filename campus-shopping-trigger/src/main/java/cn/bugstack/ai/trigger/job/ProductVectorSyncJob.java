@@ -40,6 +40,13 @@ public class ProductVectorSyncJob {
 
     @Scheduled(initialDelayString = "${campus.ai.product-sync.initial-delay-ms:60000}", fixedDelayString = "${campus.ai.product-sync.period-ms:600000}")
     public void refresh() {
+        resources.coordinateProductSync(this::refreshCoordinated);
+    }
+
+    @jakarta.annotation.Resource
+    private cn.bugstack.ai.domain.shoppingai.adapter.repository.IAiResourceRepository resources;
+
+    private void refreshCoordinated() {
         long started = System.nanoTime();
         String previous = MDC.get("requestId");
         MDC.put("requestId", UUID.randomUUID().toString());

@@ -67,7 +67,8 @@ public class SessionSecurityConfig {
         CsrfTokenRepository csrfRepository,
         LogoutHandler sessionLogoutHandler,
         IUserAccountService accountService,
-        ObjectMapper mapper
+        ObjectMapper mapper,
+        cn.bugstack.ai.domain.identity.adapter.repository.IRequestQuotaRepository quotas
     ) throws Exception {
         return http
             .securityContext(s -> s.securityContextRepository(repository).requireExplicitSave(true))
@@ -130,8 +131,9 @@ public class SessionSecurityConfig {
                     )
             )
             .addFilterBefore(new RequestBodyLimitFilter(mapper), CsrfFilter.class)
-            .addFilterBefore(new AuthenticationRateFilter(mapper, rateLimitEnabled), CsrfFilter.class)
+            .addFilterBefore(new AuthenticationRateFilter(mapper, rateLimitEnabled, quotas), CsrfFilter.class)
             .addFilterBefore(new AccountStatusFilter(accountService, sessionLogoutHandler, mapper), AuthorizationFilter.class)
+            .addFilterAfter(new cn.bugstack.ai.trigger.http.ProtectedQuotaFilter(quotas, mapper, rateLimitEnabled), AuthorizationFilter.class)
             .build();
     }
 

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.bugstack.ai.infrastructure.dao.IAiDao">
+    <update id="reserveBaseQuota">UPDATE ai_knowledge_quota SET used_count=used_count+1 WHERE id='global' AND used_count &lt; 1000</update>
     <insert id="baseInsert">
 INSERT INTO ai_knowledge_base(id,name,merchant_id,visibility,created_by) VALUES(#{p.id},#{p.name},#{p.merchantId},#{p.visibility},#{creator})
     </insert>

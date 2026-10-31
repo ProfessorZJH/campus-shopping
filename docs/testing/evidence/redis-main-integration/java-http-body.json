@@ -1,0 +1,15 @@
+{
+  "timestamp": "2026-10-31T02:38:44.747168+00:00",
+  "status": "PASS",
+  "checks": [
+    "拒绝非正数响应上限",
+    "真实HTTP完整接收正常正文",
+    "恰好达到上限的正文可接收",
+    "无Content-Length分块正文超限仍被拒绝",
+    "已收到响应头的慢正文仍受完整响应超时约束",
+    "超时请求已显式取消"
+  ],
+  "productionSubscriberCompiledUnchanged": true,
+  "realLoopbackHttp": true,
+  "fullSpringGatewayTested": false
+}

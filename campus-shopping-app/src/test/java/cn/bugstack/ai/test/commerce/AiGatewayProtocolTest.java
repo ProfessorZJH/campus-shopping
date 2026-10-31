@@ -67,6 +67,16 @@ class AiGatewayProtocolTest {
 
     private AiGatewayService gateway(HttpServer server) {
         var gateway = new AiGatewayService();
+        ReflectionTestUtils.setField(
+            gateway,
+            "resources",
+            new cn.bugstack.ai.infrastructure.adapter.repository.AiResourceRepository(
+                new org.springframework.beans.factory.support.DefaultListableBeanFactory().getBeanProvider(
+                    cn.bugstack.ai.infrastructure.redis.RedisClients.class
+                ),
+                4
+            )
+        );
         ReflectionTestUtils.setField(gateway, "url", "http://127.0.0.1:" + server.getAddress().getPort());
         ReflectionTestUtils.setField(gateway, "key", SERVICE_KEY);
         ReflectionTestUtils.setField(gateway, "mapper", new ObjectMapper());

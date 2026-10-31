@@ -2,6 +2,10 @@
 
 > **本地真实 Spring/MySQL、真实 AI 导购与浏览器交易闭环已完成列明范围的验收。** Docker、Qdrant、生产部署与性能验收不在本次通过范围，具体证据见下文。
 
+## Redis 主线整合（2026-10-31）
+
+Redis能力已移植到当前主线与PR #10审查修复上，保留最新领域与事务实现。真实临时MySQL和本机Redis：Maven189项、Python49项、HTTP173项、双实例9项和真实浏览器8项通过。已有库必须停止旧实例并显式升级；两种租约字段的版本不能混跑。见[整合验收与边界](docs/testing/REDIS-MAIN-INTEGRATION-20261031.md)及[Redis运行手册](docs/operations/REDIS-12-runbook.md)。
+
 ## 当前代码与文档收口（2026-10-30）
 
 当前 Case 职责、命名、只读响应模型、会话/邀请分页、知识容量和 AI 预算/数量修复及本轮隔离复验，统一见[最终报告](docs/testing/DDD-DOC-CLOSURE-20261030.md)与[DDD 参考对照](docs/architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)。现行接口以[生成契约](docs/api/http-api.md)和[行为契约](docs/api/behavior-v1.1.md)为准。以下日期分节保留各阶段执行范围，旧 NOT_RUN 不表示当前仍未运行。

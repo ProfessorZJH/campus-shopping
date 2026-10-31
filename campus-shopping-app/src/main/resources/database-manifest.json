@@ -20,6 +20,11 @@
       "version": "V20261030_01",
       "file": "V20261030_01__ai_attempt_and_conversation_lease.sql",
       "sha256": "436372074fa9cd2fe0cb9c2c00ce29bb3196a93aa8d477042ac3c8437f200e32"
+    },
+    {
+      "version": "V20261031_01",
+      "file": "V20261031_01__conversation_lease.sql",
+      "sha256": "8302633d94615ff84f1a4803e94131b26cb0be3bfccb2d93882446faebd2fc07"
     }
   ]
 }

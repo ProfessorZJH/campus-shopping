@@ -25,13 +25,21 @@ class ProtocolBoundaryTest {
 
     @Test
     void registrationRetryAfterMatchesItsFiveMinuteWindow() throws Exception {
-        verifyRateLimit("/api/v1/auth/register", 10, 299, 300);
-        verifyRateLimit("/api/v1/auth/login", 30, 59, 60);
+        verifyRateLimit("/api/v1/auth/register", 30, 299, 300);
+        verifyRateLimit("/api/v1/auth/login", 300, 59, 60);
     }
 
     private void verifyRateLimit(String path, int limit, int minimum, int maximum) throws Exception {
         var mapper = new ObjectMapper();
-        var filter = new AuthenticationRateFilter(mapper);
+        var filter = new AuthenticationRateFilter(
+            mapper,
+            true,
+            new cn.bugstack.ai.infrastructure.adapter.repository.RequestQuotaRepository(
+                new org.springframework.beans.factory.support.DefaultListableBeanFactory().getBeanProvider(
+                    cn.bugstack.ai.infrastructure.redis.RedisClients.class
+                )
+            )
+        );
         var request = new MockHttpServletRequest("POST", path);
         for (int i = 0; i < limit; i++) {
             var allowed = new MockHttpServletResponse();

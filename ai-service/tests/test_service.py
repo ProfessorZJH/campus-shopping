@@ -305,3 +305,29 @@ def test_spark_provider_uses_compatible_completion_payload(monkeypatch,tmp_path)
     assert kw['json']['model']=='spark-x2.6'
     assert 'temperature' not in kw['json'] and 'response_format' not in kw['json']
     assert 'test-only' not in str(kw['json'])
+
+
+def test_execution_capacity_is_held_until_work_finishes(tmp_path,monkeypatch):
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+    import app.main as main
+    entered,release=threading.Event(),threading.Event()
+    def slow(*args):
+        entered.set()
+        assert release.wait(5)
+        return {'query':'测试','terms':['测试']}
+    monkeypatch.setattr(main,'recall_terms',slow)
+    settings=Settings(api_key=KEY,db_path=str(tmp_path/'capacity.db'),max_concurrent_requests=1)
+    with TestClient(create_app(settings),headers={'X-Service-Key':KEY}) as client,ThreadPoolExecutor(1) as executor:
+        future=executor.submit(client.post,'/v1/recall',json={'question':'测试'})
+        try:
+            assert entered.wait(3)
+            assert client.post('/v1/recall',json={'question':'第二个'}).status_code==429
+        finally:release.set()
+        assert future.result(timeout=5).status_code==200
+        assert client.post('/v1/recall',json={'question':'恢复'}).status_code==200
+
+
+def test_execution_capacity_configuration_rejects_invalid_value(tmp_path):
+    with pytest.raises(ValueError):
+        Settings(api_key=KEY,db_path=str(tmp_path/'invalid.db'),max_concurrent_requests=0).validate()

@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "format": "PASS",
+  "uiBuildReproducibility": 3,
+  "generatedUi": "PASS",
+  "schemaContract": "PASS",
+  "sourceSafety": "PASS",
+  "apiRoutes": 93,
+  "apiSchemaChecks": 58,
+  "dddBoundaryRejectionFixtures": 13,
+  "javaReadabilityGuardedFiles": 11,
+  "productionDomainChecks": 56,
+  "httpBodyChecks": 6,
+  "npmAuditVulnerabilities": 0
+}

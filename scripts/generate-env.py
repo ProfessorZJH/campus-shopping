@@ -9,6 +9,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def generate(destination: Path):
     values = {
+        'REDIS_SECURITY_PASSWORD': secrets.token_urlsafe(32),
+        'REDIS_CACHE_PASSWORD': secrets.token_urlsafe(32),
         'DB_PASSWORD': secrets.token_urlsafe(32),
         'MYSQL_ROOT_PASSWORD': secrets.token_urlsafe(32),
         'AI_SERVICE_KEY': secrets.token_urlsafe(48),

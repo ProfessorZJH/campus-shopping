@@ -6,6 +6,8 @@ import java.util.List;
 
 /** 商品聚合持久化；跨领域只读投影由 ICatalogQueryRepository 承担。 */
 public interface ICatalogRepository {
+    ProductAggregate findForDisplay(String id);
+    List<CategoryVO> displayCategories();
     ProductAggregate find(String id, boolean lock);
     void insert(ProductAggregate product);
     void save(ProductAggregate product);

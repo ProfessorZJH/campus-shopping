@@ -19,6 +19,7 @@ class Settings:
     milvus_uri: str = ""
     milvus_token: str = ""
     product_collection: str = "campus_products_v1"
+    max_concurrent_requests: int = 4
     llm_timeout_seconds: int = 60
 
     @classmethod
@@ -30,8 +31,10 @@ class Settings:
             llm_url=os.getenv("LLM_BASE_URL", "").rstrip("/"),llm_key=os.getenv("LLM_API_KEY", ""),llm_model=os.getenv("LLM_MODEL", ""),
             milvus_uri=os.getenv("MILVUS_URI", "").rstrip("/"),milvus_token=os.getenv("MILVUS_TOKEN", ""),
             product_collection=os.getenv("MILVUS_PRODUCT_COLLECTION", "campus_products_v1"),
+            max_concurrent_requests=int(os.getenv("AI_MAX_CONCURRENT_REQUESTS", "4")),
             llm_timeout_seconds=int(os.getenv("LLM_TIMEOUT_SECONDS", "60")))
     def validate(self):
+        if not 1<=self.max_concurrent_requests<=32:raise ValueError("AI_MAX_CONCURRENT_REQUESTS 必须为1至32")
         if len(self.api_key)<24:
             raise ValueError("必须设置至少24位 AI_SERVICE_KEY，且与 Java 端一致")
         if not 5<=self.llm_timeout_seconds<=60:

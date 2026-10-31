@@ -158,7 +158,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                 )
                 .toList()
         );
-        List<SkuOfferVO> offers = catalog.saleOffers(ids);
+        List<SkuOfferVO> offers = catalog.availableOffers(ids);
         Map<String, StockVO> stocks = inventory
             .stocks(ids)
             .stream()

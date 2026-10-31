@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "checks": [
+    "replaying fresh schema on existing tables does not register unapplied upgrades",
+    "dirty historical amount stops migration without changing the row",
+    "old Redis V31 history without main V30 upgrades safely; legacy lease and V31 checksum/history preserved",
+    "all migrations replay twice and preserve historical snapshot",
+    "AI attempt and lease columns added to old schema without changing published knowledge or conversation history",
+    "fresh and upgraded database columns/indexes/constraints match",
+    "recorded migration checksum mismatch rejected before executing DDL",
+    "five invalid amount/quantity writes rejected by real MySQL CHECK"
+  ],
+  "existingDatabaseUsed": false,
+  "mysqlVersion": "8.0.31",
+  "indexesAdded": [
+    "ix_member_role",
+    "ix_app_applicant",
+    "ix_stock_sku",
+    "ix_movement_merchant",
+    "ix_document_base",
+    "ix_message_sequence",
+    "ix_proposal_conversation"
+  ],
+  "constraintsAdded": [
+    "ck_order_item_values",
+    "ck_payment_amount",
+    "ck_refund_amount"
+  ],
+  "maven": "NOT_RUN (--skip-maven)",
+  "temporaryDatabaseCleaned": true
+}

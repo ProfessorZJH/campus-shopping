@@ -29,6 +29,7 @@ public class KnowledgeRepository implements IKnowledgeRepository {
     private Clock clock;
 
     public void createBase(KnowledgeBaseVO b, String actor) {
+        require(dao.reserveBaseQuota() == 1, ResponseCode.ILLEGAL_PARAMETER);
         dao.baseInsert(KnowledgeBasePO.builder().id(b.id()).name(b.name()).merchantId(b.merchantId()).visibility(b.visibility()).build(), actor);
     }
 

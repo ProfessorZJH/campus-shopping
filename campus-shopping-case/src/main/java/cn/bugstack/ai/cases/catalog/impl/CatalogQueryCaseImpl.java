@@ -55,7 +55,7 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
 
     @Override
     public ProductReadModel detail(String product) {
-        ProductAggregate found = catalogService.find(product);
+        ProductAggregate found = catalogService.findForDisplay(product);
         require(
             "PUBLISHED".equals(found.getStatus()) && "ACTIVE".equals(merchantService.find(found.getMerchantId()).status()),
             ResponseCode.PRODUCT_UNAVAILABLE
@@ -121,7 +121,7 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     private Map<String, SkuOfferVO> stockOffers(String actor, String merchant, List<String> skuIds) {
-        access.requirePermission(actor, merchant, "product.read");
+        access.requirePermission(actor, merchant, "stock.read");
         if (skuIds.isEmpty()) return Map.of();
         return catalogService
             .offers(skuIds)

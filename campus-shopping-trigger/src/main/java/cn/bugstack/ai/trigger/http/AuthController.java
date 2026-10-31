@@ -43,6 +43,12 @@ public class AuthController implements IAuthApi {
     @Resource
     private IUserAccountService userAccountService;
 
+    @Resource
+    private cn.bugstack.ai.domain.identity.adapter.repository.IRequestQuotaRepository quotas;
+
+    @org.springframework.beans.factory.annotation.Value("${campus.security.rate-limit-enabled:true}")
+    private boolean rateLimitEnabled;
+
     // Spring 注入的是当前请求的代理，不是在单例中缓存用户请求。
     @Resource
     private HttpServletRequest servletRequest;
@@ -87,6 +93,20 @@ public class AuthController implements IAuthApi {
         try {
             if (request == null) {
                 throw new AppException(ResponseCode.AUTH_BAD_CREDENTIALS);
+            }
+            if (rateLimitEnabled && request.getUsername() != null) {
+                long retry;
+                try {
+                    retry = quotas.acquire("login-account", request.getUsername().strip().toLowerCase(java.util.Locale.ROOT), 30, 60);
+                } catch (RuntimeException failure) {
+                    servletResponse.setStatus(503);
+                    return failure(ResponseCode.UN_ERROR.getCode(), ResponseCode.UN_ERROR.getInfo());
+                }
+                if (retry > 0) {
+                    servletResponse.setStatus(429);
+                    servletResponse.setHeader("Retry-After", Long.toString(retry));
+                    return failure(ResponseCode.AUTH_RATE_LIMITED.getCode(), ResponseCode.AUTH_RATE_LIMITED.getInfo());
+                }
             }
             // 1. 数据库凭据校验成功之前，不创建认证主体。
             UserAccountAggregate account = userAccountService.authenticate(request.getUsername(), request.getPassword());

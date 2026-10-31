@@ -97,9 +97,11 @@ def migration_checks(connection, report):
         old, count = re.subn(r',\s*CONSTRAINT ' + constraint + r' CHECK\([^)]*\)', '', old)
         assert count == 1, constraint
     old = old.replace(" image_url VARCHAR(255) NOT NULL DEFAULT '',", '')
-    for column in ('index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL'):
+    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL'):
         old, count = re.subn(r' ' + re.escape(column) + ',', '', old)
         assert count == 1, column
+    old = re.sub(r'CREATE TABLE IF NOT EXISTS ai_knowledge_quota \(.*?;\n', '', old, flags=re.S)
+    old = re.sub(r'INSERT IGNORE INTO ai_knowledge_quota[^;]*;\n', '', old)
     old = re.sub(r'CREATE TABLE IF NOT EXISTS iam_merchant_role(?:_permission)? \(.*?;\n', '', old, flags=re.S)
     with connection.cursor() as cur:
         for database, contents in [('campus_shopping_it', schema), ('campus_shopping_migration_it', old)]:
@@ -131,7 +133,23 @@ def migration_checks(connection, report):
         report['checks'].append('dirty historical amount stops migration without changing the row')
         # 仅清理本脚本在临时库人为插入的非法测试夹具，绝不处理用户数据库。
         cur.execute("DELETE FROM trd_payment WHERE order_id='invalid-fixture'")
+        # 旧 Redis 分支已登记 V31，却没有主线 V30；必须允许补齐较早版本，且不篡改 V31。
+        from schema_contract import migrations as expected_migrations
+        redis_history = [entry for entry in expected_migrations() if entry['version'] != 'V20261030_01']
+        apply_migrations(connection, redis_history)
+        cur.execute("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
+                    "AND TABLE_NAME='ai_conversation' AND COLUMN_NAME='turn_token'")
+        assert cur.fetchone() == (0,), '旧 Redis 夹具不得预先包含主线租约'
+        cur.execute("UPDATE ai_conversation SET processing_owner='legacy-stopped-owner', "
+                    "processing_until='2026-10-30 00:00:00' WHERE id='historic-conversation'")
+        cur.execute("SELECT checksum,installed_at FROM sys_schema_migration WHERE version='V20261031_01'")
+        redis_record = cur.fetchone()
         apply_migrations(connection)
+        cur.execute("SELECT checksum,installed_at FROM sys_schema_migration WHERE version='V20261031_01'")
+        assert cur.fetchone() == redis_record, '已登记的 V31 不得改写或重复登记'
+        cur.execute("SELECT processing_owner,turn_token,turn_expires_at FROM ai_conversation WHERE id='historic-conversation'")
+        assert cur.fetchone() == ('legacy-stopped-owner', None, None)
+        report['checks'].append('old Redis V31 history without main V30 upgrades safely; legacy lease and V31 checksum/history preserved')
         for _ in range(2):
             for migration in migrations:
                 execute_script(cur, migration)
@@ -225,6 +243,10 @@ def http_smoke(args, workspace, build_root, connection, env, report):
                ADMIN_USERNAME='audit_admin', ADMIN_PASSWORD=secrets.token_urlsafe(32), SESSION_COOKIE_SECURE='false',
                CAMPUS_JOBS_ENABLED='false', CAMPUS_SECURITY_RATE_LIMIT_ENABLED='false',
                UPLOAD_DIR=str(workspace/'uploads'))
+    if env.get('REDIS_TEST_ADDRESS'):
+        env.update(REDIS_ENABLED='true',REDIS_SECURITY_ADDRESS=env['REDIS_TEST_ADDRESS'],REDIS_CACHE_ADDRESS=env['REDIS_TEST_ADDRESS'],
+                   REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD',''),REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD',''),
+                   REDIS_NAMESPACE='cs:test:http:'+secrets.token_hex(12), CAMPUS_SECURITY_RATE_LIMIT_ENABLED='true')
     with connection.cursor() as cur:
         cur.execute('CREATE DATABASE campus_shopping_http_it CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
     processes, logs = [], []
@@ -257,6 +279,28 @@ def http_smoke(args, workspace, build_root, connection, env, report):
                           'externalModel': False, 'retrieval': 'LOCAL_RETRIEVAL_DEMO',
                           'contractValidation': http.get('contractValidation')}
         assert completed.returncode == 0 and http['status'] == 'PASS', '真实 HTTP 验收失败'
+        if env.get('REDIS_TEST_ADDRESS'):
+            secondary_port = free_port()
+            secondary_log = (workspace/'java-secondary-http.log').open('wb')
+            logs.append(secondary_log)
+            secondary = subprocess.Popen(
+                [shutil.which('java') or 'java', '-jar', str(build_root/'campus-shopping-app/target/campus-shopping-app.jar'),
+                 '--spring.profiles.active=dev', '--server.port='+str(secondary_port),
+                 '--spring.sql.init.mode=never', '--campus.bootstrap.enabled=false'],
+                cwd=build_root, env=env, stdout=secondary_log, stderr=subprocess.STDOUT, creationflags=FLAGS)
+            processes.append(secondary)
+            secondary_base = f'http://127.0.0.1:{secondary_port}'
+            wait_http(secondary, secondary_base+'/api/v1/categories')
+            shared_output = args.output.parent/'redis-shared-http.json'
+            completed = subprocess.run(
+                [sys.executable, '-X', 'utf8', '-B', str(ROOT/'scripts/smoke-redis-shared.py'),
+                 '--base-url', base, '--secondary-base-url', secondary_base,
+                 '--env-file', str(workspace/'absent.env'), '--output', str(shared_output)],
+                cwd=ROOT, env=env, creationflags=FLAGS, timeout=180)
+            shared = json.loads(shared_output.read_text('utf-8'))
+            report['redisSharedHttp'] = {'status': shared['status'], 'checks': len(shared['checks']),
+                                        'quotaAttempts': len(shared.get('quotaAttempts', [])), 'database': 'ISOLATED_MYSQL'}
+            assert completed.returncode == 0 and shared['status'] == 'PASS', 'Redis 双实例真实 HTTP 验收失败'
         # 将既有浏览器入口复制到无 .env 的临时项目，隔离凭据读取和证据输出目录。
         live = build_root/'frontend/tests/live_ui.py'
         live.parent.mkdir(parents=True, exist_ok=True)
@@ -280,7 +324,7 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         for log in logs:
             log.close()
         # 只保存服务访问/启动日志，日志不含密钥或请求正文，便于保留真实联调失败现场。
-        for name in ('ai-http.log', 'java-http.log'):
+        for name in ('ai-http.log', 'java-http.log', 'java-secondary-http.log'):
             source = workspace/name
             if source.exists():
                 shutil.copy2(source, args.output.parent/Path(name).with_suffix('.txt'))
@@ -346,6 +390,7 @@ def run(args, report):
             (args.output.parent/'tested-sources.json').write_text(
                 json.dumps(source_hashes, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
             env = os.environ.copy()
+            env.setdefault('REDIS_ENABLED', 'false')
             env.update(MYSQL_TEST_URL=f'jdbc:mysql://127.0.0.1:{port}/campus_shopping_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8',
                        MYSQL_TEST_USERNAME='root', MYSQL_TEST_PASSWORD=password)
             maven = str(build_root/('mvnw.cmd' if os.name == 'nt' else 'mvnw')) if Path(args.maven).name in ('mvnw', 'mvnw.cmd') else args.maven

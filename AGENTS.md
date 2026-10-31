@@ -2,6 +2,10 @@
 
 > **本地真实 Spring/MySQL、真实 AI 导购与浏览器交易闭环已完成列明范围的验收。** Docker、Qdrant、生产部署与性能验收不在本次通过范围，具体证据见下文。
 
+## Redis 主线整合（2026-10-31）
+
+基于 main `37124d0` 和 PR #10 `9d16b26` 移植 Redis，保留最新查询读模型、提案事务与 `turn_token` / `turn_expires_at` 600秒租约。V31旧 `processing_*` 字段仅保留迁移兼容，禁止重新用于运行时裁决；停旧实例后再升级，不能混合两种租约版本。真实临时MySQL/本机Redis的Maven189项零失败零跳过、Python49项、HTTP173项、双Java实例9项及真实浏览器8项通过；远程模型、本机Docker、生产与性能未重验。见 [整合报告](docs/testing/REDIS-MAIN-INTEGRATION-20261031.md)、[规格](docs/specs/SDD-REDIS-12.md)、[运行手册](docs/operations/REDIS-12-runbook.md)。
+
 ## 当前工程化流程（2026-10-29）
 
 - JDK17 / Node22.16.0 / Python3.11；使用仓库 Maven Wrapper3.9.9、npm lock 和带哈希的 Python lock。`mvnw clean verify` 从 `frontend/src` 重新编译 UI，禁止手改生成静态副本。前端改动后运行 `python scripts/build-ui-bundle.py`，CI 用 `--check` 全量比对。

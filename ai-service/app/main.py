@@ -79,7 +79,7 @@ class ExtractRequest(StrictModel):
     base64: str=Field(max_length=2800000)
 
 def create_app(settings: Settings|None=None):
-    settings=settings or Settings.from_env();settings.validate();store=KnowledgeStore(settings);products=ProductIndex(settings,store.provider);gate=threading.BoundedSemaphore(4)
+    settings=settings or Settings.from_env();settings.validate();store=KnowledgeStore(settings);products=ProductIndex(settings,store.provider);gate=threading.BoundedSemaphore(settings.max_concurrent_requests)
     @asynccontextmanager
     async def lifespan(app):
         yield

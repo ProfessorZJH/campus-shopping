@@ -6,6 +6,7 @@ import java.util.*;
 /** 经营资格公开能力，不提供绕过授权的 HTTP 入口。 */
 public interface IMerchantService {
     List<MerchantVO> findAll(List<String> ids);
+    MerchantVO publicDisplay(String id);
     MerchantVO find(String merchantId);
     MerchantVO requireActiveForNewTrade(String merchantId);
     long count(boolean activeOnly);

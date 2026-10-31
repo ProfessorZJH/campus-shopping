@@ -19,6 +19,35 @@ public class CatalogRepository implements ICatalogRepository {
     @Resource
     private ICatalogDao dao;
 
+    @Resource
+    private cn.bugstack.ai.infrastructure.redis.DisplayCache cache;
+
+    public record ProductDisplay(String title, String description, String categoryCode, String imageUrl) {}
+
+    public ProductAggregate findForDisplay(String id) {
+        ProductPO facts = dao.productFacts(id);
+        if (facts == null) return null;
+        ProductDisplay display = cache.read(
+            "product:" + id + ":" + facts.getVersion(),
+            40,
+            new com.fasterxml.jackson.core.type.TypeReference<ProductDisplay>() {},
+            () -> {
+                ProductPO p = dao.product(id, false);
+                return p == null ? null : new ProductDisplay(p.getTitle(), p.getDescription(), p.getCategoryCode(), p.getImageUrl());
+            }
+        );
+        if (display == null) return null;
+        facts.setTitle(display.title());
+        facts.setDescription(display.description());
+        facts.setCategoryCode(display.categoryCode());
+        facts.setImageUrl(display.imageUrl());
+        return aggregate(facts, dao.skus(List.of(id)));
+    }
+
+    public List<CategoryVO> displayCategories() {
+        return cache.read("categories", 600, new com.fasterxml.jackson.core.type.TypeReference<List<CategoryVO>>() {}, this::categories);
+    }
+
     public ProductAggregate find(String id, boolean lock) {
         ProductPO p = dao.product(id, lock);
         return p == null ? null : aggregate(p, lock ? dao.skusForUpdate(id) : dao.skus(List.of(id)));
@@ -31,6 +60,7 @@ public class CatalogRepository implements ICatalogRepository {
 
     public void save(ProductAggregate p) {
         if (dao.saveProduct(po(p)) != 1) throw new AppException(ResponseCode.STATE_CONFLICT);
+        cache.evictAfterCommit("product:" + p.getId() + ":" + p.getVersion());
         Set<String> old = new HashSet<>(dao.skusForUpdate(p.getId()).stream().map(SkuPO::getId).toList());
         for (ProductSkuEntity s : p.getSkus()) {
             if (old.contains(s.id())) dao.saveSku(sku(p, s));
@@ -72,6 +102,7 @@ public class CatalogRepository implements ICatalogRepository {
 
     public void category(String c, String n, boolean a) {
         dao.category(c, n, a);
+        cache.evictAfterCommit("categories");
     }
 
     private ProductAggregate aggregate(ProductPO p, List<SkuPO> ss) {

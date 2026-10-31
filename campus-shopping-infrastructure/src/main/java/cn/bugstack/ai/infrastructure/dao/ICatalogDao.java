@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.*;
 /** 数据访问映射，业务决定由领域服务作出。 */
 @Mapper
 public interface ICatalogDao {
+    ProductPO productFacts(@Param("id") String id);
     ProductPO product(@Param("id") String id, @Param("lock") boolean lock);
     List<SkuPO> skus(@Param("productIds") List<String> productIds);
     List<SkuPO> skusForUpdate(@Param("productId") String productId);

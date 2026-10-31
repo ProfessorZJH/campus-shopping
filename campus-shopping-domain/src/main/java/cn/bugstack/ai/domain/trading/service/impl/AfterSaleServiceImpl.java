@@ -35,6 +35,7 @@ public class AfterSaleServiceImpl implements IAfterSaleService {
         return repository.countAfterSales(buyer, merchant, AfterSaleStatusEnumVO.filter(status));
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public AfterSaleVO afterSaleForUpdate(String order) {
         return repository.afterSale(order, true);
     }
@@ -68,6 +69,7 @@ public class AfterSaleServiceImpl implements IAfterSaleService {
         saveAfterSale(aggregate);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
     public void requirePickupAllowed(String order) {
         AfterSaleVO value = repository.afterSale(order, true);
         if (value != null) new AfterSaleAggregate(value).requirePickupAllowed();
