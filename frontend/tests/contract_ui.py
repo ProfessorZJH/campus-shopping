@@ -273,7 +273,11 @@ def main():
             page.get_by_role('button',name='通过并开通').click();page.get_by_label('原因 / 说明',exact=True).fill('测试人工核对资料通过')
             page.get_by_role('button',name='确认提交',exact=True).click();expect(page.locator('.admission-card .badge')).to_contain_text('已通过');check('平台审核需确认并填写意见')
             page.get_by_role('button',name='校园购物',exact=True).click();page.locator('nav').get_by_role('button',name='智能导购').click()
+            # 页面先渲染再完成异步加载；inert 期间 fill 可能不触发 Vue 的输入更新。
+            expect(page.locator('#main')).not_to_have_attribute('inert','')
             page.get_by_label('输入购物需求').fill('预算30元，买一套考试文具')
+            expect(page.get_by_label('输入购物需求')).to_have_value('预算30元，买一套考试文具')
+            expect(page.get_by_role('button',name='发送 ↑',exact=True)).to_be_enabled()
             page.get_by_role('button',name='发送 ↑',exact=True).click()
             expect(page.locator('.proposal-card')).to_have_count(1)
             expect(page.locator('.chat-header .badge')).to_contain_text('未使用大模型');check('未接模型时界面明确标注演示模式')

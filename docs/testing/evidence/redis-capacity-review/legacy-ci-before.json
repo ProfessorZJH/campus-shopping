@@ -1,0 +1,114 @@
+{
+  "testType": "真实Chromium + 真实Vue；后端为接口契约替身，不是Java/MySQL端到端",
+  "timestamp": "2026-10-31T02:56:30.822081+00:00",
+  "passedChecks": [
+    "真实Vue渲染商品首页；使用本地资源与预编译模板",
+    "登录后刷新安全令牌与工作台权限",
+    "商品选规格、加购、单商户报价下单",
+    "模拟付款更新订单，不跳转外部支付",
+    "商户创建商品和规格，金额按分提交",
+    "商户新建商品通过明确操作上架",
+    "经营者可以维护自提门店资料",
+    "商户补货携带独立幂等键",
+    "备货与令牌核销流程有明确操作入口",
+    "知识库创建、文本上传、索引状态与发布流程",
+    "平台监管通过独立接口下架商品",
+    "平台审核需确认并填写意见"
+  ],
+  "browserErrors": [],
+  "unhandledMockRoutes": [],
+  "writes": [
+    {
+      "path": "/auth/login",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/cart",
+      "method": "PUT",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/orders",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": true
+    },
+    {
+      "path": "/orders/o1/pay",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/merchants/m1/products",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/merchants/m1/products/p-created/publish",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/merchants/m1/profile",
+      "method": "PUT",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/merchants/m1/stocks/sku0/replenish",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": true
+    },
+    {
+      "path": "/merchants/m1/orders/o1/ready",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/merchants/m1/orders/o1/verify",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/knowledge/bases",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/knowledge/bases/kb1/documents",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/knowledge/documents/doc1/publish",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/admin/products/p-created/unpublish",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    },
+    {
+      "path": "/admin/merchant-applications/a1/review",
+      "method": "POST",
+      "csrf": true,
+      "hasIdempotency": false
+    }
+  ],
+  "realJavaMySqlTested": false,
+  "browserTransport": "离线DOM加载，本地HTTP导航被环境策略禁止；fetch替换为契约替身"
+}
