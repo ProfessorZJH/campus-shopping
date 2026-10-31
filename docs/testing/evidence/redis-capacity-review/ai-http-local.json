@@ -1,0 +1,17 @@
+{
+  "startedAt": "2026-10-31T02:53:18.016624+00:00",
+  "mode": "REAL_UVICORN_TCP_HTTP_LOCAL_RETRIEVAL",
+  "status": "PASS",
+  "checks": [
+    "真实TCP健康检查，明确演示模式",
+    "无服务密钥不能索引",
+    "两个真实文档写入临时SQLite索引",
+    "无服务密钥不能访问商品检索意图",
+    "真实HTTP商品检索意图可生成无糖饮料关键词",
+    "真实HTTP检索仅返回授权证据",
+    "跨知识权限未泄漏内部内容",
+    "删除索引后不可再次召回"
+  ],
+  "realJavaMySqlTested": false,
+  "externalModelOrQdrantTested": false
+}

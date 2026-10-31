@@ -75,6 +75,12 @@ public class CatalogServiceImpl implements ICatalogService {
         return p;
     }
 
+    public ProductAggregate findForDisplay(String id) {
+        ProductAggregate p = repository.findForDisplay(id);
+        require(p != null, ResponseCode.NOT_FOUND);
+        return p;
+    }
+
     public ProductAggregate find(String id) {
         ProductAggregate p = repository.find(id, false);
         require(p != null, ResponseCode.NOT_FOUND);
@@ -161,6 +167,15 @@ public class CatalogServiceImpl implements ICatalogService {
         return queries.countManaged(merchant, Checks.optional(q, 100), category, ProductStatusEnumVO.filter(status));
     }
 
+    public List<SkuOfferVO> availableOffers(List<String> ids) {
+        require(ids != null && ids.size() <= 300, ResponseCode.ILLEGAL_PARAMETER);
+        return repository
+            .offers(ids.stream().distinct().sorted().toList(), false)
+            .stream()
+            .filter(o -> "PUBLISHED".equals(o.productStatus()) && "ACTIVE".equals(o.skuStatus()))
+            .toList();
+    }
+
     @Override
     public List<SkuOfferVO> offers(List<String> ids) {
         return loadOffers(ids, false, false);
@@ -197,7 +212,7 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public List<CategoryVO> categories() {
-        return repository.categories();
+        return repository.displayCategories();
     }
 
     private void validCategory(String code) {

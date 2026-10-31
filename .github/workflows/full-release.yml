@@ -127,6 +127,22 @@ jobs:
             -e "GRANT ALL ON campus_shopping_migration_it.* TO 'campus_it'@'%'"
       - name: Real fresh / upgrade / replay / checksum migration checks
         run: python scripts/verify-migrations.py
+      - name: Start isolated Redis for shared-session and resource tests
+        run: |
+          docker run -d --name campus-redis-it -p 127.0.0.1:16379:6379 redis:7.4.2-alpine
+          READY=0
+          for attempt in $(seq 1 30); do
+            if [ "$(docker exec campus-redis-it redis-cli ping 2>/dev/null)" = PONG ]; then READY=1; break; fi
+            sleep 1
+          done
+          test "$READY" = 1 || { echo 'Redis IT did not become ready'; exit 1; }
+          {
+            echo 'REDIS_TEST_ADDRESS=redis://127.0.0.1:16379'
+            echo 'REDIS_ENABLED=true'
+            echo 'REDIS_SECURITY_ADDRESS=redis://127.0.0.1:16379'
+            echo 'REDIS_CACHE_ADDRESS=redis://127.0.0.1:16379'
+            echo "REDIS_NAMESPACE=cs:ci:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}"
+          } >> "$GITHUB_ENV"
       - name: Real Maven build + MySQL tests
         run: |
           bash ./mvnw -B -ntp clean verify
@@ -177,6 +193,22 @@ jobs:
           echo 'Spring HTTP health check did not pass'; exit 1
       - name: Real cross-service HTTP business E2E
         run: python scripts/smoke-full.py --check-contract
+      - name: Real Redis cross-instance HTTP regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          DB_URL='jdbc:mysql://127.0.0.1:3308/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC' \
+            DB_USERNAME=campus_app BOOTSTRAP_ADMIN=false SESSION_COOKIE_SECURE=false PORT=8092 \
+            java -jar campus-shopping-app/target/campus-shopping-app.jar --spring.profiles.active=dev \
+            >var/ci/app-secondary.log 2>&1 &
+          echo $! >var/ci/app-secondary.pid
+          READY=0
+          for attempt in $(seq 1 120); do
+            if curl -fsS http://127.0.0.1:8092/api/v1/categories | grep -q '"code":"0000"'; then READY=1; break; fi
+            sleep 1
+          done
+          test "$READY" = 1 || { echo 'Secondary Spring did not become ready'; exit 1; }
+          python scripts/smoke-redis-shared.py --output docs/testing/evidence/redis-shared-http.json
       - name: Real Spring frontend browser E2E
         run: python frontend/tests/live_ui.py
       - name: Record this build and its acceptance evidence
@@ -185,6 +217,7 @@ jobs:
             --evidence migrations=docs/testing/evidence/engineering/migrations.json \
             --evidence python=docs/testing/evidence/ai-unit-tests.xml \
             --evidence http=docs/testing/evidence/full-http.json \
+            --evidence redis=docs/testing/evidence/redis-shared-http.json \
             --evidence browser=docs/testing/evidence/frontend-live/results.json
       - name: Upload reports and failure diagnostics
         if: always()
@@ -202,10 +235,10 @@ jobs:
         if: always()
         shell: bash
         run: |
-          for file in var/ci/app.pid var/ci/ai.pid; do
+          for file in var/ci/app-secondary.pid var/ci/app.pid var/ci/ai.pid; do
             if [ -f "$file" ]; then kill "$(cat "$file")" || true; fi
           done
-          docker rm -f campus-mysql-it campus-mysql-e2e || true
+          docker rm -f campus-mysql-it campus-mysql-e2e campus-redis-it || true
 
   browser-contract:
     name: Chromium contract / ${{ matrix.suite }}

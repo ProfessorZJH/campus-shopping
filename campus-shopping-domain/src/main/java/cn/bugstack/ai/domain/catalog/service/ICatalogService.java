@@ -8,6 +8,7 @@ import java.util.*;
 /** 商品业务能力；跨域权限和库存初始化由 Case 协作。 */
 public interface ICatalogService {
     ProductAggregate create(String merchant, String store, ProductCreateCommandEntity c);
+    ProductAggregate findForDisplay(String id);
     ProductAggregate find(String id);
     ProductAggregate addSku(String merchant, String product, String spec, long price);
     void changePrice(String merchant, String product, String sku, long price, long expectedVersion);
@@ -35,6 +36,7 @@ public interface ICatalogService {
     List<SkuOfferVO> saleOffersForUpdate(List<String> skuIds);
     /** 事务内锁定 SKU 报价，用于补货授权核对。 */
     List<SkuOfferVO> offersForUpdate(List<String> skuIds);
+    List<SkuOfferVO> availableOffers(List<String> ids);
     List<CategoryVO> categories();
     void category(String code, String name, boolean active);
     String storeImage(byte[] bytes);

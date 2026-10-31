@@ -42,7 +42,7 @@ def main():
             env.pop(name)
     with tempfile.TemporaryDirectory(prefix='campus-container-check-') as directory:
         config = Path(directory)/'compose.env'
-        values = {'APP_PORT': str(port), 'DB_PASSWORD': secrets.token_hex(24),
+        values = {'REDIS_SECURITY_PASSWORD': secrets.token_hex(24), 'REDIS_CACHE_PASSWORD': secrets.token_hex(24), 'APP_PORT': str(port), 'DB_PASSWORD': secrets.token_hex(24),
                   'MYSQL_ROOT_PASSWORD': secrets.token_hex(24), 'AI_SERVICE_KEY': secrets.token_hex(32),
                   'ADMIN_USERNAME': 'container_admin', 'ADMIN_PASSWORD': secrets.token_hex(24),
                   'BOOTSTRAP_ADMIN': 'true', 'SESSION_COOKIE_SECURE': 'false', 'AI_PRODUCT_VECTOR_SYNC_ENABLED': 'false',

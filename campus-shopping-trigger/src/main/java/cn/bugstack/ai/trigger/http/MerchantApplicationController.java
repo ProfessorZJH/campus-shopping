@@ -169,7 +169,7 @@ public class MerchantApplicationController implements IMerchantApplicationApi {
     @GetMapping("/merchants/public/{merchantId}")
     public Response<MerchantResponseDTO> publicMerchant(@PathVariable("merchantId") String merchantId) {
         return execute(() -> {
-            var m = merchants.find(merchantId);
+            var m = merchants.publicDisplay(merchantId);
             require("ACTIVE".equals(m.status()), ResponseCode.MERCHANT_SUSPENDED);
             return ApiViews.merchant(m);
         });

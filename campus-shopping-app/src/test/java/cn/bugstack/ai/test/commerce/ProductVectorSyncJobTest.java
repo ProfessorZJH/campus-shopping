@@ -34,7 +34,7 @@ class ProductVectorSyncJobTest {
         var ai = mock(IAiEnginePort.class);
         when(catalog.search(null, "", null, false, 1, 40)).thenReturn(List.of(product("live", "PUBLISHED"), product("offline", "UNPUBLISHED")));
         when(catalog.recallByIds(List.of("live", "offline"))).thenReturn(List.of(product("live", "PUBLISHED")));
-        new ProductVectorSyncJob(catalog, ai).refresh();
+        job(catalog, ai).refresh();
         verify(ai).indexProducts(argThat(items -> items.size() == 1 && items.get(0).productId().equals("live")));
         verify(ai).deleteProducts(List.of("offline"));
     }
@@ -47,7 +47,7 @@ class ProductVectorSyncJobTest {
             .thenThrow(new IllegalStateException("dependency detail"))
             .thenReturn(List.of(product("offline", "UNPUBLISHED")));
         when(catalog.recallByIds(List.of("offline"))).thenReturn(List.of());
-        var job = new ProductVectorSyncJob(catalog, ai);
+        var job = job(catalog, ai);
         job.refresh();
         verifyNoInteractions(ai);
         job.refresh();
@@ -64,12 +64,27 @@ class ProductVectorSyncJobTest {
             .doNothing()
             .when(ai)
             .indexProducts(anyList());
-        var job = new ProductVectorSyncJob(catalog, ai);
+        var job = job(catalog, ai);
         job.refresh();
         org.junit.jupiter.api.Assertions.assertNull(job.lastSuccess());
         org.junit.jupiter.api.Assertions.assertNotNull(job.lastFailure());
         job.refresh();
         org.junit.jupiter.api.Assertions.assertNotNull(job.lastSuccess());
         org.junit.jupiter.api.Assertions.assertNull(job.lastFailure());
+    }
+
+    private ProductVectorSyncJob job(ICatalogService catalog, IAiEnginePort ai) {
+        var job = new ProductVectorSyncJob(catalog, ai);
+        org.springframework.test.util.ReflectionTestUtils.setField(
+            job,
+            "resources",
+            new cn.bugstack.ai.infrastructure.adapter.repository.AiResourceRepository(
+                new org.springframework.beans.factory.support.DefaultListableBeanFactory().getBeanProvider(
+                    cn.bugstack.ai.infrastructure.redis.RedisClients.class
+                ),
+                4
+            )
+        );
+        return job;
     }
 }

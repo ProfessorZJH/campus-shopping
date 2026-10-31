@@ -26,6 +26,13 @@ public class MerchantServiceImpl implements IMerchantService {
         return repository.findAll(ids);
     }
 
+    public MerchantVO publicDisplay(String id) {
+        var m = repository.publicDisplay(id);
+        Checks.require(m != null, ResponseCode.NOT_FOUND);
+        Checks.require("ACTIVE".equals(m.status()), ResponseCode.MERCHANT_SUSPENDED);
+        return m;
+    }
+
     public MerchantVO find(String id) {
         MerchantVO m = repository.find(id, false);
         Checks.require(m != null, ResponseCode.NOT_FOUND);

@@ -26,6 +26,7 @@ public class KnowledgeServiceImpl implements IKnowledgeService {
         this.repository = repository;
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public KnowledgeBaseVO createBase(String name, String merchant, String visibility, String actor) {
         require(
             visibility != null &&

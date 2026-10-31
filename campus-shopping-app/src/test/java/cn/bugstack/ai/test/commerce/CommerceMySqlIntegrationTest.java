@@ -68,6 +68,9 @@ class CommerceMySqlIntegrationTest {
     IAccessService access;
 
     @Autowired
+    IRoleService roles;
+
+    @Autowired
     IMerchantApplicationService applications;
 
     @Autowired
@@ -190,6 +193,7 @@ class CommerceMySqlIntegrationTest {
             "iam_user"
         ))
             jdbc.update("DELETE FROM " + table);
+        jdbc.update("UPDATE ai_knowledge_quota SET used_count=0 WHERE id='global'");
         clock.now = Instant.parse("2026-10-28T04:00:00Z");
         admin = accounts.register("testadmin", PASSWORD, "测试管理员").getUserId();
         owner = accounts.register("testowner", PASSWORD, "测试经营者").getUserId();
@@ -992,5 +996,56 @@ class CommerceMySqlIntegrationTest {
         });
         verifyNoInteractions(aiEngine);
         assertEquals(0, scalar("SELECT COUNT(*) FROM ai_conversation"));
+    }
+
+    @Test
+    void globalKnowledgeQuotaCannotOverflowUnderConcurrentCreation() throws Exception {
+        for (int i = 0; i < 999; i++) jdbc.update(
+            "INSERT INTO ai_knowledge_base(id,name,visibility,created_by) VALUES(?,?,'PUBLIC',?)",
+            "quota-" + i,
+            "配额夹具",
+            admin
+        );
+        jdbc.update("UPDATE ai_knowledge_quota SET used_count=999 WHERE id='global'");
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            Callable<Boolean> create = () -> {
+                try {
+                    knowledge.createBase(admin, null, "最后一个名额", "PUBLIC");
+                    return true;
+                } catch (AppException expected) {
+                    return false;
+                }
+            };
+            var results = executor.invokeAll(List.of(create, create));
+            assertEquals(
+                1,
+                results
+                    .stream()
+                    .filter(f -> {
+                        try {
+                            return f.get();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .count()
+            );
+            assertEquals(1000, jdbc.queryForObject("SELECT COUNT(*) FROM ai_knowledge_base", Integer.class));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void stockOnlyMemberCanReadStockOffersAndRevocationTakesEffect() {
+        var invitation = access.invite(owner, merchant.id(), accounts.requireActive(other).getUsername());
+        access.accept(other, invitation.id());
+        var role = roles.saveRole(owner, merchant.id(), null, "只读库存", Set.of("stock.read"));
+        roles.assignRole(owner, merchant.id(), other, role.code());
+        assertDoesNotThrow(() -> catalogQuery.stockPage(other, merchant.id(), 1, 20, ""));
+        assertThrows(AppException.class, () -> catalogQuery.managedProducts(other, merchant.id(), 1, 20));
+        access.revoke(owner, merchant.id(), other);
+        assertThrows(AppException.class, () -> catalogQuery.stockPage(other, merchant.id(), 1, 20, ""));
     }
 }

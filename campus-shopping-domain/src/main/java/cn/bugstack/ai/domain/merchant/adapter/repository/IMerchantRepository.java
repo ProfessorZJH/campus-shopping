@@ -6,6 +6,7 @@ import java.util.*;
 /** 商户与门店本地数据访问抽象。 */
 public interface IMerchantRepository {
     List<MerchantVO> findAll(List<String> ids);
+    MerchantVO publicDisplay(String id);
     MerchantVO find(String id, boolean lock);
     void save(MerchantVO merchant);
     long count(boolean activeOnly);

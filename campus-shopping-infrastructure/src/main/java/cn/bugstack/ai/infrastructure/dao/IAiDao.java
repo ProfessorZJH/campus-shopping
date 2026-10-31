@@ -13,6 +13,7 @@ import org.apache.ibatis.annotations.Param;
 /** 数据访问映射，业务决定由领域服务作出。 */
 @Mapper
 public interface IAiDao {
+    int reserveBaseQuota();
     int baseInsert(@Param("p") KnowledgeBasePO p, @Param("creator") String creator);
     List<KnowledgeBasePO> bases();
     KnowledgeBasePO base(@Param("id") String id);

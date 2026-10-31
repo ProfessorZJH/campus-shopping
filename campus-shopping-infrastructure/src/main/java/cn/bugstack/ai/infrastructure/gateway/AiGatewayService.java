@@ -41,6 +41,9 @@ public class AiGatewayService {
     @Resource
     private ObjectMapper mapper;
 
+    @Resource
+    private cn.bugstack.ai.domain.shoppingai.adapter.repository.IAiResourceRepository resources;
+
     private final HttpClient client = HttpClient.newBuilder()
         // 内部 FastAPI/Uvicorn 为 HTTP/1.1，禁止默认 h2c 升级破坏带正文请求。
         .version(HttpClient.Version.HTTP_1_1)
@@ -112,7 +115,7 @@ public class AiGatewayService {
         boolean success = false;
         String failureType = "RemoteStatus";
         int timeout = Math.max(5, Math.min(timeoutSeconds, 120));
-        try {
+        try (var permit = resources.acquire()) {
             HttpRequest request = HttpRequest.newBuilder(URI.create(url.replaceAll("/$", "") + path))
                 .timeout(Duration.ofSeconds(timeout))
                 .header("Content-Type", "application/json")

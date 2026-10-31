@@ -1,4 +1,9 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
+      - org.springframework.boot.autoconfigure.session.SessionAutoConfiguration
   task:
     scheduling:
       pool:
@@ -31,6 +36,13 @@ mybatis:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
 campus:
+  redis:
+    enabled: ${REDIS_ENABLED:true}
+    namespace: ${REDIS_NAMESPACE:cs:dev}
+    security-address: ${REDIS_SECURITY_ADDRESS:redis://127.0.0.1:6379}
+    security-password: ${REDIS_SECURITY_PASSWORD:}
+    cache-address: ${REDIS_CACHE_ADDRESS:redis://127.0.0.1:6380}
+    cache-password: ${REDIS_CACHE_PASSWORD:}
   bootstrap:
     enabled: ${BOOTSTRAP_ADMIN:false}
     username: ${ADMIN_USERNAME:}
