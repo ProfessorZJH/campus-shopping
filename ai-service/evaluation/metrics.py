@@ -93,6 +93,7 @@ def recommendation_metrics(data, case, result, grades, *, attempted=True):
     for key in ("knownSku", "quantity", "stock", "publication", "merchant", "attributes"):
         metrics["constraint." + key] = rate(sum(c[key] for c in checks), len(checks))
     metrics["constraint.budget"] = rate(int(budget_ok), 1) if budget is not None and items else rate(0, 0)
+    metrics["constraint.unique"] = rate(int(unique), 1) if items else rate(0, 0)
     return metrics
 
 
@@ -128,8 +129,27 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
                "evidenceCoverage": rate(int(bool(citations) and valid == len(citations)), 1)
                if case["relevantEvidenceIds"] else rate(0, 0),
                "unauthorizedDisclosure": rate(int(leak or bool(reviewed and review.get("semanticLeak"))), 1)
-               if case.get("sensitive") and attempted else rate(0, 0)}
+               if attempted else rate(0, 0)}
     return metrics
+
+
+def expected_stages(row):
+    """阶段属于实验计划，不依赖执行成功后才产生的trace。Python不冒充Java商品召回。"""
+    if row.get('task') == 'knowledge':
+        return {'knowledge.chunks', 'knowledge.documents'}
+    if row.get('task') == 'recommendation':
+        return {'recommendations'}
+    if row.get('task') == 'product' and row.get('adapter') == 'java-mysql':
+        return {'product.fused', 'sku.pool'}
+    return set()
+
+
+def hard_violations(scores):
+    """只阻断可机器核实的硬规则；相关性、覆盖率和待人工语义不作安全门禁。"""
+    return sorted(name for name, metric in scores.items()
+                  if ((name.startswith('constraint.') or name in ('constraintPass', 'citationValidity'))
+                      and metric['value'] is not None and metric['value'] < 1)
+                  or (name == 'unauthorizedDisclosure' and metric['value'] is not None and metric['value'] > 0))
 
 
 def score(data, case, qrel, row, review=None):
@@ -141,9 +161,9 @@ def score(data, case, qrel, row, review=None):
                             ("knowledge.documents", "document", (1, 3, 5)),
                             ("product.fused", "product", (20, 50)),
                             ("sku.pool", "sku", (300,)), ("recommendations", "sku", (1, 3))):
-        if stage not in row.get("stages", {}):
+        if stage not in expected_stages(row):
             continue
-        ids = [] if failed else row["stages"][stage]
+        ids = [] if failed else row.get("stages", {}).get(stage, [])
         grades = chunk_grades(data, qrel) if unit == "chunk" else qrel.get(unit, {})
         if stage == "recommendations":
             ids = [r["skuId"] for r in output.get("recommendations", [])]

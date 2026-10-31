@@ -21,7 +21,9 @@ def test_repeat_and_recompute_are_deterministic_and_legacy_immutable(tmp_path):
     data = load()
     paths = [new_run(tmp_path / str(i)) for i in range(2)]
     for p in paths:
-        assert run(data, p, split='smoke')['exitCode'] == 0
+        result = run(data, p, split='smoke')
+        assert result['exitCode'] == 1 and result['boundaryViolations'] == [['case-041', 'R-RULE', 0]]
+        assert result['status'] == 'FAILED'
         before = json.loads((p / 'metrics.json').read_text(encoding='utf-8'))
         assert recompute(p) == before
     def normalized(path):
@@ -116,7 +118,9 @@ def test_live_profile_with_successful_stub_is_still_incomplete(tmp_path, monkeyp
 def test_controlled_llm_repeats_fixed_candidates_and_metadata(tmp_path):
     data = load()
     path = new_run(tmp_path / 'controlled')
-    assert run(data, path, split='smoke', profile='controlled', experiments=('R-RULE', 'R-LLM'))['exitCode'] == 0
+    result = run(data, path, split='smoke', profile='controlled', experiments=('R-RULE', 'R-LLM'))
+    assert result['exitCode'] == 1
+    assert result['boundaryViolations'] == [['case-041', 'R-RULE', 0]] + [['case-041', 'R-LLM', n] for n in range(3)]
     rows = [json.loads(l) for l in (path / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
     for cid in data['splits']['smoke']:
         case_rows = [r for r in rows if r['caseId'] == cid]
@@ -166,10 +170,13 @@ def test_cli_dev_results_are_reproducible_across_process_hash_seeds(tmp_path):
     results = []
     for seed in ('1', '2'):
         output = tmp_path / seed
-        subprocess.run([sys.executable, str(script), '--dataset', 'campus-shopping-v1', '--split', 'dev',
+        completed = subprocess.run([sys.executable, str(script), '--dataset', 'campus-shopping-v1', '--split', 'dev',
                         '--experiments', 'K-B,K-D,K-H,K-D-R,K-H-R,R-RULE', '--output-dir', str(output)],
-                       env=dict(os.environ, PYTHONHASHSEED=seed), check=True, capture_output=True)
+                       env=dict(os.environ, PYTHONHASHSEED=seed), capture_output=True)
+        assert completed.returncode == 1
         manifest = json.loads((output / 'manifest.json').read_text(encoding='utf-8'))
+        assert manifest['status'] == 'FAILED'
+        assert manifest['boundaryViolations'] == [[f'case-{i:03d}', 'R-RULE', 0] for i in range(41, 45)]
         assert manifest['configuration']['pythonHashSeed'] == '20261031'
         rows = [json.loads(line) for line in (output / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
         for r in rows:

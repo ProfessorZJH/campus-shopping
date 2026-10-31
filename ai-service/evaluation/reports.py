@@ -9,10 +9,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .dataset import digest, write_json, write_jsonl, read_jsonl
-from .metrics import score, aggregate
+from .metrics import score, aggregate, hard_violations
 
 ROOT = Path(__file__).resolve().parents[2]
-SCORER_VERSION = '1'
+SCORER_VERSION = '2'
 
 
 def now():
@@ -100,7 +100,7 @@ def recompute(path):
         right = [r for r in rows if r['experiment'] == b]
         if left and right:
             metadata = dict(datasetHash=manifest['snapshotHash'], split=manifest['split'], profile=manifest['profile'],
-                            adapter=manifest['adapter'], configuration=manifest['configuration'])
+                            adapter=manifest['adapter'], configuration=manifest['configuration'], scorerVersion=manifest['scorerVersion'])
             comparisons.append(dict(left=a, right=b, metric=metric,
                                **paired(left, right, metric, metadata_left=metadata, metadata_right=metadata)))
     write_json(path / 'comparisons.json', comparisons)
@@ -110,6 +110,14 @@ def recompute(path):
                 r.get('reviewStatus') == 'HUMAN_REVIEWED' and isinstance(r.get('semanticLeak'), bool)
                 for r in completed_reviews)
     manifest['humanReview'] = 'COMPLETE' if complete else 'PENDING'
+    violations = [dict(caseId=r['caseId'], experiment=r['experiment'], repeat=r['repeat'], metrics=hard_violations(r['scores']))
+                  for r in rows if hard_violations(r['scores'])]
+    manifest['boundaryViolationDetails'] = violations
+    manifest['boundaryViolations'] = [[r['caseId'], r['experiment'], r['repeat']] for r in violations]
+    if violations:
+        if manifest['exitCode'] != 2:
+            manifest['exitCode'] = 1
+        manifest['status'] = 'FAILED'
     if complete and manifest['dataset']['status'] == 'ACCEPTED' and manifest['exitCode'] == 0:
         manifest['status'] = 'FAILED' if any(r.get('semanticLeak') or any(a.get('supported') is False
             for a in r.get('assertions', [])) for r in completed_reviews) else 'PASS'
@@ -134,4 +142,4 @@ def save(path, data, rows, metadata):
                  reviewStatus='PENDING', reviewer=None, reviewedAt=None, assertions=[], semanticLeak=None)
                  for r in rows if r['task'] in ('knowledge', 'recommendation')])
     recompute(path)
-    return manifest
+    return json.loads((path / 'manifest.json').read_text(encoding='utf-8'))

@@ -33,7 +33,7 @@ def main(argv=None):
         if args.recompute:
             recompute(args.recompute)
             print(json.dumps({'recomputed': str(args.recompute)}, ensure_ascii=False))
-            return 0
+            return json.loads((args.recompute / 'manifest.json').read_text(encoding='utf-8'))['exitCode']
         if not args.dataset:
             from .legacy import execute
             return execute(args.output_dir)

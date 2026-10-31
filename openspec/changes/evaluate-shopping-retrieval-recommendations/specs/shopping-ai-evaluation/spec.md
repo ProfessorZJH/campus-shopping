@@ -62,6 +62,15 @@
 - **WHEN** 一个选定的案例尝试执行后超时或异常
 - **THEN** 它保留在总例数和执行失败分母中，其适用检索/成功指标按失败计分，报告不能只统计成功返回的案例
 
+#### Scenario: A failed experiment produces no stage trace
+- **WHEN** 已尝试的K、Java/MySQL P或R实验异常，返回FAILED且stages为空
+- **THEN** 系统按实验任务和适配器确定应评分阶段，有gold的适用Recall、Hit、MRR、nDCG按0进入宏平均和配对比较，NOT_RUN与无标签仍独立保留
+
+#### Scenario: A machine verifiable hard constraint is violated
+- **WHEN** 结果违反数量、整组预算、库存、经营或发布状态、商户范围、明确属性/否定、SKU唯一性、引用合法性或禁止事实边界
+- **THEN** 自动评分及离线重算MUST返回非零退出码和FAILED状态，记录具体违规指标；不得因数据为DRAFT或案例未标sensitive而放行
+- **AND** 空推荐的项约束为N/A，相关性/覆盖率不足和待人工语义仅作为质量或待评结果，不误记为硬规则违规
+
 ### Requirement: Separate source validity from answer grounding
 系统 SHALL 分开检查引用的授权、版本与定位有效性，以及回答断言是否获得证据支持。自动定位与合成 canary 检查 MUST NOT 冒充完整的语义支撑人工判定；未复核断言 SHALL 标为待评并计入覆盖率。
 

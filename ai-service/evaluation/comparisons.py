@@ -5,7 +5,7 @@ from .metrics import percentile
 
 
 def paired(left, right, metric, *, metadata_left, metadata_right):
-    for key in ('datasetHash', 'split', 'profile', 'adapter', 'configuration'):
+    for key in ('datasetHash', 'split', 'profile', 'adapter', 'configuration', 'scorerVersion'):
         if metadata_left.get(key) != metadata_right.get(key):
             raise ValueError('incompatible comparison: ' + key)
     fixed = {r['caseId']: r['fixedGenerationInputHash'] for r in left if 'fixedGenerationInputHash' in r}

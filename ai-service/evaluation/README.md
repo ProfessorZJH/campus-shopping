@@ -2,7 +2,7 @@
 
 范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 为准。复用生产 KnowledgeStore、engine、ProductIndex 和 Java RecommendationPolicy，不提供交易写接口。数据目前为 **DRAFT，120例均待人工复核**；执行成功不等于正式业务效果通过。
 
-真实隔离MySQL发现的生成期间撤稿复权读取旧scope问题已修复；最终本地Python95项、Maven195项、安全场景10份、HTTP173项、双实例Redis9项及真实浏览器8项通过，实现提交远端四项必需CI也通过。完整范围和原始失败见[实施报告](../../docs/testing/AI-EVALUATION-20261031.md)，不能把自动验收当作正式模型效果通过。
+当前评分器为v2，已修复异常案例漏出分母和部分硬约束未阻断的问题。门禁正确检出case-041～044的规格违规，本地dev自动suite返回1/FAILED；导购修复单独跟踪[issue #14](https://github.com/ProfessorZJH/campus-shopping/issues/14)。不能沿用旧评分器四项CI绿色作为当前验收通过；本轮范围见[审查收口](../../docs/testing/AI-EVALUATION-REVIEW-20261031.md)，历史Java权限修复与原始测试见[实施报告](../../docs/testing/AI-EVALUATION-20261031.md)。
 
 ## 运行
 
@@ -15,7 +15,7 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profi
 python ai-service/evaluate.py --recompute var/evaluation/runs/<run-id>
 ```
 
-无参数运行旧8例演示，但写唯一目录的legacy-demo.json，旧的已提交JSON不会被覆盖。显式 `--output-dir` 必须不存在，防止覆盖证据。`--formal` 要求ACCEPTED数据及完整实际人工评审，否则退出2。退出0表示自动suite执行完整；退出1表示执行/安全失败、降级或计划组件未运行；退出2表示输入错误/不支持的实验。新报告整体仍PARTIAL，人工语义评审不能由CLI自动转为通过。
+无参数运行旧8例演示，但写唯一目录的legacy-demo.json，旧的已提交JSON不会被覆盖。显式 `--output-dir` 必须不存在，防止覆盖证据。`--formal` 要求ACCEPTED数据及完整实际人工评审，否则退出2。退出0表示自动suite执行完整且无硬规则违规；退出1表示执行/安全失败、降级或计划组件未运行；退出2表示输入错误/不支持的实验。DRAFT未发生硬违规时整体PARTIAL，硬违规时FAILED；人工语义评审不能由CLI自动转为通过。
 
 `local/controlled` 不加载.env，显式构造配置并阻断外部socket连接。controlled用生产Provider+MockTransport；原商品索引测试共用的FakeEmbedding/FakeMilvus在stubs.py。它们声称LLM/MILVUS也始终为STUB。
 
@@ -76,11 +76,15 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split test --profil
 
 去重后前K为H，全部grade>0相关集为R。Recall=|H∩R|/|R|；Hit=1[交集非空]；MRR=首个相关排名倒数。nDCG使用gain=2^grade−1、discount=log2(rank+1)，IDCG由同例完整gold降序计算。空gold为N/A，空返回而有gold为0；FAILED保留在适用分母并计0，NOT_RUN独立报告。每例计分后宏平均，保留逐例分子分母；不同profile/adapter不合成总分。
 
+适用阶段由任务与适配器确定，FAILED且stages={}仍生成有gold阶段的0分；配对比较保留这些0分。缺gold仍N/A，NOT_RUN不计作执行失败，Python未跑Java召回不生成该阶段的伪分数。
+
 知识chunk和document@1/3/5分开，文档按chunk首次出现去重。chunk标签只从qrels.evidence明确ordinal/hash映射UUID5，不把文档相关性传给所有块。商品product.fused@20/50；SKU pool仅报round-robin集合Recall@300；最终推荐按SKU@1/3。池内分母不替代全语料gold。
 
 ConstraintPass按推荐项计算数量/库存/发布/商户/属性及否定约束；整组ΣpriceCent×quantity超预算使整组预算项失败。没有推荐则分母0=N/A，同时可行gold例的Coverage=0、RequestSuccess=0。Coverage还要求至少一项grade2且整组安全。请求成功还要求所需有效证据。拒绝/澄清用数据集语义要点进行自动初筛，完整语义仍待人工。
 
 CitationValidity只检查授权/发布/版本定位及片段存在。CitationGrounded由人类逐断言判分；无reviewer/time则PENDING且value=null。canary/ID/标题/片段自动泄漏初筛与人工语义泄漏分开，没跑完的安全案例不能宣称零泄漏。
+
+门禁覆盖全部constraint.*、constraintPass、citationValidity和unauthorizedDisclosure。任何适用硬约束低于1或泄漏大于0都返回1/FAILED；同时保留boundaryViolationDetails中的具体指标。无推荐/引用时的N/A不视作硬违规，但覆盖率和请求成功仍可能为0。普通非sensitive案例也检查越权引用与禁止事实。
 
 延迟取perf_counter墙钟，预热2次不计质量/样本；nearest-rank取排序后ceil(p×n)项，空样本=N/A。错误数量独立留存；当前首Token=null，因为无SSE。不是生产压测结论。
 
@@ -96,5 +100,7 @@ python ai-service/evaluate.py --safety-results var/evaluation/verification/evalu
 复核包包含120例、完整语料和DRAFT标注副本。实际完成回答评审时还须填写`reviewStatus=HUMAN_REVIEWED`；数据gold冻结与回答评审是两份独立记录。安全汇总若缺少测试导出会保留NOT_RUN并退出1；必须同时核查JUnit失败，缺文件不能证明测试没有执行或已经通过。
 
 重算核对评分器版本、输入和原始输出摘要，重建逐例指标及Markdown；修改review无需重调模型。comparisons.paired要求可比元数据，先按case平均重复，再按family固定seed bootstrap1000次；区间仅探索。报告按queryType给分类宏平均。
+
+v2不自动改写v1历史报告，跨评分器版本的直接配对会被拒绝。`--recompute`会重新执行相同硬门禁并返回保存结果的退出码；它不会把已失败的suite变成退出0。
 
 发布只选择确认不含私有内容的合成证据到docs/testing/evidence/ai-evaluation-v1/。不要直接发布原始真实提示/凭据/外部异常。历史8例单gold命中率保持原样，不能将其1.0作为新基线。正式ACCEPTED及人工回答语义评审见数据README，本轮不能由自动测试替代。

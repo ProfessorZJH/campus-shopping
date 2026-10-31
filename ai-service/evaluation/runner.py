@@ -149,24 +149,25 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                     store.close()
     incomplete = any(r['status'] in ('FAILED', 'NOT_RUN', 'DEGRADED') for r in rows)
     unsupported = any(r['status'] == 'UNSUPPORTED' for r in rows)
-    from .metrics import score
+    from .metrics import score, hard_violations
     case_index = {c['caseId']: c for c in data['cases']}
     qrels = {q['caseId']: q for q in data['qrels']}
     boundary_violations = []
+    boundary_details = []
     for row in rows:
         row['scores'] = score(data, case_index[row['caseId']], qrels[row['caseId']], row)
-        metrics = row['scores']
-        if metrics.get('unauthorizedDisclosure', {}).get('value') == 1 or any(
-            metrics.get('constraint.' + name, {}).get('value') not in (None, 1)
-            for name in ('knownSku', 'stock', 'publication', 'merchant')):
+        violations = hard_violations(row['scores'])
+        if violations:
             boundary_violations.append([row['caseId'], row['experiment'], row['repeat']])
+            boundary_details.append(dict(caseId=row['caseId'], experiment=row['experiment'], repeat=row['repeat'], metrics=violations))
     exit_code = 2 if unsupported else 1 if incomplete or boundary_violations or any(r['cleanup'].startswith('FAILED') for r in resources) else 0
     metadata = dict(startedAt=started, endedAt=now(), split=split, profile=profile, adapter=adapter,
                     experiments=requested, warmup=2, warmupStages=['knowledge.search'],
                     providerRequests=recorder.used, requestBudget=budget, boundaryViolations=boundary_violations,
+                    boundaryViolationDetails=boundary_details,
                     actualComponents=recorder.snapshot(), resources=resources, humanReview='PENDING',
                     actualModels=recorder.models, usage=dict(tokens='UNKNOWN', cost='UNKNOWN', providerSeedSupport='UNKNOWN'),
-                    status='PARTIAL', exitCode=exit_code,
+                    status='FAILED' if boundary_violations else 'PARTIAL', exitCode=exit_code,
                     configuration=dict(pythonHashSeed=os.environ.get('PYTHONHASHSEED', 'UNCONTROLLED'),
                                        rrfConstant=60, knowledgeSelectionDepth=6, skuPoolLimit=300,
                                        candidateLimit=12, recommendationLimit=3, llmRepetitions=3,

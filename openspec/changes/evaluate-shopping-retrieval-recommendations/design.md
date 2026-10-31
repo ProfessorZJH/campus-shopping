@@ -72,6 +72,12 @@
 
 ### D3. 指标、分母及退化条件
 
+PR #13审查收口（scorerVersion=2）：适用阶段由任务与适配器确定，不能由成功返回的stages字段决定。K实验评分知识chunk/document；Java/MySQL P实验评分product.fused和sku.pool；R实验只评分最终推荐。FAILED即使stages={}，有gold的适用检索/成功指标也按0分进入宏平均与配对差值；无gold保持N/A，NOT_RUN保持独立，Python未执行的Java召回不被伪造为0分。
+
+所有可机器核实的硬规则均阻断自动suite：数量、整组预算、库存、商品/SKU发布状态、经营资格、商户范围、明确声明的属性/否定、重复SKU、引用授权/发布版本/片段定位与禁止事实泄漏。空推荐的项约束保持N/A；检索相关性低、覆盖率低及待人工语义不自动归类为安全违规。所有案例均检查引用和泄漏，不依赖sensitive标记。在线评分与离线重算共享同一门禁，违反时exitCode=1、status=FAILED，并记录具体metric；旧scorer1报告保留原貌，新评分器拒绝无声重算或跨版本配对。
+
+用户已明确选择本轮只修评测器：门禁检出的case-041～044规格违规保留失败，生产导购修复另见GitHub issue #14。不得修改gold、过滤掉这些案例、吞掉退出码1或将必需CI标绿以绕过业务失败。
+
 每个指标由 `name, unit, stage, k, applicable, scored, failed, notRun, numerator, denominator, value, status` 描述。每例先计分，再按任务/分类宏平均；不同单位/运行profile不做合并总分。没有标签与任务不适用为N/A并报数量；预定但未执行为NOT_RUN；尝试后异常为FAILED，不能把失败丢出分母。正式子实验中任何必需案例未运行，结论不完整；另给完整率和保守的请求成功率。
 
 | 指标/阶段 | 精确定义与边界 |
