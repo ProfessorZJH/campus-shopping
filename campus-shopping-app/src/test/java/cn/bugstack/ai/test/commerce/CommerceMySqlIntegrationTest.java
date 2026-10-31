@@ -94,8 +94,14 @@ class CommerceMySqlIntegrationTest {
     @Autowired
     IOrderLifecycleCase life;
 
-    @Autowired
+    @SpyBean
     IOrderService orderStore;
+
+    @SpyBean
+    cn.bugstack.ai.domain.fulfillment.service.IFulfillmentService refundFulfillment;
+
+    @SpyBean
+    cn.bugstack.ai.domain.trading.service.IAfterSaleService refundAfterSales;
 
     @Autowired
     ICartCase cart;
@@ -798,6 +804,116 @@ class CommerceMySqlIntegrationTest {
         assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
         assertEquals("T0001", code(() -> life.verifyPickup(owner, merchant.id(), o.getId(), "invalid")));
+    }
+
+    @Test
+    void platformReviewRequiresAppealAndConcurrentApprovalPaysOnlyOnce() throws Exception {
+        var o = order(product(2));
+        life.pay(buyer, o.getId());
+        life.requestRefund(buyer, o.getId(), "未提货");
+        assertEquals("A0006", code(() -> life.platformApproveRefund(buyer, o.getId(), "越权")));
+        assertEquals("T0004", code(() -> life.platformApproveRefund(admin, o.getId(), "跳过申诉")));
+        assertEquals("T0004", code(() -> life.platformRejectRefund(admin, o.getId(), "跳过申诉")));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM sys_audit WHERE action LIKE 'REFUND_%'"));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_refund"));
+        assertEquals(1, scalar("SELECT reserved FROM inv_stock_balance"));
+        life.merchantRejectRefund(owner, merchant.id(), o.getId(), "商户驳回");
+        life.merchantRejectRefund(owner, merchant.id(), o.getId(), "重复驳回");
+        assertEquals(1, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='REFUND_REJECTED'"));
+        assertEquals("T0004", code(() -> life.platformApproveRefund(admin, o.getId(), "尚未申诉")));
+        life.appeal(buyer, o.getId());
+        assertEquals("A0006", code(() -> life.merchantApproveRefund(owner, merchant.id(), o.getId(), "争议中")));
+        assertEquals(
+            List.of("0000", "0000"),
+            race(() -> life.platformApproveRefund(admin, o.getId(), "平台同意"), () -> life.platformApproveRefund(admin, o.getId(), "平台同意"))
+        );
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_refund"));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='REFUND_APPROVED'"));
+        assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
+        assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
+        assertEquals("CANCELED", jdbc.queryForObject("SELECT status FROM ful_pickup_task WHERE order_id=?", String.class, o.getId()));
+    }
+
+    @Test
+    void platformRejectsDisputeWithoutDuplicateAuditOnRetry() {
+        var o = order(product(2));
+        life.pay(buyer, o.getId());
+        life.requestRefund(buyer, o.getId(), "未提货");
+        life.merchantRejectRefund(owner, merchant.id(), o.getId(), "商户驳回");
+        life.appeal(buyer, o.getId());
+        life.platformRejectRefund(admin, o.getId(), "平台驳回");
+        assertEquals("T0004", code(() -> life.platformRejectRefund(admin, o.getId(), "重复裁决")));
+        assertEquals(2, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='REFUND_REJECTED'"));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_refund"));
+        assertEquals(1, scalar("SELECT reserved FROM inv_stock_balance"));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = { "afterSale", "fulfillment", "inventory", "refund", "order", "audit" })
+    void refundFailureAtEachStepRollsBackEveryDomain(String stage) {
+        var o = order(product(2));
+        life.pay(buyer, o.getId());
+        life.requestRefund(buyer, o.getId(), "未提货");
+        life.merchantRejectRefund(owner, merchant.id(), o.getId(), "商户驳回");
+        life.appeal(buyer, o.getId());
+        org.mockito.stubbing.Answer<Object> failAfterWrite = call -> {
+            call.callRealMethod();
+            throw new IllegalStateException("injected transaction failure");
+        };
+        // 故障注入到事务代理内部的 spy；不能在无事务的 stubbing 阶段调用 MANDATORY 代理。
+        cn.bugstack.ai.domain.trading.service.IAfterSaleService afterSaleTarget = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(
+            refundAfterSales
+        );
+        cn.bugstack.ai.domain.fulfillment.service.IFulfillmentService fulfillmentTarget = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(
+            refundFulfillment
+        );
+        cn.bugstack.ai.domain.inventory.service.IInventoryService inventoryTarget = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(
+            inventoryService
+        );
+        IOrderService orderTarget = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(orderStore);
+        switch (stage) {
+            case "afterSale" -> doAnswer(failAfterWrite).when(afterSaleTarget).approveAfterSale(eq(o.getId()), anyString());
+            case "fulfillment" -> doAnswer(failAfterWrite).when(fulfillmentTarget).cancel(o.getId());
+            case "inventory" -> doAnswer(failAfterWrite).when(inventoryTarget).release(o.getId());
+            case "refund" -> doAnswer(failAfterWrite).when(orderTarget).recordRefund(any());
+            case "order" -> doAnswer(failAfterWrite).when(orderTarget).save(any());
+            case "audit" -> doAnswer(failAfterWrite).when(accessRepository).audit(any(), eq("REFUND_APPROVED"), any(), any(), any());
+            default -> fail("unknown stage");
+        }
+        assertThrows(IllegalStateException.class, () -> life.platformApproveRefund(admin, o.getId(), "平台同意"));
+        assertEquals("PAID", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
+        assertEquals("DISPUTED", jdbc.queryForObject("SELECT status FROM trd_after_sale WHERE order_id=?", String.class, o.getId()));
+        assertEquals("WAIT_PREP", jdbc.queryForObject("SELECT status FROM ful_pickup_task WHERE order_id=?", String.class, o.getId()));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_refund"));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='REFUND_APPROVED'"));
+        assertEquals(2, scalar("SELECT on_hand FROM inv_stock_balance"));
+        assertEquals(1, scalar("SELECT reserved FROM inv_stock_balance"));
+        assertEquals("RESERVED", jdbc.queryForObject("SELECT status FROM inv_reservation WHERE order_id=?", String.class, o.getId()));
+    }
+
+    @Test
+    void merchantStatusRetriesDoNotChangeVersionOrAuditAndAuditFailureRollsBack() throws Exception {
+        long version = scalar("SELECT version FROM mer_merchant WHERE id=?", merchant.id());
+        assertEquals(
+            List.of("0000", "0000"),
+            race(() -> admission.setActive(admin, merchant.id(), false, "暂停"), () -> admission.setActive(admin, merchant.id(), false, "暂停"))
+        );
+        assertEquals(version + 1, scalar("SELECT version FROM mer_merchant WHERE id=?", merchant.id()));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='MERCHANT_SUSPENDED'"));
+        admission.setActive(admin, merchant.id(), true, "恢复");
+        admission.setActive(admin, merchant.id(), true, "恢复重试");
+        assertEquals(version + 2, scalar("SELECT version FROM mer_merchant WHERE id=?", merchant.id()));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='MERCHANT_RESUMED'"));
+        doAnswer(call -> {
+            call.callRealMethod();
+            throw new IllegalStateException("audit unavailable");
+        })
+            .when(accessRepository)
+            .audit(any(), eq("MERCHANT_SUSPENDED"), any(), any(), any());
+        assertThrows(IllegalStateException.class, () -> admission.setActive(admin, merchant.id(), false, "失败暂停"));
+        assertEquals("ACTIVE", merchantService.find(merchant.id()).status());
+        assertEquals(version + 2, scalar("SELECT version FROM mer_merchant WHERE id=?", merchant.id()));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM sys_audit WHERE action='MERCHANT_SUSPENDED'"));
     }
 
     @Test

@@ -31,11 +31,12 @@ public final class AfterSaleAggregate {
         return new AfterSaleVO(id, order.getId(), buyer, order.getMerchantId(), AfterSaleStatusEnumVO.REQUESTED.getCode(), clean, "", now);
     }
 
-    public void reject(String reason) {
-        if (status == AfterSaleStatusEnumVO.REJECTED) return;
+    public boolean reject(String reason) {
+        if (status == AfterSaleStatusEnumVO.REJECTED) return false;
         requireReviewable();
         decision = text(reason, "驳回理由", 500);
         status = AfterSaleStatusEnumVO.REJECTED;
+        return true;
     }
 
     public void appeal(OrderAggregate order, String buyer) {
@@ -54,6 +55,12 @@ public final class AfterSaleAggregate {
 
     public void requireMerchantReview() {
         require(status != AfterSaleStatusEnumVO.DISPUTED, ResponseCode.AUTH_FORBIDDEN);
+        require(status == AfterSaleStatusEnumVO.REQUESTED || status == AfterSaleStatusEnumVO.REJECTED, ResponseCode.REFUND_STATE_INVALID);
+    }
+
+    /** 平台仅裁决买家已申诉的争议；不得跳过商户审核。 */
+    public void requirePlatformReview() {
+        require(status == AfterSaleStatusEnumVO.DISPUTED, ResponseCode.REFUND_STATE_INVALID);
     }
 
     public void requirePickupAllowed() {

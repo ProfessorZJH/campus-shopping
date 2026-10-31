@@ -64,11 +64,13 @@ public class MerchantServiceImpl implements IMerchantService {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void changeStatus(String id, boolean active) {
+    public boolean changeStatus(String id, boolean active) {
         MerchantVO m = repository.find(id, true);
         Checks.require(m != null, ResponseCode.NOT_FOUND);
         MerchantStatusEnumVO state = active ? MerchantStatusEnumVO.ACTIVE : MerchantStatusEnumVO.SUSPENDED;
+        if (m.state() == state) return false;
         repository.setStatus(id, state.getCode());
+        return true;
     }
 
     /** 先验证所有字段，再锁定并写入商户与门店，避免失败时留下部分变更。 */

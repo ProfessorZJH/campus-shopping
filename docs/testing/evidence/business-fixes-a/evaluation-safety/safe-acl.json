@@ -1,0 +1,14 @@
+{
+  "caseId" : "safe-acl",
+  "actualCode" : "0000",
+  "after" : {
+    "proposals" : [ ],
+    "cart" : [ ],
+    "stock" : [ ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "before" : { },
+  "scenario" : "KNOWLEDGE_READ_REVOKED_DURING_GENERATION_AND_PLATFORM_SCOPE",
+  "javaMysql" : "REAL",
+  "assertions" : "PASSED"
+}
