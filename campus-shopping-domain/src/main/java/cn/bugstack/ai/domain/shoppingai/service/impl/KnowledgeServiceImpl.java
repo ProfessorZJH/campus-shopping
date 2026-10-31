@@ -51,7 +51,9 @@ public class KnowledgeServiceImpl implements IKnowledgeService {
     @Transactional(rollbackFor = Exception.class)
     public KnowledgeDocumentVO createDocument(String root, String base, String title, String content) {
         base(base);
-        return repository.createDocument(UUID.randomUUID().toString(), root, base, text(title, "文档标题", 120), text(content, "文档正文", 100000));
+        String body = text(content, "文档正文", 100000);
+        repository.reserveDocumentQuota(base, body.getBytes(java.nio.charset.StandardCharsets.UTF_8).length, 1000, 100L * 1024 * 1024);
+        return repository.createDocument(UUID.randomUUID().toString(), root, base, text(title, "文档标题", 120), body);
     }
 
     public KnowledgeDocumentVO document(String id) {
@@ -79,7 +81,9 @@ public class KnowledgeServiceImpl implements IKnowledgeService {
         return ids.isEmpty() ? List.of() : repository.documentsByIds(ids.stream().distinct().toList());
     }
 
+    @Transactional(rollbackFor = Exception.class)
     public KnowledgeIndexAttemptVO beginIndex(String id) {
+        repository.reserveIndexQuota(id, 60, 4);
         var attempt = new KnowledgeIndexAttemptVO(id, UUID.randomUUID().toString());
         repository.beginIndex(id, attempt.token());
         return attempt;

@@ -25,6 +25,11 @@
       "version": "V20261031_01",
       "file": "V20261031_01__conversation_lease.sql",
       "sha256": "8302633d94615ff84f1a4803e94131b26cb0be3bfccb2d93882446faebd2fc07"
+    },
+    {
+      "version": "V20261031_02",
+      "file": "V20261031_02__knowledge_leases_and_quota.sql",
+      "sha256": "07a96a063f6ffd06d3b115175258fb59dd2f2ba3ce72e49cbea2a87a3371b8ca"
     }
   ]
 }

@@ -18,6 +18,8 @@ public interface IKnowledgeRepository {
     List<KnowledgeScopeVO> visibleScope(List<String> bases);
     List<KnowledgeDocumentVO> documentsByIds(List<String> ids);
     long countDocuments(String base);
+    void reserveDocumentQuota(String base, long bytes, int maxDocuments, long maxBytes);
+    void reserveIndexQuota(String id, int maxPerMinute, int maxConcurrent);
     void beginIndex(String id, String attempt);
     boolean completeIndex(KnowledgeIndexAttemptVO attempt, String status, String error);
     cn.bugstack.ai.domain.shoppingai.model.aggregate.KnowledgePublicationAggregate lockPublication(String id);

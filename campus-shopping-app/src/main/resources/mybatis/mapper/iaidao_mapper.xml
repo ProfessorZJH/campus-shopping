@@ -26,6 +26,24 @@ INSERT INTO ai_document(id,root_id,base_id,version,title,status,index_status,con
     <select id="document" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
 SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.id=#{id}
     </select>
+    <select id="lockDocument" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO" useCache="false" flushCache="true">
+SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.id=#{id} FOR UPDATE
+    </select>
+    <insert id="ensureUsage">INSERT INTO ai_knowledge_usage(owner_id) VALUES(#{owner}) ON DUPLICATE KEY UPDATE owner_id=owner_id</insert>
+    <select id="lockUsage" resultType="java.lang.String" useCache="false" flushCache="true">SELECT owner_id FROM ai_knowledge_usage WHERE owner_id=#{owner} FOR UPDATE</select>
+    <update id="reserveDocumentQuota">
+UPDATE ai_knowledge_usage SET document_count=document_count+1,content_bytes=content_bytes+#{bytes}
+WHERE owner_id=#{owner} AND document_count &lt; #{maxDocuments} AND content_bytes &lt;= #{maxBytes}-#{bytes}
+    </update>
+    <update id="reserveIndexRate">
+UPDATE ai_knowledge_usage SET index_count=IF(index_window IS NULL OR index_window &lt;= TIMESTAMPADD(SECOND,-60,CURRENT_TIMESTAMP(3)),1,index_count+1),
+index_window=IF(index_window IS NULL OR index_window &lt;= TIMESTAMPADD(SECOND,-60,CURRENT_TIMESTAMP(3)),CURRENT_TIMESTAMP(3),index_window)
+WHERE owner_id=#{owner} AND (index_window IS NULL OR index_window &lt;= TIMESTAMPADD(SECOND,-60,CURRENT_TIMESTAMP(3)) OR index_count &lt; #{limit})
+    </update>
+    <select id="activeIndexes" resultType="java.lang.String" useCache="false" flushCache="true">
+SELECT d.id FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE COALESCE(b.merchant_id,'__platform__')=#{owner}
+AND d.index_attempt IS NOT NULL AND d.index_expires_at &gt; CURRENT_TIMESTAMP(3) ORDER BY d.id FOR UPDATE
+    </select>
     <select id="documents" resultType="cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO">
 SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.base_id=#{base} ORDER BY d.created_at DESC,d.id LIMIT #{limit} OFFSET #{offset}
     </select>
@@ -36,10 +54,13 @@ SELECT d.id,d.title,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON 
 SELECT d.*,b.merchant_id,b.visibility FROM ai_document d JOIN ai_knowledge_base b ON b.id=d.base_id WHERE d.id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
     </select>
     <update id="beginIndex">
-UPDATE ai_document SET index_status='PENDING',index_attempt=#{attempt},error='' WHERE id=#{id}
+UPDATE ai_document SET index_status='PENDING',index_attempt=#{attempt},index_version=version,
+index_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3)),error='' WHERE id=#{id}
+AND (index_attempt IS NULL OR index_expires_at IS NULL OR index_expires_at &lt;= CURRENT_TIMESTAMP(3))
     </update>
     <update id="completeIndex">
-UPDATE ai_document SET index_status=#{status},error=#{error},index_attempt=NULL WHERE id=#{id} AND index_attempt=#{attempt} AND index_status='PENDING'
+UPDATE ai_document SET index_status=#{status},error=#{error},index_attempt=NULL,index_expires_at=NULL,index_version=NULL
+WHERE id=#{id} AND index_attempt=#{attempt} AND index_status='PENDING' AND index_version=version AND index_expires_at &gt; CURRENT_TIMESTAMP(3)
     </update>
     <update id="documentState">
 UPDATE ai_document SET status=#{status} WHERE id=#{id}

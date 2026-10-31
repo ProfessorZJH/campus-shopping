@@ -132,9 +132,14 @@ CREATE TABLE IF NOT EXISTS ai_document_root (
  id VARCHAR(36) PRIMARY KEY, base_id VARCHAR(36) NOT NULL, active_document_id VARCHAR(36), version_counter INT NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS ai_knowledge_usage (
+ owner_id VARCHAR(36) PRIMARY KEY, document_count INT NOT NULL DEFAULT 0, content_bytes BIGINT NOT NULL DEFAULT 0,
+ index_window DATETIME(3) NULL, index_count INT NOT NULL DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS ai_document (
  id VARCHAR(36) PRIMARY KEY, root_id VARCHAR(36) NOT NULL, base_id VARCHAR(36) NOT NULL, version INT NOT NULL, title VARCHAR(120) NOT NULL,
- status VARCHAR(20) NOT NULL, index_status VARCHAR(20) NOT NULL, index_attempt VARCHAR(36) NULL, content LONGTEXT NOT NULL, error VARCHAR(500) NOT NULL DEFAULT '',
+ status VARCHAR(20) NOT NULL, index_status VARCHAR(20) NOT NULL, index_attempt VARCHAR(36) NULL, index_expires_at DATETIME(3) NULL, index_version INT NULL, content LONGTEXT NOT NULL, error VARCHAR(500) NOT NULL DEFAULT '',
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_doc_version(root_id,version), KEY ix_document_base(base_id,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -181,3 +186,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_02','271f49
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261029_01','efdc1a9b032afcea14d4e0ee0198011beb2d9088850da21b5a5ead10881040ef' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261030_01','436372074fa9cd2fe0cb9c2c00ce29bb3196a93aa8d477042ac3c8437f200e32' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_01','8302633d94615ff84f1a4803e94131b26cb0be3bfccb2d93882446faebd2fc07' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a063f6ffd06d3b115175258fb59dd2f2ba3ce72e49cbea2a87a3371b8ca' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

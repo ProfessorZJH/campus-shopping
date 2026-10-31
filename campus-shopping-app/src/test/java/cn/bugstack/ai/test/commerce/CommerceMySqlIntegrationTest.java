@@ -165,6 +165,7 @@ class CommerceMySqlIntegrationTest {
             "ai_conversation",
             "ai_document",
             "ai_document_root",
+            "ai_knowledge_usage",
             "ai_knowledge_base",
             "ful_pickup_verification",
             "ful_pickup_task",
@@ -931,11 +932,91 @@ class CommerceMySqlIntegrationTest {
         var base = knowledge.createBase(owner, merchant.id(), "并发知识", "PUBLIC");
         var doc = aiState.createDocument(null, base.id(), "说明", "不可变正文");
         var oldAttempt = aiState.beginIndex(doc.id());
+        assertThrows(AppException.class, () -> aiState.beginIndex(doc.id()));
+        jdbc.update("UPDATE ai_document SET index_expires_at=TIMESTAMPADD(SECOND,-1,CURRENT_TIMESTAMP(3)) WHERE id=?", doc.id());
+        assertFalse(aiState.completeIndex(oldAttempt, true, "过期不能成功"));
         var newAttempt = aiState.beginIndex(doc.id());
         assertTrue(aiState.completeIndex(newAttempt, true, ""));
         assertFalse(aiState.completeIndex(oldAttempt, false, "旧请求超时"));
         assertEquals("READY", aiState.document(doc.id()).indexStatus());
         assertFalse(aiState.completeIndex(newAttempt, false, "重复完成"));
+    }
+
+    @Test
+    void concurrentKnowledgeClaimsHaveOneOwnerAndCrashLeaseCanBeRecovered() throws Exception {
+        var base = knowledge.createBase(owner, merchant.id(), "索引领取", "PUBLIC");
+        var doc = aiState.createDocument(null, base.id(), "说明", "不可变正文");
+        var results = race(() -> aiState.beginIndex(doc.id()), () -> aiState.beginIndex(doc.id()));
+        assertEquals(1, results.stream().filter("0000"::equals).count());
+        assertEquals(1, jdbc.queryForObject("SELECT index_count FROM ai_knowledge_usage WHERE owner_id=?", Integer.class, merchant.id()));
+        assertEquals(ResponseCode.KNOWLEDGE_NOT_READY.getCode(), code(() -> aiState.publish(doc.id())));
+        jdbc.update("UPDATE ai_document SET index_expires_at=TIMESTAMPADD(SECOND,-1,CURRENT_TIMESTAMP(3)) WHERE id=?", doc.id());
+        var recovered = aiState.beginIndex(doc.id());
+        assertTrue(aiState.completeIndex(recovered, false, "重试失败"));
+        assertEquals("FAILED", aiState.document(doc.id()).indexStatus());
+        assertEquals(ResponseCode.KNOWLEDGE_NOT_READY.getCode(), code(() -> aiState.publish(doc.id())));
+        var retry = aiState.beginIndex(doc.id());
+        assertTrue(aiState.completeIndex(retry, true, ""));
+        aiState.publish(doc.id());
+        assertEquals("PUBLISHED", aiState.document(doc.id()).status());
+    }
+
+    @Test
+    void merchantDocumentBytesAndCountAreReservedAtomicallyAndRollbackOnInvalidRoot() throws Exception {
+        var base = knowledge.createBase(owner, merchant.id(), "配额", "PUBLIC");
+        aiState.createDocument(null, base.id(), "初始化", "中文");
+        assertEquals(6, jdbc.queryForObject("SELECT content_bytes FROM ai_knowledge_usage WHERE owner_id=?", Long.class, merchant.id()));
+        jdbc.update("UPDATE ai_knowledge_usage SET document_count=999 WHERE owner_id=?", merchant.id());
+        var results = race(() -> aiState.createDocument(null, base.id(), "甲", "x"), () -> aiState.createDocument(null, base.id(), "乙", "y"));
+        assertEquals(1, results.stream().filter("0000"::equals).count());
+        assertEquals(1000, jdbc.queryForObject("SELECT document_count FROM ai_knowledge_usage WHERE owner_id=?", Integer.class, merchant.id()));
+        jdbc.update("UPDATE ai_knowledge_usage SET document_count=1,content_bytes=104857600 WHERE owner_id=?", merchant.id());
+        assertThrows(AppException.class, () -> aiState.createDocument(null, base.id(), "超额", "z"));
+        jdbc.update("UPDATE ai_knowledge_usage SET content_bytes=6 WHERE owner_id=?", merchant.id());
+        assertThrows(AppException.class, () -> aiState.createDocument("missing-root", base.id(), "失效根", "z"));
+        assertEquals(1, jdbc.queryForObject("SELECT document_count FROM ai_knowledge_usage WHERE owner_id=?", Integer.class, merchant.id()));
+        assertEquals(6, jdbc.queryForObject("SELECT content_bytes FROM ai_knowledge_usage WHERE owner_id=?", Long.class, merchant.id()));
+    }
+
+    @Test
+    void merchantIndexConcurrencyAndRateAreBoundedAndCompletionChecksVersion() {
+        var base = knowledge.createBase(owner, merchant.id(), "索引配额", "PUBLIC");
+        var docs = new ArrayList<KnowledgeDocumentVO>();
+        var attempts = new ArrayList<KnowledgeIndexAttemptVO>();
+        for (int i = 0; i < 5; i++) docs.add(aiState.createDocument(null, base.id(), "说明" + i, "正文"));
+        for (int i = 0; i < 4; i++) attempts.add(aiState.beginIndex(docs.get(i).id()));
+        assertThrows(AppException.class, () -> aiState.beginIndex(docs.get(4).id()));
+        assertTrue(aiState.completeIndex(attempts.get(0), true, ""));
+        var fifth = aiState.beginIndex(docs.get(4).id());
+        jdbc.update("UPDATE ai_document SET index_version=999 WHERE id=?", docs.get(4).id());
+        assertFalse(aiState.completeIndex(fifth, true, ""));
+        for (int i = 1; i < 4; i++) assertTrue(aiState.completeIndex(attempts.get(i), false, "受控失败"));
+        jdbc.update("UPDATE ai_knowledge_usage SET index_window=CURRENT_TIMESTAMP(3),index_count=60 WHERE owner_id=?", merchant.id());
+        assertEquals("A0007", code(() -> aiState.beginIndex(docs.get(0).id())));
+        jdbc.update("UPDATE ai_knowledge_usage SET index_window=TIMESTAMPADD(SECOND,-61,CURRENT_TIMESTAMP(3)) WHERE owner_id=?", merchant.id());
+        assertNotNull(aiState.beginIndex(docs.get(0).id()));
+    }
+
+    @Test
+    void publicationReloadsReadyDocumentAfterCachedPendingRead() {
+        var base = knowledge.createBase(owner, merchant.id(), "当前读", "PUBLIC");
+        var doc = aiState.createDocument(null, base.id(), "说明", "正文");
+        var attempt = aiState.beginIndex(doc.id());
+        var executor = Executors.newSingleThreadExecutor();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                assertEquals("PENDING", aiState.document(doc.id()).indexStatus());
+                try {
+                    assertTrue(executor.submit(() -> aiState.completeIndex(attempt, true, "")).get(10, TimeUnit.SECONDS));
+                } catch (Exception error) {
+                    throw new IllegalStateException("并发完成未成功", error);
+                }
+                aiState.publish(doc.id());
+            });
+            assertEquals("PUBLISHED", aiState.document(doc.id()).status());
+        } finally {
+            executor.shutdownNow();
+        }
     }
 
     @Test
