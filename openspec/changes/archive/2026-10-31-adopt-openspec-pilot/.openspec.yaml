@@ -1,0 +1,4 @@
+schema: spec-driven
+skip_specs: true
+created: 2026-10-31
+goal: 将 OpenSpec 作为可选的需求变更管理工具接入现有 AI 开发流程，并完成一次仅工具和文档的生命周期试点。
