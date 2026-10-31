@@ -115,3 +115,29 @@ def test_llm_uses_same_filtered_candidates_and_safe_fallback(api, monkeypatch, b
     assert seen and [r['skuId'] for r in data['recommendations']] == ['standard']
     assert data['mode'] == ('LLM' if behavior == 'valid' else 'LOCAL_FALLBACK')
     if behavior != 'valid': assert '错误家庭装解释' not in data['answer']
+
+
+def test_shared_java_python_spec_contract():
+    import json
+    from pathlib import Path
+    from app.sku_constraints import spec_constraints
+    from app.engine import FOLLOWUP
+    rows = json.loads((Path(__file__).resolve().parents[2] / 'campus-shopping-app/src/test/resources/sku-contract.json').read_text(encoding='utf-8'))
+    for row in rows:
+        items = [dict(title=row['titles'][0], specKey=s) for s in row['specs']]
+        specs = spec_constraints(row['question'], [dict(role='user', content=h) for h in row['history']], items, FOLLOWUP)
+        assert [s for s in row['specs'] if specs.accepts(dict(specKey=s))] == row['accepted'], row['question']
+
+
+@pytest.mark.parametrize('field', ['answer', 'reason'])
+def test_model_text_cannot_reintroduce_forbidden_spec(api, monkeypatch, field):
+    app, _ = api
+    app.state.store.settings = replace(app.state.store.settings, llm_key='unit-test-stub')
+    def complete(system, payload):
+        return dict(answer='建议家庭装，适合你' if field == 'answer' else '建议标准装',
+                    recommendations=[dict(skuId='standard', reason='家庭装更适合' if field == 'reason' else '规格已核实')])
+    monkeypatch.setattr(app.state.store.provider, 'complete', complete)
+    data = ask(api, '要标准装，不要家庭装')
+    assert [r['skuId'] for r in data['recommendations']] == ['standard']
+    assert '家庭装' not in data['answer']
+    assert all('家庭装' not in r['reason'] for r in data['recommendations'])

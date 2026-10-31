@@ -2,7 +2,7 @@
 from __future__ import annotations
 import json
 import platform
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 import secrets
 import subprocess
 from datetime import datetime, timezone
@@ -128,10 +128,17 @@ def recompute(path):
     return groups
 
 
+def dependency_version(package):
+    try:
+        return version(package)
+    except PackageNotFoundError:
+        return None  # 缺少distribution metadata不是执行失败，也不能伪造版本。
+
+
 def save(path, data, rows, metadata):
     manifest = dict(schemaVersion=1, scorerVersion=SCORER_VERSION, runId=path.name, code=revision(),
                     python=platform.python_version(), platform=platform.system(),
-                    dependencies={p: version(p) for p in ('httpx', 'pytest', 'fastapi')},
+                    dependencies={p: dependency_version(p) for p in ('httpx', 'pytest', 'fastapi')},
                     dataset={k: data['manifest'][k] for k in ('datasetId', 'version', 'status')},
                     annotation=data['validation'], snapshotHash=digest(data),
                     resultsHash=digest([{k: v for k, v in r.items() if k != 'scores'} for r in rows]), **metadata)

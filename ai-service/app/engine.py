@@ -170,19 +170,20 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
                 q=requested or r.get('quantity',1)
                 if isinstance(q,bool) or not isinstance(q,int) or not 1<=q<=99 or q>o['available']:continue
                 if limit is not None and spent+o['priceCent']*q>limit:continue
-                seen.add(o['skuId']);spent+=o['priceCent']*q;filtered.append({'skuId':o['skuId'],'quantity':q,'reason':str(r.get('reason','匹配当前需求'))[:200]})
+                seen.add(o['skuId']);spent+=o['priceCent']*q;filtered.append({'skuId':o['skuId'],'quantity':q,'reason':'规格：'+o['specKey']+'；数量、库存和预算已校验'})
                 if len(filtered)>=(1 if requested else 3):break
             if filtered:recommendations=filtered
             candidate_text=result.get('answer','')
             if not isinstance(candidate_text,str) or not candidate_text.strip() or len(candidate_text)>8000:raise ValueError('回答格式错误')
-            text=candidate_text
+            # 商品解释采用已过滤报价生成，模型自由文本不能重新引入排除项或虚构商业事实。
+            text='' if offers or specs.active else candidate_text
             mode='LLM';warning=''
         except Exception:
             text='';recommendations=local_recommendations
             mode='LOCAL_FALLBACK';warning='远程模型调用失败，已降级为本地检索；未执行任何购物操作。'
     if not text:
         parts=[]
-        if evidence:
+        if evidence and not offers and not specs.active:
             parts.append('根据当前允许访问的知识资料：')
             for c in evidence[:3]:parts.append('《'+c['title']+'》：'+c['snippet'][:180])
         if recommendations:

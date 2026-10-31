@@ -53,7 +53,7 @@ def main(argv=None):
         java_metadata = None
         if args.java_results:
             from .java_adapter import read_export
-            java_rows = read_export(args.java_results, data, profile=args.profile, split=args.split)
+            java_rows = read_export(args.java_results, data, profile=args.profile, split=args.split, experiments=tuple(args.experiments.split(',')))
             java_metadata = json.loads(args.java_results.read_text(encoding='utf-8')).get('inputMeta')
         output = new_run(args.output_dir)
         manifest = run(data, output, split=args.split, profile=args.profile, adapter=args.adapter,

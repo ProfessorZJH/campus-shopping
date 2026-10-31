@@ -1,0 +1,255 @@
+[
+  {
+    "question": "考试签字笔要标准装，不要家庭装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装"
+    ]
+  },
+  {
+    "question": "考试签字笔不要家庭装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装"
+    ]
+  },
+  {
+    "question": "不要家庭装要标准装考试签字笔",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装"
+    ]
+  },
+  {
+    "question": "家庭装不要，考试签字笔要标准装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装"
+    ]
+  },
+  {
+    "question": "考试签字笔家庭装和标准装都不要",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "考试签字笔要标准装，也要家庭装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "考试签字笔要标准装，不要标准装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "考试签字笔不是不要标准装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "要大杯签字笔",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "只要大杯",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "规格为磨砂",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "要蓝色",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "要500ml",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "换成大杯",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "推荐考试签字笔",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装",
+      "家庭装"
+    ]
+  },
+  {
+    "question": "校园活动需要考试黑色签字笔，有哪些商品",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装",
+      "家庭装"
+    ]
+  },
+  {
+    "question": "要两件考试黑色签字笔",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装",
+      "家庭装"
+    ]
+  },
+  {
+    "question": "这个便宜点",
+    "history": [
+      "考试签字笔要标准装，不要家庭装"
+    ],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "标准装"
+    ]
+  },
+  {
+    "question": "这个换成家庭装",
+    "history": [
+      "考试签字笔要标准装，不要家庭装"
+    ],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "家庭装"
+    ]
+  }
+]

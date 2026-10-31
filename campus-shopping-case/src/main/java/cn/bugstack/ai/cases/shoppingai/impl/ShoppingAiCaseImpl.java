@@ -197,19 +197,45 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .toList();
         Map<String, Long> available = new HashMap<>();
         stocks.forEach((id, s) -> available.put(id, s.onHand() - s.reserved()));
-        List<ProposalItemVO> items = RecommendationPolicy.select(answer.recommendations(), quotes, available);
+        List<ProposalItemVO> items = RecommendationPolicy.select(
+            answer.recommendations(),
+            quotes,
+            available,
+            question,
+            history
+                .stream()
+                .filter(m -> "user".equals(m.role()))
+                .map(MessageVO::content)
+                .toList()
+        );
         // 不把模型提出但未通过 Java SKU/库存复核的条目输出给前端。
-        Map<String, String> reasons = new HashMap<>();
-        for (var r : answer.recommendations()) if (r.skuId() != null) reasons.putIfAbsent(r.skuId(), r.reason());
         List<AiRecommendationVO> verified = items
             .stream()
-            .map(i -> {
-                String reason = reasons.get(i.skuId());
-                return new AiRecommendationVO(i.skuId(), i.quantity(), reason == null || reason.isBlank() ? "匹配当前需求" : reason);
-            })
+            .map(i -> new AiRecommendationVO(i.skuId(), i.quantity(), "规格：" + i.specKey() + "；以当前商品卡片为准"))
             .toList();
+        var specs = cn.bugstack.ai.domain.shoppingai.service.SkuConstraintPolicy.resolve(
+            question,
+            history
+                .stream()
+                .filter(m -> "user".equals(m.role()))
+                .map(MessageVO::content)
+                .toList(),
+            quotes.stream().map(ProposalItemVO::specKey).toList(),
+            quotes.stream().map(ProposalItemVO::title).toList()
+        );
+        String safeText = answer.answer();
+        if (!quotes.isEmpty() || specs.active()) {
+            safeText = items.isEmpty()
+                ? "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
+                : "可查看以下商品：" +
+                  items
+                      .stream()
+                      .map(i -> i.title() + "（" + i.specKey() + "）×" + i.quantity())
+                      .collect(Collectors.joining("；")) +
+                  "。确认后只加入购物车，不会自动下单或付款。";
+        }
         AiAnswerVO safe = new AiAnswerVO(
-            answer.answer(),
+            safeText,
             answer.mode(),
             answer.retrievalMode(),
             answer.rewrittenQuery(),
