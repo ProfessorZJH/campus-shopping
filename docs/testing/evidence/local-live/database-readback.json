@@ -1,0 +1,110 @@
+{
+  "testType": "READ_ONLY_MYSQL_POST_BROWSER",
+  "database": "campus_shopping",
+  "status": "PASS",
+  "startedAt": "2026-10-29T21:38:17.103534+08:00",
+  "checks": [
+    {
+      "name": "mysql_orders_completed_and_refunded",
+      "status": "PASS",
+      "orders": [
+        {
+          "id": "1b9f0eb7-b6a9-4033-9d6e-f0c4a28d2b05",
+          "status": "COMPLETED",
+          "total_cent": 1200
+        },
+        {
+          "id": "3b15f8cb-c587-4e50-af3a-fd466c536a49",
+          "status": "REFUNDED",
+          "total_cent": 600
+        }
+      ]
+    },
+    {
+      "name": "mysql_both_simulated_payments_recorded",
+      "status": "PASS",
+      "payments": [
+        {
+          "order_id": "1b9f0eb7-b6a9-4033-9d6e-f0c4a28d2b05",
+          "amount_cent": 1200,
+          "status": "SUCCEEDED"
+        },
+        {
+          "order_id": "3b15f8cb-c587-4e50-af3a-fd466c536a49",
+          "amount_cent": 600,
+          "status": "SUCCEEDED"
+        }
+      ]
+    },
+    {
+      "name": "mysql_refund_once_for_full_amount",
+      "status": "PASS",
+      "refunds": [
+        {
+          "order_id": "3b15f8cb-c587-4e50-af3a-fd466c536a49",
+          "amount_cent": 600
+        }
+      ]
+    },
+    {
+      "name": "mysql_order_item_image_and_price_snapshots",
+      "status": "PASS",
+      "items": [
+        {
+          "order_id": "1b9f0eb7-b6a9-4033-9d6e-f0c4a28d2b05",
+          "sku_id": "7035a07c-15ba-4f0c-9996-1d5ab0be60d1",
+          "quantity": 2,
+          "unit_price_cent": 600,
+          "image_url": "/media/dbc6fc50-d97b-49cf-9e45-1af6db0b8a74.png"
+        },
+        {
+          "order_id": "3b15f8cb-c587-4e50-af3a-fd466c536a49",
+          "sku_id": "7035a07c-15ba-4f0c-9996-1d5ab0be60d1",
+          "quantity": 1,
+          "unit_price_cent": 600,
+          "image_url": "/media/dbc6fc50-d97b-49cf-9e45-1af6db0b8a74.png"
+        }
+      ]
+    },
+    {
+      "name": "mysql_stock_consumed_two_refund_released_reservation",
+      "status": "PASS",
+      "stocks": [
+        {
+          "sku_id": "7035a07c-15ba-4f0c-9996-1d5ab0be60d1",
+          "on_hand": 48,
+          "reserved": 0
+        }
+      ]
+    },
+    {
+      "name": "mysql_pickup_only_completed_order_verified",
+      "status": "PASS",
+      "verifications": [
+        {
+          "order_id": "1b9f0eb7-b6a9-4033-9d6e-f0c4a28d2b05",
+          "verification_count": 1
+        },
+        {
+          "order_id": "3b15f8cb-c587-4e50-af3a-fd466c536a49",
+          "verification_count": 0
+        }
+      ]
+    },
+    {
+      "name": "mysql_browser_proposal_confirmed",
+      "status": "PASS",
+      "proposals": [
+        {
+          "id": "73d44234-f845-4be4-a9a7-c341b173ac4c",
+          "status": "CONFIRMED"
+        }
+      ]
+    },
+    {
+      "name": "mysql_buyer_cart_consumed_by_checkout",
+      "status": "PASS",
+      "cart": []
+    }
+  ]
+}

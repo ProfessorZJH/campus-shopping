@@ -1,3 +1,4 @@
+from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 import shutil
 """SDD A/B 修复：使用真实 Vue/Chromium + 明确标识的 HTTP 契约替身。非 Java/MySQL 联调。"""
@@ -29,14 +30,14 @@ with sync_playwright() as x:
  p.get_by_role('button',name='搜索',exact=True).click()
  expect(p.locator('.home-product')).to_have_count(1)
  check('134' in p.locator('.home-product').inner_text(),'公开商品服务器搜索覆盖第 100 条之后')
- p.close()
+ close_page(p)
  p=render(browser,'/shops/m1',False,(430,932),f)
  expect(p.locator('.shop-hero')).to_contain_text('林间文具铺')
  expect(p.locator('.shop-product-card')).to_have_count(12)
  p.locator('.shop-pagination').get_by_role('button',name='下一页').click()
  expect(p.locator('.shop-product-card')).to_have_count(12)
  check(True,'公开商户详情 + 商户商品独立分页')
- p.close()
+ close_page(p)
  p=render(browser,'/merchant/products',False,(1448,980),f)
  expect(p.locator('.product-table tbody tr')).to_have_count(9)
  expect(p.locator('.product-tabs button').first).to_contain_text(str(sum(z['merchantId']=='m1' for z in f.products)))
@@ -70,13 +71,13 @@ with sync_playwright() as x:
  p.locator('.merchant-modal input.admin-input').nth(1).fill('7.50')
  p.get_by_role('button',name='保存规格').click()
  check(len(product['skus'])==3,'已创建商品可追加 SKU')
- p.close()
+ close_page(p)
  p=render(browser,'/admin/products',False,(1448,980),f)
  expect(p.locator('.ops-table tbody tr')).to_have_count(12)
  p.locator('.sdd-pager').get_by_role('button',name='下一页').click()
  expect(p.locator('.ops-table tbody tr')).to_have_count(12)
  check(True,'平台商品监管返回分页结果')
- p.close()
+ close_page(p)
  # Document version upload must retain the same rootId instead of creating a new tree.
  k=BackendContractDouble();k.logged=True
  k.bases=[{'id':'kb1','name':'校内规范','merchantId':'m1','visibility':'PUBLIC'}]
@@ -89,7 +90,7 @@ with sync_playwright() as x:
  p.get_by_role('button',name='上传并索引').click()
  expect(p.locator('.kb-doc')).to_have_count(2)
  check(k.doc_uploads and k.doc_uploads[-1]['rootId']=='root1' and k.docs[-1]['version']==2,'知识新版本保持 rootId 并递增版本号')
- p.close()
+ close_page(p)
  # Historic order images are immutable snapshots. Old rows without a picture
  # must show a placeholder, never the new image from the current Catalog.
  history=BackendContractDouble();history.logged=True
@@ -104,9 +105,9 @@ with sync_playwright() as x:
  expect(p.locator('.order-detail-line')).to_have_count(1)
  expect(p.locator('.order-detail-line img')).to_have_attribute('src','./images/product-placeholder.svg')
  check(True,'旧订单无图使用占位图，不回查商户修改后的商品主图')
- p.close()
+ close_page(p)
  check(not history.unhandled,'旧订单页面未调用未实现的契约替身接口')
  check(not f.unhandled,'没有调用未实现的契约替身接口')
  check(not ERRORS,'没有 Chromium 未捕获异常')
- browser.close()
+ close_browser(browser)
 print('PASSED',len(checks),'SDD browser checks',json.dumps(checks,ensure_ascii=False))

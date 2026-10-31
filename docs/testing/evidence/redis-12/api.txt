@@ -1,0 +1,55 @@
+[PASS] ��ǰ Controller/DTO �������ĵ��ֽ�һ�£����ĵ�Ư�ƣ�
+[PASS] 93 �� Controller ·�����嵥����һ�������ظ�
+[PASS] OpenAPI ·��/������ Controller һ��
+[PASS] OpenAPI ���� DTO schema ���þ��ɽ���
+[PASS] �������� DTO ������ʽ�������������Դ
+[PASS] RegisterRequestDTO.username �淶���󳤶����� 32
+[PASS] RegisterRequestDTO.displayName �淶���󳤶����� 50
+[PASS] SubmitMerchantApplicationRequestDTO.contactName �淶���󳤶����� 50
+[PASS] CategoryRequestDTO.code �淶���󳤶����� 32
+[PASS] CategoryRequestDTO.name �淶���󳤶����� 50
+[PASS] ������������ Java ö������һ�������ظ�
+[PASS] Э����󡢼�Ȩ����֤�������Ͼ��� JSON ���� schema
+[PASS] ��Ʒ���� DTO ��׼ȷ���ִ������ͱ༭�汾����
+[PASS] �˿�ͬ��/���ؾ������ǿ����ԭ��
+[PASS] Ӧ���� Docker ������ DDL �ֽ�һ�£����ݿⴴ��ǰ׺���⣩
+[PASS] ҵ��Ȩ�ޡ�CSRF����������ݵ������е�����������Ϊ��Լ
+[PASS] �ɶ�ȡ Spring Security ���� GET ƥ�����
+[PASS] ���� GET �� Security ��������/api/v1/auth/csrf
+[PASS] ���� GET �� Security ��������/api/v1/categories
+[PASS] ���� GET �� Security ��������/api/v1/merchants/public
+[PASS] ���� GET �� Security ��������/api/v1/merchants/public/page
+[PASS] ���� GET �� Security ��������/api/v1/merchants/public/{merchantId}
+[PASS] ���� GET �� Security ��������/api/v1/products
+[PASS] ��Ʒ������ /products/page ������ͨ�������
+[PASS] ˽�� Admin/�̻�·�����������
+[PASS] ע�����¼�������û����ţ����Ծ��� CSRF ������
+[PASS] �̻������ӿ� ACL ��·���嵥һ�£�GET /api/v1/merchants/public/page
+[PASS] �̻������ӿ� ACL ��·���嵥һ�£�GET /api/v1/merchants/public/{merchantId}
+[PASS] SQL ���������·������ q��/api/v1/admin/merchants/page
+[PASS] SQL ���������·������ q��/api/v1/admin/merchant-applications/page
+[PASS] SQL ���������·������ q��/api/v1/admin/orders/page
+[PASS] SQL ���������·������ q��/api/v1/merchants/{merchantId}/orders/page
+[PASS] SQL ���������·������ q��/api/v1/merchants/{merchantId}/stocks/page
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml����ҳ SELECT �� COUNT ������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml���б��� COUNT ���ڷ�ҳǰ�� q ����
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml����ѯ��ҳ��������������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantdao_mapper.xml����ѯ q ν���� COUNT ν����ȫһ��
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml����ҳ SELECT �� COUNT ������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml���б��� COUNT ���ڷ�ҳǰ�� q ����
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml����ѯ��ҳ��������������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/imerchantapplicationdao_mapper.xml����ѯ q ν���� COUNT ν����ȫһ��
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml����ҳ SELECT �� COUNT ������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml���б��� COUNT ���ڷ�ҳǰ�� q ����
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml����ѯ��ҳ��������������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml����ѯ q ν���� COUNT ν����ȫһ��
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml����ҳ SELECT �� COUNT ������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml���б��� COUNT ���ڷ�ҳǰ�� q ����
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml����ѯ��ҳ��������������
+[PASS] campus-shopping-app/src/main/resources/mybatis/mapper/iinventoryquerydao_mapper.xml����ѯ q ν���� COUNT ν����ȫһ��
+[PASS] ���ﳵ API ֱ�ӷ����̻�������������ǰҳ�̻�����
+[PASS] ��ʵ���������ʹ���°� Vue ѡ�����Ҳ� mock API
+[PASS] CI ����ʵ Java/MySQL �׶�֮ǰ������Լ�Ž���֮��������ʵ�����
+[PASS] �ĵ�������ָ�� SDD-03 ��ǰ��Լ
+��ɾ�̬��Լ��飻ע�⣺���� Maven / Spring Security / MySQL ��ʵͨ����
+PASS 41 schema checks

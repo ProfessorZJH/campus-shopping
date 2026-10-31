@@ -1,3 +1,4 @@
+from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 import shutil
 """2026-10-28 修复回归：真实 Chromium + Vue 交付 JS + 明确的 API 契约替身。
@@ -60,6 +61,7 @@ def browser_page(browser, route, fixture, *, race=False):
       window.__CAMPUS_UI_TEST_IMAGES__=images;
       if(!crypto.randomUUID)crypto.randomUUID=()=>String(Date.now())+Math.random();}''',{'route':route,'images':IMAGES})
     page.expose_binding('__contractApi',fixture_call(fixture))
+    track_bindings(page)
     page.evaluate('''({race})=>{
       window.__pending=[];
       window.__holdMerchant=false;
@@ -110,7 +112,7 @@ def main():
         assert '匹配beta' in page.locator('.home-product').inner_text()
         assert '过期alpha' not in page.locator('.home-product').inner_text()
         checks.append('首页 alpha/beta 乱序只提交 beta')
-        page.close()
+        close_page(page)
 
         page=browser_page(browser,'/merchant/products',f,race=True)
         expect(page.locator('.product-table tbody tr')).to_have_count(4)
@@ -128,7 +130,7 @@ def main():
         assert '当季新鲜苹果' in page.locator('.product-table').inner_text()
         assert '轻量空白笔记本' not in page.locator('.product-table').inner_text()
         checks.append('商户 m1/m2 切换时旧数据不能覆盖新商户')
-        page.close()
+        close_page(page)
 
         page=browser_page(browser,'/merchant/knowledge',f)
         expect(page.locator('.kb-base')).to_have_count(1)
@@ -138,7 +140,7 @@ def main():
         expect(page.locator('.kb-list')).to_contain_text('商户二私有资料')
         assert '商户一私有资料' not in page.locator('.kb-list').inner_text()
         checks.append('知识库按当前商户过滤，切换后不会继续显示前商户')
-        page.close()
+        close_page(page)
 
         page=browser_page(browser,'/merchant/aftersales',f)
         expect(page.get_by_role('button',name='审核')).to_be_visible()
@@ -150,7 +152,7 @@ def main():
         expect(page.locator('.toast')).to_contain_text('操作成功')
         assert '审核通过，等待模拟退款' in f.refund_reasons
         checks.append('商户批准退款必须填写审核说明')
-        page.close()
+        close_page(page)
 
         page=browser_page(browser,'/admin/disputes',f)
         expect(page.get_by_role('button',name='查看处理')).to_be_visible()
@@ -159,7 +161,7 @@ def main():
         page.locator('.review-inline textarea').fill('平台复核同意')
         expect(page.get_by_role('button',name='批准退款')).to_be_enabled()
         checks.append('平台批准退款必须填写审核说明')
-        page.close()
+        close_page(page)
 
         f.members=[{'merchantId':'m1','userId':'u1','role':'CLERK','status':'ACTIVE'}]
         page=browser_page(browser,'/merchant/orders',f)
@@ -169,7 +171,7 @@ def main():
         page.evaluate("location.hash='/merchant/aftersales'")
         expect(page.locator('.access-denied')).to_contain_text('无权限访问')
         checks.append('店员菜单隐藏 Owner 入口，直接输入 Owner URL 被界面拒绝')
-        page.close()
+        close_page(page)
         # 已登录用户退出/重新登录：必须恢复首页公共列表，不能留空。
         f.logged=True
         page=browser_page(browser,'/',f)
@@ -185,7 +187,7 @@ def main():
         expect(page.locator('.account-pill')).to_be_visible()
         expect(page.locator('.home-product')).to_have_count(6)
         checks.append('退出及重新登录后恢复公开商品，旧缓存不会造成空列表')
-        page.close()
+        close_page(page)
 
         # 跳出商户端后，旧商户商品晚到不应覆盖公开首页。
         page=browser_page(browser,'/merchant/products',f,race=True)
@@ -200,7 +202,7 @@ def main():
         page.wait_for_timeout(160)
         expect(page.locator('.home-product')).to_have_count(6)
         checks.append('商户端切回购物端时旧库存/商品响应被丢弃')
-        page.close()
+        close_page(page)
         # 切换不同登录主体，后台原有数据不得留在无权账号页面。
         f.platform_admin=True
         f.user={'userId':'u1','username':'student001','displayName':'管理员A','status':'ACTIVE'}
@@ -215,7 +217,7 @@ def main():
         expect(page.locator('.access-denied')).to_contain_text('无权限访问')
         assert page.locator('.ops-table tbody tr').count()==0
         checks.append('管理员 A 登录切换至普通账号 B 后清空私有表格并阻止展示')
-        page.close()
+        close_page(page)
 
         f.platform_admin=False
         f.user={'userId':'u1','username':'student001','displayName':'商户A','status':'ACTIVE'}
@@ -233,9 +235,9 @@ def main():
         assert 'sku0' not in page.locator('.ops-table tbody').inner_text()
         assert 'sku4' in page.locator('.ops-table tbody').inner_text()
         checks.append('账号 A/m1 切到账号 B/m2 后库存只显示新账号商户')
-        page.close()
+        close_page(page)
         assert not ERRORS, ERRORS
-        browser.close()
+        close_browser(browser)
     print('PASSED',len(checks),'FIX REGRESSION CHECKS',json.dumps(checks,ensure_ascii=False))
 
 if __name__=='__main__':main()

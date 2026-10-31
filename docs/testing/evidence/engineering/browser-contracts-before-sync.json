@@ -1,0 +1,48 @@
+{
+  "status": "FAIL",
+  "testType": "REAL_CHROMIUM_WITH_EXPLICIT_API_DOUBLE",
+  "scripts": [
+    {
+      "script": "contract_ui",
+      "exitCode": 0,
+      "status": "PASS",
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_audit_contract",
+      "exitCode": 1,
+      "status": "FAIL",
+      "stderrEmpty": false
+    },
+    {
+      "script": "ui_sdd_integration",
+      "exitCode": 0,
+      "status": "PASS",
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_contract_v11",
+      "exitCode": 0,
+      "status": "PASS",
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_fix_regression",
+      "exitCode": 0,
+      "status": "PASS",
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_rbac_regression",
+      "exitCode": 0,
+      "status": "PASS",
+      "stderrEmpty": true
+    },
+    {
+      "script": "ui_global_sort",
+      "exitCode": 0,
+      "status": "PASS",
+      "stderrEmpty": true
+    }
+  ]
+}

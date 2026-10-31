@@ -2,6 +2,8 @@
 
 当前项目中基于 Vue 3 的同源 SPA，按身份使用 H5 或桌面管理端。本次补齐消费者购物闭环、商户经营操作、平台审核监管页面，保留先前高保真首页、AI 导购和商户商品管理。
 
+2026-10-29 已完成真实 Chromium + Spring/MySQL + NVIDIA/Milvus/讯飞验收：商品上传/双 SKU/上架、导购确认、模拟支付、自提、退款、28 条页面路由及自定义角色授予/撤销。见[完整报告与截图](../docs/testing/LOCAL-LIVE-20261029.md)。运行中的本机地址为 `http://127.0.0.1:8091/#/`，不加 `demo=1`；脚本入口 `tests/live_shopping.py` 的三个 stage 及依赖顺序见报告。
+
 ## UI-06 前端精简与移动导航
 
 商户角色权限：`#/merchant/roles`；Owner 可编辑自定义角色并在 `#/merchant/team` 分配成员。权限卡只显示功能名称，不显示内部权限代码。商户与平台的移动端采用横向导航，自动显示当前选中页面；与桌面菜单使用相同的权限判定。`?demo=1#/merchant/roles` 展示只读权限示例，真实写操作始终禁用。运行 `python frontend/tests/ui_copy_polish.py` 查看专项浏览器检查。
@@ -23,7 +25,16 @@
 
 - `?demo=1` 显式开启离线设计预览；使用 `src/services/demo.js` 和 `pages-demo.js` 中的样例数据，写操作禁用。
 - 不带 `demo=1` 时调用真实 `/api/v1`，Cookie Session + CSRF；业务失败需检查 `Response.code`。
-- 提供两个开发入口：`npm install && npm run dev`（Vite；需先安装依赖），或使用附带 `ui.bundle.js`（已由真实 Chromium 预编译，不需要 npm）。
+- 开发使用 Node 22.16.0：`npm ci && npm run dev`。正式编译由锁定的 Vite/Vue 编译器执行，附带的 `ui.bundle.js` 是离线兼容快照。
+
+```bash
+npm ci --prefix frontend
+npm run build --prefix frontend
+python scripts/build-ui-bundle.py
+python scripts/build-ui-bundle.py --check
+```
+
+`npm run build` 输出 `frontend/dist`；Python 包装入口重新构建并同步 `frontend/ui.bundle.js`、构建摘要和 Spring 静态资源。`--check` 在临时目录完整重建并逐文件检查漂移。Maven `clean verify` 会自行安装锁定依赖并从源码生成打包资源，开发机需有 Node 和 Python。不要手工编辑生成的 bundle 或 Spring 静态副本。Java/前端格式门禁为 `npm run format:check --prefix frontend`，修正为 `npm run format --prefix frontend`。见[工程化验证](../docs/testing/ENGINEERING-10.md)。
 
 ### 离线浏览
 

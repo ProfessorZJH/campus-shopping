@@ -1,5 +1,29 @@
 name: campus-shopping
 services:
+  redis-security:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_SECURITY_PASSWORD:?必须生成安全Redis凭据}
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --appendonly yes --appendfsync everysec --maxmemory 128mb --maxmemory-policy noeviction']
+    volumes:
+      - redis-security-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  redis-cache:
+    image: redis:7.4.2-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_CACHE_PASSWORD:?必须生成缓存Redis凭据}
+    command: ["sh", "-c", 'exec redis-server --requirepass "$$REDIS_PASSWORD" --save "" --maxmemory 64mb --maxmemory-policy allkeys-lru']
+    healthcheck:
+      test: ["CMD-SHELL", 'REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
   mysql:
     image: mysql:8.0.36
     restart: unless-stopped
@@ -26,9 +50,11 @@ services:
     environment:
       AI_SERVICE_KEY: ${AI_SERVICE_KEY:?必须设置 Java/Python 共享服务密钥}
       AI_DB_PATH: /app/var/knowledge.sqlite3
+      AI_MAX_CONCURRENT_REQUESTS: ${AI_MAX_CONCURRENT_REQUESTS:-4}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
       EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
       EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
@@ -54,6 +80,12 @@ services:
       - "127.0.0.1:${APP_PORT:-8091}:8091"
     environment:
       SPRING_PROFILES_ACTIVE: prod
+      REDIS_ENABLED: 'true'
+      REDIS_NAMESPACE: cs:compose
+      REDIS_SECURITY_ADDRESS: redis://redis-security:6379
+      REDIS_CACHE_ADDRESS: redis://redis-cache:6379
+      REDIS_SECURITY_PASSWORD: ${REDIS_SECURITY_PASSWORD}
+      REDIS_CACHE_PASSWORD: ${REDIS_CACHE_PASSWORD}
       PORT: 8091
       DB_URL: jdbc:mysql://mysql:3306/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
       DB_USERNAME: campus_app
@@ -71,6 +103,10 @@ services:
     volumes:
       - uploads:/app/var/uploads
     depends_on:
+      redis-security:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
       mysql:
         condition: service_healthy
     healthcheck:
@@ -90,6 +126,7 @@ services:
       - qdrant-data:/qdrant/storage
 
 volumes:
+  redis-security-data:
   mysql-data:
   ai-data:
   uploads:

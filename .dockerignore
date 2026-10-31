@@ -8,3 +8,9 @@
 var
 **/*.log
 docs/testing/evidence
+**/node_modules
+**/dist
+artifacts
+.idea
+**/.venv
+**/venv

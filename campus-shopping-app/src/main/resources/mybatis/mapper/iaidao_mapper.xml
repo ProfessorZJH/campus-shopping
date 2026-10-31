@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.bugstack.ai.infrastructure.dao.IAiDao">
+    <update id="reserveBaseQuota">UPDATE ai_knowledge_quota SET used_count=used_count+1 WHERE id='global' AND used_count &lt; 1000</update>
     <insert id="baseInsert">
 INSERT INTO ai_knowledge_base(id,name,merchant_id,visibility,created_by) VALUES(#{p.id},#{p.name},#{p.merchantId},#{p.visibility},#{creator})
     </insert>
@@ -39,6 +40,15 @@ UPDATE ai_document SET status=#{status} WHERE id=#{id}
     </update>
     <update id="activeDocument">
 UPDATE ai_document_root SET active_document_id=#{id} WHERE id=#{root}
+    </update>
+    <update id="claimTurn">
+UPDATE ai_conversation SET processing_owner=#{owner},processing_until=TIMESTAMPADD(SECOND,900,CURRENT_TIMESTAMP(3)) WHERE id=#{id} AND user_id=#{actor} AND (processing_owner IS NULL OR processing_until &lt; CURRENT_TIMESTAMP(3))
+    </update>
+    <select id="lockTurn" resultType="string">
+SELECT id FROM ai_conversation WHERE id=#{id} AND user_id=#{actor} AND processing_owner=#{owner} AND processing_until &gt; CURRENT_TIMESTAMP(3) FOR UPDATE
+    </select>
+    <update id="releaseTurn">
+UPDATE ai_conversation SET processing_owner=NULL,processing_until=NULL WHERE id=#{id} AND processing_owner=#{owner}
     </update>
     <insert id="conversationInsert">
 INSERT INTO ai_conversation(id,user_id,title,created_at) VALUES(#{p.id},#{p.userId},#{p.title},#{p.createdAt})

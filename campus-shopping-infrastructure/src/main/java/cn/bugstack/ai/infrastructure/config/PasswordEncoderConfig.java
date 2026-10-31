@@ -12,9 +12,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @Configuration
 public class PasswordEncoderConfig {
 
-    /** 注册账号与本地开发环境的 HTTP Basic 测试账号共用此编码器。 */
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(12);
-    }
+  /** 注册账号与本地开发环境的 HTTP Basic 测试账号共用此编码器。 */
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder(12);
+  }
 }

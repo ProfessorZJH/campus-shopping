@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "testType": "TWO_REAL_JAVA_MYSQL_REDIS_INSTANCES",
+  "apiMockUsed": false,
+  "checks": [
+    {
+      "name": "A登录后B识别同一Redis会话",
+      "status": "PASS"
+    },
+    {
+      "name": "B退出后A持有的旧Cookie立即失效",
+      "status": "PASS"
+    },
+    {
+      "name": "B实时读取A授予的stock.read且拒绝product.read",
+      "status": "PASS"
+    },
+    {
+      "name": "A撤回角色权限后B既有会话立即被拒绝",
+      "status": "PASS"
+    },
+    {
+      "name": "B展示已缓存商品时立即读取A修改后的价格版本",
+      "status": "PASS"
+    },
+    {
+      "name": "B展示缓存不覆盖A补货后的实时库存",
+      "status": "PASS"
+    },
+    {
+      "name": "A下架后B不能从展示缓存读取已下架商品",
+      "status": "PASS"
+    },
+    {
+      "name": "A撤销成员后B已登录会话权限实时失效",
+      "status": "PASS"
+    }
+  ],
+  "testData": {
+    "userIds": {
+      "owner": "5a444894-f860-4fd1-b69e-a978bd491d10",
+      "clerk": "fe4abd9c-4f00-4134-b860-a6c3302ce292",
+      "buyer": "93bcee8a-7d2c-45dd-8a7e-8616e0840a4e"
+    },
+    "merchantId": "1aa3e7dd-bda0-476f-91cc-98c5865d1501",
+    "productId": "3aa1ed23-7821-4cfc-9ffc-e442c65cfaa6",
+    "skuId": "083132da-9f22-4e22-ae74-4763354aaf5f"
+  }
+}

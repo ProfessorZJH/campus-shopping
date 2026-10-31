@@ -1,0 +1,13 @@
+{
+  "testType": "REAL_JAVA_MYSQL_AI",
+  "apiMockUsed": false,
+  "database": "campus_shopping",
+  "merchantId": "786fb757-f988-4014-b267-e21a726d5848",
+  "status": "PREPARED",
+  "checks": [
+    {
+      "name": "real_accounts_merchant_and_clerk_prepared",
+      "status": "PASS"
+    }
+  ]
+}

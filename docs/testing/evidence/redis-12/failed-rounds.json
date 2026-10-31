@@ -1,0 +1,28 @@
+[
+  {
+    "round": "initial compile invocation",
+    "result": "FAIL",
+    "reason": "PowerShell split unquoted dotted Maven -D arguments; quoted invocation compiled successfully"
+  },
+  {
+    "round": "first unit regression",
+    "result": "FAIL",
+    "reason": "Four tests constructing gateway/job manually did not inject the new resource dependency; fixtures corrected"
+  },
+  {
+    "round": "first cross-instance test compile",
+    "result": "FAIL",
+    "reason": "Java JSON test literal escaping; replaced with ObjectMapper serialization"
+  },
+  {
+    "round": "first isolated MySQL quota race",
+    "result": "FAIL",
+    "reason": "COUNT after quota row lock used a preexisting REPEATABLE READ snapshot; two concurrent creates both succeeded. Replaced with atomic UPDATE used_count<1000 in the create transaction"
+  },
+  {
+    "round": "second isolated build",
+    "maven": "120 tests, zero failures/errors/skips",
+    "result": "FAIL_SOURCE_CHANGED",
+    "reason": "Additional stock-role and dependency-fault regression fixes changed sources during acceptance; final source is being rebuilt and retested"
+  }
+]

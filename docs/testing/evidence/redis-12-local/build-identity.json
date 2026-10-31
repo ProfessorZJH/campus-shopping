@@ -1,0 +1,8 @@
+{
+  "checkedAt": "2026-10-31T10:09:36.210992+08:00",
+  "sourceFilesChecked": 435,
+  "matchesVerifiedBuild": true,
+  "mismatches": [],
+  "jarPath": "var/redis-sdd/verified-build/campus-shopping-app.jar",
+  "jarSha256": "14c2749a6cbe8880c43295ab4460c6b05fc729831618d982200a63c81332c44c"
+}

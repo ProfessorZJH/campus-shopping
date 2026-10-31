@@ -1,0 +1,22 @@
+{
+  "processIds": {
+    "ai": 35004,
+    "java": 7736,
+    "java-secondary": 19372
+  },
+  "baseUrl": "http://127.0.0.1:8091",
+  "secondaryBaseUrl": "http://127.0.0.1:8092",
+  "database": "campus_shopping",
+  "redisEnabled": true,
+  "redisNamespace": "cs:local:r12",
+  "separateRedisInstances": false,
+  "productSyncEnabled": false,
+  "aiMode": "CONFIGURED_REAL_PROVIDERS",
+  "milvusTransportException": true,
+  "bindAddress": "127.0.0.1",
+  "secondaryInstanceStopped": true,
+  "activeProcessIds": {
+    "ai": 35004,
+    "java": 7736
+  }
+}

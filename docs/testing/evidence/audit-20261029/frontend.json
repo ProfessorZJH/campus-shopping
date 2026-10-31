@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "testType": "REAL_CHROMIUM_WITH_EXPLICIT_API_DOUBLE",
+  "checks": [
+    "username 32 and display name 50 match OpenAPI in compiled Vue",
+    "merchant contact name limited to database/API length 50",
+    "category code 32 and name 50 match OpenAPI",
+    "Spring static and editable frontend artifacts match"
+  ],
+  "browserErrors": [],
+  "realJavaMySqlTested": false
+}

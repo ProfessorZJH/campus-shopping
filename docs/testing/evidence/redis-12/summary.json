@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "date": "2026-10-31",
+  "scope": "isolated MySQL + real local Redis + Spring HTTP + FastAPI local retrieval + Chromium",
+  "junit": {
+    "tests": 121,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "python": {
+    "tests": 44,
+    "failures": 0
+  },
+  "http": {
+    "status": "PASS",
+    "checks": 173,
+    "externalModel": false,
+    "retrieval": "LOCAL_RETRIEVAL_DEMO",
+    "contractValidation": {
+      "enabled": true,
+      "responsesChecked": 117,
+      "openapiSha256": "e6bf83ffad23b7840f8c026d6d861af6ef29abf631b3c10c0cb96f501df37f1d"
+    }
+  },
+  "browser": {
+    "status": "PASS",
+    "checks": 8,
+    "apiMockUsed": false
+  },
+  "testedSourceMatchesCheckout": true,
+  "temporaryDatabaseCleaned": true,
+  "existingBusinessDatabaseUsed": false,
+  "existingRedisCleared": false,
+  "redisMode": "random isolated test namespaces on local Redis; no reconfiguration",
+  "composeConfiguration": "PASS (docker compose config --quiet with temporary random environment values)",
+  "notRun": [
+    "Docker runtime",
+    "remote GitHub Actions",
+    "real models",
+    "remote Milvus/Qdrant",
+    "production HA/failover",
+    "performance"
+  ],
+  "artifacts": "var/redis-sdd/verified-build",
+  "jarSha256": "14c2749a6cbe8880c43295ab4460c6b05fc729831618d982200a63c81332c44c"
+}

@@ -1,0 +1,16 @@
+vite v6.3.5 building for production...
+transforming...
+✓ 24 modules transformed.
+rendering chunks...
+computing gzip size...
+C:/windows/TEMP/campus-ui-build-v28ieu0e/ui.bundle.js  438.45 kB │ gzip: 66.49 kB
+✓ built in 683ms
+UI artifact drift: frontend\ui-build.json
+Traceback (most recent call last):
+  File "G:\develop\campus-shopping\frontend\tests\ui_audit_contract.py", line 65, in <module>
+    main()
+  File "G:\develop\campus-shopping\frontend\tests\ui_audit_contract.py", line 53, in main
+    subprocess.run([sys.executable, str(ROOT/'scripts/build-ui-bundle.py'), '--check'], cwd=ROOT, check=True)
+  File "C:\Users\Profe\AppData\Local\Programs\Python\Python311\Lib\subprocess.py", line 571, in run
+    raise CalledProcessError(retcode, process.args,
+subprocess.CalledProcessError: Command '['G:\\develop\\campus-shopping\\var\\engineering\\tooling\\Scripts\\python.exe', 'G:\\develop\\campus-shopping\\scripts\\build-ui-bundle.py', '--check']' returned non-zero exit status 1.

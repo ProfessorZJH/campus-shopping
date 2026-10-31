@@ -1,0 +1,18 @@
+{
+  "originalFailuresPreserved": true,
+  "productionFixRequired": false,
+  "rounds": {
+    "cross-instance-round-1.json": {
+      "cause": "CookieJar contains an RLock and cannot be deepcopied. Test harness stopped before cross-instance assertions.",
+      "resolution": "Copy individual cookies into a new CookieJar."
+    },
+    "cross-instance-round-2.json": {
+      "cause": "Test harness attempted an invalid empty-permission custom role. API correctly rejected it.",
+      "resolution": "Replace stock.read with valid product.read, then verify stock.read is revoked."
+    },
+    "database-readback-round-1.json": {
+      "cause": "Historical verifier assumed refund always uses the 600-cent SKU. The real detail page default selected the 400-cent SKU. Order was correctly refunded for 400.",
+      "resolution": "Verify each order against its pre-transaction fixture SKU and price, and check both SKU balances."
+    }
+  }
+}

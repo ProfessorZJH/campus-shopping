@@ -1,65 +1,174 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
-import {api,query} from '../services/api.js';
-import {store,go,money,skuOf,available,shopName,preview,previewGuard,notify,beginPublicSearch,publicSearchCurrent} from '../services/store.js';
-const {ref,computed,onUnmounted}=Vue;
-const staticCategoryArt={food:'./images/category-snacks.webp',drink:'./images/category-drinks.webp',fruit:'./images/category-fruit.webp',stationery:'./images/category-stationery.webp',daily:'./images/category-daily.webp'};
+import { api, query } from '../services/api.js';
+import {
+  store,
+  go,
+  money,
+  skuOf,
+  available,
+  shopName,
+  preview,
+  previewGuard,
+  notify,
+  beginPublicSearch,
+  publicSearchCurrent,
+} from '../services/store.js';
+const { ref, computed, onUnmounted } = Vue;
+const staticCategoryArt = {
+  food: './images/category-snacks.webp',
+  drink: './images/category-drinks.webp',
+  fruit: './images/category-fruit.webp',
+  stationery: './images/category-stationery.webp',
+  daily: './images/category-daily.webp',
+};
 export default {
-  name:'Home',components:{ConsumerShell,ProductImage},
-  setup(){
-    const keywords=['泡面','牛奶','水果','文具','纸巾','零食'];
-    const search=ref('');const category=ref('');const merchant=ref('');const sort=ref('popular');
-    const page=ref(1);const selected=ref(null);const chosenSku=ref('');const count=ref(1);const saving=ref(false);
-    const categories=computed(()=>store.categories.filter(c=>c.active).slice(0,5));
-    const shops=computed(()=>store.merchants.filter(m=>m.status==='ACTIVE').slice(0,3));
-    const shown=computed(()=>{
-      let arr=store.products.filter(p=>p.status==='PUBLISHED');
-      if(preview){const q=search.value.trim().toLowerCase();if(q)arr=arr.filter(p=>(p.title+' '+p.description).toLowerCase().includes(q));}
-      if(category.value)arr=arr.filter(p=>p.categoryCode===category.value);
-      if(merchant.value)arr=arr.filter(p=>p.merchantId===merchant.value);
-      if(preview&&sort.value==='price')arr=[...arr].sort((a,b)=>Number(skuOf(a).priceCent)-Number(skuOf(b).priceCent));
-      if(preview&&sort.value==='stock')arr=[...arr].sort((a,b)=>available(b)-available(a));
+  name: 'Home',
+  components: { ConsumerShell, ProductImage },
+  setup() {
+    const keywords = ['泡面', '牛奶', '水果', '文具', '纸巾', '零食'];
+    const search = ref('');
+    const category = ref('');
+    const merchant = ref('');
+    const sort = ref('popular');
+    const page = ref(1);
+    const selected = ref(null);
+    const chosenSku = ref('');
+    const count = ref(1);
+    const saving = ref(false);
+    const categories = computed(() => store.categories.filter((c) => c.active).slice(0, 5));
+    const shops = computed(() => store.merchants.filter((m) => m.status === 'ACTIVE').slice(0, 3));
+    const shown = computed(() => {
+      let arr = store.products.filter((p) => p.status === 'PUBLISHED');
+      if (preview) {
+        const q = search.value.trim().toLowerCase();
+        if (q) arr = arr.filter((p) => (p.title + ' ' + p.description).toLowerCase().includes(q));
+      }
+      if (category.value) arr = arr.filter((p) => p.categoryCode === category.value);
+      if (merchant.value) arr = arr.filter((p) => p.merchantId === merchant.value);
+      if (preview && sort.value === 'price')
+        arr = [...arr].sort((a, b) => Number(skuOf(a).priceCent) - Number(skuOf(b).priceCent));
+      if (preview && sort.value === 'stock')
+        arr = [...arr].sort((a, b) => available(b) - available(a));
       return arr;
     });
-    const priceSku=p=>[...(p?.skus||[])].filter(s=>s.status==='ACTIVE').sort((a,b)=>Number(a.priceCent)-Number(b.priceCent))[0]||skuOf(p);
-    const pageInfo=computed(()=>store.publicPage);const chosen=computed(()=>selected.value?.skus?.find(s=>s.skuId===chosenSku.value)||skuOf(selected.value));
-    const productCategory=p=>store.categories.find(c=>c.code===p.categoryCode)?.name||'好物';
-    const currentShop=p=>store.merchants.find(m=>m.merchantId===p.merchantId)||{};
-    async function loadSearch(){
-      if(preview)return;
-      const stamp=beginPublicSearch();
-      const params={q:search.value,category:category.value,merchantId:merchant.value,page:page.value,size:20,sort:sort.value==='price'?'PRICE_ASC':sort.value==='stock'?'STOCK_DESC':'NEWEST'};
-      store.loading=true;store.error='';
-      try{
-        const result=await api('/products/page'+query(params));
-        if(!publicSearchCurrent(stamp))return;
-        store.products=result.items||[];
-        store.publicPage={page:result.page,size:result.size,total:result.total,hasNext:result.hasNext};
-      }catch(err){if(publicSearchCurrent(stamp))store.error=err.message;}
-      finally{if(publicSearchCurrent(stamp))store.loading=false;}
+    const priceSku = (p) =>
+      [...(p?.skus || [])]
+        .filter((s) => s.status === 'ACTIVE')
+        .sort((a, b) => Number(a.priceCent) - Number(b.priceCent))[0] || skuOf(p);
+    const pageInfo = computed(() => store.publicPage);
+    const chosen = computed(
+      () => selected.value?.skus?.find((s) => s.skuId === chosenSku.value) || skuOf(selected.value),
+    );
+    const productCategory = (p) =>
+      store.categories.find((c) => c.code === p.categoryCode)?.name || '好物';
+    const currentShop = (p) => store.merchants.find((m) => m.merchantId === p.merchantId) || {};
+    async function loadSearch() {
+      if (preview) return;
+      const stamp = beginPublicSearch();
+      const params = {
+        q: search.value,
+        category: category.value,
+        merchantId: merchant.value,
+        page: page.value,
+        size: 20,
+        sort:
+          sort.value === 'price' ? 'PRICE_ASC' : sort.value === 'stock' ? 'STOCK_DESC' : 'NEWEST',
+      };
+      store.loading = true;
+      store.error = '';
+      try {
+        const result = await api('/products/page' + query(params));
+        if (!publicSearchCurrent(stamp)) return;
+        store.products = result.items || [];
+        store.publicPage = {
+          page: result.page,
+          size: result.size,
+          total: result.total,
+          hasNext: result.hasNext,
+        };
+      } catch (err) {
+        if (publicSearchCurrent(stamp)) store.error = err.message;
+      } finally {
+        if (publicSearchCurrent(stamp)) store.loading = false;
+      }
     }
-    onUnmounted(()=>beginPublicSearch());
-    function setCategory(c){category.value=category.value===c?'':c;page.value=1;loadSearch();}
-    function applyKeyword(word){search.value=word;page.value=1;loadSearch();}
-    function showDetail(p){selected.value=p;chosenSku.value=skuOf(p).skuId||'';count.value=1;}
-    async function addCart(){
-      if(!selected.value||saving.value||previewGuard())return;
-      if(!chosen.value?.skuId){notify('请选择有效规格');return;}
-      saving.value=true;
-      try{
-        const current=await api('/products/'+encodeURIComponent(selected.value.productId));
-        const real=current.skus.find(s=>s.skuId===chosenSku.value);
-        if(!real||real.status!=='ACTIVE'||Number(real.available)<count.value)throw new Error('库存不足或商品不可售');
-        const cart=await api('/cart');const old=(cart||[]).find(i=>i.skuId===real.skuId);
-        const n=Number(old?.quantity||0)+count.value;
-        if(n>99)throw new Error('单个规格最多购买99件');
-        await api('/cart',{method:'PUT',body:{skuId:real.skuId,quantity:n}});
-        selected.value=null;notify('已加入购物车');
-      }catch(err){notify(err.status===401?'请先登录后再加购':err.message);}finally{saving.value=false;}
+    onUnmounted(() => beginPublicSearch());
+    function setCategory(c) {
+      category.value = category.value === c ? '' : c;
+      page.value = 1;
+      loadSearch();
     }
-    return {store,go,money,skuOf,priceSku,available,shopName,preview,keywords,search,category,merchant,sort,page,pageInfo,categories,shops,shown,selected,chosen,chosenSku,count,saving,productCategory,currentShop,staticCategoryArt,loadSearch,setCategory,applyKeyword,showDetail,addCart};
+    function applyKeyword(word) {
+      search.value = word;
+      page.value = 1;
+      loadSearch();
+    }
+    function showDetail(p) {
+      selected.value = p;
+      chosenSku.value = skuOf(p).skuId || '';
+      count.value = 1;
+    }
+    async function addCart() {
+      if (!selected.value || saving.value || previewGuard()) return;
+      if (!chosen.value?.skuId) {
+        notify('请选择有效规格');
+        return;
+      }
+      saving.value = true;
+      try {
+        const current = await api('/products/' + encodeURIComponent(selected.value.productId));
+        const real = current.skus.find((s) => s.skuId === chosenSku.value);
+        if (!real || real.status !== 'ACTIVE' || Number(real.available) < count.value)
+          throw new Error('库存不足或商品不可售');
+        const cart = await api('/cart');
+        const old = (cart || []).find((i) => i.skuId === real.skuId);
+        const n = Number(old?.quantity || 0) + count.value;
+        if (n > 99) throw new Error('单个规格最多购买99件');
+        await api('/cart', { method: 'PUT', body: { skuId: real.skuId, quantity: n } });
+        selected.value = null;
+        notify('已加入购物车');
+      } catch (err) {
+        notify(err.status === 401 ? '请先登录后再加购' : err.message);
+      } finally {
+        saving.value = false;
+      }
+    }
+    return {
+      store,
+      go,
+      money,
+      skuOf,
+      priceSku,
+      available,
+      shopName,
+      preview,
+      keywords,
+      search,
+      category,
+      merchant,
+      sort,
+      page,
+      pageInfo,
+      categories,
+      shops,
+      shown,
+      selected,
+      chosen,
+      chosenSku,
+      count,
+      saving,
+      productCategory,
+      currentShop,
+      staticCategoryArt,
+      loadSearch,
+      setCategory,
+      applyKeyword,
+      showDetail,
+      addCart,
+    };
   },
-  template:`
+  template: `
   <ConsumerShell active="home">
     <section class="search-section">
       <div class="big-search"><Icon name="search" :size="22"/><input v-model="search" placeholder="搜索商品、商户名称、规格" aria-label="搜索校园商品" @keydown.enter="page=1;loadSearch()"/><button @click="page=1;loadSearch()">搜索</button></div>
@@ -101,5 +210,5 @@ export default {
       <div class="quantity-picker"><span>购买数量</span><div><button @click="count=Math.max(1,count-1)" aria-label="减少数量"><Icon name="minus" :size="17" /></button><b>{{count}}</b><button @click="count=Math.min(99,Number(chosen.available||0),count+1)" aria-label="增加数量" :disabled="count>=Number(chosen.available||0)"><Icon name="plus" :size="17"/></button></div></div>
       <button class="primary-wide" :disabled="!chosen.skuId || !chosen.available || saving || preview" @click="addCart">{{saving?'加入中…':'加入购物车'}}</button>
     </div></div>
-  </ConsumerShell>`
+  </ConsumerShell>`,
 };

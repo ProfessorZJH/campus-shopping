@@ -6,9 +6,34 @@ from __future__ import annotations
 import argparse, base64, concurrent.futures, datetime, http.cookiejar, json, os
 from pathlib import Path
 import secrets, sys, time, urllib.error, urllib.parse, urllib.request, uuid
+import hashlib, re
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = []
+CONTRACT = None
+CONTRACT_RESPONSES = []
+
+
+def validate_response(method, path, status, data):
+    if CONTRACT is None:
+        return
+    from jsonschema import Draft202012Validator, RefResolver
+    route = urllib.parse.urlsplit('/api/v1'+path).path
+    for candidate, operations in sorted(CONTRACT['paths'].items(), key=lambda item: ('{' in item[0], item[0])):
+        pattern = '/'.join('[^/]+' if part.startswith('{') else re.escape(part) for part in candidate.split('/'))
+        if re.fullmatch(pattern, route) and method.lower() in operations:
+            response = operations[method.lower()]['responses'].get(str(status))
+            if response is None:
+                raise AssertionError(f'契约没有声明响应状态：{method} {route} HTTP {status}')
+            schema = response['content']['application/json']['schema']
+            errors = list(Draft202012Validator(schema, resolver=RefResolver.from_schema(CONTRACT)).iter_errors(data))
+            if errors:
+                # 仅输出字段位置/规则名，避免把响应或文档正文写进失败日志。
+                field = '.'.join(str(p) for p in errors[0].absolute_path) or '$'
+                raise AssertionError(f'响应契约不一致：{method} {route} HTTP {status} field={field} rule={errors[0].validator}')
+            CONTRACT_RESPONSES.append((method, route, status))
+            return
+    raise AssertionError(f'契约没有声明路由：{method} {route}')
 
 def check(condition, label):
     if not condition:
@@ -45,6 +70,7 @@ class Client:
             data=json.load(response)
             if response.status!=status or code is not None and data.get('code')!=code:
                 raise AssertionError(f'{method} {path}: HTTP={response.status}, code={data.get("code")}, expected={status}/{code}')
+            validate_response(method,path,response.status,data)
         RESULTS.append({'request':method+' '+path,'http':response.status,'businessCode':data.get('code'),'status':'PASS'})
         return data if code is None else data.get('data')
     def login(self, username, password):
@@ -222,11 +248,17 @@ def main():
     parser.add_argument('--base-url',default='http://127.0.0.1:8091')
     parser.add_argument('--env-file',type=Path,default=ROOT/'.env')
     parser.add_argument('--skip-ai',action='store_true',help='只测交易，会在结果中明确标为部分通过')
+    parser.add_argument('--check-contract',action='store_true',help='使用 jsonschema 逐条核对真实响应与当前 OpenAPI')
     parser.add_argument('--output',type=Path,default=ROOT/'docs/testing/evidence/full-http.json')
     args=parser.parse_args();started=datetime.datetime.now(datetime.timezone.utc).isoformat();error=None
+    global CONTRACT
+    if args.check_contract:
+        CONTRACT=json.loads((ROOT/'docs/api/openapi.json').read_text('utf-8'))
     try:run(args)
     except Exception as e:error=str(e);print('真实验收未通过：',error,file=sys.stderr)
     report={'startedAt':started,'finishedAt':datetime.datetime.now(datetime.timezone.utc).isoformat(),'mode':'REAL_HTTP','status':'FAILED' if error else 'PARTIAL' if args.skip_ai else 'PASS','error':error,'checks':RESULTS,'realJavaMySqlTested':bool(RESULTS),'externalLlmConfigured':'由实际响应 mode 判断，不从本报告推断'}
+    report['contractValidation']={'enabled':args.check_contract,'responsesChecked':len(CONTRACT_RESPONSES),
+                                  'openapiSha256':hashlib.sha256((ROOT/'docs/api/openapi.json').read_bytes()).hexdigest() if args.check_contract else None}
     args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print('检查项：',len(RESULTS),'；报告：',args.output)
     if error:raise SystemExit(1)

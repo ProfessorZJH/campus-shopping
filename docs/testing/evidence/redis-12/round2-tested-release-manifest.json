@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "name": "campus-shopping",
+  "version": "1.0-SNAPSHOT",
+  "generatedAt": "2026-10-31T01:44:05.575444+00:00",
+  "source": {
+    "gitCommit": null,
+    "workingTreeDirty": null,
+    "sha256": "421c7b1eae3eb59bc01b1f6430ec247e81cd36a246ee9fca17afbf67c3ed3b86",
+    "files": 563
+  },
+  "buildSource": {
+    "sha256": "421c7b1eae3eb59bc01b1f6430ec247e81cd36a246ee9fca17afbf67c3ed3b86",
+    "files": 563,
+    "recordedAt": "2026-10-31T01:42:56.180257+00:00"
+  },
+  "sourceMatchesBuild": true,
+  "artifacts": [
+    {
+      "path": "campus-shopping-app/target/campus-shopping-app.jar",
+      "sha256": "55989613423c19d6a84a8d4c6c79f6b8b3af6764d25175ebbc4756a919b6cb70",
+      "bytes": 57770013
+    }
+  ],
+  "verification": {
+    "maven": {
+      "tests": 120,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "passed": 120,
+      "status": "PASS"
+    },
+    "evidence": {}
+  },
+  "notClaimed": [
+    "production deployment",
+    "performance acceptance",
+    "external AI acceptance unless separately evidenced"
+  ]
+}

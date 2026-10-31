@@ -1,0 +1,154 @@
+{
+  "command": "mvn -o -s var/local-live/maven-settings.xml -Dmaven.repo.local=G:/develop/campus-shopping/var/m2-live --no-transfer-progress verify",
+  "buildStatus": "SUCCESS",
+  "counts": {
+    "tests": 92,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 29
+  },
+  "passed": 63,
+  "artifactSha256": "da8f0744f057424fade98639c36b290c44fef8da14a8b785aa3c00c96a6c699c",
+  "suites": [
+    {
+      "name": "cn.bugstack.ai.test.commerce.AiGatewayProtocolTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.commerce.CatalogPageSkuBatchTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "tests": 23,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 23
+    },
+    {
+      "name": "cn.bugstack.ai.test.commerce.InvalidInputContractTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.ApiProtocolIntegrationTest",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.AuthControllerTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.MerchantRbacMySqlIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.MySqlIdentityIntegrationTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 3
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.ProtocolBoundaryTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.RoleConflictRepositoryTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.SessionAuthenticationIntegrationTest",
+      "tests": 11,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.UserAccountAuthenticationTest",
+      "tests": 7,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.UserAccountRepositoryTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.UserAccountServiceTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.identity.UserCredentialRepositoryTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.merchant.MerchantApplicationApiContractTest",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.merchant.MerchantApplicationControllerTest",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.merchant.MerchantApplicationServiceTest",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.merchant.MerchantExceptionContractTest",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "name": "cn.bugstack.ai.test.merchant.ResponseFactoryTest",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  ]
+}

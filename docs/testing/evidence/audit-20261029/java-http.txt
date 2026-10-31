@@ -1,0 +1,52 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.3)
+
+21:35:42.373 INFO  [main] cn.bugstack.ai.Application - Starting Application v1.0-SNAPSHOT using Java 17.0.12 with PID 32976 (C:\Windows\Temp\campus-audit-mysql-kefnkb1u\build\campus-shopping-app\target\campus-shopping-app.jar started by Profe in C:\Windows\Temp\campus-audit-mysql-kefnkb1u\build)
+21:35:42.376 INFO  [main] cn.bugstack.ai.Application - The following 1 profile is active: "dev"
+21:35:44.615 INFO  [main] o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 49999 (http)
+21:35:44.625 INFO  [main] o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-127.0.0.1-49999"]
+21:35:44.627 INFO  [main] o.a.catalina.core.StandardService - Starting service [Tomcat]
+21:35:44.627 INFO  [main] o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.36]
+21:35:44.664 INFO  [main] o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+21:35:44.665 INFO  [main] o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2168 ms
+21:35:44.853 INFO  [main] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+21:35:45.171 INFO  [main] com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@72a8361b
+21:35:45.173 INFO  [main] com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+21:35:47.622 INFO  [main] o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+21:35:48.717 INFO  [main] o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-127.0.0.1-49999"]
+21:35:48.748 INFO  [main] o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 49999 (http) with context path '/'
+21:35:48.780 INFO  [main] cn.bugstack.ai.Application - Started Application in 7.091 seconds (process running for 7.633)
+21:35:49.195 INFO  [http-nio-127.0.0.1-49999-exec-1] o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+21:35:49.195 INFO  [http-nio-127.0.0.1-49999-exec-1] o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+21:35:49.196 INFO  [http-nio-127.0.0.1-49999-exec-1] o.s.web.servlet.DispatcherServlet - Completed initialization in 1 ms
+21:35:50.220 INFO  [http-nio-127.0.0.1-49999-exec-5] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=302ded03-40a4-449d-8e69-04a5ed5bb1ae
+21:35:50.530 INFO  [http-nio-127.0.0.1-49999-exec-9] c.b.ai.trigger.http.AuthController - 用户注册成功 userId=161a1ca6-b56c-4ad8-bf44-ad7a80207e42
+21:35:50.796 INFO  [http-nio-127.0.0.1-49999-exec-1] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=161a1ca6-b56c-4ad8-bf44-ad7a80207e42
+21:35:51.062 INFO  [http-nio-127.0.0.1-49999-exec-4] c.b.ai.trigger.http.AuthController - 用户注册成功 userId=a9384a5c-a54a-422a-a8ab-337c6ce09abe
+21:35:51.332 INFO  [http-nio-127.0.0.1-49999-exec-6] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=a9384a5c-a54a-422a-a8ab-337c6ce09abe
+21:35:51.582 INFO  [http-nio-127.0.0.1-49999-exec-9] c.b.ai.trigger.http.AuthController - 用户注册成功 userId=47b0065c-4041-4ac4-bd76-8659f9bfc130
+21:35:52.023 WARN  [http-nio-127.0.0.1-49999-exec-10] c.b.ai.trigger.http.AuthController - 用户注册业务失败 code=A0001
+21:35:52.313 INFO  [http-nio-127.0.0.1-49999-exec-2] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=47b0065c-4041-4ac4-bd76-8659f9bfc130
+21:35:52.581 INFO  [http-nio-127.0.0.1-49999-exec-5] c.b.ai.trigger.http.AuthController - 用户注册成功 userId=bba56f8a-db4c-48dd-97ff-9f5e3368007f
+21:35:52.889 INFO  [http-nio-127.0.0.1-49999-exec-7] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=bba56f8a-db4c-48dd-97ff-9f5e3368007f
+21:35:52.907 WARN  [http-nio-127.0.0.1-49999-exec-9] c.b.a.t.h.MerchantApplicationController - 业务请求失败 code=A0006
+21:35:53.255 WARN  [http-nio-127.0.0.1-49999-exec-5] c.b.a.t.h.MerchantApplicationController - 业务请求失败 code=A0006
+21:35:53.361 WARN  [http-nio-127.0.0.1-49999-exec-9] c.b.a.t.http.InventoryController - 业务请求失败 code=G0003
+21:35:53.518 WARN  [http-nio-127.0.0.1-49999-exec-3] c.b.a.trigger.http.CatalogController - 业务请求失败 code=A0006
+21:35:53.596 WARN  [http-nio-127.0.0.1-49999-exec-7] c.b.a.trigger.http.CatalogController - 业务请求失败 code=A0006
+21:35:53.951 WARN  [http-nio-127.0.0.1-49999-exec-2] c.b.a.t.http.FulfillmentController - 业务请求失败 code=F0001
+21:35:54.385 WARN  [http-nio-127.0.0.1-49999-exec-5] c.b.ai.trigger.http.OrderController - 业务请求失败 code=I0001
+21:35:54.711 WARN  [http-nio-127.0.0.1-49999-exec-3] c.b.a.t.http.KnowledgeController - 业务请求失败 code=A0006
+21:35:54.814 WARN  [http-nio-127.0.0.1-49999-exec-5] c.b.a.t.http.ShoppingAiController - 业务请求失败 code=G0001
+21:35:54.984 WARN  [http-nio-127.0.0.1-49999-exec-3] c.b.a.t.http.InventoryController - 业务请求失败 code=A0006
+21:35:55.037 WARN  [http-nio-127.0.0.1-49999-exec-6] c.b.a.trigger.http.CatalogController - 业务请求失败 code=C0001
+21:35:57.992 INFO  [http-nio-127.0.0.1-49999-exec-3] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=302ded03-40a4-449d-8e69-04a5ed5bb1ae
+21:35:58.799 INFO  [http-nio-127.0.0.1-49999-exec-9] c.b.ai.trigger.http.AuthController - 用户注册成功 userId=5b8feead-d855-4591-9298-6b8f812d8ae4
+21:35:59.234 INFO  [http-nio-127.0.0.1-49999-exec-4] c.b.ai.trigger.http.AuthController - 用户登录成功 userId=5b8feead-d855-4591-9298-6b8f812d8ae4

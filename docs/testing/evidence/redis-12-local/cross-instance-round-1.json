@@ -1,0 +1,15 @@
+{
+  "status": "FAILED",
+  "testType": "TWO_REAL_JAVA_MYSQL_REDIS_INSTANCES",
+  "apiMockUsed": false,
+  "checks": [],
+  "testData": {
+    "userIds": {
+      "owner": "b9a89608-1774-4bdb-839e-2b2aaac27d59",
+      "clerk": "aff02c3a-223c-4898-a8a4-51d9c8f4cdeb",
+      "buyer": "5ff8176c-d41d-4ffb-bd2e-86aee7753940"
+    }
+  },
+  "errorType": "TypeError",
+  "safeError": null
+}

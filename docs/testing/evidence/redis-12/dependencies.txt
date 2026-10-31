@@ -1,0 +1,96 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] campus-shopping                                                    [pom]
+[INFO] campus-shopping-types                                              [jar]
+[INFO] campus-shopping-api                                                [jar]
+[INFO] campus-shopping-domain                                             [jar]
+[INFO] campus-shopping-case                                               [jar]
+[INFO] campus-shopping-infrastructure                                     [jar]
+[INFO] campus-shopping-trigger                                            [jar]
+[INFO] campus-shopping-app                                                [jar]
+[INFO] 
+[INFO] -------------------< cn.bugstack.ai:campus-shopping >-------------------
+[INFO] Building campus-shopping 1.0-SNAPSHOT                              [1/8]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping ---
+[INFO] 
+[INFO] ----------------< cn.bugstack.ai:campus-shopping-types >----------------
+[INFO] Building campus-shopping-types 1.0-SNAPSHOT                        [2/8]
+[INFO]   from campus-shopping-types\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-types ---
+[INFO] 
+[INFO] -----------------< cn.bugstack.ai:campus-shopping-api >-----------------
+[INFO] Building campus-shopping-api 1.0-SNAPSHOT                          [3/8]
+[INFO]   from campus-shopping-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-api ---
+[INFO] 
+[INFO] ---------------< cn.bugstack.ai:campus-shopping-domain >----------------
+[INFO] Building campus-shopping-domain 1.0-SNAPSHOT                       [4/8]
+[INFO]   from campus-shopping-domain\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-domain ---
+[INFO] 
+[INFO] ----------------< cn.bugstack.ai:campus-shopping-case >-----------------
+[INFO] Building campus-shopping-case 1.0-SNAPSHOT                         [5/8]
+[INFO]   from campus-shopping-case\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-case ---
+[INFO] 
+[INFO] -----------< cn.bugstack.ai:campus-shopping-infrastructure >------------
+[INFO] Building campus-shopping-infrastructure 1.0-SNAPSHOT               [6/8]
+[INFO]   from campus-shopping-infrastructure\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-infrastructure ---
+[INFO] cn.bugstack.ai:campus-shopping-infrastructure:jar:1.0-SNAPSHOT
+[INFO] +- org.redisson:redisson:jar:4.8.0:compile
+[INFO] \- org.redisson:redisson-spring-data-34:jar:4.8.0:compile
+[INFO]    \- org.springframework.data:spring-data-redis:jar:3.4.3:compile
+[INFO] 
+[INFO] ---------------< cn.bugstack.ai:campus-shopping-trigger >---------------
+[INFO] Building campus-shopping-trigger 1.0-SNAPSHOT                      [7/8]
+[INFO]   from campus-shopping-trigger\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-trigger ---
+[INFO] 
+[INFO] -----------------< cn.bugstack.ai:campus-shopping-app >-----------------
+[INFO] Building campus-shopping-app 1.0-SNAPSHOT                          [8/8]
+[INFO]   from campus-shopping-app\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- dependency:3.8.1:tree (default-cli) @ campus-shopping-app ---
+[INFO] cn.bugstack.ai:campus-shopping-app:jar:1.0-SNAPSHOT
+[INFO] +- org.springframework.session:spring-session-data-redis:jar:3.4.2:compile
+[INFO] |  +- org.springframework.session:spring-session-core:jar:3.4.2:compile
+[INFO] |  \- org.springframework.data:spring-data-redis:jar:3.4.3:compile
+[INFO] \- cn.bugstack.ai:campus-shopping-infrastructure:jar:1.0-SNAPSHOT:compile
+[INFO]    +- org.redisson:redisson:jar:4.8.0:compile
+[INFO]    \- org.redisson:redisson-spring-data-34:jar:4.8.0:compile
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for campus-shopping 1.0-SNAPSHOT:
+[INFO] 
+[INFO] campus-shopping .................................... SUCCESS [  1.590 s]
+[INFO] campus-shopping-types .............................. SUCCESS [  0.044 s]
+[INFO] campus-shopping-api ................................ SUCCESS [  0.011 s]
+[INFO] campus-shopping-domain ............................. SUCCESS [  0.106 s]
+[INFO] campus-shopping-case ............................... SUCCESS [  0.046 s]
+[INFO] campus-shopping-infrastructure ..................... SUCCESS [  0.685 s]
+[INFO] campus-shopping-trigger ............................ SUCCESS [  0.105 s]
+[INFO] campus-shopping-app ................................ SUCCESS [  0.355 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.920 s
+[INFO] Finished at: 2026-10-31T09:45:51+08:00
+[INFO] ------------------------------------------------------------------------

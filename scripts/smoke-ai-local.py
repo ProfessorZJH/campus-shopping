@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """启动真实 Uvicorn 子进程进行 TCP/HTTP 检查；无模型密钥的检索演示，不是 Java 联调。"""
-import base64,datetime,json,os,secrets,socket,subprocess,sys,tempfile,time,urllib.error,urllib.request
+import base64,datetime,json,os,secrets,shutil,socket,subprocess,sys,tempfile,time,urllib.error,urllib.request
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 
@@ -9,7 +9,8 @@ def main():
     with tempfile.TemporaryDirectory(prefix='campus-ai-http-') as tmp:
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
         key=secrets.token_urlsafe(32);env=os.environ.copy()
-        for name in ('LLM_BASE_URL','LLM_API_KEY','LLM_MODEL','EMBEDDING_BASE_URL','EMBEDDING_API_KEY','EMBEDDING_MODEL','QDRANT_URL','QDRANT_API_KEY'):env.pop(name,None)
+        for name in tuple(env):
+            if name.startswith(('LLM_', 'EMBEDDING_', 'QDRANT_', 'MILVUS_')):env.pop(name,None)
         env.update(AI_SERVICE_KEY=key,AI_DB_PATH=str(Path(tmp)/'knowledge.sqlite3'))
         with open(Path(tmp)/'server.log','w+',encoding='utf-8') as log:
             process=subprocess.Popen([sys.executable,'-m','uvicorn','app.main:create_app','--factory','--host','127.0.0.1','--port',str(port)],cwd=ROOT/'ai-service',env=env,stdout=log,stderr=log)
@@ -51,5 +52,13 @@ def main():
                 process.terminate()
                 try:process.wait(timeout=5)
                 except subprocess.TimeoutExpired:process.kill();process.wait()
+        # Windows 的文件扫描器可能短暂持有刚退出进程的 SQLite 文件；只重试专属临时目录。
+        for attempt in range(10):
+            try:
+                shutil.rmtree(tmp)
+                break
+            except PermissionError:
+                if attempt == 9:raise
+                time.sleep(0.2)
 
 if __name__=='__main__':main()

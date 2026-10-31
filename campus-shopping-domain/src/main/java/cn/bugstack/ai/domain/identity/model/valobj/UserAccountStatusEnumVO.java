@@ -7,9 +7,9 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum UserAccountStatusEnumVO {
-    ACTIVE("ACTIVE", "正常"),
-    DISABLED("DISABLED", "停用");
+  ACTIVE("ACTIVE", "正常"),
+  DISABLED("DISABLED", "停用");
 
-    private final String code;
-    private final String info;
+  private final String code;
+  private final String info;
 }

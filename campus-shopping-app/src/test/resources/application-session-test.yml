@@ -16,6 +16,8 @@ server:
         secure: false
 
 campus:
+  database:
+    validate-schema: false
   jobs:
     enabled: false
   security:

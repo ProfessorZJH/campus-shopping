@@ -10,6 +10,7 @@ from .config import Settings
 from .retrieval import KnowledgeStore
 from .engine import answer,recall_terms
 from .product_index import ProductIndex
+from .observability import RequestContext, failure, diagnostics
 
 class RequestBodyLimit:
     """同时限制有 Content-Length 和分块传输的请求，不能只信任请求头。"""
@@ -70,13 +71,15 @@ class ProductIndexRequest(StrictModel):
 class ProductSearchRequest(StrictModel):
     query: str=Field(min_length=1,max_length=2000)
     limit: int=Field(default=80,ge=1,le=100)
+class ProductDeleteRequest(StrictModel):
+    productIds: list[str]=Field(min_length=1,max_length=100)
 class ExtractRequest(StrictModel):
     filename: str=Field(min_length=1,max_length=120)
     contentType: str=Field(default='',max_length=100)
     base64: str=Field(max_length=2800000)
 
 def create_app(settings: Settings|None=None):
-    settings=settings or Settings.from_env();settings.validate();store=KnowledgeStore(settings);products=ProductIndex(settings,store.provider);gate=threading.BoundedSemaphore(4)
+    settings=settings or Settings.from_env();settings.validate();store=KnowledgeStore(settings);products=ProductIndex(settings,store.provider);gate=threading.BoundedSemaphore(settings.max_concurrent_requests)
     @asynccontextmanager
     async def lifespan(app):
         yield
@@ -86,6 +89,7 @@ def create_app(settings: Settings|None=None):
     def authorized(x_service_key: Annotated[str|None,Header()]=None):
         if x_service_key is None or not secrets.compare_digest(x_service_key,settings.api_key):raise HTTPException(401,'服务身份无效')
     app.add_middleware(RequestBodyLimit, limit=4_000_000)
+    app.add_middleware(RequestContext)
     @app.get('/health')
     def health():return {'status':'UP','llmConfigured':bool(settings.llm_key),'retrievalMode':store.provider.vector_mode,'vectorStore':'QDRANT' if settings.qdrant_url else 'LOCAL_SQLITE','productIndex':'MILVUS' if products.enabled else 'DISABLED'}
     @app.post('/v1/index',dependencies=[Depends(authorized)])
@@ -93,38 +97,61 @@ def create_app(settings: Settings|None=None):
         if not gate.acquire(blocking=False):raise HTTPException(429,'索引服务繁忙')
         try:return {'chunks':store.index(request.documentId,request.title,request.content),'mode':store.provider.vector_mode}
         except ValueError as e:raise HTTPException(400,str(e)) from None
-        except Exception:raise HTTPException(503,'索引依赖不可用，请重试') from None
+        except Exception as error:
+            failure('knowledge.index', error)
+            raise HTTPException(503,'索引依赖不可用，请重试') from None
         finally:gate.release()
     @app.delete('/v1/index/{document_id}',dependencies=[Depends(authorized)])
     def delete(document_id: str):
         if len(document_id)>64:raise HTTPException(400,'编号无效')
         try:store.delete(document_id);return {'deleted':True}
-        except Exception:raise HTTPException(503,'索引删除失败') from None
+        except Exception as error:
+            failure('knowledge.delete', error)
+            raise HTTPException(503,'索引删除失败') from None
     @app.post('/v1/recall',dependencies=[Depends(authorized)])
     def recall(request: RecallRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
         try:return recall_terms(store,request.question,[h.model_dump() for h in request.history])
-        except Exception:raise HTTPException(503,'检索意图暂不可用') from None
+        except Exception as error:
+            failure('recall', error)
+            raise HTTPException(503,'检索意图暂不可用') from None
         finally:gate.release()
     @app.post('/v1/query',dependencies=[Depends(authorized)])
     def query(request: QueryRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
         try:return answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds)
-        except Exception:raise HTTPException(503,'检索暂不可用') from None
+        except Exception as error:
+            failure('query', error)
+            raise HTTPException(503,'检索暂不可用') from None
         finally:gate.release()
     @app.post('/v1/products/index',dependencies=[Depends(authorized)])
     def index_products(request: ProductIndexRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'向量索引繁忙')
         try:return products.upsert([p.model_dump() for p in request.products])
         except ValueError as e:raise HTTPException(400,str(e)) from None
-        except Exception:raise HTTPException(503,'商品向量索引不可用') from None
+        except Exception as error:
+            failure('product.index', error)
+            raise HTTPException(503,'商品向量索引不可用') from None
         finally:gate.release()
     @app.post('/v1/products/search',dependencies=[Depends(authorized)])
     def search_products(request: ProductSearchRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'向量检索繁忙')
         try:return products.search(request.query,request.limit)
-        except Exception:raise HTTPException(503,'商品向量检索不可用') from None
+        except Exception as error:
+            failure('product.search', error)
+            raise HTTPException(503,'商品向量检索不可用') from None
         finally:gate.release()
+    @app.post('/v1/products/delete',dependencies=[Depends(authorized)])
+    def delete_products(request: ProductDeleteRequest):
+        if not gate.acquire(blocking=False):raise HTTPException(429,'向量索引繁忙')
+        try:return products.delete(request.productIds)
+        except ValueError as error:raise HTTPException(400,str(error)) from None
+        except Exception as error:
+            failure('product.delete', error)
+            raise HTTPException(503,'商品向量清理不可用') from None
+        finally:gate.release()
+    @app.get('/v1/diagnostics',dependencies=[Depends(authorized)])
+    def dependency_diagnostics():return diagnostics()
     @app.post('/v1/extract',dependencies=[Depends(authorized)])
     def extract(request: ExtractRequest):
         try:data=base64.b64decode(request.base64,validate=True)

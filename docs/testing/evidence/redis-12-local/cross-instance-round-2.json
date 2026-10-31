@@ -1,0 +1,29 @@
+{
+  "status": "FAILED",
+  "testType": "TWO_REAL_JAVA_MYSQL_REDIS_INSTANCES",
+  "apiMockUsed": false,
+  "checks": [
+    {
+      "name": "A登录后B识别同一Redis会话",
+      "status": "PASS"
+    },
+    {
+      "name": "B退出后A持有的旧Cookie立即失效",
+      "status": "PASS"
+    },
+    {
+      "name": "B实时读取A授予的stock.read且拒绝product.read",
+      "status": "PASS"
+    }
+  ],
+  "testData": {
+    "userIds": {
+      "owner": "a5380563-168b-4a06-b953-2496386ce2a7",
+      "clerk": "5f47f6d3-9e06-4fdc-b4d9-a4ee8169ce53",
+      "buyer": "f6b5dbe1-7392-4295-a297-3c6687bbd89c"
+    },
+    "merchantId": "a83b106a-9ac6-411f-bb53-b9c2e4e4e383"
+  },
+  "errorType": "AssertionError",
+  "safeError": "PUT /merchants/a83b106a-9ac6-411f-bb53-b9c2e4e4e383/rbac/roles/R96007eda0272: HTTP=200, code=0002, expected=200/0000"
+}

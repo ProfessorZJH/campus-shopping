@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "database": "campus_shopping",
+  "backupDirectory": "var\\redis-sdd\\local-upgrade\\20261031-100153",
+  "startedAt": "2026-10-31T10:01:53.967024+08:00",
+  "aiSqliteBackup": true,
+  "backupBytes": 97939,
+  "backupSha256": "4b23cbdc3ebda15da659f9048a29d8e3186e5f8b92e8f4c29f67a33e7c778adb",
+  "backupRestoreVerified": true,
+  "rehearsalMigration": "PASS",
+  "existingTablesVerified": 33,
+  "preexistingDataUnchanged": true,
+  "migrationHistoryVerified": true,
+  "knowledgeQuotaVerified": true,
+  "registeredMigrations": 4,
+  "addedTables": [
+    "ai_knowledge_quota",
+    "sys_schema_migration"
+  ],
+  "finishedAt": "2026-10-31T10:01:56.497912+08:00",
+  "restoreDatabaseCleaned": true
+}

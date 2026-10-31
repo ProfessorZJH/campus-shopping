@@ -8,42 +8,54 @@ import cn.bugstack.ai.types.enums.ResponseCode;
  */
 public class AppException extends RuntimeException {
 
-    private static final long serialVersionUID = 5317680961212299217L;
+  private static final long serialVersionUID = 5317680961212299217L;
 
-    /** 业务异常码 */
-    private final String code;
+  /** 业务异常码 */
+  private final String code;
 
-    /** 可安全向调用者展示的业务提示 */
-    private final String info;
+  /** 可安全向调用者展示的业务提示 */
+  private final String info;
 
-    public String getCode() { return code; }
-    public String getInfo() { return info; }
+  public String getCode() {
+    return code;
+  }
 
-    public AppException(ResponseCode responseCode) {
-        this(responseCode.getCode(), responseCode.getInfo());
-    }
+  public String getInfo() {
+    return info;
+  }
 
-    public AppException(String code) {
-        super(code);
-        this.code = code;
-        this.info = null;
-    }
+  public AppException(ResponseCode responseCode) {
+    this(responseCode.getCode(), responseCode.getInfo());
+  }
 
-    public AppException(String code, Throwable cause) {
-        super(code, cause);
-        this.code = code;
-        this.info = null;
-    }
+  public AppException(ResponseCode responseCode, Throwable cause) {
+    this(responseCode.getCode(), responseCode.getInfo(), cause);
+  }
 
-    public AppException(String code, String message) {
-        super(message);
-        this.code = code;
-        this.info = message;
-    }
+  public AppException(String code) {
+    this(ResponseCode.fromCode(code));
+  }
 
-    public AppException(String code, String message, Throwable cause) {
-        super(message, cause);
-        this.code = code;
-        this.info = message;
-    }
+  public AppException(String code, Throwable cause) {
+    this(ResponseCode.fromCode(code), cause);
+  }
+
+  public AppException(String code, String message) {
+    this(code, message, null);
+  }
+
+  public AppException(String code, String message, Throwable cause) {
+    super(safeInfo(code, message), cause);
+    this.code = ResponseCode.fromCode(code).getCode();
+    this.info = safeInfo(code, message);
+  }
+
+  private static String safeInfo(String code, String message) {
+    ResponseCode known = ResponseCode.fromCode(code);
+    return message == null || message.isBlank() ? known.getInfo() : message;
+  }
+
+  public boolean isOperationalFailure() {
+    return ResponseCode.fromCode(code).isOperationalFailure();
+  }
 }

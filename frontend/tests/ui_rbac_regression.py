@@ -1,3 +1,4 @@
+from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 """RBAC browser acceptance using the delivered compiled Vue UI and an explicit HTTP contract double.
 NOT a Java/Spring/MySQL integration test. Run: python frontend/tests/ui_rbac_regression.py
@@ -130,14 +131,14 @@ def main():
         checks.append(check(not f.custom['m2'],'m2 不会继承 m1 自定义角色'))
         page.locator('.topbar-merchant-select select').select_option('m1')
         expect(page.locator('.rbac-role')).to_have_count(3)
-        page.close()
+        close_page(page)
         # The owner changes a staff member's role, UI and endpoint use the same role code.
         page=browser_page(browser,'/merchant/team',f)
         expect(page.locator('.ops-list-line')).to_have_count(2,timeout=15000)
         page.locator('.ops-list-line').filter(has_text='u2').locator('select').select_option(code)
         page.wait_for_function("() => !!document.querySelector('.toast') && document.querySelector('.toast').textContent.includes('操作成功')")
         checks.append(check(next(m for m in f.members if m['userId']=='u2')['role']==code,'Owner 在店员管理中为成员分配自定义角色'))
-        page.close()
+        close_page(page)
         # Re-login as staff; live workspace yields custom grants, not Owner rights.
         f.user={'userId':'u2','username':'staff002','displayName':'商品运营','status':'ACTIVE'}
         page=browser_page(browser,'/merchant/products',f)
@@ -149,7 +150,7 @@ def main():
         page.evaluate("location.hash='/merchant/roles'")
         expect(page.locator('.access-denied')).to_contain_text('无权管理角色')
         checks.append('店员直接进入角色管理 URL 被页面级权限校验阻止')
-        page.close()
+        close_page(page)
         # One merchant's custom staff cannot read another merchant's internal knowledge.
         f.bases=[{'id':'kb-m1','merchantId':'m1','name':'m1 资料','visibility':'MERCHANT_INTERNAL'},
                  {'id':'kb-m2','merchantId':'m2','name':'m2 资料','visibility':'MERCHANT_INTERNAL'}]
@@ -157,7 +158,7 @@ def main():
         expect(page.locator('.kb-base')).to_have_count(1,timeout=15000)
         assert 'm1 资料' in page.locator('.kb-list').inner_text() and 'm2 资料' not in page.locator('.kb-list').inner_text()
         checks.append('m1 自定义知识只读角色不能看到 m2 内部知识库')
-        page.close()
+        close_page(page)
         # AI history belongs to the authenticated user, not a cached merchant/account view.
         page=browser_page(browser,'/ai',f)
         page.locator('.ai-history-head button').click()
@@ -167,7 +168,7 @@ def main():
         page.locator('.ai-history-list button').first.click()
         expect(page.locator('.chat-thread')).to_contain_text('u2 的私有 AI 回答')
         checks.append('AI 历史会话按登录主体读取，u2 不会获取 u1 的私有会话')
-        page.close()
+        close_page(page)
         f.user={'userId':'u1','username':'owner001','displayName':'经营者','status':'ACTIVE'}
         page=browser_page(browser,'/ai',f)
         page.locator('.ai-history-head button').click()
@@ -179,7 +180,7 @@ def main():
         expect(page.locator('.home-product')).to_have_count(6,timeout=15000)
         expect(page.locator('body')).not_to_contain_text('u1 的私有 AI 回答',timeout=10000)
         checks.append('同一 AI 页面退出登录后清空上一账号的私有回答')
-        page.close()
+        close_page(page)
         # A read-only inventory role must see movements without gaining replenishment controls.
         f.logged=True
         f.user={'userId':'u2','username':'staff002','displayName':'库存查看员','status':'ACTIVE'}
@@ -191,15 +192,15 @@ def main():
         expect(page.locator('.ops-card.ops-sideform .ops-list-line')).to_have_count(1,timeout=15000)
         assert page.get_by_role('button',name='确认补货').count()==0
         checks.append('仅 stock.read 的角色可查看库存流水但没有补货操作')
-        page.close()
+        close_page(page)
         # An /admin URL does not imply platform privileges.
         page=browser_page(browser,'/admin/knowledge',f)
         expect(page.locator('.access-denied')).to_contain_text('没有知识库查看权限',timeout=15000)
         assert page.get_by_role('button',name='新建知识库').count()==0
         checks.append('非平台管理员直接打开平台知识库 URL 时显示无权限且无管理操作')
-        page.close()
+        close_page(page)
         assert not ERRORS,ERRORS
-        browser.close()
+        close_browser(browser)
     print('PASSED',len(checks),'RBAC BROWSER CONTRACT CHECKS',json.dumps(checks,ensure_ascii=False))
 
 if __name__=='__main__':main()

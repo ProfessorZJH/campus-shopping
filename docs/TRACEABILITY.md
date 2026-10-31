@@ -60,3 +60,9 @@
 | C10 | FR-025 | `frontend/tests/live_ui.py`、CI | 浏览器真实 Session/ACL/截图 | `NOT_RUN` |
 
 静态门禁运行记录见 `docs/testing/SDD-API-CONTRACT-03-VERIFICATION.md`。全栈环境未运行时不得写成 PASS。
+
+## SDD-12 补充追踪
+
+R12-01～R12-10 的规格、实现边界和证据入口见 [SDD-12](specs/SDD-REDIS-12.md) 和 [本轮报告](testing/SDD-REDIS-12-VERIFICATION.md)。本轮结果单独记录，不覆盖前序R1及真实模型历史状态。
+
+用户授权的既有本机库升级与实际 Redis/真实模型/浏览器交易证据另见[本机升级报告](testing/SDD-REDIS-12-LOCAL.md)，与隔离 Maven 阶段分开记录。

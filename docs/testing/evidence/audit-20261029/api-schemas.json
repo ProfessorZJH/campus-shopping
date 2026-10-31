@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "kind": "JSON_SCHEMA_EXAMPLES_NOT_RUNTIME",
+  "checks": [
+    "every generated component is a valid JSON Schema 2020-12",
+    "50-unit display name is accepted",
+    "51-unit display name is rejected",
+    "33-character username is rejected",
+    "unknown fields remain compatible and confer no authority",
+    "category upper boundaries are accepted",
+    "oversize category code is rejected",
+    "create requires at least one SKU",
+    "product create with integer price is accepted",
+    "fractional price is rejected",
+    "edit requires expectedVersion",
+    "edit permits explicit missing image",
+    "admission approval has no mandatory reason",
+    "admission rejection requires reason",
+    "refund approval requires reason",
+    "refund rejection with reason is accepted",
+    "platform public knowledge is accepted",
+    "platform base cannot use merchant visibility",
+    "merchant base cannot use platform visibility",
+    "successful response permits nullable reference fields",
+    "HTTP 200 business failure accepts null data",
+    "failure cannot carry a success-shaped business object",
+    "unknown response code is rejected"
+  ]
+}

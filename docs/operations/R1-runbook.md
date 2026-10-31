@@ -1,6 +1,6 @@
 # R1 本地运行、验收与合并手册
 
-> 本手册提供可复现步骤，不表示Docker或Spring/MySQL已经在本次环境跑通。不要直接覆盖用户本地已修改的代码，更不要删库重建现有数据。
+> 本机 Spring/MySQL、真实模型与浏览器闭环已按[2026-10-29 报告](../testing/LOCAL-LIVE-20261029.md)验收；下列 Docker 步骤仍未在本轮执行。不要覆盖本地改动。本轮数据库重建由用户明确授权，备份与 SQL 执行记录见报告。
 
 ## 1. 推荐：独立目录启动全栈
 
@@ -20,7 +20,7 @@ python scripts/smoke-full.py
 
 ## 2. 不使用Docker：本机Java和MySQL
 
-要求JDK17、Maven3.9+、MySQL8、Python3.11+。先创建空库：
+要求 JDK17、Node 22.16.0、MySQL8、Python3.11；使用仓库 Maven Wrapper 3.9.9。先创建空库；已有库先按[迁移手册](../database/migrations/README.md)显式升级并登记校验和：
 
 ```sql
 -- 执行 docs/dev-ops/mysql/sql/00_r1_schema.sql，包含建库与选库。
@@ -38,7 +38,7 @@ $env:ADMIN_USERNAME = 'campus_admin'
 $env:ADMIN_PASSWORD = '自行生成的管理员密码'
 $env:BOOTSTRAP_ADMIN = 'true'
 $env:SESSION_COOKIE_SECURE = 'false'
-mvn -B -ntp clean verify
+.\mvnw.cmd -B -ntp clean verify
 java -jar .\campus-shopping-app\target\campus-shopping-app.jar --spring.profiles.active=dev
 ```
 
@@ -48,7 +48,7 @@ java -jar .\campus-shopping-app\target\campus-shopping-app.jar --spring.profiles
 cd ai-service
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.lock
 python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8100
 ```
 
@@ -58,13 +58,23 @@ python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8100
 
 在`.env`设置一组`LLM_BASE_URL/LLM_API_KEY/LLM_MODEL`，地址按供应商要求包含`/v1`或`/v2`等路径；Embedding同理。讯飞 MaaS 示例：`LLM_BASE_URL=https://maas-api.cn-huabei-1.xf-yun.com/v2`、`LLM_MODEL=spark-x2.6`，模型 ID 仍以控制台服务授权为准，`LLM_API_KEY` 仅填写本地私有 `.env`。三个字段必须成组，凭据不写进前端或Git。
 
+`LLM_TIMEOUT_SECONDS` 控制模型读取超时，允许 5–60 秒、默认 60；其他 HTTP 超时保留 30 秒。真实验收观察到超过原 30 秒的回答；超时仍显式降级，不把降级结果记为真实 LLM 通过。
+
 Qdrant可通过`QDRANT_URL=http://qdrant:6333`和随机`QDRANT_API_KEY`启用，再执行：
 
 ```bash
 python scripts/dev-up.py --vector
 ```
 
-未配置模型时，界面明确显示本地检索演示；模型失败则降级并显示实际模式。更换Embedding模型或维度必须使用新的QDRANT_COLLECTION并重建文档索引，不能让不同维度混进同一集合。真实服务联调本次未执行。
+未配置模型时，界面明确显示本地检索演示；模型失败则降级并显示实际模式。更换Embedding模型或维度必须使用新的QDRANT_COLLECTION并重建文档索引，不能让不同维度混进同一集合。NVIDIA/Milvus/讯飞的独立真实 AI 验收已补充，见[验收报告](../testing/AI-LIVE-20261029.md)；Qdrant 与 Java/MySQL 全栈仍未验收。
+
+已配置完整模型及安全 Milvus 连接时，在仓库根目录使用安装了 `ai-service/requirements.lock` 的 Python 执行：
+
+```bash
+python scripts/smoke-ai-live.py --env-file .env --products --output var/ai-live/rerun.json
+```
+
+脚本自动读取私有 `.env`，通过真实 Uvicorn TCP 调用真实模型；知识库使用临时 SQLite，商品使用本轮独立 Milvus 集合并清理，不写正式集合。商品报价/库存为合成验收数据，不能替代 Java/MySQL 的复权和交易验收。
 
 ## 4. 真实测试和检查命令
 
@@ -73,7 +83,7 @@ python scripts/verify-release.py
 python scripts/verify-domain.py
 python scripts/verify-http-body.py
 cd ai-service
-python -m pip install -r requirements-dev.txt
+python -m pip install --require-hashes -r requirements-dev.lock
 python -m pytest -q
 python evaluate.py
 cd ..

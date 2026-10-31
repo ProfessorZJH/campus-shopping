@@ -1,0 +1,227 @@
+{
+  "status": "PASS",
+  "testType": "REAL_SHARED_LOGIN_ACCOUNT_LIMIT",
+  "instances": [
+    8091,
+    8092
+  ],
+  "attempts": [
+    {
+      "attempt": 1,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 2,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 3,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 4,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 5,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 6,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 7,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 8,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 9,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 10,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 11,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 12,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 13,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 14,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 15,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 16,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 17,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 18,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 19,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 20,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 21,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 22,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 23,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 24,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 25,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 26,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 27,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 28,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 29,
+      "instance": 8091,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 30,
+      "instance": 8092,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 31,
+      "instance": 8091,
+      "http": 429,
+      "code": "A0007",
+      "retryAfter": "60"
+    }
+  ]
+}

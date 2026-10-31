@@ -1,0 +1,111 @@
+{
+  "startedAt": "2026-10-29T12:44:39.124493+00:00",
+  "scope": "Real remote models and real local Uvicorn TCP; synthetic public fixtures",
+  "llmModel": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "versions": {
+    "fastapi": "0.128.2",
+    "uvicorn": "0.48.0",
+    "httpx": "0.28.1",
+    "pydantic": "2.13.5",
+    "pymilvus": "2.6.17"
+  },
+  "javaMySqlTested": false,
+  "businessCartTransactionsTested": false,
+  "productionProductCollectionModified": false,
+  "checks": [
+    {
+      "name": "milvus_transport_exception",
+      "status": "INFO",
+      "encrypted": false,
+      "scope": "Explicit CLI exception for this acceptance run; production Settings.validate unchanged"
+    },
+    {
+      "name": "milvus_real_authenticated_connection",
+      "status": "PASS",
+      "collection": "campus_acceptance_292cb68fcdd59e214cf7",
+      "serverVersion": "pkg/v2.5.4",
+      "encrypted": false
+    },
+    {
+      "name": "milvus_real_121_products_index",
+      "status": "PASS",
+      "latencyMs": 29695,
+      "indexed": 121,
+      "collection": "campus_acceptance_292cb68fcdd59e214cf7",
+      "fixtureData": true
+    },
+    {
+      "name": "milvus_real_idempotent_sync",
+      "status": "PASS",
+      "latencyMs": 671,
+      "indexed": 0,
+      "unchanged": 2,
+      "mode": "MILVUS"
+    },
+    {
+      "name": "milvus_real_semantic_recall",
+      "status": "PASS",
+      "latencyMs": 2740,
+      "result": {
+        "productIds": [
+          "fixture-old-121",
+          "fixture-082",
+          "fixture-084",
+          "fixture-068",
+          "fixture-001"
+        ],
+        "mode": "MILVUS"
+      },
+      "boundary": "Milvus semantic recall over 121 fixtures; not MySQL newest-100 regression"
+    },
+    {
+      "name": "real_nvidia_milvus_http_xfyun_chain",
+      "status": "PASS",
+      "latencyMs": 14483,
+      "response": {
+        "answer": "符合“两瓶不含糖的茶类饮品”且预算20元的是无糖乌龙茶（500ml），单价6元，两瓶共12元，在预算内且库存充足。普通文具笔记本不符合茶类饮品要求。我可以帮你确认选择，但不能帮你直接下单或付款。",
+        "mode": "LLM",
+        "retrievalMode": "REMOTE_EMBEDDING",
+        "rewrittenQuery": "预算20元，买两瓶不含糖的茶类饮品",
+        "warning": "",
+        "citations": [],
+        "recommendations": [
+          {
+            "skuId": "sku-fixture-old-121",
+            "quantity": 2,
+            "reason": "无糖乌龙茶500ml，6元/瓶，两瓶12元，符合无糖茶类饮品且预算内。"
+          }
+        ],
+        "latencyMs": 10182
+      },
+      "semanticProductIds": [
+        "fixture-old-121",
+        "fixture-020",
+        "fixture-002",
+        "fixture-022",
+        "fixture-019"
+      ],
+      "boundary": "Real NVIDIA -> real Milvus -> Uvicorn -> real XFYun; public offer facts are fixtures, Java/MySQL not exercised"
+    },
+    {
+      "name": "milvus_real_incremental_update",
+      "status": "PASS",
+      "latencyMs": 4056,
+      "indexed": 1,
+      "unchanged": 0,
+      "mode": "MILVUS"
+    },
+    {
+      "name": "milvus_isolated_collection_cleanup",
+      "status": "PASS",
+      "latencyMs": 1019,
+      "onlyThisRunCollectionDropped": "campus_acceptance_292cb68fcdd59e214cf7"
+    }
+  ],
+  "finishedAt": "2026-10-29T12:45:34.697994+00:00",
+  "summary": {
+    "INFO": 1,
+    "PASS": 7
+  }
+}

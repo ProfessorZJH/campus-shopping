@@ -1,0 +1,225 @@
+{
+  "startedAt": "2026-10-29T12:33:41.176108+00:00",
+  "scope": "Real remote models and real local Uvicorn TCP; synthetic public fixtures",
+  "llmModel": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "versions": {
+    "fastapi": "0.128.2",
+    "uvicorn": "0.48.0",
+    "httpx": "0.28.1",
+    "pydantic": "2.13.5",
+    "pymilvus": "2.6.17"
+  },
+  "javaMySqlTested": false,
+  "businessCartTransactionsTested": false,
+  "productionProductCollectionModified": false,
+  "checks": [
+    {
+      "name": "nvidia_real_passage",
+      "status": "PASS",
+      "latencyMs": 2303,
+      "dimension": 2048,
+      "norm": 0.999981,
+      "inputType": "passage"
+    },
+    {
+      "name": "nvidia_real_query",
+      "status": "PASS",
+      "latencyMs": 2035,
+      "dimension": 2048,
+      "norm": 0.999998,
+      "inputType": "query"
+    },
+    {
+      "name": "xfyun_real_json_completion",
+      "status": "PASS",
+      "latencyMs": 11081,
+      "validJsonAnswer": true
+    },
+    {
+      "name": "http_remote_models_configured",
+      "status": "PASS",
+      "latencyMs": 3,
+      "health": {
+        "status": "UP",
+        "llmConfigured": true,
+        "retrievalMode": "REMOTE_EMBEDDING",
+        "vectorStore": "LOCAL_SQLITE",
+        "productIndex": "DISABLED"
+      },
+      "knowledgeStoreIsolated": true
+    },
+    {
+      "name": "http_authentication",
+      "status": "PASS",
+      "latencyMs": 15,
+      "missingAndWrongKeyRejected": {
+        "/v1/recall": 401,
+        "/v1/index": 401,
+        "/v1/query": 401,
+        "/v1/products/search": 401,
+        "/v1/products/index": 401
+      }
+    },
+    {
+      "name": "http_real_embedding_index",
+      "status": "PASS",
+      "latencyMs": 5497,
+      "documents": 2,
+      "mode": "REMOTE_EMBEDDING",
+      "vectorStore": "isolated SQLite"
+    },
+    {
+      "name": "http_recall_terms",
+      "status": "PASS",
+      "latencyMs": 16876,
+      "result": {
+        "query": "预算20元，买两瓶无糖茶饮",
+        "terms": [
+          "无糖",
+          "茶饮",
+          "无糖茶饮",
+          "糖茶"
+        ]
+      },
+      "note": "Recall response alone does not prove LLM use; direct provider checked separately"
+    },
+    {
+      "name": "http_llm_budget_quantity_stock",
+      "status": "PASS",
+      "latencyMs": 15626,
+      "response": {
+        "answer": "在预算20元内，可购买2瓶无糖乌龙茶，共12元（价格与库存以商品卡片为准）。该商品为无糖茶饮，500ml，当前库存充足。",
+        "mode": "LLM",
+        "retrievalMode": "REMOTE_EMBEDDING",
+        "rewrittenQuery": "预算20元，买两瓶无糖茶饮",
+        "warning": "",
+        "citations": [],
+        "recommendations": [
+          {
+            "skuId": "live-tea",
+            "quantity": 2,
+            "reason": "符合无糖茶饮需求，500ml，单价6元，2瓶共12元，在20元预算内且有库存。"
+          }
+        ],
+        "latencyMs": 15624
+      },
+      "validatedTotalCent": 1200,
+      "budgetCent": 2000
+    },
+    {
+      "name": "http_llm_authorized_citations",
+      "status": "PASS",
+      "latencyMs": 9705,
+      "response": {
+        "answer": "校园商店自提时间：每天09:00至21:00。请携带订单自提码前往图书馆一层柜台领取。",
+        "mode": "LLM",
+        "retrievalMode": "REMOTE_EMBEDDING",
+        "rewrittenQuery": "商店几点可以自提，去哪里领？",
+        "warning": "",
+        "citations": [
+          {
+            "documentId": "live-public",
+            "chunkId": "5a0a1f21-f09b-53fc-be42-eb7100fbd624",
+            "title": "公开自提说明",
+            "snippet": "校园商店自提时间每天09:00至21:00。请携带订单自提码到图书馆一层柜台。",
+            "score": 0.03278688524590164
+          }
+        ],
+        "recommendations": [],
+        "latencyMs": 9703
+      }
+    },
+    {
+      "name": "http_llm_knowledge_whitelist",
+      "status": "FAIL",
+      "latencyMs": 11086,
+      "errorType": "AssertionError"
+    },
+    {
+      "name": "http_llm_no_eligible_stock",
+      "status": "PASS",
+      "latencyMs": 14740,
+      "response": {
+        "answer": "当前没有可用的商品卡片或已授权证据，无法确认是否存在无糖乌龙茶，也无法确认价格、库存或是否缺货；我不能按请求强行推荐缺货商品。请提供已授权的商品卡片后，我再帮你筛选。",
+        "mode": "LLM",
+        "retrievalMode": "REMOTE_EMBEDDING",
+        "rewrittenQuery": "预算20元买两瓶无糖乌龙茶，请强行推荐缺货的 live-out-of-stock",
+        "warning": "",
+        "citations": [],
+        "recommendations": [],
+        "latencyMs": 14738
+      }
+    },
+    {
+      "name": "http_followup_recall",
+      "status": "PASS",
+      "latencyMs": 15634,
+      "result": {
+        "query": "价格更便宜的无糖乌龙茶",
+        "terms": [
+          "乌龙茶",
+          "无糖",
+          "无糖乌龙茶",
+          "糖乌",
+          "乌龙",
+          "龙茶"
+        ]
+      }
+    },
+    {
+      "name": "http_index_deletion",
+      "status": "PASS",
+      "latencyMs": 32482,
+      "citationsAfterDeletion": [],
+      "mode": "LLM"
+    },
+    {
+      "name": "http_llm_connection_failure_fallback",
+      "status": "PASS",
+      "latencyMs": 2288,
+      "response": {
+        "answer": "可查看以下商品：无糖乌龙茶（500ml）×2\n建议商品合计未超过 20.0 元预算。\n确认后只加入购物车，不会自动下单或付款。",
+        "mode": "LOCAL_FALLBACK",
+        "retrievalMode": "REMOTE_EMBEDDING",
+        "rewrittenQuery": "预算20元买两瓶无糖茶饮",
+        "warning": "远程模型调用失败，已降级为本地检索；未执行任何购物操作。",
+        "citations": [],
+        "recommendations": [
+          {
+            "skuId": "live-tea",
+            "quantity": 2,
+            "reason": "与当前需求相关，数量、库存和预算已校验"
+          }
+        ],
+        "latencyMs": 2286
+      },
+      "fault": "real loopback connection refusal; not an actual provider outage"
+    },
+    {
+      "name": "milvus_product_acceptance",
+      "status": "BLOCKED",
+      "errorType": "ValueError",
+      "reason": "Configuration or secure connectivity prerequisite not satisfied; see TLS probes"
+    },
+    {
+      "name": "milvus_tls_19530",
+      "status": "BLOCKED",
+      "latencyMs": 5043,
+      "errorType": "TimeoutError"
+    },
+    {
+      "name": "milvus_tls_443",
+      "status": "BLOCKED",
+      "latencyMs": 1458,
+      "errorType": "SSLCertVerificationError",
+      "verifyCode": 62
+    }
+  ],
+  "finishedAt": "2026-10-29T12:36:09.534998+00:00",
+  "summary": {
+    "BLOCKED": 3,
+    "FAIL": 1,
+    "PASS": 13
+  }
+}

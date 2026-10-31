@@ -1,6 +1,26 @@
 # 校园智能导购及商品交易平台 · R1 交付候选版
 
-> **这是完整业务范围的源码候选版，不是“全栈已跑通”的验收版。** 本次已执行纯 Java 领域/HTTP、Python 检索服务和真实 Chromium 的接口替身测试；完整 Maven 构建、Spring/MySQL、Docker、真实模型及 Qdrant 尚未验证，具体证据见下文。
+> **本地真实 Spring/MySQL、真实 AI 导购与浏览器交易闭环已完成列明范围的验收。** Docker、Qdrant、生产部署与性能验收不在本次通过范围，具体证据见下文。
+
+## 工程化收敛（2026-10-29）
+
+前端构建接入 Maven、迁移版本及校验和校验、AI 请求关联与脱敏诊断、商品索引清理、锁定依赖、格式及镜像 CI 门禁、自动交付清单已补齐。构建需 JDK17、Node 22.16.0、Python3.11，使用仓库 `mvnw.cmd` / `mvnw`。已有数据库须先通过 `scripts/migrate-database.py` 升级并登记历史，应用启动只读校验。见[工程化变更与实际验证](docs/testing/ENGINEERING-10.md)及[迁移手册](docs/database/migrations/README.md)。
+
+## 本地真实导购与页面验收（2026-10-29）
+
+按用户授权备份并重建本机 `campus_shopping`，执行最新增量 SQL；真实 HTTP 173 项、严格 AI 事务 19 项、页面商品操作 5 项、交易闭环 12 项、路由/权限/移动端 40 项（含 28 条路由）、基础浏览器 8 项、只读 MySQL 核对 8 项通过。最新 Maven `verify` 为 63 通过、29 跳过，Python 40 通过。真实模型推荐 → 确认加购 → 模拟支付 → 自提核销及退款均有实际落库证据。
+
+- [完整报告、原始失败与复测](docs/testing/LOCAL-LIVE-20261029.md) · [数据库结果](docs/testing/evidence/local-live/database-readback.json) · [真实页面截图](docs/testing/evidence/local-live/browser/)
+- 本机预览 `http://127.0.0.1:8091/#/`，不要加 `demo=1`。凭据及备份在 Git 忽略的 `.env` / `var/local-live/`。Milvus 的现有 HTTP 连接仅通过显式本地验收入口使用，正常部署 TLS 策略不变。
+
+以下阶段记录保留当时的验证边界；后续本地端到端结果以上节报告为准。
+
+## 前序真实 AI 子系统验收（2026-10-29）
+
+真实 NVIDIA Embedding → Milvus（121 件合成商品）→ Uvicorn HTTP → 讯飞推荐已跑通；预算、数量、库存、知识引用/白名单、重复及增量同步、连接失败降级等复测后 21 项有效检查通过。Python 单测 40 通过；Maven `verify` 构建成功，48 通过、28 MySQL 测试跳过。商品事实使用验收数据，Java/MySQL 事务与正式同步未验收。
+
+- [验收结果、原始失败与复测、连接例外和复现命令](docs/testing/AI-LIVE-20261029.md) · [脱敏汇总](docs/testing/evidence/ai-live-summary.json)
+- 凭据仅保存在 Git 忽略的本地 `.env`；正常应用仍要求安全 Milvus 连接。本轮按用户指定的 HTTP 地址仅做显式验收例外，未修改正式商品集合。
 
 在已有小傅哥 DDD 工程上持续实现，保留 Java17 / Spring Boot3.4.3 / MyBatis3.0.4；因真实跨域事务增加 Case 模块。前端为同源 Vue3，AI 为独立 Python FastAPI。
 
@@ -90,7 +110,7 @@ python scripts/smoke-full.py
 - `cd ai-service && python -m pytest -q`：真实Python应用/SQLite检索；外部LLM故障等使用标注清楚的测试替身。
 - `python scripts/smoke-ai-local.py`：启动真实Uvicorn并通过本机TCP验证共享密钥、索引、白名单和删除。
 - `python frontend/tests/contract_ui.py`：真实Vue/Chromium，**后端是接口替身**，不是Java数据库联调。
-- `mvn clean verify`、`scripts/smoke-full.py`、`frontend/tests/live_ui.py`：真实全栈验收入口，**本次未执行成功**，需要依赖和MySQL环境。
+- `mvn verify`：2026-10-29 最新构建成功，63 通过、29 MySQL 用例跳过；本轮未执行 `clean verify`。`scripts/smoke-full.py`、`frontend/tests/live_ui.py` 和新增 `live_shopping.py` 已通过本机真实 MySQL/模型验收，范围见上方报告，不能把构建或有限用例等同穷尽验证。
 
 ## 工程目录
 
@@ -105,4 +125,6 @@ python scripts/smoke-full.py
 - [SDD-08 设计/内网契约/安全/验收](docs/specs/SDD-AI-HYBRID-08.md)
 - [SDD-08 验证记录](docs/testing/SDD-AI-HYBRID-08-VERIFICATION.md)
 - 需安全设置 `MILVUS_URI`、`MILVUS_TOKEN`、`EMBEDDING_BASE_URL`、`EMBEDDING_API_KEY`、`EMBEDDING_MODEL`；`AI_PRODUCT_VECTOR_SYNC_ENABLED=true` 才进行索引同步。
-- 启动后可 `docker compose exec ai python -m app.smoke_vector` 进行只读连通测试。**本次未运行真实 Milvus 或模型。**
+- 启动后可 `docker compose exec ai python -m app.smoke_vector` 进行只读连通测试。真实 Milvus/模型的独立子系统验收已补充，详见[2026-10-29 验收记录](docs/testing/AI-LIVE-20261029.md)；Compose 全栈仍未验收。
+
+Redis 接入说明：[SDD-12 规格](docs/specs/SDD-REDIS-12.md) · [运行与迁移](docs/operations/REDIS-12-runbook.md) · [本轮验收](docs/testing/SDD-REDIS-12-VERIFICATION.md)。

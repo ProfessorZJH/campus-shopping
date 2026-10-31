@@ -1,0 +1,81 @@
+{
+  "status": "PASS",
+  "scope": "USER_AUTHORIZED_EXISTING_LOCAL_MYSQL_REDIS_AND_REAL_AI",
+  "finishedAt": "2026-10-31T10:10:06.049230+08:00",
+  "javaArtifact": {
+    "checkedAt": "2026-10-31T10:09:36.210992+08:00",
+    "sourceFilesChecked": 435,
+    "matchesVerifiedBuild": true,
+    "mismatches": [],
+    "jarPath": "var/redis-sdd/verified-build/campus-shopping-app.jar",
+    "jarSha256": "14c2749a6cbe8880c43295ab4460c6b05fc729831618d982200a63c81332c44c"
+  },
+  "databaseUpgrade": "PASS",
+  "existingRedisReconfigured": false,
+  "redisDatabaseFlushed": false,
+  "redisInstances": 1,
+  "httpChecks": 173,
+  "strictResponses": 117,
+  "crossInstanceChecks": 8,
+  "sharedQuotaAttempts": 31,
+  "browserChecks": {
+    "basic": 8,
+    "product": 5,
+    "shopping": 12,
+    "pages": 40
+  },
+  "databaseReadbackChecks": 8,
+  "knowledgeQuota": {
+    "used": 10,
+    "actual": 10
+  },
+  "localTestRowCountChanges": {
+    "iam_user": {
+      "before": 15,
+      "after": 33,
+      "added": 18
+    },
+    "mer_merchant": {
+      "before": 5,
+      "after": 10,
+      "added": 5
+    },
+    "cat_product": {
+      "before": 5,
+      "after": 9,
+      "added": 4
+    },
+    "trd_order": {
+      "before": 11,
+      "after": 17,
+      "added": 6
+    },
+    "trd_payment": {
+      "before": 6,
+      "after": 10,
+      "added": 4
+    },
+    "trd_refund": {
+      "before": 3,
+      "after": 5,
+      "added": 2
+    },
+    "ai_knowledge_base": {
+      "before": 6,
+      "after": 10,
+      "added": 4
+    }
+  },
+  "finalHealthHttp": {
+    "frontend": 200,
+    "csrf": 200,
+    "ai": 200
+  },
+  "mainServiceLeftRunning": true,
+  "secondaryInstanceStopped": true,
+  "docker": "NOT_RUN_LOCAL_ONLY_PER_USER",
+  "remoteCi": "NOT_RUN_LOCAL_ONLY_UNPUBLISHED_CHECKOUT",
+  "performanceAndHa": "NOT_RUN",
+  "productVectorSync": "DISABLED_NOT_REACCEPTED",
+  "failedRounds": "failed-rounds.json"
+}
