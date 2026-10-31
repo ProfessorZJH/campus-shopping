@@ -129,10 +129,9 @@ def main():
         f=Backend();page=browser_page(browser,'/merchant/products',f)
         page.get_by_role('button',name='新增商品',exact=True).click()
         hold(page,'/merchants/m1/images')
-        import io
-        from PIL import Image
-        out=io.BytesIO();Image.new('RGB',(3,3),'white').save(out,format='PNG')
-        page.locator('.merchant-modal input[type=file]').set_input_files({'name':'test.png','mimeType':'image/png','buffer':out.getvalue()});pending(page)
+        import base64
+        image=base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAMAAAADCAIAAADZSiLoAAAAE0lEQVR4nGP8//8/AxgwQSgUFgBUJAMDB977AAAAAABJRU5ErkJggg==')
+        page.locator('.merchant-modal input[type=file]').set_input_files({'name':'test.png','mimeType':'image/png','buffer':image});pending(page)
         page.locator('.merchant-modal-header button').click()
         page.locator('.topbar-merchant-select select').select_option('m2')
         page.get_by_role('button',name='新增商品',exact=True).click()

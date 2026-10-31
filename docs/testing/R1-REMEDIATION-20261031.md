@@ -48,3 +48,5 @@
 - Java定向ProtocolBoundaryTest通过；全新临时MySQL运行中，低库存跨页和总数回归已加入。完整真实后端/Redis/镜像验收以最终提交远端结果为准。
 
 - D首次隔离MySQL：210项，207成功、1失败、2个Redis类跳过。失败仅为新增非法筛选负例误写错误码A0001（实际既有ILLEGAL_PARAMETER=0002）；改为枚举契约后重跑。低库存真实跨页/total及其余业务断言通过，原始报告保留在var/r1/frontend-mysql.json。修正后及零跳过门槛结果单独记录。
+
+- D修正后的隔离MySQL：Maven clean verify成功，210项中208成功、2个Redis类跳过，低库存全部断言通过。脚本仍因零跳过门槛返回FAIL。首个远端完整运行41200129341真实后端/Redis/镜像/legacy均通过；current新增专项依赖未锁定Pillow而失败，已改为内嵌固定PNG，无新增依赖，待最终HEAD重验。
