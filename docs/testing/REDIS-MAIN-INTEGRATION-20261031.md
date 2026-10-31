@@ -17,9 +17,10 @@
 | Chromium 真实后端页面 | 8 项通过，未使用接口替身 | [浏览器结果](evidence/redis-main-integration/frontend-live/results.json) |
 | 旧 Redis V31 已登记、主线 V30 缺失的升级路径 | 通过；V31校验和/登记时间及历史数据不变，补齐V30 | [单独升级复验](evidence/redis-main-integration/migrations-redis-upgrade.json) |
 | 全新库、旧库升级、迁移重放、脏数据拒绝、校验和拒绝 | 通过，升级后字段/索引/约束与全新库相同 | 同上及完整汇总 |
+| 格式、UI生成/构建一致性、源码/API/DDD、领域规则、HTTP边界、依赖审计 | 通过；依赖审计0漏洞 | [门禁汇总](evidence/redis-main-integration/local-checks.json) |
 | 已测源码和 JAR | 472份源码摘要与工作区一致；JAR内UI与本次源码构建逐文件一致 | [源码摘要](evidence/redis-main-integration/tested-sources.json) |
 
-双实例 HTTP 覆盖 A 登录/B识别、B注销/A旧Cookie失效、仅stock.read允许而product.read拒绝、角色权限变更立即生效、改价版本立即生效、实时库存、下架不可缓存放行、撤销成员立即生效及跨节点规范化账号限流。Maven 中的真实 Redis 测试另覆盖故障失败关闭、许可和任务锁、缓存回滚/提交与损坏回退；MySQL 测试继续覆盖会话令牌过期/竞争及事务规则。具体用例以原始结果和测试源码为准，不将有限用例视为穷尽证明。
+双实例 HTTP 覆盖 A 登录/B识别、B注销/A旧Cookie失效、仅stock.read允许而product.read拒绝、角色权限变更立即生效、改价版本立即生效、实时库存、下架不可缓存放行、撤销成员立即生效及跨节点规范化账号限流。Maven 中的真实 Redis 测试另覆盖故障失败关闭、许可和任务锁、缓存回滚/提交与不可用回退；MySQL 测试继续覆盖会话令牌过期/竞争及事务规则。具体用例以原始结果和测试源码为准，不将有限用例视为穷尽证明。
 
 验证使用新建临时 MySQL、随机端口、独立命名空间和临时 Java/FastAPI 进程，结束已清理。Redis 使用用户已启动的本机6379，没有启动本机 Docker Redis，没有 FLUSHDB/FLUSHALL。没有连接、迁移或重建现有业务库，也没有替换本机8091/8100应用。
 
