@@ -20,6 +20,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -390,7 +391,21 @@ def run(args, report):
             (args.output.parent/'tested-sources.json').write_text(
                 json.dumps(source_hashes, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
             env = os.environ.copy()
-            env.setdefault('REDIS_ENABLED', 'false')
+            redis_test_address = env.get('REDIS_TEST_ADDRESS', '').strip()
+            for name in ('REDIS_ENABLED', 'REDIS_SECURITY_ADDRESS', 'REDIS_SECURITY_PASSWORD',
+                         'REDIS_CACHE_ADDRESS', 'REDIS_CACHE_PASSWORD', 'REDIS_NAMESPACE'):
+                env.pop(name, None)
+            env['REDIS_ENABLED'] = 'false'
+            if redis_test_address:
+                parsed = urlsplit(redis_test_address)
+                if (parsed.scheme not in ('redis', 'rediss') or parsed.hostname not in ('127.0.0.1', 'localhost', '::1')
+                        or parsed.username or parsed.password):
+                    raise ValueError('REDIS_TEST_ADDRESS 仅允许显式配置本机测试专用 Redis，URI 不得内嵌凭据')
+                env.update(REDIS_ENABLED='true', REDIS_SECURITY_ADDRESS=redis_test_address,
+                           REDIS_CACHE_ADDRESS=redis_test_address,
+                           REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
+                           REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
+                           REDIS_NAMESPACE='cs:test:maven:'+secrets.token_hex(12))
             # 评测只使用冻结合成数据，计划与输出留在本次临时环境/指定证据目录。
             evaluation_input = args.evaluation_input.resolve() if args.evaluation_input else workspace/'shopping-evaluation-input.json'
             if not args.evaluation_input:
