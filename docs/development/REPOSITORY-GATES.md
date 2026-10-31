@@ -37,4 +37,4 @@
 
 官方依据：[Rulesets规则](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)、[缺失/跳过的必需检查](https://docs.github.com/en/pull-requests/how-tos/merge-and-close-pull-requests/troubleshooting-required-status-checks)、[仓库Rulesets API](https://docs.github.com/en/rest/repos/rules)。
 
-本轮仅修改期望配置，未调用GitHub API更新远端ruleset，也未执行远端Actions。应用新规则时须同步工作流与required check名称，按上节读回核验；不能声称远端门禁已生效。
+配置文件不会自动更新GitHub。远端Actions与规则是否已生效，以对应PR最新HEAD的完整验收链接和API读回记录为准；应用规则时同步required check名称，审批数按本仓库个人维护模式保持0。
