@@ -9,7 +9,7 @@
 | C | 知识索引 claim/lease/完成、发布并发、商户配额 | 完整远端验收通过（下述范围） |
 | D | 身份/请求隔离、幂等、表单/图片上下文、路由、分页、无障碍/窄屏 | 完整远端验收通过（下述范围） |
 | E | 订单/商品同步扫描、恢复、readiness、响应上限、外发与指标 | 完整远端验收通过（下述范围） |
-| F | 镜像固定、SBOM、最终真实联调、容量/故障与发布边界 | 实现完成，完整验证中 |
+| F | 镜像固定、SBOM、最终真实联调、容量/故障与发布边界 | 完整远端验收通过（下述范围） |
 
 ## A 实际验证
 
@@ -64,6 +64,9 @@
 
 - E最终本地全量：Maven clean verify退出0，215项中213成功、2个Redis测试类跳过；脚本严格按零跳过门槛报告FAIL。迁移升级/重放/历史保留/校验和拒绝/元数据等价通过。对应源码提交ebe2903，远端使用独立Redis补齐。
 
+- E最终`ebe2903`的[完整远端运行](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41201961843)五个普通任务全部成功，补齐独立Redis；可选真实AI跳过。[PR #20](https://github.com/ProfessorZJH/campus-shopping/pull/20)依赖PR #19，未合并。
+- 远端ruleset 26259492已核对：必需Quick quality gates，审批数0，不要求CODEOWNER；未改动用户决定。
+
 ## F 实际验证
 
 - 官方Registry获取7种镜像manifest，逐一验证内容SHA-256匹配Docker-Content-Digest且含Linux amd64；固定Dockerfile/Compose/CI引用，verify-supply-chain.py检查11处引用PASS。内容一致性不冒充签名/漏洞验证。
@@ -71,5 +74,12 @@
 - verify-ai-load-isolated.py：独立FastAPI/SQLite真实HTTP，12客户端80请求、容量2；19次200、61次429、0次5xx，active回零，接受请求P50=48.23ms、P95=61.30ms（仅本次本机合成小样本，不是生产性能结论）。进程重启后持久化检索通过。
 - 本机Docker Engine不可用，Qdrant和固定digest后的实际交付镜像本地NOT_RUN，最终远端补齐。真实供应商/Milvus、生产TLS/代理、公网、持续负载和灾备恢复NOT_RUN，不扩大现有服务替换或数据库迁移授权。
 
-- E最终`ebe2903`的[完整远端运行](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41201961843)五个普通任务全部成功，补齐独立Redis；可选真实AI跳过。[PR #20](https://github.com/ProfessorZJH/campus-shopping/pull/20)依赖PR #19，未合并。
-- 远端ruleset 26259492已核对：必需Quick quality gates，审批数0，不要求CODEOWNER；未改动用户决定。
+
+- F代码提交`e0cc6b1`的[完整远端运行](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41202459672)五个普通任务全部成功。新增隔离Qdrant认证/写入/过滤/幂等/停止重启/本地检索/重试/删除、真实HTTP容量重启、实际测试JAR及镜像内JAR清单生成全部通过，可选真实AI跳过。[PR #21](https://github.com/ProfessorZJH/campus-shopping/pull/21)依赖PR #20。
+- 收尾复核将SBOM根组件改为实际输入JAR的SHA-256，另记扫描工作区提交，避免将当前HEAD误当任意JAR的构建来源；附SBOM及JAR哈希摘要。重新生成197组件并通过官方1.5 schema校验。最终收尾提交会再次执行同一完整工作流，结果以PR #21最新HEAD Actions为准，不用旧提交代替。
+
+## 交付状态与未执行范围
+
+六批代码分别提交、推送并建立Draft PR #16–#21，保持前后依赖；未合并、未部署、未更改既有业务库。主分支仍要求快速门禁、审批数0。依赖合并后须重新对main核差异和集成验收。
+
+已验证范围为单Python、多Java共享隔离MySQL/Redis的业务、HTTP/浏览器、实际镜像、Qdrant及本地小规模容量/恢复。内部知识默认外发拒绝及故障边界已覆盖；这不代表全部生产验收完成。生产CA/TLS/代理、公网、真实LLM/Embedding/Milvus、持续生产负载、灾备恢复和旧仓库secret迁移/轮换仍未执行。原始报告及SBOM保留CI artifact，正式发布须保存对应版本证据。

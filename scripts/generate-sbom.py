@@ -83,8 +83,8 @@ def generate(jar):
         unique.setdefault(row['bom-ref'], row)
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     return {'bomFormat': 'CycloneDX', 'specVersion': '1.5', 'serialNumber': 'urn:uuid:' + str(uuid.uuid4()), 'version': 1,
-            'metadata': {'component': component('campus-shopping-delivery', revision, 'campus-shopping-delivery', kind='application', data=jar.read_bytes()),
-                         'properties': [{'name': 'campus:coverage', 'value': 'actual BOOT-INF/lib JARs; npm lock including excluded dev tools; Python runtime lock; base image references. OS packages, transitive dependency edges and vulnerability findings are not enumerated.'}]},
+            'metadata': {'component': component('campus-shopping-delivery', sha(jar.read_bytes()), 'campus-shopping-delivery', kind='application', data=jar.read_bytes()),
+                         'properties': [{'name': 'campus:inventory-checkout-commit', 'value': revision}, {'name': 'campus:coverage', 'value': 'actual BOOT-INF/lib JARs; npm lock including excluded dev tools; Python runtime lock; base image references. OS packages, transitive dependency edges and vulnerability findings are not enumerated.'}]},
             'components': sorted(unique.values(), key=lambda x: x['bom-ref'])}
 
 
@@ -96,7 +96,10 @@ def main():
     result = generate(args.jar)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', 'utf-8')
-    print(json.dumps({'components': len(result['components']), 'output': str(args.output), 'status': 'GENERATED'}))
+    summary = {'components': len(result['components']), 'sbomSha256': sha(args.output.read_bytes()),
+               'jarSha256': sha(args.jar.read_bytes()), 'status': 'GENERATED'}
+    args.output.with_suffix('.summary.json').write_text(json.dumps(summary, indent=2) + '\n', 'utf-8')
+    print(json.dumps(summary))
 
 
 if __name__ == '__main__':

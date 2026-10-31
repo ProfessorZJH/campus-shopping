@@ -10,7 +10,7 @@ Dependabot按周为Maven、npm、pip、Docker和Actions提交更新建议，不�
 
 ## SBOM与证据
 
-`python scripts/generate-sbom.py`读取实际Spring Boot JAR内依赖及其哈希、npm锁（开发工具scope=excluded）、Python运行锁和基础镜像引用，生成CycloneDX 1.5清单。无实际JAR或无法识别版本时失败，不生成空清单冒充交付。默认输出`var/supply-chain/application.cdx.json`；本地已用CycloneDX官方1.5 JSON Schema校验样例。
+`python scripts/generate-sbom.py`读取实际Spring Boot JAR内依赖及其哈希、npm锁（开发工具scope=excluded）、Python运行锁和基础镜像引用，生成CycloneDX 1.5清单。无实际JAR或无法识别版本时失败，不生成空清单冒充交付。根组件以实际JAR哈希标识，另记录扫描工作区提交，不能把当前HEAD冒充任意输入JAR的构建来源。默认输出`var/supply-chain/application.cdx.json`及哈希摘要；本地已用CycloneDX官方1.5 JSON Schema校验样例。
 
 完整CI对实际测试JAR生成清单；交付镜像验收另从运行的app容器复制实际JAR生成清单。清单不枚举OS包、完整传递依赖边或漏洞结论，不冒充完整容器安全扫描。原始SBOM、依赖诊断、评测运行及故障证据保留CI artifact，仓库只保留规格、摘要与输入锁，冻结合成数据仍版本管理。artifact默认7天，正式发布时维护者应保存对应版本的验收与SBOM。
 
