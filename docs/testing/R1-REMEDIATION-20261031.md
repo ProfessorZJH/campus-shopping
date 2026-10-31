@@ -6,8 +6,8 @@
 |---|---|---|
 | A | CI 密钥边界、地址安全、context-path、生产配置、旧部署模板 | 完整远端验收通过（下述范围） |
 | B | AI 预算/数量最终复核、无报价文案、评测阶段/来源/cleanup、HTML XSS | 完整远端验收通过（下述范围） |
-| C | 知识索引 claim/lease/完成、发布并发、商户配额 | 实现完成，隔离 MySQL 验证中 |
-| D | 身份/请求隔离、幂等、表单/图片上下文、路由、分页、无障碍/窄屏 | 待实施 |
+| C | 知识索引 claim/lease/完成、发布并发、商户配额 | 完整远端验收通过（下述范围） |
+| D | 身份/请求隔离、幂等、表单/图片上下文、路由、分页、无障碍/窄屏 | 实现完成，专项通过，完整验证中 |
 | E | 订单/商品同步扫描、恢复、readiness、响应上限、外发与指标 | 待实施 |
 | F | 镜像固定、SBOM、最终真实联调、容量/故障与发布边界 | 待实施 |
 
@@ -37,3 +37,16 @@
 - 其中真实 `CommerceMySqlIntegrationTest`44项全部成功，含新索引claim竞争、过期重试、晚到完成、版本不符、计数/字节预占回滚、索引并发与频率上限。随后增加的“缓存PENDING后并发READY再发布”专项由最终远端验收验证。
 - 本机 Redis 未确认为测试专用，没有复用现有实例；远端使用独立Redis补齐验证。不放宽脚本零跳过门槛。
 - API/schema/DDD静态检查通过；无HTTP契约变化。迁移仅在临时库执行。
+
+- C最终 `d6d6146` 的[完整远端运行](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41198880441)五个普通任务全部成功，含新增缓存发布专项；可选真实AI跳过。[PR #18](https://github.com/ProfessorZJH/campus-shopping/pull/18)依赖PR #17，未合并。
+
+## D 实际验证
+
+- `node --test frontend/tests/identity-races.test.mjs`：4 PASS，覆盖旧CSRF晚到、新旧请求并存、旧身份401及403不得重试新身份。
+- `python frontend/tests/ui_fix_regression.py`：10 PASS；`ui_r1_correctness.py`：11 PASS。真实Chromium/Vue，后端为明确接口替身，覆盖幂等键同体重试/变更、慢购物车、旧订单令牌、知识库版本/文件、图片跨商户响应、错误编码、首页基础数据、键盘及320/360/390/768宽度。
+- 首次专项暴露退出时旧首页卸载使新公开请求失效，已修正；320px实测工具栏溢出已调整为换行，表格保留内部滚动。失败结果不计通过。
+- Java定向ProtocolBoundaryTest通过；全新临时MySQL运行中，低库存跨页和总数回归已加入。完整真实后端/Redis/镜像验收以最终提交远端结果为准。
+
+- D首次隔离MySQL：210项，207成功、1失败、2个Redis类跳过。失败仅为新增非法筛选负例误写错误码A0001（实际既有ILLEGAL_PARAMETER=0002）；改为枚举契约后重跑。低库存真实跨页/total及其余业务断言通过，原始报告保留在var/r1/frontend-mysql.json。修正后及零跳过门槛结果单独记录。
+
+- D修正后的隔离MySQL：Maven clean verify成功，210项中208成功、2个Redis类跳过，低库存全部断言通过。脚本仍因零跳过门槛返回FAIL。首个远端完整运行41200129341真实后端/Redis/镜像/legacy均通过；current新增专项依赖未锁定Pillow而失败，已改为内嵌固定PNG，无新增依赖，待最终HEAD重验。

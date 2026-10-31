@@ -194,7 +194,7 @@ export default {
         <div v-if="!roles.length&&!loading" class="admin-empty">暂无角色</div>
       </section>
       <form class="ops-card rbac-editor" @submit.prevent="save"><div class="ops-card-header"><h2>{{selected?'角色权限':'创建新角色'}}</h2><span v-if="current?.builtin" class="status-tag">系统内置</span></div>
-        <label class="field-label">角色名称</label><input class="admin-input" v-model.trim="name" maxlength="40" required :disabled="preview||!!current?.builtin||busy" placeholder="例如：商品管理员"/>
+        <label class="field-label" for="rolemanager-field-1">角色名称</label><input id="rolemanager-field-1" class="admin-input" v-model.trim="name" maxlength="40" required :disabled="preview||!!current?.builtin||busy" placeholder="例如：商品管理员"/>
         <h3 class="field-heading">权限配置 <span class="rbac-grant-count">已选 {{grants.length}} 项</span></h3>
         <div class="rbac-permissions"><label v-for="p in permissions" :key="p.code" :data-permission="p.code" class="rbac-permission" :class="{protected:!p.grantable}">
             <input type="checkbox" :checked="checked(p.code)" :disabled="preview||!!current?.builtin||!p.grantable||busy" @change="toggle(p.code,$event.target.checked)"/>

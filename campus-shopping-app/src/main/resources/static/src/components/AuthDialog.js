@@ -53,7 +53,7 @@ export default {
     }
     return { mode, username, password, displayName, busy, error, submit };
   },
-  template: `<div class="ui-overlay" @click.self="$emit('close')"><form class="login-dialog" @submit.prevent="submit" aria-label="账号登录">
+  template: `<div v-modal="() => $emit('close')" class="ui-overlay" @click.self="$emit('close')"><form class="login-dialog" @submit.prevent="submit" aria-label="账号登录">
      <div class="login-dialog-heading"><span class="auth-logo"><Icon name="sparkles" :size="22"/></span><button type="button" @click="$emit('close')" aria-label="关闭登录窗"><Icon name="x" :size="20" /></button></div>
      <h2>{{mode==='login'?'欢迎回来':'创建账号'}}</h2>
      <label for="login-name">账号</label><input id="login-name" v-model="username" autocomplete="username" required maxlength="32" placeholder="用户名"/>

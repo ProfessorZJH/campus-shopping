@@ -41,6 +41,13 @@ export function dateTime(v) {
         minute: '2-digit',
       });
 }
+export function safeDecodeId(v) {
+  try {
+    return decodeURIComponent(v || '');
+  } catch {
+    return '';
+  }
+}
 export function pathId(v) {
   return encodeURIComponent(String(v || ''));
 }
