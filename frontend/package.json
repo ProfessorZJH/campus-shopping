@@ -11,7 +11,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "devDependencies": {
-    "@vue/compiler-dom": "3.5.13",
+    "@vue/compiler-dom": "3.5.44",
     "acorn": "8.14.1",
     "magic-string": "0.30.17",
     "prettier": "3.9.10",
