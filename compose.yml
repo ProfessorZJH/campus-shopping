@@ -1,7 +1,7 @@
 name: campus-shopping
 services:
   redis-security:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_SECURITY_PASSWORD:?必须生成安全Redis凭据}
@@ -14,7 +14,7 @@ services:
       timeout: 3s
       retries: 20
   redis-cache:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952
     restart: unless-stopped
     environment:
       REDIS_PASSWORD: ${REDIS_CACHE_PASSWORD:?必须生成缓存Redis凭据}
@@ -25,7 +25,7 @@ services:
       timeout: 3s
       retries: 20
   mysql:
-    image: mysql:8.0.36
+    image: mysql:8.0.36@sha256:a532724022429812ec797c285c1b540a644c15e248579c6bfdf12a8fbaab4964
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: campus_shopping
@@ -119,7 +119,7 @@ services:
 
   qdrant:
     profiles: [vector]
-    image: qdrant/qdrant:v1.13.4
+    image: qdrant/qdrant:v1.13.4@sha256:318c11b72aaab96b36e9662ad244de3cabd0653a1b942d4e8191f18296c81af0
     restart: unless-stopped
     environment:
       QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY:?启用向量配置前设置访问密钥}

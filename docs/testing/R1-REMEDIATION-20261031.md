@@ -8,8 +8,8 @@
 | B | AI 预算/数量最终复核、无报价文案、评测阶段/来源/cleanup、HTML XSS | 完整远端验收通过（下述范围） |
 | C | 知识索引 claim/lease/完成、发布并发、商户配额 | 完整远端验收通过（下述范围） |
 | D | 身份/请求隔离、幂等、表单/图片上下文、路由、分页、无障碍/窄屏 | 完整远端验收通过（下述范围） |
-| E | 订单/商品同步扫描、恢复、readiness、响应上限、外发与指标 | 实现完成，验证中 |
-| F | 镜像固定、SBOM、最终真实联调、容量/故障与发布边界 | 待实施 |
+| E | 订单/商品同步扫描、恢复、readiness、响应上限、外发与指标 | 完整远端验收通过（下述范围） |
+| F | 镜像固定、SBOM、最终真实联调、容量/故障与发布边界 | 实现完成，完整验证中 |
 
 ## A 实际验证
 
@@ -61,3 +61,15 @@
 
 - Python全量210 PASS，随后补配置Qdrant时内部索引/查询零外发专项，11项专项全部PASS；最终远端覆盖211项。Java确定性11项PASS（任务恢复6项、会话边界5项）。
 - 真实MySQL48项已通过（205笔分页、checkpoint读写、20轮改价/checkout/提案确认并发，InnoDB lock_deadlocks无增加）。首次计数器名称错误和旧夹具缺新增依赖已修；不把这些夹具失败算作业务故障。最终整轮结果和远端独立Redis另记。
+
+- E最终本地全量：Maven clean verify退出0，215项中213成功、2个Redis测试类跳过；脚本严格按零跳过门槛报告FAIL。迁移升级/重放/历史保留/校验和拒绝/元数据等价通过。对应源码提交ebe2903，远端使用独立Redis补齐。
+
+## F 实际验证
+
+- 官方Registry获取7种镜像manifest，逐一验证内容SHA-256匹配Docker-Content-Digest且含Linux amd64；固定Dockerfile/Compose/CI引用，verify-supply-chain.py检查11处引用PASS。内容一致性不冒充签名/漏洞验证。
+- 实际打包JAR及npm/Python/镜像锁生成197组件CycloneDX 1.5，官方GitHub specification/1.5 JSON Schema校验PASS（官网schema地址403，使用官方仓库版本）。本地为生成清单执行package -DskipTests，不将该命令算作测试通过。
+- verify-ai-load-isolated.py：独立FastAPI/SQLite真实HTTP，12客户端80请求、容量2；19次200、61次429、0次5xx，active回零，接受请求P50=48.23ms、P95=61.30ms（仅本次本机合成小样本，不是生产性能结论）。进程重启后持久化检索通过。
+- 本机Docker Engine不可用，Qdrant和固定digest后的实际交付镜像本地NOT_RUN，最终远端补齐。真实供应商/Milvus、生产TLS/代理、公网、持续负载和灾备恢复NOT_RUN，不扩大现有服务替换或数据库迁移授权。
+
+- E最终`ebe2903`的[完整远端运行](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41201961843)五个普通任务全部成功，补齐独立Redis；可选真实AI跳过。[PR #20](https://github.com/ProfessorZJH/campus-shopping/pull/20)依赖PR #19，未合并。
+- 远端ruleset 26259492已核对：必需Quick quality gates，审批数0，不要求CODEOWNER；未改动用户决定。

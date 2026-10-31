@@ -53,6 +53,7 @@ jobs:
           node --test frontend/tests/*.test.mjs
           python scripts/build-ui-bundle.py --check
           python scripts/schema_contract.py --check
+          python scripts/verify-supply-chain.py
           python scripts/verify-api-contract.py
           python scripts/verify-api-schemas.py
           python scripts/verify-java-readability.py
@@ -109,6 +110,7 @@ jobs:
           npm audit --prefix frontend --audit-level=high
           python scripts/build-ui-bundle.py --check
           python scripts/schema_contract.py --check
+          python scripts/verify-supply-chain.py
       - name: API / SDD / source safety checks
         run: |
           python scripts/verify-java-readability.py
@@ -136,7 +138,7 @@ jobs:
           } >> "$GITHUB_ENV"
           docker run -d --name campus-mysql-it -p 127.0.0.1:3307:3306 \
             -e MYSQL_ROOT_PASSWORD="$ROOT_PASSWORD" -e MYSQL_DATABASE=campus_shopping_it \
-            -e MYSQL_USER=campus_it -e MYSQL_PASSWORD="$PASSWORD" mysql:8.0.36
+            -e MYSQL_USER=campus_it -e MYSQL_PASSWORD="$PASSWORD" mysql:8.0.36@sha256:a532724022429812ec797c285c1b540a644c15e248579c6bfdf12a8fbaab4964
           READY=0
           for attempt in $(seq 1 90); do
             if docker exec -e MYSQL_PWD="$PASSWORD" campus-mysql-it mysql -ucampus_it \
@@ -150,7 +152,7 @@ jobs:
         run: python scripts/verify-migrations.py
       - name: Start isolated Redis for shared-session and resource tests
         run: |
-          docker run -d --name campus-redis-it -p 127.0.0.1:16379:6379 redis:7.4.2-alpine
+          docker run -d --name campus-redis-it -p 127.0.0.1:16379:6379 redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952
           READY=0
           for attempt in $(seq 1 30); do
             if [ "$(docker exec campus-redis-it redis-cli ping 2>/dev/null)" = PONG ]; then READY=1; break; fi
@@ -172,6 +174,12 @@ jobs:
           export EVALUATION_SAFETY_OUTPUT="${{ github.workspace }}/var/evaluation/safety"
           bash ./mvnw -B -ntp clean verify
           python scripts/generate-release-manifest.py --require-full-tests
+      - name: Inventory tested application dependencies
+        run: python scripts/generate-sbom.py
+      - name: Local AI HTTP capacity and restart
+        run: python scripts/verify-ai-load-isolated.py
+      - name: Isolated Qdrant recovery
+        run: python scripts/verify-qdrant-isolated.py
       - name: Java domain / HTTP / Python AI tests
         run: |
           python scripts/verify-domain.py
@@ -191,7 +199,7 @@ jobs:
           set -euo pipefail
           docker run -d --name campus-mysql-e2e -p 127.0.0.1:3308:3306 \
             -e MYSQL_RANDOM_ROOT_PASSWORD=yes -e MYSQL_DATABASE=campus_shopping \
-            -e MYSQL_USER=campus_app -e MYSQL_PASSWORD="$DB_PASSWORD" mysql:8.0.36
+            -e MYSQL_USER=campus_app -e MYSQL_PASSWORD="$DB_PASSWORD" mysql:8.0.36@sha256:a532724022429812ec797c285c1b540a644c15e248579c6bfdf12a8fbaab4964
           READY=0
           for attempt in $(seq 1 90); do
             if docker exec -e MYSQL_PWD="$DB_PASSWORD" campus-mysql-e2e mysql -ucampus_app \
@@ -261,6 +269,7 @@ jobs:
             docs/testing/evidence/**
             var/ci/*.log
             var/evaluation/**
+            var/supply-chain/**
       - name: Stop isolated services
         if: always()
         shell: bash

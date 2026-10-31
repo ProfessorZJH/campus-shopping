@@ -1,0 +1,42 @@
+{
+  "registry": "docker.io",
+  "verifiedAt": "2026-10-31",
+  "verification": "Registry manifest bytes SHA-256 matched Docker-Content-Digest; Linux amd64 entry checked. This is content integrity, not publisher signature verification.",
+  "images": {
+    "node:22.16.0-bookworm-slim": {
+      "digest": "sha256:048ed02c5fd52e86fda6fbd2f6a76cf0d4492fd6c6fee9e2c463ed5108da0e34",
+      "registryUrl": "https://registry-1.docker.io/v2/library/node/manifests/22.16.0-bookworm-slim",
+      "verifiedBytes": 6490
+    },
+    "maven:3.9.9-eclipse-temurin-17": {
+      "digest": "sha256:f58d59b6273e785ac0a4477f6e9b5ba1d7731c75b906c0f7b34076f1851318cc",
+      "registryUrl": "https://registry-1.docker.io/v2/library/maven/manifests/3.9.9-eclipse-temurin-17",
+      "verifiedBytes": 7858
+    },
+    "eclipse-temurin:17-jre-jammy": {
+      "digest": "sha256:c35794d1348777e6bc310b9b7f420098ef8f37e988199549b545fded79a895a2",
+      "registryUrl": "https://registry-1.docker.io/v2/library/eclipse-temurin/manifests/17-jre-jammy",
+      "verifiedBytes": 6560
+    },
+    "python:3.11-slim-bookworm": {
+      "digest": "sha256:94a8fee35252d06ab75856f15f12c7bae67b10e8a6da93c7fded82b2610926cd",
+      "registryUrl": "https://registry-1.docker.io/v2/library/python/manifests/3.11-slim-bookworm",
+      "verifiedBytes": 6546
+    },
+    "mysql:8.0.36": {
+      "digest": "sha256:a532724022429812ec797c285c1b540a644c15e248579c6bfdf12a8fbaab4964",
+      "registryUrl": "https://registry-1.docker.io/v2/library/mysql/manifests/8.0.36",
+      "verifiedBytes": 2605
+    },
+    "redis:7.4.2-alpine": {
+      "digest": "sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952",
+      "registryUrl": "https://registry-1.docker.io/v2/library/redis/manifests/7.4.2-alpine",
+      "verifiedBytes": 10245
+    },
+    "qdrant/qdrant:v1.13.4": {
+      "digest": "sha256:318c11b72aaab96b36e9662ad244de3cabd0653a1b942d4e8191f18296c81af0",
+      "registryUrl": "https://registry-1.docker.io/v2/qdrant/qdrant/manifests/v1.13.4",
+      "verifiedBytes": 1609
+    }
+  }
+}
