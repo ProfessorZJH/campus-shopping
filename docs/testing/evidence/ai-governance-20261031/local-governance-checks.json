@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "allPullRequestsTriggerAcceptance": true,
+  "mainPushesTriggerAcceptance": true,
+  "existingJobsUnchanged": true,
+  "requiredChecks": [
+    {
+      "context": "Maven / MySQL / FastAPI / Browser E2E",
+      "integration_id": 15368
+    },
+    {
+      "context": "Chromium contract / current",
+      "integration_id": 15368
+    },
+    {
+      "context": "Chromium contract / legacy",
+      "integration_id": 15368
+    },
+    {
+      "context": "Actual delivery images / isolated Compose transaction chain",
+      "integration_id": 15368
+    }
+  ],
+  "requiredApprovals": 0,
+  "bypassActors": [],
+  "workflowShellBlocksParsed": 23,
+  "rejectedUnsafeFixtures": [
+    "AGENTS-only PR skipped by paths",
+    "mandatory job skipped/changed",
+    "unknown check name",
+    "unknown check producer",
+    "owner bypass",
+    "wrong protected branch"
+  ],
+  "AGENTSLines": 40,
+  "remoteRulesetAppliedByThisCheck": false
+}
