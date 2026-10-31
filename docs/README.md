@@ -4,6 +4,8 @@
 
 | 阅读目标 | 文档 |
 |---|---|
+| **开发操作入口与AI流程** | [AGENTS](../AGENTS.md)、[AI开发流程](development/AI-WORKFLOW.md)、[Java/DDD规范](development/JAVA-STYLE.md) |
+| **PR与主线质量门禁** | [PR模板](../.github/pull_request_template.md)、[main保护与核验](development/REPOSITORY-GATES.md) |
 | **当前 SDD-12 Redis 交付** | [规格与验收矩阵](specs/SDD-REDIS-12.md)、[主线整合实际验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[配置、升级与回退](operations/REDIS-12-runbook.md) |
 | **PR #11 审查收口** | [文档状态与Python资源容量修复、复现及65项回归](testing/REDIS-REVIEW-FOLLOWUP-20261031.md) |
 | 前序代码与文档整改 | [DDD 对照结论](architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)、[最终修复与复验](testing/DDD-DOC-CLOSURE-20261030.md) |

@@ -3,39 +3,8 @@ name: Campus Shopping - Real Acceptance
 on:
   push:
     branches: [main]
-    paths:
-      - 'pom.xml'
-      - 'campus-shopping-*/**'
-      - 'ai-service/**'
-      - 'frontend/**'
-      - 'scripts/**'
-      - 'docs/**'
-      - 'compose.yml'
-      - 'Dockerfile'
-      - '.dockerignore'
-      - '.github/workflows/**'
-      - '.mvn/**'
-      - 'mvnw*'
-      - '.gitattributes'
-      - '.python-version'
-      - '.env.example'
-  pull_request:
-    paths:
-      - 'pom.xml'
-      - 'campus-shopping-*/**'
-      - 'ai-service/**'
-      - 'frontend/**'
-      - 'scripts/**'
-      - 'docs/**'
-      - 'compose.yml'
-      - 'Dockerfile'
-      - '.dockerignore'
-      - '.github/workflows/**'
-      - '.mvn/**'
-      - 'mvnw*'
-      - '.gitattributes'
-      - '.python-version'
-      - '.env.example'
+  # 必需检查必须覆盖所有PR，AGENTS/模板等改动也不能因路径过滤永久Pending。
+  pull_request: {}
   workflow_dispatch:
     inputs:
       external_ai:
