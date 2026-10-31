@@ -11,7 +11,7 @@ public interface IAfterSaleService extends IAfterSaleQueryService {
     AfterSaleVO afterSaleForUpdate(String order);
     AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason);
     void requirePickupAllowed(String order);
-    void rejectAfterSale(String order, String reason);
+    boolean rejectAfterSale(String order, String reason);
     void appeal(OrderAggregate order, String buyer);
     void approveAfterSale(String order, String reason);
 }

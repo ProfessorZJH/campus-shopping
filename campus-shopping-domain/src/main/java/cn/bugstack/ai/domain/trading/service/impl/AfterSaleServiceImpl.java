@@ -49,10 +49,11 @@ public class AfterSaleServiceImpl implements IAfterSaleService {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void rejectAfterSale(String order, String reason) {
+    public boolean rejectAfterSale(String order, String reason) {
         AfterSaleAggregate aggregate = requireAfterSale(order);
-        aggregate.reject(reason);
+        if (!aggregate.reject(reason)) return false;
         saveAfterSale(aggregate);
+        return true;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

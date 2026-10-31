@@ -44,8 +44,9 @@ public class MerchantAdmissionCaseImpl implements IMerchantAdmissionCase {
     public void setActive(String actor, String id, boolean active, String reason) {
         access.requireAdmin(actor);
         reason = Checks.text(reason, "状态变更原因", 500);
-        merchants.changeStatus(id, active);
-        access.audit(actor, active ? "MERCHANT_RESUMED" : "MERCHANT_SUSPENDED", id, id, reason);
+        if (merchants.changeStatus(id, active)) {
+            access.audit(actor, active ? "MERCHANT_RESUMED" : "MERCHANT_SUSPENDED", id, id, reason);
+        }
     }
 
     /** 停用商户也可以纠正经营资料；这不会恢复其新交易资格。 */
