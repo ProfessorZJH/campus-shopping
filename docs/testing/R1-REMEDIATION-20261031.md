@@ -17,6 +17,7 @@
 - Maven 定向 `ContextPathQuotaTest,ProductionSecurityGuardTest,ProtocolBoundaryTest`：6 PASS，0 skipped。验证根路径及 `/campus` 下四类额度、商户身份、不安全生产参数拒绝。
 - `verify-release.py`、`verify-java-readability.py`：PASS（静态检查）。首次 Maven 参数被 PowerShell 拆分后未执行测试，修正参数引用后上述结果通过。
 - Docker Engine 本机不可用：本地镜像链路 NOT_RUN，交由对应提交的远端 CI 验收。
+- 首次远端完整运行 `41197651139`：快速、完整 Maven/MySQL/FastAPI/浏览器及两个 Chromium 契约任务通过；镜像链路失败。日志确认本地覆盖使用 dev profile 后仅监听容器内回环地址，宿主映射端口请求被重置，0项HTTP执行。修复为容器内 `SERVER_ADDRESS=0.0.0.0`，宿主仍只映射127.0.0.1。须以修复后的完整运行替代首次失败，不能计为全部通过。
 - 已创建 GitHub Environment `external-ai` 并设置唯一部署分支 `main`。新名 `LIVE_NVIDIA_API_KEY/LIVE_XFYUN_API_KEY/LIVE_MILVUS_URI/LIVE_MILVUS_TOKEN` 尚未配置，不执行真实供应商请求。现有仓库密钥未读取、未删除或轮换，迁移仍需维护者操作。
 - 生产可信 CA、反向代理及公网部署 NOT_RUN；本次不修改现有服务和业务数据库。
 
