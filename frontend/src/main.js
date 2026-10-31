@@ -1,3 +1,4 @@
+import { modal } from './services/modal.js';
 import Icon from './components/Icon.js';
 import Home from './pages/Home.js';
 import Guide from './pages/Guide.js';
@@ -62,11 +63,12 @@ const App = {
       if (!preview && !store.route.startsWith('/merchant')) loadSession();
     });
     onUnmounted(() => window.removeEventListener('hashchange', setRoute));
-    watch(() => store.route, refresh);
+    watch([() => store.route, () => store.identityVersion], refresh);
     return { store, current };
   },
-  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><component :is="current" :key="store.route"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
+  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><component :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
 };
 const app = createApp(App);
 app.component('Icon', Icon);
+app.directive('modal', modal);
 app.mount('#app');

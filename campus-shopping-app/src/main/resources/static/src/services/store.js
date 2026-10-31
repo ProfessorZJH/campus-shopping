@@ -1,5 +1,5 @@
 import { DEMO_MERCHANTS, DEMO_CATEGORIES, DEMO_PRODUCTS, DEMO_STOCKS } from './demo.js';
-import { api, query } from './api.js';
+import { api, query, resetCsrf, onUnauthorized } from './api.js';
 const { reactive } = Vue;
 export const preview =
   window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get('demo') === '1';
@@ -11,6 +11,7 @@ export const store = reactive({
   categories: [],
   stocks: [],
   user: null,
+  identityVersion: 0,
   workspace: null,
   merchantId: '',
   loading: false,
@@ -35,11 +36,15 @@ export const shopName = (id) =>
 let toastTimer;
 let merchantEpoch = 0,
   sessionEpoch = 0,
-  publicEpoch = 0;
+  publicEpoch = 0,
+  baseEpoch = 0;
 const actorId = (user) => user?.userId || user?.id || user?.username || '';
 // 身份和商户发生切换后，任何已发出的旧请求都不得回写新上下文。
 export function replaceSession(user) {
+  resetCsrf();
+  ++store.identityVersion;
   ++sessionEpoch;
+  ++baseEpoch;
   ++merchantEpoch;
   ++publicEpoch;
   store.user = user;
@@ -51,7 +56,27 @@ export function replaceSession(user) {
   store.conversationId = '';
   store.messages = [];
   store.proposal = null;
+  store.cartCount = 0;
+  store.photo = null;
+  store.loading = false;
+  store.error = '';
+  store.toast = '';
+  clearTimeout(toastTimer);
+  store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
+  store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
 }
+onUnauthorized(() => {
+  if (
+    store.user ||
+    store.workspace ||
+    store.merchantId ||
+    store.messages.length ||
+    store.proposal ||
+    store.photo ||
+    store.cartCount
+  )
+    replaceSession(null);
+});
 export function switchMerchantContext(id) {
   if (id === store.merchantId) return;
   ++merchantEpoch;
@@ -87,7 +112,8 @@ export function setRoute() {
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 }
 export async function loadPublic() {
-  const stamp = ++publicEpoch;
+  const stamp = ++publicEpoch,
+    baseStamp = ++baseEpoch;
   store.error = '';
   store.loading = true;
   if (preview) {
@@ -100,8 +126,14 @@ export async function loadPublic() {
   }
   try {
     const [merchants, categories, products] = await Promise.all([
-      api('/merchants/public/page' + query({ page: 1, size: 50 })),
-      api('/categories'),
+      api('/merchants/public/page' + query({ page: 1, size: 50 })).then((result) => {
+        if (baseStamp === baseEpoch) store.merchants = result?.items || [];
+        return result;
+      }),
+      api('/categories').then((result) => {
+        if (baseStamp === baseEpoch) store.categories = result || [];
+        return result;
+      }),
       api('/products/page' + query({ page: 1, size: 20 })),
     ]);
     if (!publicSearchCurrent(stamp)) return;
@@ -143,7 +175,7 @@ export async function loadMerchant({
     store.route.startsWith('/merchant') &&
     store.merchantId === requested &&
     actorId(store.user) === originalActor;
-  if (!['PUBLISHED', 'DRAFT', 'UNPUBLISHED'].includes(status)) status = '';
+  if (!['PUBLISHED', 'DRAFT', 'UNPUBLISHED', 'LOW_STOCK'].includes(status)) status = '';
   store.error = '';
   store.loading = true;
   if (preview) {
@@ -236,9 +268,10 @@ export async function loadSession() {
     if (
       stamp === sessionEpoch &&
       actorId(store.user) === original &&
+      store.user &&
       (err.status === 401 || err.code === 'A0004')
     )
-      store.user = null;
+      replaceSession(null);
   }
 }
 /** Workspace permissions are a display hint only; every Java write endpoint rechecks current DB state. */

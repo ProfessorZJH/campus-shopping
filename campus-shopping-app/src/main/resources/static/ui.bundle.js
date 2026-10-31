@@ -1,5 +1,43 @@
 (function() {
   "use strict";
+  const modal = {
+    mounted(element, binding) {
+      const previous = document.activeElement;
+      const dialog = element.querySelector('[role="dialog"]') || element.querySelector("form") || element;
+      dialog.setAttribute("role", "dialog");
+      dialog.setAttribute("aria-modal", "true");
+      dialog.tabIndex = -1;
+      const controls = () => [...dialog.querySelectorAll('button,input,select,textarea,a[href],[tabindex="0"]')].filter(
+        (el) => !el.disabled && el.getClientRects().length
+      );
+      const keydown = (event) => {
+        var _a;
+        if (event.key === "Escape") {
+          event.preventDefault();
+          (_a = binding.value) == null ? void 0 : _a.call(binding);
+        }
+        if (event.key !== "Tab") return;
+        const list = controls(), first = list[0] || dialog, last = list.at(-1) || dialog;
+        if (event.shiftKey && (document.activeElement === first || document.activeElement === dialog)) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialog)) {
+          event.preventDefault();
+          first.focus();
+        }
+      };
+      element.addEventListener("keydown", keydown);
+      (controls()[0] || dialog).focus();
+      element.__disposeModal = () => {
+        element.removeEventListener("keydown", keydown);
+        if (previous == null ? void 0 : previous.isConnected) previous.focus();
+      };
+    },
+    unmounted(element) {
+      var _a;
+      (_a = element.__disposeModal) == null ? void 0 : _a.call(element);
+    }
+  };
   const paths = {
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
@@ -255,12 +293,22 @@
   const PREFIX = "/api/v1";
   let csrf = null;
   let csrfPromise = null;
+  let generation = 0;
+  let unauthorized = () => {
+  };
+  function onUnauthorized(handler) {
+    unauthorized = handler;
+  }
+  function requireIdentity(stamp) {
+    if (stamp !== generation) throw fail("登录身份已变化，请重试", "IDENTITY_CHANGED", 0);
+  }
   function fail(message, code, status) {
     return Object.assign(new Error(message), { code, status });
   }
   async function getCsrf() {
     if (csrfPromise) return csrfPromise;
-    csrfPromise = (async () => {
+    const stamp = generation;
+    const pending = (async () => {
       const r = await fetch(PREFIX + "/auth/csrf", { credentials: "same-origin", cache: "no-store" });
       let j;
       try {
@@ -269,19 +317,24 @@
         throw fail("安全令牌响应异常", "RESPONSE", r.status);
       }
       if (!r.ok || j.code !== "0000") throw fail("无法获取安全令牌", j.code, r.status);
+      requireIdentity(stamp);
       csrf = j.data;
       return csrf;
     })();
+    csrfPromise = pending;
     try {
-      return await csrfPromise;
+      return await pending;
     } finally {
-      csrfPromise = null;
+      if (csrfPromise === pending) csrfPromise = null;
     }
   }
   async function api(path, { method = "GET", body, signal, key, retry = true } = {}) {
+    const stamp = generation;
+    const payload = body === void 0 ? void 0 : JSON.stringify(body);
     const headers = { Accept: "application/json" };
     if (method !== "GET") {
       const token = csrf || await getCsrf();
+      requireIdentity(stamp);
       headers[token.headerName] = token.token;
     }
     if (body !== void 0) headers["Content-Type"] = "application/json";
@@ -291,7 +344,7 @@
       r = await fetch(PREFIX + path, {
         method,
         headers,
-        body: body === void 0 ? void 0 : JSON.stringify(body),
+        body: payload,
         signal,
         credentials: "same-origin",
         cache: "no-store"
@@ -306,15 +359,25 @@
     } catch {
       throw fail("服务器响应格式异常", "RESPONSE", r.status);
     }
+    requireIdentity(stamp);
+    if (r.status === 401 || j.code === "A0004") unauthorized();
     if (r.status === 403 && j.code === "A0005" && retry) {
       csrf = null;
       await getCsrf();
-      return api(path, { method, body, signal, key, retry: false });
+      requireIdentity(stamp);
+      return api(path, {
+        method,
+        body: payload === void 0 ? void 0 : JSON.parse(payload),
+        signal,
+        key,
+        retry: false
+      });
     }
     if (!r.ok || j.code !== "0000") throw fail(j.info || "请求失败", j.code || "HTTP", r.status);
     return j.data;
   }
   const resetCsrf = () => {
+    ++generation;
     csrf = null;
     csrfPromise = null;
   };
@@ -332,6 +395,7 @@
     categories: [],
     stocks: [],
     user: null,
+    identityVersion: 0,
     workspace: null,
     merchantId: "",
     loading: false,
@@ -360,10 +424,13 @@
     return ((_a = store.merchants.find((m) => m.merchantId === id)) == null ? void 0 : _a.name) || "校内商户";
   };
   let toastTimer;
-  let merchantEpoch = 0, sessionEpoch = 0, publicEpoch = 0;
+  let merchantEpoch = 0, sessionEpoch = 0, publicEpoch = 0, baseEpoch = 0;
   const actorId = (user) => (user == null ? void 0 : user.userId) || (user == null ? void 0 : user.id) || (user == null ? void 0 : user.username) || "";
   function replaceSession(user) {
+    resetCsrf();
+    ++store.identityVersion;
     ++sessionEpoch;
+    ++baseEpoch;
     ++merchantEpoch;
     ++publicEpoch;
     store.user = user;
@@ -375,7 +442,19 @@
     store.conversationId = "";
     store.messages = [];
     store.proposal = null;
+    store.cartCount = 0;
+    store.photo = null;
+    store.loading = false;
+    store.error = "";
+    store.toast = "";
+    clearTimeout(toastTimer);
+    store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
+    store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
   }
+  onUnauthorized(() => {
+    if (store.user || store.workspace || store.merchantId || store.messages.length || store.proposal || store.photo || store.cartCount)
+      replaceSession(null);
+  });
   function switchMerchantContext(id) {
     if (id === store.merchantId) return;
     ++merchantEpoch;
@@ -410,7 +489,7 @@
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }
   async function loadPublic() {
-    const stamp = ++publicEpoch;
+    const stamp = ++publicEpoch, baseStamp = ++baseEpoch;
     store.error = "";
     store.loading = true;
     if (preview) {
@@ -423,8 +502,14 @@
     }
     try {
       const [merchants, categories, products] = await Promise.all([
-        api("/merchants/public/page" + query({ page: 1, size: 50 })),
-        api("/categories"),
+        api("/merchants/public/page" + query({ page: 1, size: 50 })).then((result) => {
+          if (baseStamp === baseEpoch) store.merchants = (result == null ? void 0 : result.items) || [];
+          return result;
+        }),
+        api("/categories").then((result) => {
+          if (baseStamp === baseEpoch) store.categories = result || [];
+          return result;
+        }),
         api("/products/page" + query({ page: 1, size: 20 }))
       ]);
       if (!publicSearchCurrent(stamp)) return;
@@ -459,7 +544,7 @@
     const requested = store.merchantId, originalActor = actorId(store.user);
     let target = requested;
     const current = () => stamp === merchantEpoch && authStamp === sessionEpoch && store.route.startsWith("/merchant") && store.merchantId === requested && actorId(store.user) === originalActor;
-    if (!["PUBLISHED", "DRAFT", "UNPUBLISHED"].includes(status)) status = "";
+    if (!["PUBLISHED", "DRAFT", "UNPUBLISHED", "LOW_STOCK"].includes(status)) status = "";
     store.error = "";
     store.loading = true;
     if (preview) {
@@ -530,8 +615,8 @@
       const user = await api("/auth/me");
       if (stamp === sessionEpoch && actorId(store.user) === original) store.user = user;
     } catch (err) {
-      if (stamp === sessionEpoch && actorId(store.user) === original && (err.status === 401 || err.code === "A0004"))
-        store.user = null;
+      if (stamp === sessionEpoch && actorId(store.user) === original && store.user && (err.status === 401 || err.code === "A0004"))
+        replaceSession(null);
     }
   }
   function hasPermission(code, merchantId = store.merchantId) {
@@ -548,6 +633,84 @@
     if (!preview) return false;
     notify("设计预览：不会修改服务器数据");
     return true;
+  }
+  function requestScope() {
+    let alive = true, epoch = 0, controller;
+    Vue.onBeforeUnmount(() => {
+      alive = false;
+      controller == null ? void 0 : controller.abort();
+    });
+    function capture() {
+      const identity = store.identityVersion, route = store.route, merchant = store.merchantId;
+      return () => alive && identity === store.identityVersion && route === store.route && merchant === store.merchantId;
+    }
+    function begin() {
+      controller == null ? void 0 : controller.abort();
+      controller = new AbortController();
+      const stamp = ++epoch, valid = capture();
+      return { signal: controller.signal, current: () => stamp === epoch && valid() };
+    }
+    return { capture, begin };
+  }
+  const stateName = {
+    PENDING_PAYMENT: "待付款",
+    PAID: "已支付",
+    COMPLETED: "已完成",
+    CANCELED: "已取消",
+    REFUNDED: "已退款",
+    PENDING: "待审核",
+    SUBMITTED: "待审核",
+    APPROVED: "已通过",
+    REJECTED: "已驳回",
+    DISPUTED: "平台介入",
+    REQUESTED: "待处理",
+    PREPARING: "备货中",
+    READY: "待自提",
+    CREATED: "待备货",
+    WAIT_PREP: "待备货",
+    ACTIVE: "营业中",
+    INACTIVE: "已停用",
+    PUBLISHED: "已发布",
+    UNPUBLISHED: "已下架",
+    DRAFT: "草稿",
+    INDEXING: "索引中",
+    FAILED: "失败",
+    MERCHANT_INTERNAL: "商户内部",
+    PLATFORM_INTERNAL: "平台内部",
+    PUBLIC: "公开"
+  };
+  function label(s) {
+    return stateName[s] || s || "—";
+  }
+  function dateTime(v) {
+    if (!v) return "—";
+    const d = new Date(v);
+    return isNaN(d) ? String(v) : d.toLocaleString("zh-CN", {
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  }
+  function safeDecodeId(v) {
+    try {
+      return decodeURIComponent(v || "");
+    } catch {
+      return "";
+    }
+  }
+  function pathId(v) {
+    return encodeURIComponent(String(v || ""));
+  }
+  function coverSku(skuId) {
+    const p = store.products.find((p2) => {
+      var _a;
+      return (_a = p2.skus) == null ? void 0 : _a.some((s) => s.skuId === skuId);
+    });
+    return (p == null ? void 0 : p.imageUrl) || "";
+  }
+  function positiveInt(v, max = 99) {
+    return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
   const { ref: ref$g } = Vue;
   const AuthDialog = {
@@ -602,10 +765,11 @@
       return { mode, username, password, displayName, busy, error, submit };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, vModelText: _vModelText, withDirectives: _withDirectives, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, vModelText: _vModelText, withDirectives: _withDirectives, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers, resolveDirective: _resolveDirective } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
-        return _openBlock(), _createElementBlock("div", {
+        const _directive_modal = _resolveDirective("modal");
+        return _withDirectives((_openBlock(), _createElementBlock("div", {
           class: "ui-overlay",
           onClick: _withModifiers(($event) => _ctx.$emit("close"), ["self"])
         }, [
@@ -702,7 +866,9 @@
               }
             }, _toDisplayString(_ctx.mode === "login" ? "没有账号？注册" : "已有账号？登录"), 9, ["onClick"])
           ], 40, ["onSubmit"])
-        ], 8, ["onClick"]);
+        ], 8, ["onClick"])), [
+          [_directive_modal, () => _ctx.$emit("close")]
+        ]);
       };
     })()
   };
@@ -885,7 +1051,7 @@
       };
     })()
   };
-  const { ref: ref$d, computed: computed$e, onUnmounted: onUnmounted$a } = Vue;
+  const { ref: ref$d, computed: computed$e } = Vue;
   const staticCategoryArt = {
     food: "./images/category-snacks.webp",
     drink: "./images/category-drinks.webp",
@@ -897,6 +1063,7 @@
     name: "Home",
     components: { ConsumerShell, ProductImage },
     setup() {
+      const scope = requestScope();
       const keywords = ["泡面", "牛奶", "水果", "文具", "纸巾", "零食"];
       const search = ref$d("");
       const category = ref$d("");
@@ -938,6 +1105,7 @@
       const currentShop = (p) => store.merchants.find((m) => m.merchantId === p.merchantId) || {};
       async function loadSearch() {
         if (preview) return;
+        const current = scope.capture();
         const stamp = beginPublicSearch();
         const params = {
           q: search.value,
@@ -951,7 +1119,7 @@
         store.error = "";
         try {
           const result = await api("/products/page" + query(params));
-          if (!publicSearchCurrent(stamp)) return;
+          if (!(current() && publicSearchCurrent(stamp))) return;
           store.products = result.items || [];
           store.publicPage = {
             page: result.page,
@@ -960,12 +1128,11 @@
             hasNext: result.hasNext
           };
         } catch (err) {
-          if (publicSearchCurrent(stamp)) store.error = err.message;
+          if (current() && publicSearchCurrent(stamp)) store.error = err.message;
         } finally {
-          if (publicSearchCurrent(stamp)) store.loading = false;
+          if (current() && publicSearchCurrent(stamp)) store.loading = false;
         }
       }
-      onUnmounted$a(() => beginPublicSearch());
       function setCategory(c) {
         category.value = category.value === c ? "" : c;
         page.value = 1;
@@ -988,27 +1155,32 @@
           notify("请选择有效规格");
           return;
         }
+        const valid = scope.capture(), productId = selected.value.productId, skuId = chosen.value.skuId, requested = Number(count.value);
         saving.value = true;
         try {
-          const current = await api("/products/" + encodeURIComponent(selected.value.productId));
-          const real = current.skus.find((s) => s.skuId === chosenSku.value);
-          if (!real || real.status !== "ACTIVE" || Number(real.available) < count.value)
+          const current = await api("/products/" + pathId(productId));
+          const real = current.skus.find((s) => s.skuId === skuId);
+          if (!real || real.status !== "ACTIVE" || Number(real.available) < requested)
             throw new Error("库存不足或商品不可售");
+          if (!valid()) return;
           const cart = await api("/cart");
+          if (!valid()) return;
           const old = (cart || []).find((i) => i.skuId === real.skuId);
-          const n = Number((old == null ? void 0 : old.quantity) || 0) + count.value;
+          const n = Number((old == null ? void 0 : old.quantity) || 0) + requested;
           if (n > 99) throw new Error("单个规格最多购买99件");
           await api("/cart", { method: "PUT", body: { skuId: real.skuId, quantity: n } });
+          if (!valid()) return;
           selected.value = null;
           notify("已加入购物车");
         } catch (err) {
-          notify(err.status === 401 ? "请先登录后再加购" : err.message);
+          if (valid()) notify(err.status === 401 ? "请先登录后再加购" : err.message);
         } finally {
-          saving.value = false;
+          if (valid()) saving.value = false;
         }
       }
       return {
         store,
+        pathId,
         go,
         money,
         skuOf,
@@ -1042,11 +1214,12 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createCommentVNode: _createCommentVNode, createBlock: _createBlock, withModifiers: _withModifiers, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createCommentVNode: _createCommentVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
+        const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
           default: _withCtx(() => [
             _createElementVNode("section", { class: "search-section" }, [
@@ -1348,13 +1521,10 @@
                         _createElementVNode("span", { class: "floating-pickup" }, "可自提")
                       ]),
                       _createElementVNode("div", { class: "home-product-info" }, [
-                        _createElementVNode(
-                          "strong",
-                          null,
-                          _toDisplayString(p.title),
-                          1
-                          /* TEXT */
-                        ),
+                        _createElementVNode("button", {
+                          class: "home-product-open",
+                          onClick: _withModifiers(($event) => _ctx.showDetail(p), ["stop"])
+                        }, _toDisplayString(p.title), 9, ["onClick"]),
                         _createElementVNode("div", { class: "product-minor" }, [
                           _createElementVNode(
                             "span",
@@ -1430,7 +1600,7 @@
                 }, "下一页", 8, ["disabled", "onClick"])
               ])) : _createCommentVNode("v-if", true)
             ]),
-            _ctx.selected ? (_openBlock(), _createElementBlock("div", {
+            _ctx.selected ? _withDirectives((_openBlock(), _createElementBlock("div", {
               key: 0,
               class: "ui-overlay",
               onClick: _withModifiers(($event) => _ctx.selected = null, ["self"])
@@ -1490,7 +1660,7 @@
                 _createElementVNode("button", {
                   class: "more-product-detail",
                   onClick: ($event) => {
-                    _ctx.go("/product/" + _ctx.selected.productId);
+                    _ctx.go("/product/" + _ctx.pathId(_ctx.selected.productId));
                     _ctx.selected = null;
                   }
                 }, [
@@ -1509,9 +1679,10 @@
                       return _openBlock(), _createElementBlock("button", {
                         key: sku2.skuId,
                         class: _normalizeClass({ active: _ctx.chosenSku === sku2.skuId }),
-                        disabled: sku2.status !== "ACTIVE" || sku2.available === 0,
+                        "aria-pressed": _ctx.chosenSku === sku2.skuId,
+                        disabled: _ctx.saving || sku2.status !== "ACTIVE" || sku2.available === 0,
                         onClick: ($event) => _ctx.chosenSku = sku2.skuId
-                      }, _toDisplayString(sku2.specKey), 11, ["disabled", "onClick"]);
+                      }, _toDisplayString(sku2.specKey), 11, ["aria-pressed", "disabled", "onClick"]);
                     }),
                     128
                     /* KEYED_FRAGMENT */
@@ -1522,13 +1693,14 @@
                   _createElementVNode("div", null, [
                     _createElementVNode("button", {
                       onClick: ($event) => _ctx.count = Math.max(1, _ctx.count - 1),
-                      "aria-label": "减少数量"
+                      "aria-label": "减少数量",
+                      disabled: _ctx.saving
                     }, [
                       _createVNode(_component_Icon, {
                         name: "minus",
                         size: 17
                       })
-                    ], 8, ["onClick"]),
+                    ], 8, ["onClick", "disabled"]),
                     _createElementVNode(
                       "b",
                       null,
@@ -1539,7 +1711,7 @@
                     _createElementVNode("button", {
                       onClick: ($event) => _ctx.count = Math.min(99, Number(_ctx.chosen.available || 0), _ctx.count + 1),
                       "aria-label": "增加数量",
-                      disabled: _ctx.count >= Number(_ctx.chosen.available || 0)
+                      disabled: _ctx.saving || _ctx.count >= Number(_ctx.chosen.available || 0)
                     }, [
                       _createVNode(_component_Icon, {
                         name: "plus",
@@ -1554,7 +1726,9 @@
                   onClick: _ctx.addCart
                 }, _toDisplayString(_ctx.saving ? "加入中…" : "加入购物车"), 9, ["disabled", "onClick"])
               ], 8, ["aria-label"])
-            ], 8, ["onClick"])) : _createCommentVNode("v-if", true)
+            ], 8, ["onClick"])), [
+              [_directive_modal, () => _ctx.selected = null]
+            ]) : _createCommentVNode("v-if", true)
           ]),
           _: 1
           /* STABLE */
@@ -2240,13 +2414,27 @@
     props: {
       modelValue: { type: String, default: "" },
       merchantId: { type: String, required: true },
+      contextKey: { type: String, default: "" },
       disabled: { type: Boolean, default: false },
       demo: { type: Boolean, default: false }
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit }) {
       const busy = ref$b(false), error = ref$b(""), notice = ref$b(""), localUrl = ref$b("");
-      let alive = true;
+      const scope = requestScope();
+      let alive = true, epoch = 0;
+      watch$b(
+        () => [props.merchantId, props.contextKey],
+        () => {
+          ++epoch;
+          release();
+          busy.value = false;
+          error.value = "";
+          notice.value = "";
+          emit("busy", false);
+          emit("invalid", false);
+        }
+      );
       function release() {
         if (localUrl.value) {
           URL.revokeObjectURL(localUrl.value);
@@ -2298,6 +2486,8 @@
           notice.value = "仅本地预览，未上传";
           return;
         }
+        const mid = props.merchantId, context = props.contextKey, stamp = ++epoch, valid = scope.capture();
+        const current = () => alive && valid() && stamp === epoch && mid === props.merchantId && context === props.contextKey;
         busy.value = true;
         emit("busy", true);
         try {
@@ -2307,24 +2497,25 @@
             reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
             reader.readAsDataURL(file);
           });
-          const result = await api("/merchants/" + encodeURIComponent(props.merchantId) + "/images", {
+          if (!current()) return;
+          const result = await api("/merchants/" + encodeURIComponent(mid) + "/images", {
             method: "POST",
             body: { filename: file.name, contentType: file.type, base64 }
           });
           if (!/^\/media\/[a-f0-9-]+\.png$/.test((result == null ? void 0 : result.url) || ""))
             throw new Error("图片上传返回地址无效");
-          if (!alive) return;
+          if (!current()) return;
           emit("update:modelValue", result.url);
           notice.value = "上传成功，保存商品后生效";
           release();
         } catch (err) {
-          if (alive) {
+          if (current()) {
             error.value = err.message || "上传失败";
             emit("invalid", true);
             release();
           }
         } finally {
-          if (alive) {
+          if (current()) {
             busy.value = false;
             emit("busy", false);
           }
@@ -2440,7 +2631,7 @@
       const pendingReplenishKey = ref$a("");
       const pendingReplenishPayload = ref$a("");
       const saving = ref$a(false);
-      const modal = ref$a("");
+      const modal2 = ref$a("");
       const activePriceSku = ref$a(null);
       const newPrice = ref$a("");
       const form = ref$a({
@@ -2514,8 +2705,7 @@
         low: items2.value.filter((p) => p.status === "PUBLISHED" && available(p) < 20).length
       }));
       const filtered = computed$b(() => {
-        if (!preview)
-          return status.value === "low" ? items2.value.filter((p) => p.status === "PUBLISHED" && available(p) < 20) : items2.value;
+        if (!preview) return items2.value;
         const q = search.value.trim().toLowerCase();
         return items2.value.filter(
           (p) => (!q || p.title.toLowerCase().includes(q) || p.skus.some(
@@ -2572,7 +2762,7 @@
           size: 9,
           q: search.value,
           category: category.value,
-          status: status.value === "low" ? "" : status.value,
+          status: status.value === "low" ? "LOW_STOCK" : status.value,
           sort: sort.value
         });
       }
@@ -2597,12 +2787,12 @@
           imageUrl: "",
           skus: [{ specKey: "默认规格", price: "" }]
         };
-        modal.value = "create";
+        modal2.value = "create";
       }
       function openPrice(sku2) {
         activePriceSku.value = sku2;
         newPrice.value = (Number(sku2.priceCent) / 100).toFixed(2);
-        modal.value = "price";
+        modal2.value = "price";
       }
       function yuanToCent(value) {
         const v = String(value).trim();
@@ -2649,7 +2839,7 @@
               skus
             }
           });
-          modal.value = "";
+          modal2.value = "";
           await loadMerchant();
           notify("商品已创建（草稿）");
         } catch (e) {
@@ -2666,7 +2856,7 @@
       }
       function openAddSku() {
         skuForm.value = { specKey: "", price: "" };
-        modal.value = "addSku";
+        modal2.value = "addSku";
       }
       async function addSku() {
         if (previewGuard() || saving.value || !owned.value || !selected.value) return;
@@ -2688,7 +2878,7 @@
             "/merchants/" + encodeURIComponent(store.merchantId) + "/products/" + encodeURIComponent(selected.value.productId) + "/skus",
             { method: "POST", body: { specKey, priceCent } }
           );
-          modal.value = "";
+          modal2.value = "";
           await loadMerchant();
           notify("规格已新增");
           drawerTab.value = "sku";
@@ -2795,7 +2985,7 @@
             "/merchants/" + encodeURIComponent(store.merchantId) + "/products/" + encodeURIComponent(selected.value.productId) + "/skus/" + encodeURIComponent(activePriceSku.value.skuId) + "/price",
             { method: "PUT", body: { priceCent: cent, expectedVersion: selected.value.version } }
           );
-          modal.value = "";
+          modal2.value = "";
           await loadMerchant();
           notify("售价已更新");
         } catch (err) {
@@ -2846,7 +3036,7 @@
         drawerTab,
         adjustment,
         saving,
-        modal,
+        modal: modal2,
         activePriceSku,
         newPrice,
         form,
@@ -2876,13 +3066,14 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode, toDisplayString: _toDisplayString, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, normalizeStyle: _normalizeStyle, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, createBlock: _createBlock } = Vue;
+      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode, toDisplayString: _toDisplayString, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, normalizeStyle: _normalizeStyle, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, createBlock: _createBlock, resolveDirective: _resolveDirective } = Vue;
       return function render(_ctx, _cache) {
         var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ProductImageField = _resolveComponent("ProductImageField");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
+        const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
           _createElementVNode("aside", { class: "merchant-sidebar" }, [
             _createElementVNode("button", {
@@ -3335,7 +3526,7 @@
                               _Fragment,
                               null,
                               _renderList(_ctx.pageRows, (p) => {
-                                var _a2, _b2, _c2;
+                                var _a2, _b2, _c2, _d2;
                                 return _openBlock(), _createElementBlock("tr", {
                                   key: p.productId,
                                   class: _normalizeClass({ "row-selected": ((_a2 = _ctx.selected) == null ? void 0 : _a2.productId) === p.productId }),
@@ -3348,13 +3539,11 @@
                                         alt: p.title
                                       }, null, 8, ["src", "alt"]),
                                       _createElementVNode("div", null, [
-                                        _createElementVNode(
-                                          "strong",
-                                          null,
-                                          _toDisplayString(p.title),
-                                          1
-                                          /* TEXT */
-                                        ),
+                                        _createElementVNode("button", {
+                                          class: "row-link",
+                                          onClick: _withModifiers(($event) => _ctx.choose(p), ["stop"]),
+                                          "aria-pressed": ((_b2 = _ctx.selected) == null ? void 0 : _b2.productId) === p.productId
+                                        }, _toDisplayString(p.title), 9, ["onClick", "aria-pressed"]),
                                         _createElementVNode(
                                           "span",
                                           null,
@@ -3377,7 +3566,7 @@
                                       _createElementVNode(
                                         "small",
                                         null,
-                                        _toDisplayString(((_b2 = _ctx.skuOf(p).skuId) == null ? void 0 : _b2.startsWith("preview")) ? "SKU-" + p.productId.slice(-2) : ((_c2 = _ctx.skuOf(p).skuId) == null ? void 0 : _c2.slice(-8)) || "—"),
+                                        _toDisplayString(((_c2 = _ctx.skuOf(p).skuId) == null ? void 0 : _c2.startsWith("preview")) ? "SKU-" + p.productId.slice(-2) : ((_d2 = _ctx.skuOf(p).skuId) == null ? void 0 : _d2.slice(-8)) || "—"),
                                         1
                                         /* TEXT */
                                       )
@@ -3571,8 +3760,12 @@
                         key: 0,
                         class: "inspector-body"
                       }, [
-                        _createElementVNode("label", { class: "field-label" }, "选择规格"),
+                        _createElementVNode("label", {
+                          class: "field-label",
+                          for: "merchant-field-1"
+                        }, "选择规格"),
                         _withDirectives(_createElementVNode("select", {
+                          id: "merchant-field-1",
                           "onUpdate:modelValue": ($event) => _ctx.selectedSkuId = $event,
                           class: "inspector-select"
                         }, [
@@ -3705,16 +3898,24 @@
                         key: 1,
                         class: "inspector-body"
                       }, [
-                        _createElementVNode("label", { class: "field-label" }, "商品名称"),
+                        _createElementVNode("label", {
+                          class: "field-label",
+                          for: "merchant-field-2"
+                        }, "商品名称"),
                         _withDirectives(_createElementVNode("input", {
+                          id: "merchant-field-2",
                           class: "admin-input",
                           "onUpdate:modelValue": ($event) => _ctx.info.title = $event,
                           disabled: !_ctx.owned
                         }, null, 8, ["onUpdate:modelValue", "disabled"]), [
                           [_vModelText, _ctx.info.title]
                         ]),
-                        _createElementVNode("label", { class: "field-label" }, "商品分类"),
+                        _createElementVNode("label", {
+                          class: "field-label",
+                          for: "merchant-field-3"
+                        }, "商品分类"),
                         _withDirectives(_createElementVNode("select", {
+                          id: "merchant-field-3",
                           class: "admin-input",
                           "onUpdate:modelValue": ($event) => _ctx.info.categoryCode = $event,
                           disabled: !_ctx.owned
@@ -3734,8 +3935,12 @@
                         ], 8, ["onUpdate:modelValue", "disabled"]), [
                           [_vModelSelect, _ctx.info.categoryCode]
                         ]),
-                        _createElementVNode("label", { class: "field-label" }, "商品描述"),
+                        _createElementVNode("label", {
+                          class: "field-label",
+                          for: "merchant-field-4"
+                        }, "商品描述"),
                         _withDirectives(_createElementVNode("textarea", {
+                          id: "merchant-field-4",
                           class: "admin-input",
                           rows: "4",
                           "onUpdate:modelValue": ($event) => _ctx.info.description = $event,
@@ -3746,6 +3951,7 @@
                         _createElementVNode("label", { class: "field-label" }, "商品主图"),
                         (_openBlock(), _createBlock(_component_ProductImageField, {
                           key: "edit-" + _ctx.selected.productId,
+                          "context-key": _ctx.selected.productId,
                           modelValue: _ctx.info.imageUrl,
                           "onUpdate:modelValue": ($event) => _ctx.info.imageUrl = $event,
                           "merchant-id": _ctx.store.merchantId,
@@ -3753,7 +3959,7 @@
                           disabled: !_ctx.owned || _ctx.saving,
                           onBusy: ($event) => _ctx.editImageUploading = $event,
                           onInvalid: ($event) => _ctx.editImageInvalid = $event
-                        }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "demo", "disabled", "onBusy", "onInvalid"])),
+                        }, null, 8, ["context-key", "modelValue", "onUpdate:modelValue", "merchant-id", "demo", "disabled", "onBusy", "onInvalid"])),
                         _createElementVNode("button", {
                           class: "teal-button inspector-submit",
                           onClick: _ctx.saveInfo,
@@ -3858,7 +4064,7 @@
             onClose: ($event) => _ctx.loginOpen = false,
             onSuccess: _ctx.loadMerchant
           }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true),
-          _ctx.modal ? (_openBlock(), _createElementBlock("div", {
+          _ctx.modal ? _withDirectives((_openBlock(), _createElementBlock("div", {
             key: 1,
             class: "ui-overlay",
             onClick: _withModifiers(($event) => _ctx.modal = "", ["self"])
@@ -3883,8 +4089,12 @@
                   })
                 ], 8, ["onClick"])
               ]),
-              _createElementVNode("label", { class: "field-label" }, "商品名称"),
+              _createElementVNode("label", {
+                class: "field-label",
+                for: "merchant-field-5"
+              }, "商品名称"),
               _withDirectives(_createElementVNode("input", {
+                id: "merchant-field-5",
                 class: "admin-input",
                 maxlength: "100",
                 "onUpdate:modelValue": ($event) => _ctx.form.title = $event,
@@ -3893,8 +4103,12 @@
               }, null, 8, ["onUpdate:modelValue"]), [
                 [_vModelText, _ctx.form.title]
               ]),
-              _createElementVNode("label", { class: "field-label" }, "分类"),
+              _createElementVNode("label", {
+                class: "field-label",
+                for: "merchant-field-6"
+              }, "分类"),
               _withDirectives(_createElementVNode("select", {
+                id: "merchant-field-6",
                 "onUpdate:modelValue": ($event) => _ctx.form.categoryCode = $event,
                 class: "admin-input"
               }, [
@@ -3968,8 +4182,12 @@
                 }),
                 _createTextVNode("添加规格")
               ], 8, ["disabled", "onClick"]),
-              _createElementVNode("label", { class: "field-label" }, "描述"),
+              _createElementVNode("label", {
+                class: "field-label",
+                for: "merchant-field-7"
+              }, "描述"),
               _withDirectives(_createElementVNode("textarea", {
+                id: "merchant-field-7",
                 class: "admin-input",
                 rows: "3",
                 "onUpdate:modelValue": ($event) => _ctx.form.description = $event,
@@ -4017,8 +4235,12 @@
                   })
                 ], 8, ["onClick"])
               ]),
-              _createElementVNode("label", { class: "field-label" }, "规格名称"),
+              _createElementVNode("label", {
+                class: "field-label",
+                for: "merchant-field-8"
+              }, "规格名称"),
               _withDirectives(_createElementVNode("input", {
+                id: "merchant-field-8",
                 class: "admin-input",
                 maxlength: "100",
                 "onUpdate:modelValue": ($event) => _ctx.skuForm.specKey = $event,
@@ -4027,8 +4249,12 @@
               }, null, 8, ["onUpdate:modelValue"]), [
                 [_vModelText, _ctx.skuForm.specKey]
               ]),
-              _createElementVNode("label", { class: "field-label" }, "售价（元）"),
+              _createElementVNode("label", {
+                class: "field-label",
+                for: "merchant-field-9"
+              }, "售价（元）"),
               _withDirectives(_createElementVNode("input", {
+                id: "merchant-field-9",
                 class: "admin-input",
                 "onUpdate:modelValue": ($event) => _ctx.skuForm.price = $event,
                 inputmode: "decimal",
@@ -4076,8 +4302,12 @@
                 1
                 /* TEXT */
               ),
-              _createElementVNode("label", { class: "field-label" }, "售价（元）"),
+              _createElementVNode("label", {
+                class: "field-label",
+                for: "merchant-field-10"
+              }, "售价（元）"),
               _withDirectives(_createElementVNode("input", {
+                id: "merchant-field-10",
                 class: "admin-input",
                 "onUpdate:modelValue": ($event) => _ctx.newPrice = $event,
                 inputmode: "decimal",
@@ -4098,71 +4328,21 @@
                 }, "保存售价", 8, ["disabled"])
               ])
             ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
-          ], 8, ["onClick"])) : _createCommentVNode("v-if", true)
+          ], 8, ["onClick"])), [
+            [_directive_modal, () => _ctx.modal = ""]
+          ]) : _createCommentVNode("v-if", true)
         ]);
       };
     })()
   };
-  const stateName = {
-    PENDING_PAYMENT: "待付款",
-    PAID: "已支付",
-    COMPLETED: "已完成",
-    CANCELED: "已取消",
-    REFUNDED: "已退款",
-    PENDING: "待审核",
-    SUBMITTED: "待审核",
-    APPROVED: "已通过",
-    REJECTED: "已驳回",
-    DISPUTED: "平台介入",
-    REQUESTED: "待处理",
-    PREPARING: "备货中",
-    READY: "待自提",
-    CREATED: "待备货",
-    WAIT_PREP: "待备货",
-    ACTIVE: "营业中",
-    INACTIVE: "已停用",
-    PUBLISHED: "已发布",
-    UNPUBLISHED: "已下架",
-    DRAFT: "草稿",
-    INDEXING: "索引中",
-    FAILED: "失败",
-    MERCHANT_INTERNAL: "商户内部",
-    PLATFORM_INTERNAL: "平台内部",
-    PUBLIC: "公开"
-  };
-  function label(s) {
-    return stateName[s] || s || "—";
-  }
-  function dateTime(v) {
-    if (!v) return "—";
-    const d = new Date(v);
-    return isNaN(d) ? String(v) : d.toLocaleString("zh-CN", {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit"
-    });
-  }
-  function pathId(v) {
-    return encodeURIComponent(String(v || ""));
-  }
-  function coverSku(skuId) {
-    const p = store.products.find((p2) => {
-      var _a;
-      return (_a = p2.skus) == null ? void 0 : _a.some((s) => s.skuId === skuId);
-    });
-    return (p == null ? void 0 : p.imageUrl) || "";
-  }
-  function positiveInt(v, max = 99) {
-    return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
-  }
   const { ref: ref$9, computed: computed$a, onMounted: onMounted$a, watch: watch$9 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
     components: { ConsumerShell, ProductImage },
     setup() {
+      const scope = requestScope();
       const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), error = ref$9("");
-      const id = computed$a(() => decodeURIComponent(store.route.split("/")[2] || ""));
+      const id = computed$a(() => safeDecodeId(store.route.split("/")[2] || ""));
       const sku2 = computed$a(
         () => {
           var _a, _b;
@@ -4176,6 +4356,7 @@
         }) || {}
       );
       async function load() {
+        const request = scope.begin();
         const target = id.value;
         product.value = null;
         error.value = "";
@@ -4183,12 +4364,14 @@
           product.value = store.products.find((p) => p.productId === target) || null;
         } else {
           try {
-            const p = await api("/products/" + pathId(target));
-            if (target === id.value) product.value = p;
+            if (!target) throw Error("无效商品地址");
+            const p = await api("/products/" + pathId(target), { signal: request.signal });
+            if (request.current()) product.value = p;
           } catch (e) {
-            if (target === id.value) error.value = e.message;
+            if (request.current()) error.value = e.message;
           }
         }
+        if (!request.current()) return;
         chosen.value = skuOf(product.value).skuId || "";
         count.value = 1;
       }
@@ -4197,25 +4380,42 @@
       async function add() {
         var _a;
         if (preview || busy.value || !((_a = sku2.value) == null ? void 0 : _a.skuId)) return;
+        const current = scope.capture(), productId = product.value.productId, skuId = sku2.value.skuId, requested = Number(count.value);
         busy.value = true;
         try {
-          const actual = await api("/products/" + pathId(product.value.productId));
-          const real = actual.skus.find((s) => s.skuId === sku2.value.skuId);
-          if (actual.status !== "PUBLISHED" || !real || real.status !== "ACTIVE" || Number(real.available) < count.value)
+          const actual = await api("/products/" + pathId(productId));
+          const real = actual.skus.find((s) => s.skuId === skuId);
+          if (actual.status !== "PUBLISHED" || !real || real.status !== "ACTIVE" || Number(real.available) < requested)
             throw Error("商品库存或状态已变化");
+          if (!current()) return;
           const list = await api("/cart");
+          if (!current()) return;
           const old = list.find((i) => i.skuId === real.skuId);
-          const quantity = Number((old == null ? void 0 : old.quantity) || 0) + count.value;
+          const quantity = Number((old == null ? void 0 : old.quantity) || 0) + requested;
           if (quantity > 99) throw Error("单个规格最多99件");
           await api("/cart", { method: "PUT", body: { skuId: real.skuId, quantity } });
-          notify("已加入购物车");
+          if (current()) notify("已加入购物车");
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
-      return { product, sku: sku2, chosen, count, busy, error, preview, store, go, money, merchant, add };
+      return {
+        product,
+        sku: sku2,
+        chosen,
+        count,
+        busy,
+        error,
+        preview,
+        store,
+        go,
+        money,
+        merchant,
+        add,
+        pathId
+      };
     },
     render: (() => {
       const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock } = Vue;
@@ -4294,7 +4494,7 @@
                 _createElementVNode("div", { class: "detail-card" }, [
                   _createElementVNode("button", {
                     class: "detail-merchant",
-                    onClick: ($event) => _ctx.go("/shops/" + _ctx.product.merchantId)
+                    onClick: ($event) => _ctx.go("/shops/" + _ctx.pathId(_ctx.product.merchantId))
                   }, [
                     _createElementVNode("span", { class: "merchant-logo" }, [
                       _createVNode(_component_Icon, { name: "store" })
@@ -4328,12 +4528,13 @@
                         return _openBlock(), _createElementBlock("button", {
                           key: s.skuId,
                           class: _normalizeClass({ active: _ctx.sku.skuId === s.skuId }),
-                          disabled: s.status !== "ACTIVE" || !s.available,
+                          "aria-pressed": _ctx.sku.skuId === s.skuId,
+                          disabled: _ctx.busy || s.status !== "ACTIVE" || !s.available,
                           onClick: ($event) => {
                             _ctx.chosen = s.skuId;
                             _ctx.count = 1;
                           }
-                        }, _toDisplayString(s.specKey), 11, ["disabled", "onClick"]);
+                        }, _toDisplayString(s.specKey), 11, ["aria-pressed", "disabled", "onClick"]);
                       }),
                       128
                       /* KEYED_FRAGMENT */
@@ -4353,13 +4554,14 @@
                     _createElementVNode("div", null, [
                       _createElementVNode("button", {
                         "aria-label": "减少",
+                        disabled: _ctx.busy,
                         onClick: ($event) => _ctx.count = Math.max(1, _ctx.count - 1)
                       }, [
                         _createVNode(_component_Icon, {
                           name: "minus",
                           size: 16
                         })
-                      ], 8, ["onClick"]),
+                      ], 8, ["disabled", "onClick"]),
                       _createElementVNode(
                         "b",
                         null,
@@ -4369,7 +4571,7 @@
                       ),
                       _createElementVNode("button", {
                         "aria-label": "增加",
-                        disabled: _ctx.count >= Math.min(99, Number(_ctx.sku.available || 0)),
+                        disabled: _ctx.busy || _ctx.count >= Math.min(99, Number(_ctx.sku.available || 0)),
                         onClick: ($event) => _ctx.count++
                       }, [
                         _createVNode(_component_Icon, {
@@ -4418,7 +4620,7 @@
     setup() {
       const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
       const id = computed$9(
-        () => decodeURIComponent(store.route.slice("/shops/".length).split("/")[0] || "")
+        () => safeDecodeId(store.route.slice("/shops/".length).split("/")[0] || "")
       );
       let loadVersion = 0;
       async function load() {
@@ -4847,7 +5049,8 @@
     name: "Cart",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7("");
+      const scope = requestScope();
+      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7("");
       const groups = computed$8(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
@@ -4871,35 +5074,45 @@
       };
       async function load() {
         var _a;
+        const request = scope.begin();
+        loading.value = true;
         error.value = "";
         if (preview) {
           items2.value = DEMO_CART.map((i) => ({ ...i }));
         } else {
           try {
-            items2.value = await api("/cart") || [];
+            const result = await api("/cart", { signal: request.signal });
+            if (!request.current()) return;
+            items2.value = result || [];
           } catch (e) {
+            if (!request.current()) return;
             error.value = e.message;
             items2.value = [];
           }
         }
+        if (!request.current()) return;
+        loading.value = false;
         if (!items2.value.some((i) => i.merchantId === merchantId.value))
           merchantId.value = ((_a = items2.value[0]) == null ? void 0 : _a.merchantId) || "";
       }
       onMounted$8(load);
       async function quantity(i, d) {
-        if (preview) return;
+        if (preview || busy.value || loading.value) return;
+        const current = scope.capture();
         const n = Number(i.quantity) + d;
         if (n > 99 || n < 0) return;
         busy.value = true;
         try {
           if (n) await api("/cart", { method: "PUT", body: { skuId: i.skuId, quantity: n } });
           else await api("/cart/" + pathId(i.skuId), { method: "DELETE" });
+          if (!current()) return;
           orderKey.value = "";
+          fingerprint.value = "";
           await load();
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       async function checkout() {
@@ -4918,25 +5131,28 @@
           }))
         };
         const next = JSON.stringify(body);
-        if (fingerprint.value !== next) {
+        if (!orderKey.value || fingerprint.value !== next) {
           orderKey.value = idempotency();
           fingerprint.value = next;
         }
+        const current = scope.capture();
         busy.value = true;
         try {
           const created = await api("/orders", { method: "POST", body, key: orderKey.value });
+          if (!current()) return;
           orderKey.value = "";
           fingerprint.value = "";
           notify("订单已创建");
           go("/orders/" + pathId(created.orderId));
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       return {
         items: items2,
+        loading,
         merchantId,
         busy,
         error,
@@ -4953,7 +5169,7 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -4969,24 +5185,30 @@
               ], 8, ["onClick"]),
               _createElementVNode("b", null, "购物车"),
               _createElementVNode("button", {
+                disabled: _ctx.busy || _ctx.loading,
                 onClick: _ctx.load,
                 "aria-label": "刷新"
               }, [
                 _createVNode(_component_Icon, { name: "refresh" })
-              ], 8, ["onClick"])
+              ], 8, ["disabled", "onClick"])
             ]),
+            _ctx.loading ? (_openBlock(), _createElementBlock("div", {
+              key: 0,
+              role: "status",
+              class: "inline-loading"
+            }, "正在加载购物车…")) : _createCommentVNode("v-if", true),
             _ctx.error ? (_openBlock(), _createElementBlock(
               "div",
               {
-                key: 0,
+                key: 1,
                 class: "inline-error"
               },
               _toDisplayString(_ctx.error),
               1
               /* TEXT */
             )) : _createCommentVNode("v-if", true),
-            !_ctx.items.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
-              key: 1,
+            !_ctx.loading && !_ctx.items.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
+              key: 2,
               class: "mobile-empty"
             }, [
               _createVNode(_component_Icon, {
@@ -5012,6 +5234,8 @@
                   [
                     _createElementVNode("button", {
                       class: "cart-store-head",
+                      disabled: _ctx.busy || _ctx.loading,
+                      "aria-pressed": _ctx.merchantId === g.id,
                       onClick: ($event) => _ctx.merchantId = g.id
                     }, [
                       _createElementVNode(
@@ -5043,7 +5267,7 @@
                         1
                         /* TEXT */
                       )
-                    ], 8, ["onClick"]),
+                    ], 8, ["disabled", "aria-pressed", "onClick"]),
                     (_openBlock(true), _createElementBlock(
                       _Fragment,
                       null,
@@ -5128,11 +5352,11 @@
               /* KEYED_FRAGMENT */
             )),
             _ctx.groups.length > 1 ? (_openBlock(), _createElementBlock("div", {
-              key: 2,
+              key: 3,
               class: "mobile-hint"
             }, "一次结算一家商户，请选择要下单的店铺。")) : _createCommentVNode("v-if", true),
             _ctx.items.length ? (_openBlock(), _createElementBlock("div", {
-              key: 3,
+              key: 4,
               class: "mobile-summary"
             }, [
               _createElementVNode("div", null, [
@@ -5161,7 +5385,7 @@
               ])
             ])) : _createCommentVNode("v-if", true),
             _ctx.items.length ? (_openBlock(), _createElementBlock("div", {
-              key: 4,
+              key: 5,
               class: "mobile-checkout-bar"
             }, [
               _createElementVNode("div", null, [
@@ -5192,9 +5416,10 @@
     name: "Orders",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
+      const scope = requestScope();
+      const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
       const id = computed$7(
-        () => store.route.startsWith("/orders/") ? decodeURIComponent(store.route.slice("/orders/".length)) : null
+        () => store.route.startsWith("/orders/") ? safeDecodeId(store.route.slice("/orders/".length)) : null
       );
       const filtered = computed$7(
         () => orders.value.filter((o) => tab.value === "ALL" || o.status === tab.value)
@@ -5204,6 +5429,9 @@
         return (record == null ? void 0 : record.merchantName) || ((_a = store.merchants.find((m) => m.merchantId === id2)) == null ? void 0 : _a.name) || "校内商户";
       };
       async function load() {
+        const request = scope.begin();
+        const target = id.value;
+        loading.value = true;
         error.value = "";
         token.value = null;
         refundOpen.value = false;
@@ -5211,21 +5439,28 @@
           orders.value = DEMO_ORDERS.map((x) => ({ ...x }));
           pageInfo.value = { total: orders.value.length, hasNext: false };
           detail.value = id.value ? orders.value.find((o) => o.orderId === id.value) || null : null;
+          loading.value = false;
           return;
         }
         try {
+          if (store.route.startsWith("/orders/") && !target) throw Error("无效订单地址");
           if (id.value) {
-            detail.value = await api("/orders/" + pathId(id.value));
+            const result = await api("/orders/" + pathId(target), { signal: request.signal });
+            if (request.current()) detail.value = result;
           } else {
             detail.value = null;
             const result = await api(
-              "/orders/page" + query({ page: page.value, size: 10, state: tab.value === "ALL" ? "" : tab.value })
+              "/orders/page" + query({ page: page.value, size: 10, state: tab.value === "ALL" ? "" : tab.value }),
+              { signal: request.signal }
             );
+            if (!request.current()) return;
             orders.value = result.items || [];
             pageInfo.value = result;
           }
         } catch (e) {
-          error.value = e.message;
+          if (request.current()) error.value = e.message;
+        } finally {
+          if (request.current()) loading.value = false;
         }
       }
       onMounted$7(load);
@@ -5234,13 +5469,16 @@
         if (!id.value) load();
       });
       async function action(endpoint, method = "POST", body) {
+        var _a;
         if (preview || busy.value || !detail.value) return;
+        const current = scope.capture(), orderId = detail.value.orderId;
         busy.value = true;
         try {
-          const result = await api("/orders/" + pathId(detail.value.orderId) + endpoint, {
+          const result = await api("/orders/" + pathId(orderId) + endpoint, {
             method,
             body
           });
+          if (!current() || ((_a = detail.value) == null ? void 0 : _a.orderId) !== orderId) return;
           if (endpoint === "/pickup-token") {
             token.value = result;
           } else {
@@ -5248,9 +5486,9 @@
             await load();
           }
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       async function submitRefund() {
@@ -5258,7 +5496,9 @@
           notify("请输入退款原因");
           return;
         }
+        const current = scope.capture();
         await action("/refunds", "POST", { reason: reason.value.trim() });
+        if (!current()) return;
         refundOpen.value = false;
         reason.value = "";
       }
@@ -5274,6 +5514,8 @@
       return {
         store,
         orders,
+        loading,
+        pathId,
         detail,
         filtered,
         token,
@@ -5329,10 +5571,15 @@
                   _createVNode(_component_Icon, { name: "refresh" })
                 ], 8, ["onClick"])
               ]),
+              _ctx.loading ? (_openBlock(), _createElementBlock("div", {
+                key: 0,
+                class: "inline-loading",
+                role: "status"
+              }, "正在加载订单…")) : _createCommentVNode("v-if", true),
               _ctx.error ? (_openBlock(), _createElementBlock(
                 "div",
                 {
-                  key: 0,
+                  key: 1,
                   class: "inline-error"
                 },
                 _toDisplayString(_ctx.error),
@@ -5341,7 +5588,7 @@
               )) : _createCommentVNode("v-if", true),
               !_ctx.id ? (_openBlock(), _createElementBlock(
                 _Fragment,
-                { key: 1 },
+                { key: 2 },
                 [
                   _createElementVNode("div", { class: "order-tabs" }, [
                     (_openBlock(), _createElementBlock(
@@ -5361,7 +5608,7 @@
                       /* STABLE_FRAGMENT */
                     ))
                   ]),
-                  !_ctx.filtered.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
+                  !_ctx.loading && !_ctx.filtered.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
                     key: 0,
                     class: "mobile-empty"
                   }, [
@@ -5379,7 +5626,7 @@
                       return _openBlock(), _createElementBlock("button", {
                         class: "consumer-order-card",
                         key: o.orderId,
-                        onClick: ($event) => _ctx.go("/orders/" + o.orderId)
+                        onClick: ($event) => _ctx.go("/orders/" + _ctx.pathId(o.orderId))
                       }, [
                         _createElementVNode("div", { class: "order-card-head" }, [
                           _createElementVNode("span", null, [
@@ -5485,7 +5732,7 @@
                 /* STABLE_FRAGMENT */
               )) : _ctx.detail ? (_openBlock(), _createElementBlock(
                 _Fragment,
-                { key: 2 },
+                { key: 3 },
                 [
                   _createElementVNode(
                     "section",
@@ -5739,8 +5986,12 @@
                     class: "detail-card",
                     onSubmit: _withModifiers(_ctx.submitRefund, ["prevent"])
                   }, [
-                    _createElementVNode("label", { class: "field-label" }, "退款原因"),
+                    _createElementVNode("label", {
+                      class: "field-label",
+                      for: "orders-field-1"
+                    }, "退款原因"),
                     _withDirectives(_createElementVNode("textarea", {
+                      id: "orders-field-1",
                       class: "admin-input",
                       "onUpdate:modelValue": ($event) => _ctx.reason = $event,
                       maxlength: "500",
@@ -5758,10 +6009,10 @@
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              )) : _ctx.id && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
-                key: 3,
+              )) : _ctx.id && !_ctx.error && !_ctx.loading ? (_openBlock(), _createElementBlock("div", {
+                key: 4,
                 class: "mobile-empty"
-              }, "加载订单中…")) : _createCommentVNode("v-if", true)
+              }, "未找到订单")) : _createCommentVNode("v-if", true)
             ];
           }),
           _: 1
@@ -5775,8 +6026,9 @@
     name: "Account",
     components: { ConsumerShell, AuthDialog },
     setup() {
+      const scope = requestScope();
       const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
-      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5("");
+      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5(""), fingerprint = ref$5("");
       let loadEpoch = 0;
       const form = ref$5({
         merchantName: "",
@@ -5835,36 +6087,44 @@
       onUnmounted$6(() => ++loadEpoch);
       async function submit() {
         if (preview || busy.value) return;
-        const f = form.value;
+        const f = { ...form.value }, current = scope.capture();
         if (!Object.values(f).every((x) => String(x).trim())) {
           notify("请补全申请资料");
           return;
         }
-        if (!key.value) key.value = idempotency();
+        const next = JSON.stringify(f);
+        if (!key.value || fingerprint.value !== next) {
+          key.value = idempotency();
+          fingerprint.value = next;
+        }
         busy.value = true;
         try {
           await api("/merchant-applications", { method: "POST", body: { ...f }, key: key.value });
+          if (!current()) return;
           key.value = "";
+          fingerprint.value = "";
           notify("申请已提交");
           await load();
-          go("/account");
+          if (current()) go("/account");
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       async function accept(i) {
         if (preview || busy.value) return;
+        const current = scope.capture();
         busy.value = true;
         try {
           await api("/invitations/" + encodeURIComponent(i.id) + "/accept", { method: "POST" });
+          if (!current()) return;
           notify("邀请已接受");
           await load();
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       return {
@@ -6051,7 +6311,7 @@
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  !_ctx.apps.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
+                  !_ctx.loading && !_ctx.apps.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
                     key: 1,
                     class: "mobile-empty"
                   }, "暂无入驻记录")) : _createCommentVNode("v-if", true),
@@ -6225,7 +6485,7 @@
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                !_ctx.invitations.length ? (_openBlock(), _createElementBlock("div", {
+                !_ctx.loading && !_ctx.error && !_ctx.invitations.length ? (_openBlock(), _createElementBlock("div", {
                   key: 0,
                   class: "mobile-empty"
                 }, "暂无邀请")) : _createCommentVNode("v-if", true),
@@ -6559,6 +6819,7 @@
     name: "MerchantOps",
     components: { BackofficeShell, ProductImage },
     setup() {
+      const scope = requestScope();
       const route = computed$4(() => store.route);
       const title = computed$4(() => names[route.value] || "经营概览");
       const filter = ref$3("");
@@ -6616,6 +6877,17 @@
       );
       let loadVersion = 0;
       function clearPrivateViews() {
+        token.value = "";
+        reason.value = "";
+        filter.value = "";
+        q.value = "";
+        sku2.value = "";
+        amount.value = 1;
+        inviteUser.value = "";
+        replenishKey.value = "";
+        replenishFingerprint.value = "";
+        profile.value = { name: "", storeName: "", location: "" };
+        roles.value = [];
         stats.value = null;
         orders.value = [];
         afterSales.value = [];
@@ -6742,18 +7014,20 @@
       });
       async function perform(url, body, method = "POST", key) {
         if (!canAct.value) return;
+        const current = scope.capture();
         busy.value = true;
         try {
           await api(url, { method, body, key });
+          if (!current()) return false;
           notify("操作成功");
           token.value = "";
           await load();
-          return true;
+          return current();
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
           return false;
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       function midPath() {
@@ -6795,8 +7069,8 @@
       }
       async function invite() {
         if (!canOwner.value || !inviteUser.value.trim()) return;
-        await perform(midPath() + "/invitations", { username: inviteUser.value.trim() });
-        inviteUser.value = "";
+        if (await perform(midPath() + "/invitations", { username: inviteUser.value.trim() }))
+          inviteUser.value = "";
       }
       async function revoke(m) {
         if (!canOwner.value || m.role === "OWNER") return;
@@ -6818,8 +7092,7 @@
           notify("请完善门店资料");
           return;
         }
-        await perform(midPath() + "/profile", v, "PUT");
-        await loadMerchant();
+        if (await perform(midPath() + "/profile", { ...v }, "PUT")) await loadMerchant();
       }
       async function decisionAction(s, approved) {
         if (!hasPermission("aftersale.review") || !s) return;
@@ -7217,8 +7490,12 @@
                       _createElementVNode("form", {
                         onSubmit: _withModifiers(_ctx.replenish, ["prevent"])
                       }, [
-                        _createElementVNode("label", { class: "field-label" }, "SKU"),
+                        _createElementVNode("label", {
+                          class: "field-label",
+                          for: "merchantops-field-1"
+                        }, "SKU"),
                         _withDirectives(_createElementVNode("select", {
+                          id: "merchantops-field-1",
                           class: "admin-input",
                           "onUpdate:modelValue": ($event) => _ctx.sku = $event,
                           required: ""
@@ -7242,8 +7519,12 @@
                         ], 8, ["onUpdate:modelValue"]), [
                           [_vModelSelect, _ctx.sku]
                         ]),
-                        _createElementVNode("label", { class: "field-label" }, "补货数量"),
+                        _createElementVNode("label", {
+                          class: "field-label",
+                          for: "merchantops-field-2"
+                        }, "补货数量"),
                         _withDirectives(_createElementVNode("input", {
+                          id: "merchantops-field-2",
                           type: "number",
                           class: "admin-input",
                           "onUpdate:modelValue": ($event) => _ctx.amount = $event,
@@ -7370,20 +7651,18 @@
                           _Fragment,
                           null,
                           _renderList(_ctx.visibleOrders, (o) => {
-                            var _a2, _b2, _c2;
+                            var _a2, _b2, _c2, _d2;
                             return _openBlock(), _createElementBlock("tr", {
                               key: o.orderId,
                               class: _normalizeClass({ active: ((_a2 = _ctx.selectedOrder) == null ? void 0 : _a2.orderId) === o.orderId }),
                               onClick: ($event) => _ctx.picked = o.orderId
                             }, [
                               _createElementVNode("td", null, [
-                                _createElementVNode(
-                                  "strong",
-                                  null,
-                                  "#" + _toDisplayString(o.orderId),
-                                  1
-                                  /* TEXT */
-                                ),
+                                _createElementVNode("button", {
+                                  class: "row-link",
+                                  onClick: _withModifiers(($event) => _ctx.picked = o.orderId, ["stop"]),
+                                  "aria-pressed": ((_b2 = _ctx.selectedOrder) == null ? void 0 : _b2.orderId) === o.orderId
+                                }, "#" + _toDisplayString(o.orderId), 9, ["onClick", "aria-pressed"]),
                                 _createElementVNode(
                                   "small",
                                   null,
@@ -7395,7 +7674,7 @@
                               _createElementVNode(
                                 "td",
                                 null,
-                                _toDisplayString(((_c2 = (_b2 = o.items) == null ? void 0 : _b2[0]) == null ? void 0 : _c2.title) || "—"),
+                                _toDisplayString(((_d2 = (_c2 = o.items) == null ? void 0 : _c2[0]) == null ? void 0 : _d2.title) || "—"),
                                 1
                                 /* TEXT */
                               ),
@@ -7531,8 +7810,12 @@
                       class: "verify-form",
                       onSubmit: _withModifiers(($event) => _ctx.verify(_ctx.selectedOrder), ["prevent"])
                     }, [
-                      _createElementVNode("label", { class: "field-label" }, "买家自提令牌"),
+                      _createElementVNode("label", {
+                        class: "field-label",
+                        for: "merchantops-field-3"
+                      }, "买家自提令牌"),
                       _withDirectives(_createElementVNode("textarea", {
+                        id: "merchantops-field-3",
                         class: "admin-input",
                         "onUpdate:modelValue": ($event) => _ctx.token = $event,
                         rows: "3",
@@ -7558,7 +7841,7 @@
                   _createElementVNode(
                     "span",
                     null,
-                    _toDisplayString(_ctx.afterSales.length) + " 条",
+                    _toDisplayString(_ctx.preview ? _ctx.afterSales.length : _ctx.pageInfo.total) + " 条",
                     1
                     /* TEXT */
                   )
@@ -7730,8 +8013,12 @@
                   _createElementVNode("form", {
                     onSubmit: _withModifiers(_ctx.invite, ["prevent"])
                   }, [
-                    _createElementVNode("label", { class: "field-label" }, "已注册用户名"),
+                    _createElementVNode("label", {
+                      class: "field-label",
+                      for: "merchantops-field-4"
+                    }, "已注册用户名"),
                     _withDirectives(_createElementVNode("input", {
+                      id: "merchantops-field-4",
                       class: "admin-input",
                       "onUpdate:modelValue": ($event) => _ctx.inviteUser = $event,
                       required: "",
@@ -7839,13 +8126,23 @@
     name: "Knowledge",
     components: { BackofficeShell },
     setup() {
+      const scope = requestScope();
       const role = computed$3(() => store.route.startsWith("/admin") ? "admin" : "merchant");
       const bases = ref$2([]), docs = ref$2([]), active = ref$2(""), selected = ref$2(null), text = ref$2("");
       const error = ref$2(""), busy = ref$2(false), newBase = ref$2(false), uploading = ref$2(false), baseName = ref$2(""), visibility = ref$2("PUBLIC"), title = ref$2(""), file = ref$2(null);
       const docPage = ref$2(1), docInfo = ref$2({ total: 0, hasNext: false });
-      const versionRoot = ref$2(null);
+      const versionRoot = ref$2(null), versionBase = ref$2(""), fileVersion = ref$2(0);
+      function clearUpload() {
+        versionRoot.value = null;
+        versionBase.value = "";
+        title.value = "";
+        file.value = null;
+        uploading.value = false;
+        ++fileVersion.value;
+      }
+      watch$3(active, clearUpload);
       const current = computed$3(() => bases.value.find((b) => b.id === active.value));
-      let baseEpoch = 0, docEpoch = 0, readEpoch = 0;
+      let baseEpoch2 = 0, docEpoch = 0, readEpoch = 0;
       const canRead = computed$3(
         () => {
           var _a;
@@ -7861,7 +8158,8 @@
       const context = (targetRole, targetMid) => targetRole === role.value && targetMid === store.merchantId;
       async function load() {
         var _a, _b;
-        const stamp = ++baseEpoch, currentRole = role.value, mid = store.merchantId;
+        const valid = scope.capture();
+        const stamp = ++baseEpoch2, currentRole = role.value, mid = store.merchantId;
         ++docEpoch;
         ++readEpoch;
         error.value = "";
@@ -7872,11 +8170,11 @@
         if (currentRole === "admin" && !preview && !((_a = store.workspace) == null ? void 0 : _a.platformAdmin)) {
           try {
             const [user, workspace] = await Promise.all([api("/auth/me"), api("/workspace")]);
-            if (stamp !== baseEpoch || !context(currentRole, mid)) return;
+            if (!valid() || stamp !== baseEpoch2 || !context(currentRole, mid)) return;
             store.user = user;
             store.workspace = workspace;
           } catch (e) {
-            if (stamp === baseEpoch) error.value = e.message;
+            if (stamp === baseEpoch2) error.value = e.message;
             return;
           }
         }
@@ -7886,14 +8184,14 @@
         }
         try {
           const result = preview ? DEMO_BASES : await api("/knowledge/bases");
-          if (stamp !== baseEpoch || !context(currentRole, mid)) return;
+          if (!valid() || stamp !== baseEpoch2 || !context(currentRole, mid)) return;
           bases.value = (result || []).filter((b) => currentRole === "admin" || b.merchantId === mid);
           if (!bases.value.some((b) => b.id === active.value))
             active.value = ((_b = bases.value[0]) == null ? void 0 : _b.id) || "";
           docPage.value = 1;
           await loadDocs();
         } catch (e) {
-          if (stamp === baseEpoch && context(currentRole, mid)) error.value = e.message;
+          if (stamp === baseEpoch2 && context(currentRole, mid)) error.value = e.message;
         }
       }
       async function loadDocs() {
@@ -7924,7 +8222,7 @@
       }
       onMounted$3(load);
       onUnmounted$3(() => {
-        ++baseEpoch;
+        ++baseEpoch2;
         ++docEpoch;
         ++readEpoch;
       });
@@ -7932,6 +8230,7 @@
       watch$3(docPage, loadDocs);
       async function read(d) {
         var _a;
+        const valid = scope.capture();
         const stamp = ++readEpoch, id = active.value, mid = store.merchantId, currentRole = role.value;
         selected.value = d;
         text.value = "";
@@ -7946,11 +8245,13 @@
             selected.value = result;
           }
         } catch (e) {
-          if (stamp === readEpoch) notify(e.message);
+          if (valid() && stamp === readEpoch) notify(e.message);
         }
       }
       async function create() {
         if (preview || busy.value || !canManage.value || !baseName.value.trim()) return;
+        const valid = scope.capture();
+        active.value;
         busy.value = true;
         try {
           await api("/knowledge/bases", {
@@ -7961,14 +8262,15 @@
               visibility: visibility.value
             }
           });
+          if (!valid()) return;
           newBase.value = false;
           baseName.value = "";
           await load();
           notify("已创建知识库");
         } catch (e) {
-          notify(e.message);
+          if (valid()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (valid()) busy.value = false;
         }
       }
       function chooseFile(e) {
@@ -7999,53 +8301,68 @@
       }
       async function upload() {
         if (preview || busy.value || !canManage.value || !active.value || !file.value) return;
+        const valid = scope.capture(), base = active.value;
         busy.value = true;
         try {
-          await api("/knowledge/bases/" + pathId(active.value) + "/documents", {
+          const selectedFile = file.value, root = versionRoot.value, documentTitle = title.value.trim() || selectedFile.name;
+          if (root && (versionBase.value !== base || !docs.value.some((d) => d.rootId === root && d.baseId === base)))
+            throw Error("版本所属知识库已变化，请重新选择文档");
+          const base64 = await toBase64(selectedFile);
+          if (!valid() || active.value !== base) return;
+          await api("/knowledge/bases/" + pathId(base) + "/documents", {
             method: "POST",
             body: {
-              rootId: versionRoot.value,
-              title: title.value.trim() || file.value.name,
-              filename: file.value.name,
-              contentType: file.value.type || (file.value.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "text/plain"),
-              base64: await toBase64(file.value)
+              rootId: root,
+              title: documentTitle,
+              filename: selectedFile.name,
+              contentType: selectedFile.type || (selectedFile.name.toLowerCase().endsWith(".pdf") ? "application/pdf" : "text/plain"),
+              base64
             }
           });
+          if (!valid() || active.value !== base) return;
           uploading.value = false;
+          ++fileVersion.value;
           file.value = null;
           title.value = "";
           versionRoot.value = null;
           await loadDocs();
           notify("文档已上传");
         } catch (e) {
-          notify(e.message);
+          if (valid()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (valid()) busy.value = false;
         }
       }
       function newVersion(d) {
+        if (busy.value || d.baseId !== active.value) return;
+        versionBase.value = active.value;
         versionRoot.value = d.rootId;
         title.value = d.title;
         file.value = null;
         uploading.value = true;
       }
       function newDocument() {
+        if (busy.value) return;
+        versionBase.value = "";
         versionRoot.value = null;
         file.value = null;
+        ++fileVersion.value;
         title.value = "";
         uploading.value = !uploading.value;
       }
       async function action(d, operation) {
         if (preview || busy.value || !canManage.value) return;
+        const valid = scope.capture(), base = active.value;
         busy.value = true;
         try {
           await api("/knowledge/documents/" + pathId(d.id) + "/" + operation, { method: "POST" });
+          if (!valid() || active.value !== base) return;
           await loadDocs();
           notify("操作成功");
         } catch (e) {
-          notify(e.message);
+          if (valid()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (valid()) busy.value = false;
         }
       }
       return {
@@ -8080,7 +8397,8 @@
         action,
         newVersion,
         newDocument,
-        versionRoot
+        versionRoot,
+        fileVersion
       };
     },
     render: (() => {
@@ -8144,8 +8462,12 @@
                   onSubmit: _withModifiers(_ctx.create, ["prevent"])
                 }, [
                   _createElementVNode("h2", null, "新建知识库"),
-                  _createElementVNode("label", { class: "field-label" }, "名称"),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "knowledge-field-1"
+                  }, "名称"),
                   _withDirectives(_createElementVNode("input", {
+                    id: "knowledge-field-1",
                     class: "admin-input",
                     "onUpdate:modelValue": ($event) => _ctx.baseName = $event,
                     maxlength: "100",
@@ -8153,8 +8475,12 @@
                   }, null, 8, ["onUpdate:modelValue"]), [
                     [_vModelText, _ctx.baseName]
                   ]),
-                  _createElementVNode("label", { class: "field-label" }, "可见范围"),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "knowledge-field-2"
+                  }, "可见范围"),
                   _withDirectives(_createElementVNode("select", {
+                    id: "knowledge-field-2",
                     class: "admin-input",
                     "onUpdate:modelValue": ($event) => _ctx.visibility = $event
                   }, [
@@ -8183,8 +8509,12 @@
                     1
                     /* TEXT */
                   ),
-                  _createElementVNode("label", { class: "field-label" }, "文档标题"),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "knowledge-field-3"
+                  }, "文档标题"),
                   _withDirectives(_createElementVNode("input", {
+                    id: "knowledge-field-3",
                     class: "admin-input",
                     "onUpdate:modelValue": ($event) => _ctx.title = $event,
                     maxlength: "120",
@@ -8192,14 +8522,19 @@
                   }, null, 8, ["onUpdate:modelValue"]), [
                     [_vModelText, _ctx.title]
                   ]),
-                  _createElementVNode("label", { class: "field-label" }, "TXT / MD / 文本 PDF · 2MB 内"),
-                  _createElementVNode("input", {
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "knowledge-field-4"
+                  }, "TXT / MD / 文本 PDF · 2MB 内"),
+                  (_openBlock(), _createElementBlock("input", {
+                    id: "knowledge-field-4",
+                    key: _ctx.fileVersion,
                     class: "admin-input",
                     type: "file",
                     accept: ".txt,.md,.pdf",
                     onChange: _ctx.chooseFile,
                     required: ""
-                  }, null, 40, ["onChange"]),
+                  }, null, 40, ["onChange"])),
                   _createElementVNode("button", {
                     class: "teal-button",
                     type: "submit",
@@ -8232,6 +8567,8 @@
                       return _openBlock(), _createElementBlock("button", {
                         key: b.id,
                         class: _normalizeClass(["kb-base", { active: _ctx.active === b.id }]),
+                        disabled: _ctx.busy,
+                        "aria-pressed": _ctx.active === b.id,
                         onClick: ($event) => {
                           _ctx.active = b.id;
                           _ctx.docPage = 1;
@@ -8261,7 +8598,7 @@
                           name: "chevronRight",
                           size: 16
                         })
-                      ], 10, ["onClick"]);
+                      ], 10, ["disabled", "aria-pressed", "onClick"]);
                     }),
                     128
                     /* KEYED_FRAGMENT */
@@ -8283,7 +8620,7 @@
                     _createElementVNode(
                       "span",
                       null,
-                      _toDisplayString(_ctx.docs.length) + " 项",
+                      _toDisplayString(_ctx.docInfo.total) + " 项",
                       1
                       /* TEXT */
                     )
@@ -8789,7 +9126,7 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, normalizeClass: _normalizeClass, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -9035,20 +9372,18 @@
                         _Fragment,
                         null,
                         _renderList(_ctx.filtered, (a) => {
-                          var _a;
+                          var _a, _b;
                           return _openBlock(), _createElementBlock("tr", {
                             key: a.applicationId,
                             class: _normalizeClass({ active: ((_a = _ctx.pickedApplication) == null ? void 0 : _a.applicationId) === a.applicationId }),
                             onClick: ($event) => _ctx.selectApplication(a)
                           }, [
                             _createElementVNode("td", null, [
-                              _createElementVNode(
-                                "strong",
-                                null,
-                                _toDisplayString(a.merchantName),
-                                1
-                                /* TEXT */
-                              ),
+                              _createElementVNode("button", {
+                                class: "row-link",
+                                onClick: _withModifiers(($event) => _ctx.selectApplication(a), ["stop"]),
+                                "aria-pressed": ((_b = _ctx.pickedApplication) == null ? void 0 : _b.applicationId) === a.applicationId
+                              }, _toDisplayString(a.merchantName), 9, ["onClick", "aria-pressed"]),
                               _createElementVNode(
                                 "small",
                                 null,
@@ -9183,8 +9518,12 @@
                   _Fragment,
                   { key: 1 },
                   [
-                    _createElementVNode("label", { class: "field-label" }, "审核意见"),
+                    _createElementVNode("label", {
+                      class: "field-label",
+                      for: "platform-field-1"
+                    }, "审核意见"),
                     _withDirectives(_createElementVNode("textarea", {
+                      id: "platform-field-1",
                       class: "admin-input",
                       "onUpdate:modelValue": ($event) => _ctx.reason = $event,
                       rows: "3",
@@ -9610,8 +9949,12 @@
                   1
                   /* TEXT */
                 ),
-                _createElementVNode("label", { class: "field-label" }, "裁决说明"),
+                _createElementVNode("label", {
+                  class: "field-label",
+                  for: "platform-field-2"
+                }, "裁决说明"),
                 _withDirectives(_createElementVNode("textarea", {
+                  id: "platform-field-2",
                   class: "admin-input",
                   "onUpdate:modelValue": ($event) => _ctx.reason = $event,
                   rows: "3",
@@ -9700,8 +10043,12 @@
                 onSubmit: _withModifiers(_ctx.saveCategory, ["prevent"])
               }, [
                 _createElementVNode("h2", null, "编辑分类"),
-                _createElementVNode("label", { class: "field-label" }, "编码"),
+                _createElementVNode("label", {
+                  class: "field-label",
+                  for: "platform-field-3"
+                }, "编码"),
                 _withDirectives(_createElementVNode("input", {
+                  id: "platform-field-3",
                   class: "admin-input",
                   "onUpdate:modelValue": ($event) => _ctx.category.code = $event,
                   required: "",
@@ -9714,8 +10061,12 @@
                     { trim: true }
                   ]
                 ]),
-                _createElementVNode("label", { class: "field-label" }, "名称"),
+                _createElementVNode("label", {
+                  class: "field-label",
+                  for: "platform-field-4"
+                }, "名称"),
                 _withDirectives(_createElementVNode("input", {
+                  id: "platform-field-4",
                   class: "admin-input",
                   "onUpdate:modelValue": ($event) => _ctx.category.name = $event,
                   required: "",
@@ -9728,8 +10079,12 @@
                     { trim: true }
                   ]
                 ]),
-                _createElementVNode("label", { class: "field-label" }, "状态"),
+                _createElementVNode("label", {
+                  class: "field-label",
+                  for: "platform-field-5"
+                }, "状态"),
                 _withDirectives(_createElementVNode("select", {
+                  id: "platform-field-5",
                   class: "admin-input",
                   "onUpdate:modelValue": ($event) => _ctx.category.active = $event
                 }, [
@@ -10063,8 +10418,12 @@
                       class: "status-tag"
                     }, "系统内置")) : _createCommentVNode("v-if", true)
                   ]),
-                  _createElementVNode("label", { class: "field-label" }, "角色名称"),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "rolemanager-field-1"
+                  }, "角色名称"),
                   _withDirectives(_createElementVNode("input", {
+                    id: "rolemanager-field-1",
                     class: "admin-input",
                     "onUpdate:modelValue": ($event) => _ctx.name = $event,
                     maxlength: "40",
@@ -10197,7 +10556,7 @@
         if (!preview && !store.route.startsWith("/merchant")) loadSession();
       });
       onUnmounted(() => window.removeEventListener("hashchange", setRoute));
-      watch(() => store.route, refresh);
+      watch([() => store.route, () => store.identityVersion], refresh);
       return { store, current };
     },
     render: (() => {
@@ -10210,7 +10569,7 @@
           },
           [
             (_openBlock(), _createBlock(_resolveDynamicComponent(_ctx.current), {
-              key: _ctx.store.route
+              key: _ctx.store.route + ":" + _ctx.store.identityVersion + ":" + _ctx.store.merchantId
             })),
             _ctx.store.toast ? (_openBlock(), _createElementBlock(
               "div",
@@ -10232,5 +10591,6 @@
   };
   const app = createApp(App);
   app.component("Icon", Icon);
+  app.directive("modal", modal);
   app.mount("#app");
 })();

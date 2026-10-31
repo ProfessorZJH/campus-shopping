@@ -227,6 +227,27 @@ class CommerceMySqlIntegrationTest {
     }
 
     @Test
+    void lowStockFilterPagesBeforeReturningTotal() {
+        var low = product(19);
+        product(30);
+        var empty = product(0);
+        var hidden = product(1);
+        catalog.setProductPublished(owner, merchant.id(), hidden.getId(), false);
+        var first = catalogQuery.managedPage(owner, merchant.id(), null, null, "LOW_STOCK", 1, 1, "NEWEST");
+        var second = catalogQuery.managedPage(owner, merchant.id(), null, null, "LOW_STOCK", 2, 1, "NEWEST");
+        assertEquals(2L, first.total());
+        assertEquals(2L, second.total());
+        assertEquals(1, first.items().size());
+        assertEquals(1, second.items().size());
+        assertEquals(Set.of(low.getId(), empty.getId()), Set.of(first.items().get(0).product().getId(), second.items().get(0).product().getId()));
+        assertEquals(0, catalogQuery.managedPage(owner, merchant.id(), "不存在", null, "LOW_STOCK", 1, 10, "NEWEST").total());
+        assertEquals(
+            cn.bugstack.ai.types.enums.ResponseCode.ILLEGAL_PARAMETER.getCode(),
+            code(() -> catalogQuery.managedPage(owner, merchant.id(), null, null, "UNKNOWN", 1, 10, "NEWEST"))
+        );
+    }
+
+    @Test
     void creationViewUsesKnownFactsWithoutReadingInventoryAfterCommit() {
         doThrow(new IllegalStateException("unexpected inventory read")).when(inventoryService).stocks(anyList());
         var result = catalog.createProduct(

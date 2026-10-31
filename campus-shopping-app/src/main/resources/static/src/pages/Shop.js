@@ -1,3 +1,4 @@
+import { safeDecodeId } from '../services/page-utils.js';
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
 import { api, query } from '../services/api.js';
@@ -14,7 +15,7 @@ export default {
       page = ref(1),
       hasNext = ref(false);
     const id = computed(() =>
-      decodeURIComponent(store.route.slice('/shops/'.length).split('/')[0] || ''),
+      safeDecodeId(store.route.slice('/shops/'.length).split('/')[0] || ''),
     );
     let loadVersion = 0;
     async function load() {

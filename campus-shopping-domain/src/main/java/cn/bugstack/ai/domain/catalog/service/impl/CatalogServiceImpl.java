@@ -144,15 +144,7 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public List<ProductAggregate> searchManagedSorted(String merchant, String q, String cat, String status, int page, int size, String sort) {
-        return queries.searchManagedSorted(
-            merchant,
-            Checks.optional(q, 100),
-            cat,
-            ProductStatusEnumVO.filter(status),
-            Checks.offset(page, size),
-            size,
-            checkedSort(sort)
-        );
+        return queries.searchManagedSorted(merchant, Checks.optional(q, 100), cat, managedFilter(status), Checks.offset(page, size), size, checkedSort(sort));
     }
 
     public long count(String merchant, String q, String category, boolean pub) {
@@ -160,11 +152,16 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public List<ProductAggregate> searchManaged(String merchant, String q, String category, String status, int page, int size) {
-        return queries.searchManaged(merchant, Checks.optional(q, 100), category, ProductStatusEnumVO.filter(status), Checks.offset(page, size), size);
+        return queries.searchManaged(merchant, Checks.optional(q, 100), category, managedFilter(status), Checks.offset(page, size), size);
+    }
+
+    /** LOW_STOCK 是查询条件，不能作为商品的持久化状态。 */
+    private String managedFilter(String status) {
+        return "LOW_STOCK".equals(status) ? status : ProductStatusEnumVO.filter(status);
     }
 
     public long countManaged(String merchant, String q, String category, String status) {
-        return queries.countManaged(merchant, Checks.optional(q, 100), category, ProductStatusEnumVO.filter(status));
+        return queries.countManaged(merchant, Checks.optional(q, 100), category, managedFilter(status));
     }
 
     public List<SkuOfferVO> availableOffers(List<String> ids) {

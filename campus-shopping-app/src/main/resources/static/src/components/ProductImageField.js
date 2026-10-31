@@ -1,3 +1,4 @@
+import { requestScope } from '../services/request-scope.js';
 import ProductImage from './ProductImage.js';
 import { api } from '../services/api.js';
 const { ref, computed, onBeforeUnmount, watch } = Vue;
@@ -11,6 +12,7 @@ export default {
   props: {
     modelValue: { type: String, default: '' },
     merchantId: { type: String, required: true },
+    contextKey: { type: String, default: '' },
     disabled: { type: Boolean, default: false },
     demo: { type: Boolean, default: false },
   },
@@ -20,7 +22,21 @@ export default {
       error = ref(''),
       notice = ref(''),
       localUrl = ref('');
-    let alive = true;
+    const scope = requestScope();
+    let alive = true,
+      epoch = 0;
+    watch(
+      () => [props.merchantId, props.contextKey],
+      () => {
+        ++epoch;
+        release();
+        busy.value = false;
+        error.value = '';
+        notice.value = '';
+        emit('busy', false);
+        emit('invalid', false);
+      },
+    );
     function release() {
       if (localUrl.value) {
         URL.revokeObjectURL(localUrl.value);
@@ -71,6 +87,16 @@ export default {
         notice.value = '仅本地预览，未上传';
         return;
       }
+      const mid = props.merchantId,
+        context = props.contextKey,
+        stamp = ++epoch,
+        valid = scope.capture();
+      const current = () =>
+        alive &&
+        valid() &&
+        stamp === epoch &&
+        mid === props.merchantId &&
+        context === props.contextKey;
       busy.value = true;
       emit('busy', true);
       try {
@@ -80,24 +106,25 @@ export default {
           reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
           reader.readAsDataURL(file);
         });
-        const result = await api('/merchants/' + encodeURIComponent(props.merchantId) + '/images', {
+        if (!current()) return;
+        const result = await api('/merchants/' + encodeURIComponent(mid) + '/images', {
           method: 'POST',
           body: { filename: file.name, contentType: file.type, base64 },
         });
         if (!/^\/media\/[a-f0-9-]+\.png$/.test(result?.url || ''))
           throw new Error('图片上传返回地址无效');
-        if (!alive) return;
+        if (!current()) return;
         emit('update:modelValue', result.url);
         notice.value = '上传成功，保存商品后生效';
         release();
       } catch (err) {
-        if (alive) {
+        if (current()) {
           error.value = err.message || '上传失败';
           emit('invalid', true);
           release();
         }
       } finally {
-        if (alive) {
+        if (current()) {
           busy.value = false;
           emit('busy', false);
         }

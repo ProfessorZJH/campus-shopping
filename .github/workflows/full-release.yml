@@ -50,7 +50,7 @@ jobs:
       - name: Source and reproducibility gates
         run: |
           npm run format:check --prefix frontend
-          node --test frontend/tests/build-reproducibility.test.mjs
+          node --test frontend/tests/*.test.mjs
           python scripts/build-ui-bundle.py --check
           python scripts/schema_contract.py --check
           python scripts/verify-api-contract.py
@@ -105,7 +105,7 @@ jobs:
       - name: Formatting / generated UI / schema drift checks
         run: |
           npm run format:check --prefix frontend
-          node --test frontend/tests/build-reproducibility.test.mjs
+          node --test frontend/tests/*.test.mjs
           npm audit --prefix frontend --audit-level=high
           python scripts/build-ui-bundle.py --check
           python scripts/schema_contract.py --check
@@ -305,7 +305,7 @@ jobs:
         shell: bash
         run: |
           status=0
-          for script in ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py; do
+          for script in ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py ui_r1_correctness.py; do
             python "frontend/tests/$script" || status=1
           done
           exit "$status"

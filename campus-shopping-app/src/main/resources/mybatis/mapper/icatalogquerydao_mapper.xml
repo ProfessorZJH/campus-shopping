@@ -66,6 +66,15 @@ SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHE
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
     </select>
+<sql id="managedStatus">
+<choose>
+ <when test="status == 'LOW_STOCK'">AND p.status='PUBLISHED' AND
+   (SELECT COALESCE(SUM(GREATEST(COALESCE(b.on_hand,0)-COALESCE(b.reserved,0),0)),0)
+    FROM cat_sku s LEFT JOIN inv_stock_balance b ON b.store_id=s.store_id AND b.sku_id=s.id
+    WHERE s.product_id=p.id AND s.status='ACTIVE') &lt; 20</when>
+ <otherwise><if test="status!=null and status!=''">AND p.status=#{status}</if></otherwise>
+</choose>
+</sql>
 <select id="searchManaged" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
 SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
 <if test="query!=null and query!=''">AND (
@@ -74,7 +83,7 @@ SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
     (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
-<if test="status!=null and status!=''">AND p.status=#{status}</if>
+<include refid="managedStatus"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
    (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
@@ -94,6 +103,6 @@ SELECT COUNT(*) FROM cat_product p WHERE p.merchant_id=#{merchantId}
     (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
-<if test="status!=null and status!=''">AND p.status=#{status}</if>
+<include refid="managedStatus"/>
     </select>
 </mapper>
