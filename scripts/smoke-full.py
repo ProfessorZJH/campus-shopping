@@ -125,6 +125,8 @@ def run(args):
               label+' 响应包含完整分页协议')
         check(data['total'] >= len(data['items']) and data['page']>=1,
               label+' total 不使用当前页长度冒充')
+    for suffix in ('','/page'):
+        admin.call('GET','/admin/merchant-applications'+suffix+'?state=UNKNOWN',code='0002')
     applications_page=admin.call('GET','/admin/merchant-applications/page?state=APPROVED&page=1&size=5&q='+urllib.parse.quote('验收文具店'))
     verify_page(applications_page,'平台审核申请筛选')
     check(any(x['applicationId'] for x in applications_page['items']),'入驻申请 q 在真实数据库过滤成功')

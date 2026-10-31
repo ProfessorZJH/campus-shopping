@@ -115,3 +115,9 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 - 平台首次裁决只能处理 `DISPUTED`；直接裁决 `REQUESTED` 或未申诉的 `REJECTED` 返回 `REFUND_STATE_INVALID`（`T0004`）。平台驳回后重试仍返回 `T0004`，不产生额外副作用；买家可以沿既有规则再次申诉。
 - 已 `APPROVED` 且订单 `REFUNDED` 的同意请求继续成功重放；订单锁、售后锁和同事务退款/库存/履约/审计保证不重复执行。
 - 商户重复停用/恢复在商户行锁内判断目标状态；无状态变化时不更新 version、不新增状态审计，鉴权和原因校验仍执行。
+
+## AI与入驻查询的边界错误（2026-10-31）
+
+内部AI返回HTTP成功但JSON为null、提取文本缺失/空白/超过100000字符、空正文或无法反序列化时，网关返回既有AI_UNAVAILABLE（AI0001），不记录响应正文。提取服务明确以400/413/415/422拒绝用户文件时，继续使用UPLOAD_INVALID（AI0004）。
+
+平台入驻列表/分页的state未指定或空白时不过滤；非空值按MerchantApplicationStatusEnumVO统一校验，列表与count均使用同一规则，非法值返回ILLEGAL_PARAMETER（0002）。有效状态仍为SUBMITTED/APPROVED/REJECTED，首尾空白按既有EnumValues规范去除。

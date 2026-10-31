@@ -92,7 +92,7 @@ public class MerchantApplicationServiceImpl implements IMerchantApplicationServi
 
     @Override
     public List<MerchantApplicationAggregate> list(String user, String state, int page, int size, String q) {
-        return repository.list(user, state, Checks.offset(page, size), size, Checks.optional(q, 100));
+        return repository.list(user, MerchantApplicationStatusEnumVO.filter(state), Checks.offset(page, size), size, Checks.optional(q, 100));
     }
 
     @Override
@@ -123,7 +123,7 @@ public class MerchantApplicationServiceImpl implements IMerchantApplicationServi
 
     @Override
     public long count(String user, String status, String q) {
-        return repository.count(user, status, Checks.optional(q, 100));
+        return repository.count(user, MerchantApplicationStatusEnumVO.filter(status), Checks.optional(q, 100));
     }
 
     @Override
