@@ -18,13 +18,15 @@ def values(spec):
 def dimension(value):
     if value.endswith('装'): return 'pack'
     if value.endswith('色'): return 'color'
+    if value.endswith('杯'): return 'cup'
+    if value.endswith(('号', '型')): return 'size'
     for units, axis in ((r'(?:ml|l)', 'volume'), (r'(?:kg|g)', 'mass'), (r'(?:cm|mm)', 'length'), (r'码', 'size')):
         if re.fullmatch(r'\d+(?:\.\d+)?' + units, value): return axis
     return 'spec'
 
 
 NEGATIVE = r'不要推荐|不想要|不想选|不想买|不需要|不要选|不推荐|不接受|不喜欢|不要|不选|不买|不用|别推荐|别选|别买|排除|不考虑|不含|不是|拒绝|非'
-CUES = re.compile(r'(' + NEGATIVE + r'|只要|想要|要|选择|选|换成|改成|改为)')
+CUES = re.compile(r'(' + NEGATIVE + r'|只要|想要|规格为|规格是|要|选择|选|换成|改成|改为)')
 
 
 @dataclass(frozen=True)
@@ -43,14 +45,29 @@ class SpecConstraints:
                 and all(any(dimension(v) == dimension(term) for v in actual) for term in self.forbidden))
 
 
-def extract(question, vocabulary):
+def extract(question, vocabulary, titles=()):
     text = normalize(question)
     terms = set(vocabulary)
     # 即使当前报价没有该规格，也不能悄悄用其他规格替代。
     terms.update(re.findall(r'(?<![a-z0-9.])\d+(?:\.\d+)?(?:ml|kg|cm|mm|l|g|码)(?![a-z0-9.])', text))
-    for match in re.finditer(r'(?:只要|换成|改成|选择|规格为|规格是|要|选)([^,，。;；!?？]{1,16}?(?:装|色|码))(?=$|[,，。;；!?？的])', text):
-        token = match.group(1)
-        if not any(v in token for v in vocabulary): terms.add(token)
+    # 显式属性前缀即使不在候选中也必须约束；数量/商品名称不当作属性。
+    for match in re.finditer(r'(?<!需)(?:' + NEGATIVE + r'|只要|想要|规格为|规格是|换成|改成|改为|选择|要|选)([^,，。;；!?？]{1,40})', text):
+        token = re.split(CUES, match.group(1))[0]
+        if re.match(r'[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋)', token): continue
+        for title in sorted(titles, key=len, reverse=True):
+            token = token.split(normalize(title), 1)[0]
+        token = token.rstrip('的')
+        # 逐个消费组合属性，不能因第一个属性已知就丢掉后续未知维度。
+        atoms = '|'.join(re.escape(v) for v in sorted(vocabulary, key=lambda v: (-len(v), v)))
+        atom_pattern = (atoms + '|' if atoms else '') + r'\d+(?:\.\d+)?(?:ml|kg|cm|mm|l|g|码)|.{1,12}?(?:装|色|码|杯|号|型)'
+        cursor = 0
+        for attribute in re.finditer(atom_pattern, token):
+            value = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', attribute.group())
+            if value: terms.add(value)
+            cursor = attribute.end()
+        remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
+        if remainder and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 8)):
+            terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))
     required, forbidden = set(), set()
@@ -71,13 +88,14 @@ def extract(question, vocabulary):
 
 def spec_constraints(question, history, offers, followup):
     vocabulary = {v for offer in offers for v in values(offer['specKey']) if len(v) >= 2}
-    current = extract(question, vocabulary)
+    titles = [offer['title'] for offer in offers]
+    current = extract(question, vocabulary, titles)
     required, forbidden = set(current.required), set(current.forbidden)
     axes = {dimension(v) for v in required | forbidden}
     ambiguous = current.ambiguous
     if followup.search(question):
         for previous in reversed([h['content'] for h in history if h['role'] == 'user']):
-            inherited = extract(previous, vocabulary)
+            inherited = extract(previous, vocabulary, titles)
             inherited_terms = inherited.required | inherited.forbidden
             new_axes = {dimension(v) for v in inherited_terms} - axes
             required.update(v for v in inherited.required if dimension(v) in new_axes)

@@ -45,6 +45,22 @@ public final class RecommendationPolicy {
     }
 
     public static List<ProposalItemVO> select(List<AiRecommendationVO> recommendations, List<ProposalItemVO> quotes, Map<String, Long> available) {
+        return select(recommendations, quotes, available, "", List.of());
+    }
+
+    public static List<ProposalItemVO> select(
+        List<AiRecommendationVO> recommendations,
+        List<ProposalItemVO> quotes,
+        Map<String, Long> available,
+        String question,
+        List<String> userHistory
+    ) {
+        var specs = SkuConstraintPolicy.resolve(
+            question,
+            userHistory,
+            quotes.stream().map(ProposalItemVO::specKey).toList(),
+            quotes.stream().map(ProposalItemVO::title).toList()
+        );
         Map<String, ProposalItemVO> allowed = new HashMap<>();
         quotes.forEach(q -> allowed.put(q.skuId(), q));
         List<ProposalItemVO> result = new ArrayList<>();
@@ -53,6 +69,8 @@ public final class RecommendationPolicy {
             var quote = allowed.get(recommendation.skuId());
             if (
                 quote == null ||
+                !specs.accepts(quote.specKey()) ||
+                quote.priceCent() <= 0 ||
                 seen.contains(quote.skuId()) ||
                 recommendation.quantity() < 1 ||
                 recommendation.quantity() > 99 ||

@@ -219,6 +219,12 @@ def run(args):
         secret='内部采购口令_'+uuid.uuid4().hex
         private=document('MERCHANT_INTERNAL','内部采购资料',secret)
         buyer.call('GET','/knowledge/documents/'+private['id'],code='A0006')
+        refund_doc=document('PUBLIC','考试黑色签字笔退款说明','考试黑色签字笔退款请打开订单详情，选择申请售后并填写原因。')
+        spec_reply=buyer.call('POST','/ai/chat',{'question':'考试黑色签字笔要单支黑色大杯'})
+        check(not spec_reply['proposal'] and '规格' in spec_reply['answer'],'真实Java/Python组合规格不能忽略未知大杯')
+        refund_reply=buyer.call('POST','/ai/chat',{'question':'这款考试黑色签字笔怎么申请退款？'})
+        check(not refund_reply['proposal'],'真实退款知识问答不会因商品召回创建提案')
+        check('申请售后' in refund_reply['answer'] and any(c['documentId']==refund_doc['id'] for c in refund_reply['citations']),'真实Java/Python退款知识正文和引用未被报价覆盖')
         reply=buyer.call('POST','/ai/chat',{'question':'预算12元买两支考试黑色签字笔，几点自提？'})
         check(reply['mode'] in {'LOCAL_RETRIEVAL_DEMO','LOCAL_FALLBACK','LLM'},'导购明确声明实际运行模式')
         check(secret not in reply['answer'] and all(c['documentId']!=private['id'] for c in reply['citations']),'普通买家回答及引用不包含商户内部资料')

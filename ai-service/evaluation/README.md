@@ -104,3 +104,14 @@ python ai-service/evaluate.py --safety-results var/evaluation/verification/evalu
 v2不自动改写v1历史报告，跨评分器版本的直接配对会被拒绝。`--recompute`会重新执行相同硬门禁并返回保存结果的退出码；它不会把已失败的suite变成退出0。
 
 发布只选择确认不含私有内容的合成证据到docs/testing/evidence/ai-evaluation-v1/。不要直接发布原始真实提示/凭据/外部异常。历史8例单gold命中率保持原样，不能将其1.0作为新基线。正式ACCEPTED及人工回答语义评审见数据README，本轮不能由自动测试替代。
+
+
+新增运行原始产物保留在忽略的 `var/evaluation/`，CI 通过 `campus-acceptance-evidence` 上传（保留7天）；长期留存需另行归档。仓库只提交摘要、文件SHA-256及最多10条失败样例：
+
+```powershell
+cd ai-service
+python -m evaluation.summary ../var/evaluation/runs/<run-id> ../docs/testing/evidence/<summary>.json
+```
+
+冻结的合成数据集是可复现输入，继续版本管理，不能与运行产物一起删除。历史 `runs-summary.json` 已压缩，保存原文件SHA-256和Git提交定位；历史失败只能说明对应版本，不代表当前实现仍失败。DRAFT仍输出PARTIAL，正式模式继续拒绝未人工验收的数据；不能通过改状态掩盖待复核事实。
+Java导入要求显式预期实验集合，并严格验证 `caseId+experiment` 唯一、无额外记录和逐例完整覆盖，NOT_RUN也必须有记录。依赖缺少distribution metadata记录null。

@@ -52,6 +52,14 @@ def main():
                 assert [r['skuId'] for r in response['recommendations']]==['standard'];results.append('真实HTTP规格与否定过滤压过语义排序，返回非空标准装')
                 response=call('POST','/v1/query',{'question':'签字笔要标准装，不要标准装','allowedDocumentIds':[],'offers':offers})
                 assert not response['recommendations'] and '明确' in response['answer'];results.append('真实HTTP冲突规格澄清，不擅自替换SKU')
+                for question,items in [('签字笔要标准装大杯',offers), ('签字笔要500ml蓝色',[dict(o,specKey='500ml') for o in offers])]:
+                    response=call('POST','/v1/query',{'question':question,'allowedDocumentIds':[],'offers':items})
+                    assert not response['recommendations'] and '规格' in response['answer']
+                    results.append('真实HTTP组合规格逐项核实：'+question)
+                call('POST','/v1/index',{'documentId':'refund','title':'签字笔退款规则','content':'这款签字笔退款请打开订单详情，选择申请售后并填写原因。'})
+                response=call('POST','/v1/query',{'question':'这款标准装签字笔怎么申请退款？','allowedDocumentIds':['refund'],'offers':offers})
+                assert not response['recommendations'] and '申请售后' in response['answer'] and response['citations']
+                results.append('真实HTTP非空报价不覆盖退款知识回答，不生成商品建议')
                 call('DELETE','/v1/index/public');response=call('POST','/v1/query',{'question':'几点自提','allowedDocumentIds':['public'],'offers':[],'history':[]});assert not response['citations'];results.append('删除索引后不可再次召回')
                 report={'startedAt':start,'mode':'REAL_UVICORN_TCP_HTTP_LOCAL_RETRIEVAL','status':'PASS','checks':results,'realJavaMySqlTested':False,'externalModelOrQdrantTested':False}
                 out=args.output;out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')

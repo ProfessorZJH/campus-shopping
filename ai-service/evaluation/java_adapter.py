@@ -88,7 +88,7 @@ def prepare(path, data, *, split='smoke', profile='local', experiments=('P-L',),
     return plan
 
 
-def read_export(path, data, *, profile=None, split=None):
+def read_export(path, data, *, profile=None, split=None, experiments=None):
     export = json.loads(Path(path).read_text(encoding='utf-8'))
     if export['datasetHash'] != data['datasetHash'] or export['adapter'] != 'java-mysql':
         raise ValueError('Java dataset/adapter mismatch')
@@ -96,6 +96,29 @@ def read_export(path, data, *, profile=None, split=None):
         raise ValueError('Java experiment metadata mismatch')
     if export['database'] != 'campus_shopping_it' or not export['fixtureLoadedViaDomains']:
         raise ValueError('Java isolation evidence missing')
+    from .runner import EXPERIMENTS
+    selected_split = split or export.get('split')
+    if selected_split not in data['splits'] or not experiments or len(set(experiments)) != len(experiments):
+        raise ValueError('Java expected split/experiments missing or duplicated')
+    if any(e not in EXPERIMENTS for e in experiments):
+        raise ValueError('Java unexpected experiment')
+    expected = set()
+    for case in data['cases']:
+        if case['caseId'] not in data['splits'][selected_split]: continue
+        for exp in experiments:
+            task = 'knowledge' if exp.startswith('K-') else 'recommendation' if exp.startswith('R-') else 'product'
+            if task in ('knowledge', 'recommendation') and task not in case['taskScopes']: continue
+            expected.add((case['caseId'], exp))
+    seen = set()
+    for row in export['rows']:
+        key = (row['caseId'], row['experiment'])
+        if key in seen or key not in expected:
+            raise ValueError('Java duplicate or unexpected case/experiment')
+        seen.add(key)
+        if row['status'] not in ('EXECUTED', 'NOT_RUN', 'FAILED', 'UNSUPPORTED'):
+            raise ValueError('Java unknown execution status')
+    if seen != expected:
+        raise ValueError('Java incomplete case/experiment coverage')
     products = {p['productId']: p for p in data['products']}
     merchants = {m['merchantId']: m for m in data['merchants']['merchants']}
     skus = {s['skuId']: (p, s) for p in data['products'] for s in p['skus']}

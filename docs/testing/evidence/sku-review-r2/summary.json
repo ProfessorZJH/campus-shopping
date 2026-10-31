@@ -1,0 +1,487 @@
+{
+  "baseline": "9a58a4f",
+  "python": {
+    "tests": 173,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "mysql": {
+    "status": "PASS",
+    "checks": [
+      "replaying fresh schema on existing tables does not register unapplied upgrades",
+      "dirty historical amount stops migration without changing the row",
+      "old Redis V31 history without main V30 upgrades safely; legacy lease and V31 checksum/history preserved",
+      "all migrations replay twice and preserve historical snapshot",
+      "AI attempt and lease columns added to old schema without changing published knowledge or conversation history",
+      "fresh and upgraded database columns/indexes/constraints match",
+      "recorded migration checksum mismatch rejected before executing DDL",
+      "five invalid amount/quantity writes rejected by real MySQL CHECK",
+      "packaged JAR UI files exactly match this source build"
+    ],
+    "existingDatabaseUsed": false,
+    "mysqlVersion": "8.0.31",
+    "indexesAdded": [
+      "ix_member_role",
+      "ix_app_applicant",
+      "ix_stock_sku",
+      "ix_movement_merchant",
+      "ix_document_base",
+      "ix_message_sequence",
+      "ix_proposal_conversation"
+    ],
+    "constraintsAdded": [
+      "ck_order_item_values",
+      "ck_payment_amount",
+      "ck_refund_amount"
+    ],
+    "mavenExitCode": 0,
+    "buildSource": "current source copied to isolated temporary Maven reactor (no .env/target)",
+    "junit": {
+      "suites": [
+        {
+          "name": "cn.bugstack.ai.test.commerce.AfterSaleAggregateTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.AiConversationBoundaryTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.AiGatewayProductIndexTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.AiGatewayProtocolTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.CatalogCartReadModelTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.CatalogPageSkuBatchTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+          "tests": 41,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.DddRulesTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.DomainStatusEnumTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.InvalidInputContractTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.KnowledgePublicationPolicyTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.OrderBatchQueryTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.ProductInformationAtomicityTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.ProductVectorSyncJobTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.RolePermissionContractTest",
+          "tests": 17,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.ShoppingEvaluationMySqlTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.ShoppingEvaluationSafetyMySqlTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.commerce.SkuConstraintPolicyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.ApiProtocolIntegrationTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.AuthControllerTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.MerchantRbacMySqlIntegrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.MySqlIdentityIntegrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.ProtocolBoundaryTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.RedisInfrastructureIntegrationTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.RedisSessionCrossInstanceTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.RoleConflictRepositoryTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.SchemaVersionGuardTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.SessionAuthenticationIntegrationTest",
+          "tests": 11,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.UserAccountAuthenticationTest",
+          "tests": 7,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.UserAccountRepositoryTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.UserAccountServiceTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.identity.UserCredentialRepositoryTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.merchant.MerchantApplicationApiContractTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.merchant.MerchantApplicationControllerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.merchant.MerchantApplicationServiceTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.merchant.MerchantExceptionContractTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        },
+        {
+          "name": "cn.bugstack.ai.test.merchant.ResponseFactoryTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      ],
+      "tests": 198,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "deliveryArtifacts": "var\\sku-review-r2\\build (isolated tested JAR and generated manifest)",
+    "testedSourceSnapshot": "tested-sources.json",
+    "testedSourceFiles": 480,
+    "testedSourceMatchesCheckout": true,
+    "sourceChangedDuringTest": [],
+    "temporaryDatabaseCleaned": true
+  },
+  "pythonHttp": {
+    "startedAt": "2026-10-31T10:53:35.854555+00:00",
+    "mode": "REAL_UVICORN_TCP_HTTP_LOCAL_RETRIEVAL",
+    "status": "PASS",
+    "checks": [
+      "真实TCP健康检查，明确演示模式",
+      "无服务密钥不能索引",
+      "两个真实文档写入临时SQLite索引",
+      "无服务密钥不能访问商品检索意图",
+      "真实HTTP商品检索意图可生成无糖饮料关键词",
+      "真实HTTP检索仅返回授权证据",
+      "跨知识权限未泄漏内部内容",
+      "真实HTTP规格与否定过滤压过语义排序，返回非空标准装",
+      "真实HTTP冲突规格澄清，不擅自替换SKU",
+      "真实HTTP组合规格逐项核实：签字笔要标准装大杯",
+      "真实HTTP组合规格逐项核实：签字笔要500ml蓝色",
+      "真实HTTP非空报价不覆盖退款知识回答，不生成商品建议",
+      "删除索引后不可再次召回"
+    ],
+    "realJavaMySqlTested": false,
+    "externalModelOrQdrantTested": false
+  },
+  "compositeBeforeAfter": [
+    {
+      "question": "考试签字笔要标准装大杯",
+      "before": [
+        "标准装"
+      ],
+      "after": []
+    },
+    {
+      "question": "要500ml蓝色",
+      "before": [
+        "500ml"
+      ],
+      "after": []
+    }
+  ],
+  "approvalPolicy": {
+    "requiredApprovals": 0,
+    "independentReviewerRequired": false,
+    "reason": "User explicitly chose single-maintainer workflow",
+    "collaborators": [
+      "ProfessorZJH"
+    ]
+  },
+  "remoteFullCi": "PENDING_PUSH",
+  "evaluations": [
+    {
+      "runId": "local-smoke",
+      "status": "PARTIAL",
+      "exitCode": 0,
+      "split": "smoke",
+      "profile": "local",
+      "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+      "resultsHash": "9607a348ef57511196e66f2df282538072a3f7af581146829931507689e6e4bc",
+      "boundaryViolations": []
+    },
+    {
+      "runId": "local-dev",
+      "status": "PARTIAL",
+      "exitCode": 0,
+      "split": "dev",
+      "profile": "local",
+      "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+      "resultsHash": "03ba1e153e5567d1ff1e81dfb1cbd2bc640e364adfde5b9375f0a42797d8b59b",
+      "boundaryViolations": []
+    },
+    {
+      "runId": "local-test",
+      "status": "PARTIAL",
+      "exitCode": 0,
+      "split": "test",
+      "profile": "local",
+      "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+      "resultsHash": "6c9f20614ccd4163177039ed883c9d8b6226aca4c09e420fe4d9a219f774700f",
+      "boundaryViolations": []
+    },
+    {
+      "runId": "controlled-smoke",
+      "status": "PARTIAL",
+      "exitCode": 0,
+      "split": "smoke",
+      "profile": "controlled",
+      "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+      "resultsHash": "634c566c91a13fde0bc8c2a61baea4bff74002b56ac7ce98867c82d5520ad4d6",
+      "boundaryViolations": []
+    },
+    {
+      "runId": "controlled-dev",
+      "status": "PARTIAL",
+      "exitCode": 0,
+      "split": "dev",
+      "profile": "controlled",
+      "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+      "resultsHash": "6b40276150935cd7a34cfe583ab004516665b99f7d712bf7855ffba30af40f12",
+      "boundaryViolations": []
+    },
+    {
+      "runId": "controlled-test",
+      "status": "PARTIAL",
+      "exitCode": 0,
+      "split": "test",
+      "profile": "controlled",
+      "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+      "resultsHash": "de531d27b3e58f56c24b3ecec1dd448d8614792d984788fb06319d27602b493d",
+      "boundaryViolations": []
+    }
+  ],
+  "rawSha256": {
+    "composite-before-after.json": "72660fed0869bfd76dca83bf418942bf2e6926dd337936de0f457db64cb39493",
+    "evaluation-java.json": "07045b3afdb478f75313997b79563d3d004269016933debd02eec406561f159c",
+    "mysql.json": "048f681799122c4b1e0fe212c36578d026b14b97cef11d296cfbe0fc18277b21",
+    "python-http.json": "499173687bf444009278335377b14923b16406f83a8d2cbde4a7bb48293c6411",
+    "python.xml": "3886243c3a16c2348c2671d54b58c0ec8f4cf08167a80decbc797933685f2ae4",
+    "tested-release-manifest.json": "8639c713864c6f723c901cfb11ca2ba9bd3acfc01ea7443a54572a6ae2995dc8",
+    "tested-sources.json": "f08420162af37f4fd72fb75ce549a3627d1ba1743c1c6f9445acfdd3fb945401",
+    "checks/api-schemas.json": "b163a596415b1d6e28b6174bf6fad1800fa80da8ca6b6aabe4b705129194c8da",
+    "checks/boundaries.json": "475f25e5b1cdbeeb509630d4329f566b7e28c1fb16d940d94abc9a236283a42a",
+    "checks/static-release.json": "5bb114bb8fb019c8fe45d99f07bd880cc9093ab03c011667192b915e2189d352",
+    "controlled-dev/cases.jsonl": "7fe0a670c8912a20b28d5e236adc21c4d6bce145710f6f2d5d1ee7e095d147ff",
+    "controlled-dev/comparisons.json": "e8d9b910f66de1ae14738fc060d17a44a9a9c38e924a15cb7905611b84f3eb6e",
+    "controlled-dev/dataset-snapshot.json": "0ade06acde8a4e6a6105f102755ea86b0e5f390471434c4b54ffde3b4f95c2ec",
+    "controlled-dev/manifest.json": "d752e04b547dae17339ed3bb62f56a28b8703834e9d3006c993ddb690064c5de",
+    "controlled-dev/metrics.json": "51e63923f677f5eebc62098dcbcf60112009469dd5c8a8119e6d8a72c4fb3588",
+    "controlled-dev/report.md": "5f3cae8d94c99e97a927d939e090a4afbd2549c481185514eae3ccb1b0be41f8",
+    "controlled-dev/review.jsonl": "e2b7307142179b62037dbbadaf72da61889760a076e3897b22538d28a292ff3f",
+    "controlled-smoke/cases.jsonl": "d2471da9aaf51f6859f7ff2553baf58c140254a5e6bf9ae130cee32b27e2e146",
+    "controlled-smoke/comparisons.json": "52ee2f2f7878e6b289a769052c9acb1924ca4803c76ddd85b5cb1cd5384c4cb4",
+    "controlled-smoke/dataset-snapshot.json": "0ade06acde8a4e6a6105f102755ea86b0e5f390471434c4b54ffde3b4f95c2ec",
+    "controlled-smoke/manifest.json": "d37bf6b6e21a5744c862d80971d48239539f6afcd9697b2cb43be43d7f4a8f0b",
+    "controlled-smoke/metrics.json": "56fceb94b6187eadccaa272e324c4be8c9400b3dbd4318a327e6e99a0716ed4e",
+    "controlled-smoke/report.md": "1a5cc54b09884bcdd3933a112ba5ee21da5437efad42e8676925ab902bcfc896",
+    "controlled-smoke/review.jsonl": "ac8796d96a340501ee7844a6b2e4064a1753730d1b193f1066f5a6f869d97bfe",
+    "controlled-test/cases.jsonl": "d2f55dd3b518c3c4e5a0649d0d715a715ad87b218b1fb86e6cf48baff1662721",
+    "controlled-test/comparisons.json": "9f5e173c26c8cf2edce2d6bb10a6b0877ccdee91947581e4f73a20fbd070403d",
+    "controlled-test/dataset-snapshot.json": "0ade06acde8a4e6a6105f102755ea86b0e5f390471434c4b54ffde3b4f95c2ec",
+    "controlled-test/manifest.json": "63f6e8bdc52f03ad5ebc1c4cb8a94938ca93a8cb87f06803723eb79c0d42817d",
+    "controlled-test/metrics.json": "fb9b15c59f47c27f42f8b66d4a5062b9b3feabc090a30bdf23edaa8804d6d539",
+    "controlled-test/report.md": "c158bedcfe0082a8bf8c322307724c327e1842ea1bd5fcf2b3b26b74cfa72f5e",
+    "controlled-test/review.jsonl": "f3032b02d6848858d62d461a0be5ba3760d6b5b9de52d3d378de9cabc321fab8",
+    "evaluation-safety/safe-acl.json": "17032b1d850ab00197c87043876827927dd2285cbf7c819d25dae45a6d5692e2",
+    "evaluation-safety/safe-expired.json": "eef91ce93c0303ebec6e1074b63458f7a7017cd1f64f3401e8bf4fc07b30fc49",
+    "evaluation-safety/safe-no_stock.json": "2d99b5e45f215047136e860bdedd254229e1f8df3295fd37aa2fe80bba227686",
+    "evaluation-safety/safe-other_user.json": "aede21fd340a1bca0a8eed40f39f138b0371be4d03ed976fa7ab3e334c53be2b",
+    "evaluation-safety/safe-price_change.json": "c93b63cc00f71ab05c1d344935d9da517866c2d66363d920dda307fc5a61966b",
+    "evaluation-safety/safe-replay.json": "90d45b523fc8ed62071e6a7b44b626204a22e56c5e99c48c698470ae432b0115",
+    "evaluation-safety/safe-rollback.json": "40e0f7b6ae94c93c852fcc4ce6e322d294f30e26924155441e25f813d4ed565d",
+    "evaluation-safety/safe-suspend.json": "305cddfbae1b966ab917ca519d686459048a05ffac09a7b7ee67e3e8813fad74",
+    "evaluation-safety/safe-unpublish.json": "352b5623e1aa6f3bc63a6a6315b00b82acd237ea079da921ea34b0239da46a07",
+    "evaluation-safety/safe-withdrawal.json": "696f6e1e4dbf529d5d2400d34651e3c64dc1dacc59f25a0b5e6923c7ef7be0b3",
+    "local-dev/cases.jsonl": "0a27173f551c790767d103781b1565cec2c7af0c4e3a5a2f78cc98625af2a69b",
+    "local-dev/comparisons.json": "7f32ca63be1afc7f5a15bfb957d4a3b59c828dec648cce096901ac2dcca3c029",
+    "local-dev/dataset-snapshot.json": "0ade06acde8a4e6a6105f102755ea86b0e5f390471434c4b54ffde3b4f95c2ec",
+    "local-dev/manifest.json": "d8a331d21dc84b882a84b229711b5023c0d676bc0f3454edfb95dabdd2e8977f",
+    "local-dev/metrics.json": "f296f4681791e0767476e40324b189c0329bcaf913c03890632e4e33ac56ae18",
+    "local-dev/report.md": "ae1ab6d068c9fc33f9e76765ed9344e1b2309d099db34c7f36814bfb47333647",
+    "local-dev/review.jsonl": "621f927a341d5c797cf88eb7ab32cf5f464add89035b7d17a57f9a5132778b82",
+    "local-smoke/cases.jsonl": "7b8c5850209699b5a1920133ea7a82b64f6f59b0e4f2e77463c068d2b7f8ac11",
+    "local-smoke/comparisons.json": "5d491e59d595c70f9bacec7c701cd338ea59798496301ebafc06d87de4effc46",
+    "local-smoke/dataset-snapshot.json": "0ade06acde8a4e6a6105f102755ea86b0e5f390471434c4b54ffde3b4f95c2ec",
+    "local-smoke/manifest.json": "eaf5cee4486cf0b2e49d6db4cc35e53cf17d5badb7d4695385acf11b4d871822",
+    "local-smoke/metrics.json": "40f370c7dcf9b04923def32da430ed7fb119ea723a048736215e1c17763030a9",
+    "local-smoke/report.md": "e553b9990c4d16a67c8dc2df213a882ca27f4c87b00155b31b043ef358fed226",
+    "local-smoke/review.jsonl": "dd836d060e14b740251a86902221cd4a94ca7058d9a2ee2440f2acec431dd6fc",
+    "local-test/cases.jsonl": "1ab4a3b0cf9941aebb0099ab5e71e93a4a3e93021c9d57ed85a39aec47b01eb4",
+    "local-test/comparisons.json": "708493293499de9e0e6ae446129da3bae398512bac0dab0352fb5fe32fc649ef",
+    "local-test/dataset-snapshot.json": "0ade06acde8a4e6a6105f102755ea86b0e5f390471434c4b54ffde3b4f95c2ec",
+    "local-test/manifest.json": "dec1b26d41b1cc28ad43743e6eca7cb07c161218b0e884117ed192e6ad8ec7a3",
+    "local-test/metrics.json": "05dd04890a7e037b3507cf9d56bee5819877a5551c998414f47ee164ca4d5317",
+    "local-test/report.md": "901f49c88eefd67eb3568e75de016cb49f59f12a2d9555b6db13045d637c3baf",
+    "local-test/review.jsonl": "58e43cf35176f4c7c42903fc947deb463949f14967260e74b3e465452ab38a1a"
+  }
+}
