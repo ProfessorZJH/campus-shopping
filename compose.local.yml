@@ -1,0 +1,8 @@
+# 仅供单机隔离开发/CI。不得用于公网生产部署。
+services:
+  app:
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SERVER_ADDRESS: 0.0.0.0
+      DB_URL: jdbc:mysql://mysql:3306/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+      SESSION_COOKIE_SECURE: 'false'

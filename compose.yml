@@ -51,6 +51,7 @@ services:
       AI_SERVICE_KEY: ${AI_SERVICE_KEY:?必须设置 Java/Python 共享服务密钥}
       AI_DB_PATH: /app/var/knowledge.sqlite3
       AI_MAX_CONCURRENT_REQUESTS: ${AI_MAX_CONCURRENT_REQUESTS:-4}
+      AI_TRUSTED_HTTP_HOSTS: ${AI_TRUSTED_HTTP_HOSTS:-milvus,qdrant}
       LLM_BASE_URL: ${LLM_BASE_URL:-}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_MODEL: ${LLM_MODEL:-}
@@ -87,11 +88,11 @@ services:
       REDIS_SECURITY_PASSWORD: ${REDIS_SECURITY_PASSWORD}
       REDIS_CACHE_PASSWORD: ${REDIS_CACHE_PASSWORD}
       PORT: 8091
-      DB_URL: jdbc:mysql://mysql:3306/campus_shopping?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8
+      DB_URL: ${DB_URL:-jdbc:mysql://mysql:3306/campus_shopping?sslMode=VERIFY_IDENTITY&serverTimezone=UTC&characterEncoding=utf8}
       DB_USERNAME: campus_app
       DB_PASSWORD: ${DB_PASSWORD}
       DB_INIT_MODE: never
-      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-true}
       BOOTSTRAP_ADMIN: ${BOOTSTRAP_ADMIN:-true}
       ADMIN_USERNAME: ${ADMIN_USERNAME:?必须设置初始管理员用户名}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?必须设置初始管理员密码}

@@ -2,6 +2,32 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
+from ipaddress import ip_address
+from urllib.parse import urlsplit
+
+
+def validate_service_url(url: str, label: str, trusted_http_hosts: tuple[str, ...], *, root_only: bool = False):
+    """只信任明确配置的内网 HTTP 对端；不解析 DNS 来猜测传输是否安全。"""
+    if not url:
+        return
+    try:
+        parsed = urlsplit(url)
+        host = parsed.hostname
+        port = parsed.port
+    except ValueError:
+        raise ValueError(label + ' 连接地址无效') from None
+    if (parsed.scheme not in ('https', 'http') or not host or parsed.username is not None
+            or parsed.password is not None or parsed.query or parsed.fragment or '\\' in url
+            or any(c.isspace() or ord(c) < 32 for c in url)
+            or (root_only and parsed.path not in ('', '/'))):
+        raise ValueError(label + ' 连接地址无效，不允许内嵌凭据、查询或片段')
+    if parsed.scheme == 'http':
+        try:
+            loopback = ip_address(host).is_loopback
+        except ValueError:
+            loopback = host == 'localhost'
+        if not loopback and host not in trusted_http_hosts:
+            raise ValueError('公网 ' + label + ' 必须使用 TLS；内网 HTTP 须加入 AI_TRUSTED_HTTP_HOSTS')
 
 @dataclass(frozen=True)
 class Settings:
@@ -21,6 +47,7 @@ class Settings:
     product_collection: str = "campus_products_v1"
     max_concurrent_requests: int = 4
     llm_timeout_seconds: int = 60
+    trusted_http_hosts: tuple[str, ...] = ('milvus', 'qdrant')
 
     @classmethod
     def from_env(cls):
@@ -32,7 +59,8 @@ class Settings:
             milvus_uri=os.getenv("MILVUS_URI", "").rstrip("/"),milvus_token=os.getenv("MILVUS_TOKEN", ""),
             product_collection=os.getenv("MILVUS_PRODUCT_COLLECTION", "campus_products_v1"),
             max_concurrent_requests=int(os.getenv("AI_MAX_CONCURRENT_REQUESTS", "4")),
-            llm_timeout_seconds=int(os.getenv("LLM_TIMEOUT_SECONDS", "60")))
+            llm_timeout_seconds=int(os.getenv("LLM_TIMEOUT_SECONDS", "60")),
+            trusted_http_hosts=tuple(x.strip().lower() for x in os.getenv('AI_TRUSTED_HTTP_HOSTS', 'milvus,qdrant').split(',') if x.strip()))
     def validate(self):
         if not 1<=self.max_concurrent_requests<=32:raise ValueError("AI_MAX_CONCURRENT_REQUESTS 必须为1至32")
         if len(self.api_key)<24:
@@ -52,17 +80,9 @@ class Settings:
             raise ValueError("Milvus 的地址与凭据必须一起配置")
         if self.milvus_uri and not (self.embedding_url and self.embedding_key and self.embedding_model):
             raise ValueError("Milvus 商品语义索引必须配置完整 Embedding 模型")
-        if self.milvus_uri:
-            from urllib.parse import urlparse
-            from ipaddress import ip_address
-            parsed=urlparse(self.milvus_uri)
-            host=parsed.hostname or ""
-            if parsed.scheme not in ("http", "https") or not host or parsed.username or parsed.password or parsed.path not in ("", "/"):
-                raise ValueError("Milvus 连接地址无效")
-            if not self.milvus_token:
-                raise ValueError("Milvus 必须配置私有凭据")
-            if parsed.scheme=="http":
-                try: private=ip_address(host).is_private or ip_address(host).is_loopback
-                except ValueError: private=(host in ("localhost", "milvus") or host.endswith((".internal", ".svc", ".svc.cluster.local")))
-                if not private:raise ValueError("公网 Milvus 必须使用 TLS 或私有隧道，不能通过 HTTP 传送密码")
+        for url, label, root_only in ((self.llm_url, 'LLM', False), (self.embedding_url, 'Embedding', False),
+                                      (self.qdrant_url, 'Qdrant', True), (self.milvus_uri, 'Milvus', True)):
+            validate_service_url(url, label, self.trusted_http_hosts, root_only=root_only)
+        if self.qdrant_url and not self.qdrant_key:
+            raise ValueError('Qdrant 必须配置访问凭据')
         Path(self.db_path).parent.mkdir(parents=True,exist_ok=True)

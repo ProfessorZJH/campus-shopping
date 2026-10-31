@@ -25,7 +25,7 @@ public final class ProtectedQuotaFilter extends OncePerRequestFilter {
         return (
             !enabled ||
             !"POST".equals(r.getMethod()) ||
-            !(r.getRequestURI().equals("/api/v1/ai/chat") || r.getRequestURI().matches("/api/v1/merchants/[^/]+/orders/[^/]+/verify"))
+            !(RequestPath.applicationPath(r).equals("/api/v1/ai/chat") || RequestPath.applicationPath(r).matches("/api/v1/merchants/[^/]+/orders/[^/]+/verify"))
         );
     }
 
@@ -36,11 +36,12 @@ public final class ProtectedQuotaFilter extends OncePerRequestFilter {
             chain.doFilter(r, s);
             return;
         }
-        boolean ai = r.getRequestURI().equals("/api/v1/ai/chat");
+        String path = RequestPath.applicationPath(r);
+        boolean ai = path.equals("/api/v1/ai/chat");
         long retry;
         try {
             retry = quotas.acquire(ai ? "ai-user" : "pickup-user", actor.getName(), ai ? 10 : 60, 60);
-            if (retry == 0) retry = quotas.acquire(ai ? "ai-global" : "pickup-merchant", ai ? "all" : r.getRequestURI().split("/")[4], ai ? 120 : 300, 60);
+            if (retry == 0) retry = quotas.acquire(ai ? "ai-global" : "pickup-merchant", ai ? "all" : path.split("/")[4], ai ? 120 : 300, 60);
         } catch (RuntimeException error) {
             ApiErrorWriter.write(mapper, s, 503, ResponseCode.UN_ERROR);
             return;

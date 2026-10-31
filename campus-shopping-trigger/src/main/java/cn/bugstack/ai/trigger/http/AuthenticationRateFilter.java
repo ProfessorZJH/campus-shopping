@@ -24,13 +24,15 @@ public final class AuthenticationRateFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest r) {
         return (
-            !enabled || !"POST".equals(r.getMethod()) || !(r.getRequestURI().equals("/api/v1/auth/login") || r.getRequestURI().equals("/api/v1/auth/register"))
+            !enabled ||
+            !"POST".equals(r.getMethod()) ||
+            !(RequestPath.applicationPath(r).equals("/api/v1/auth/login") || RequestPath.applicationPath(r).equals("/api/v1/auth/register"))
         );
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
-        boolean register = request.getRequestURI().endsWith("register");
+        boolean register = RequestPath.applicationPath(request).endsWith("register");
         long retry;
         try {
             retry = quotas.acquire(register ? "register-source" : "login-source", request.getRemoteAddr(), register ? 30 : 300, register ? 300 : 60);

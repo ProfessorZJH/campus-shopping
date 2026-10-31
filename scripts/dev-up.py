@@ -33,7 +33,7 @@ def main():
     env = read_env(ROOT / '.env')
     if args.vector and not env.get('QDRANT_URL'):
         parser.exit(2, '启用 --vector 前请在 .env 设置 QDRANT_URL=http://qdrant:6333。\n')
-    command = ['docker', 'compose'] + (['--profile', 'vector'] if args.vector else [])
+    command = ['docker', 'compose', '-f', 'compose.yml', '-f', 'compose.local.yml'] + (['--profile', 'vector'] if args.vector else [])
     subprocess.run(command + ['config', '--quiet'], check=True, cwd=ROOT)
     subprocess.run(command + ['up', '--build', '-d'], check=True, cwd=ROOT)
     base = 'http://127.0.0.1:' + env.get('APP_PORT', '8091')
