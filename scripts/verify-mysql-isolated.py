@@ -20,6 +20,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from urllib.parse import urlsplit
 import xml.etree.ElementTree as ET
 import zipfile
 
@@ -390,7 +391,21 @@ def run(args, report):
             (args.output.parent/'tested-sources.json').write_text(
                 json.dumps(source_hashes, ensure_ascii=False, indent=2)+'\n', encoding='utf-8')
             env = os.environ.copy()
-            env.setdefault('REDIS_ENABLED', 'false')
+            redis_test_address = env.get('REDIS_TEST_ADDRESS', '').strip()
+            for name in ('REDIS_ENABLED', 'REDIS_SECURITY_ADDRESS', 'REDIS_SECURITY_PASSWORD',
+                         'REDIS_CACHE_ADDRESS', 'REDIS_CACHE_PASSWORD', 'REDIS_NAMESPACE'):
+                env.pop(name, None)
+            env['REDIS_ENABLED'] = 'false'
+            if redis_test_address:
+                parsed = urlsplit(redis_test_address)
+                if (parsed.scheme not in ('redis', 'rediss') or parsed.hostname not in ('127.0.0.1', 'localhost', '::1')
+                        or parsed.username or parsed.password):
+                    raise ValueError('REDIS_TEST_ADDRESS 仅允许显式配置本机测试专用 Redis，URI 不得内嵌凭据')
+                env.update(REDIS_ENABLED='true', REDIS_SECURITY_ADDRESS=redis_test_address,
+                           REDIS_CACHE_ADDRESS=redis_test_address,
+                           REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
+                           REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
+                           REDIS_NAMESPACE='cs:test:maven:'+secrets.token_hex(12))
             env.update(MYSQL_TEST_URL=f'jdbc:mysql://127.0.0.1:{port}/campus_shopping_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8',
                        MYSQL_TEST_USERNAME='root', MYSQL_TEST_PASSWORD=password)
             maven = str(build_root/('mvnw.cmd' if os.name == 'nt' else 'mvnw')) if Path(args.maven).name in ('mvnw', 'mvnw.cmd') else args.maven
