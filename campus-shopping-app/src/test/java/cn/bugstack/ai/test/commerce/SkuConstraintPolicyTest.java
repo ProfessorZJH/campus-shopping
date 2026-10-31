@@ -3,6 +3,7 @@ package cn.bugstack.ai.test.commerce;
 import static org.junit.jupiter.api.Assertions.*;
 
 import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
+import cn.bugstack.ai.domain.shoppingai.service.ConstraintSet;
 import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
 import cn.bugstack.ai.domain.shoppingai.service.SkuConstraintPolicy;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,14 +30,15 @@ class SkuConstraintPolicyTest {
                 .stream()
                 .map(s -> new ProposalItemVO(s, "m", titles.get(0), s, 100, 1, 1, null))
                 .toList();
+            var purchase = ConstraintSet.resolve(question, history, quotes);
             var suggestions = specs
                 .stream()
-                .map(s -> new AiRecommendationVO(s, 1, "不可信模型文案"))
+                .map(s -> new AiRecommendationVO(s, purchase.requestedQuantity() == null ? 1 : purchase.requestedQuantity(), "不可信模型文案"))
                 .toList();
             var stock = new HashMap<String, Long>();
             specs.forEach(s -> stock.put(s, 10L));
             assertEquals(
-                accepted,
+                ConstraintSet.resolve(question, history, quotes).requestedQuantity() == null ? accepted : accepted.stream().limit(1).toList(),
                 RecommendationPolicy.select(suggestions, quotes, stock, question, history).stream().map(ProposalItemVO::specKey).toList(),
                 question
             );

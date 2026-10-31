@@ -95,7 +95,14 @@ class AiConversationBoundaryTest {
         useCase.chat("buyer", "conversation", question);
         verify(knowledge).citationDocuments("buyer", List.of("used"));
         verify(knowledge, times(3)).readableScope("buyer");
-        verify(turns).complete(eq(turn), eq(question), eq("回答"), eq(List.of()), any(), anyString());
+        verify(turns).complete(
+            eq(turn),
+            eq(question),
+            eq(ShoppingAnswerPolicy.evidenceAnswer(List.of(new AiCitationVO("used", "chunk", "引用", "允许引用", 1.0)))),
+            eq(List.of()),
+            any(),
+            anyString()
+        );
         verify(state, never()).releaseTurn(any()); // 成功事务已释放，不再多发可能失败的数据库写。
 
         reset(turns);

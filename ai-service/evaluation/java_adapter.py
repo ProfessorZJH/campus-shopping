@@ -123,8 +123,24 @@ def read_export(path, data, *, profile=None, split=None, experiments=None):
     merchants = {m['merchantId']: m for m in data['merchants']['merchants']}
     skus = {s['skuId']: (p, s) for p in data['products'] for s in p['skus']}
     for row in export['rows']:
-        if row['status'] == 'EXECUTED' and row['provenance']['javaMysql']['source'] != ['REAL']:
-            raise ValueError('Java source evidence missing')
+        if row['status'] == 'EXECUTED':
+            evidence = row.get('provenance', {}).get('javaMysql', {})
+            if (evidence.get('source') != ['REAL'] or type(evidence.get('attempts')) is not int
+                    or type(evidence.get('success')) is not int or evidence['success'] < 1
+                    or evidence.get('failure') != 0 or evidence['attempts'] != evidence['success']):
+                raise ValueError('Java successful execution evidence missing')
+            if row['experiment'] not in ('P-L', 'P-D', 'P-H', 'P-H-R', 'P-TERMS'):
+                raise ValueError('Java unsupported executed experiment')
+            for stage in ('product.fused', 'sku.pool'):
+                values = row.get('stages', {}).get(stage)
+                if not isinstance(values, list) or any(not isinstance(v, str) for v in values):
+                    raise ValueError('Java required stage missing or malformed')
+            if row['experiment'] != 'P-L':
+                source = ['STUB'] if export.get('profile') == 'controlled' else ['REAL']
+                for component in ('embedding', 'productVector'):
+                    proof = row.get('provenance', {}).get(component, {})
+                    if proof.get('source') != source or not proof.get('success', 0) or proof.get('failure', 0):
+                        raise ValueError('Java semantic source evidence missing')
         stages = row.get('stages', {})
         ranked = stages.get('product.fused', [])
         for pid in ranked:

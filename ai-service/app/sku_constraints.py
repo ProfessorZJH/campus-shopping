@@ -53,7 +53,10 @@ def extract(question, vocabulary, titles=()):
     # 显式属性前缀即使不在候选中也必须约束；数量/商品名称不当作属性。
     for match in re.finditer(r'(?<!需)(?:' + NEGATIVE + r'|只要|想要|规格为|规格是|换成|改成|改为|选择|要|选)([^,，。;；!?？]{1,40})', text):
         token = re.split(CUES, match.group(1))[0]
-        if re.match(r'[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋)', token): continue
+        original_token = token
+        token = re.sub(r'^[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋)', '', token)
+        starts_attribute = any(token.startswith(v) for v in vocabulary) or re.match(r'^.{1,2}?(?:装|色|码|杯|号|型)|^\d+(?:\.\d+)?(?:ml|kg|cm|mm|l|g)', token)
+        if original_token != token and not starts_attribute: continue
         for title in sorted(titles, key=len, reverse=True):
             token = token.split(normalize(title), 1)[0]
         token = token.rstrip('的')
@@ -66,7 +69,8 @@ def extract(question, vocabulary, titles=()):
             if value: terms.add(value)
             cursor = attribute.end()
         remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
-        if remainder and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 8)):
+        product_name = any(remainder and remainder in normalize(title) for title in titles)
+        if remainder and not product_name and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 8)):
             terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))

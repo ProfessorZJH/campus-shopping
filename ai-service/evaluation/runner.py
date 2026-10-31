@@ -28,7 +28,10 @@ def offers_for(data, case):
 
 
 def run(data, path, *, split='dev', profile='local', adapter='python', experiments=('K-B', 'K-D', 'K-H', 'R-RULE'),
-        allow_external=False, budget=0, java_rows=None, java_metadata=None, handler=None):
+        allow_external=False, budget=0, java_rows=None, java_metadata=None, handler=None, release_strict=False):
+    if release_strict:
+        from .dataset import validate
+        validate(data, formal=True)
     started = now()
     ids = set(data['splits'][split])
     cases = [c for c in data['cases'] if c['caseId'] in ids]
@@ -160,14 +163,21 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
         if violations:
             boundary_violations.append([row['caseId'], row['experiment'], row['repeat']])
             boundary_details.append(dict(caseId=row['caseId'], experiment=row['experiment'], repeat=row['repeat'], metrics=violations))
-    exit_code = 2 if unsupported else 1 if incomplete or boundary_violations or any(r['cleanup'].startswith('FAILED') for r in resources) else 0
+    if adapter == 'java-mysql' and java_rows is not None:
+        resources = (java_metadata or {}).get('resources', [{'type': 'input-plan-resources', 'cleanup': 'NOT_CAPTURED'}])
+    cleanup_failed = any(r.get('cleanup') not in ('DELETED', 'NOT_CREATED') for r in resources)
+    strict_failed = release_strict and (not rows or any(r['status'] != 'EXECUTED' for r in rows)
+        or data.get('manifest', {}).get('status') != 'ACCEPTED'
+        or any(r['experiment'] not in ('P-L', 'R-RULE', 'K-B') and profile in ('local', 'controlled') for r in rows))
+    exit_code = 2 if unsupported else 1 if incomplete or boundary_violations or cleanup_failed or strict_failed else 0
     metadata = dict(startedAt=started, endedAt=now(), split=split, profile=profile, adapter=adapter,
                     experiments=requested, warmup=2, warmupStages=['knowledge.search'],
                     providerRequests=recorder.used, requestBudget=budget, boundaryViolations=boundary_violations,
                     boundaryViolationDetails=boundary_details,
                     actualComponents=recorder.snapshot(), resources=resources, humanReview='PENDING',
                     actualModels=recorder.models, usage=dict(tokens='UNKNOWN', cost='UNKNOWN', providerSeedSupport='UNKNOWN'),
-                    status='FAILED' if boundary_violations else 'PARTIAL', exitCode=exit_code,
+                    status='FAILED' if boundary_violations or cleanup_failed or strict_failed else 'PASS' if release_strict and exit_code == 0 else 'PARTIAL', exitCode=exit_code,
+                    releaseStrict=release_strict, cleanupSuccessful=not cleanup_failed,
                     configuration=dict(pythonHashSeed=os.environ.get('PYTHONHASHSEED', 'UNCONTROLLED'),
                                        rrfConstant=60, knowledgeSelectionDepth=6, skuPoolLimit=300,
                                        candidateLimit=12, recommendationLimit=3, llmRepetitions=3,

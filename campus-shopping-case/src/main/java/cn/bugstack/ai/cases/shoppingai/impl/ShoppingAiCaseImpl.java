@@ -227,7 +227,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             quotes.stream().map(ProposalItemVO::specKey).toList(),
             quotes.stream().map(ProposalItemVO::title).toList()
         );
-        String safeText = answer.answer();
+        String safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
         if (!knowledgeOnly && (!items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
             safeText = items.isEmpty()
                 ? "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"

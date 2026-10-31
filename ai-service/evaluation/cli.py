@@ -15,6 +15,7 @@ def main(argv=None):
     parser.add_argument('--adapter', choices=('python', 'java-mysql'), default='python')
     parser.add_argument('--experiments', default='K-B,K-D,K-H,R-RULE')
     parser.add_argument('--formal', action='store_true')
+    parser.add_argument('--release-strict', action='store_true', help='发布验收：人工冻结数据、必需阶段/来源及清理均成功；DRAFT不能通过')
     parser.add_argument('--allow-external', action='store_true')
     parser.add_argument('--max-provider-requests', type=int, default=0)
     parser.add_argument('--output-dir', type=Path)
@@ -37,7 +38,7 @@ def main(argv=None):
         if not args.dataset:
             from .legacy import execute
             return execute(args.output_dir)
-        data = load(args.dataset, formal=args.formal)
+        data = load(args.dataset, formal=args.formal or args.release_strict)
         if args.export_review:
             from .review import export
             print(json.dumps({'review': str(export(args.export_review, data)), 'humanStatus': 'PENDING'}))
@@ -48,7 +49,7 @@ def main(argv=None):
                            experiments=args.experiments.split(','), allow_external=args.allow_external,
                            budget=args.max_provider_requests)
             print(json.dumps({'javaInput': str(args.prepare_java_input), 'planned': len(plan['records'])}))
-            return 0 if all(r['status'] == 'EXECUTED' for r in plan['records']) else 1
+            return 0 if all(r['status'] == 'EXECUTED' for r in plan['records']) and all(r.get('cleanup') in ('DELETED', 'NOT_CREATED') for r in plan['resources']) else 1
         java_rows = None
         java_metadata = None
         if args.java_results:
@@ -58,7 +59,7 @@ def main(argv=None):
         output = new_run(args.output_dir)
         manifest = run(data, output, split=args.split, profile=args.profile, adapter=args.adapter,
                        experiments=tuple(args.experiments.split(',')), allow_external=args.allow_external,
-                       budget=args.max_provider_requests, java_rows=java_rows, java_metadata=java_metadata)
+                       budget=args.max_provider_requests, java_rows=java_rows, java_metadata=java_metadata, release_strict=args.release_strict)
         print(json.dumps({'output': str(output), 'status': manifest['status'], 'exitCode': manifest['exitCode']}, ensure_ascii=False))
         return manifest['exitCode']
     except (DatasetError, ValueError, KeyError, FileExistsError, FileNotFoundError) as error:
