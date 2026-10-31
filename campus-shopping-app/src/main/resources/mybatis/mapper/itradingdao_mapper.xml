@@ -33,8 +33,12 @@ SELECT * FROM trd_order o WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{bu
 SELECT COUNT(*) FROM trd_order o WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{buyer}</if> <if test="merchant != null">AND o.merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND o.status=#{status}</if>
     <if test="q != null and q != ''">AND (LOCATE(LOWER(#{q}),LOWER(o.id))>0 OR EXISTS(SELECT 1 FROM trd_order_item oi WHERE oi.order_id=o.id AND LOCATE(LOWER(#{q}),LOWER(oi.title))>0))</if>
 </select>
+    <select id="oldestExpired" resultType="java.time.Instant">SELECT MIN(deadline) FROM trd_order WHERE status='PENDING_PAYMENT' AND deadline &lt;= #{now}</select>
     <select id="expired" resultType="java.lang.String">
 SELECT id FROM trd_order WHERE status='PENDING_PAYMENT' AND deadline &lt;= #{now} ORDER BY deadline,id LIMIT 100
+    </select>
+    <select id="expiredAfter" resultType="java.lang.String">
+SELECT id FROM trd_order WHERE status='PENDING_PAYMENT' AND deadline &lt;= #{now} AND id &gt; #{after} ORDER BY id LIMIT #{limit}
     </select>
     <insert id="payment">
 INSERT INTO trd_payment(order_id,amount_cent,status) VALUES(#{order},#{amount},'SUCCEEDED')

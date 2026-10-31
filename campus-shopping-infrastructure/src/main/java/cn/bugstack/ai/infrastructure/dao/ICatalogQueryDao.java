@@ -7,6 +7,7 @@ import org.apache.ibatis.annotations.*;
 /** 只读投影 DAO，禁止写语句。 */
 @Mapper
 public interface ICatalogQueryDao {
+    List<String> scanIdsAfter(@Param("after") String after, @Param("limit") int limit);
     List<ProductPO> search(
         @Param("merchantId") String merchantId,
         @Param("query") String query,

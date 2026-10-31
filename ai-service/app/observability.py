@@ -18,6 +18,7 @@ def failure(operation, error):
     status = getattr(getattr(error, "response", None), "status_code", None)
     with lock:
         counts[operation + ".failures"] += 1
+        counts[operation + ".last_failure_at"] = time.time()
     logger.warning("dependency_failed operation=%s request_id=%s exception_type=%s http_status=%s",
                    operation, request_id.get(), type(error).__name__, status)
 
@@ -30,7 +31,10 @@ def observed(operation):
             with lock:
                 counts[operation + ".calls"] += 1
             try:
-                return function(*args, **kwargs)
+                result = function(*args, **kwargs)
+                with lock:
+                    counts[operation + ".last_success_at"] = time.time()
+                return result
             except Exception as error:
                 failure(operation, error)
                 raise
@@ -47,6 +51,32 @@ def observed(operation):
 def diagnostics():
     with lock:
         return dict(counts)
+
+
+class ExecutionGate:
+    """不排队；在实际执行结束前计入占用。拒绝数反映容量压力。"""
+    def __init__(self, capacity):
+        self.semaphore = threading.BoundedSemaphore(capacity)
+        self.lock = threading.Lock()
+        self.capacity, self.active, self.rejected = capacity, 0, 0
+
+    def acquire(self, blocking=False):
+        acquired = self.semaphore.acquire(blocking=blocking)
+        with self.lock:
+            if acquired:
+                self.active += 1
+            else:
+                self.rejected += 1
+        return acquired
+
+    def release(self):
+        with self.lock:
+            self.active -= 1
+        self.semaphore.release()
+
+    def snapshot(self):
+        with self.lock:
+            return {'capacity': self.capacity, 'active': self.active, 'queued': 0, 'rejected': self.rejected}
 
 
 class RequestContext:

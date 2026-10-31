@@ -134,6 +134,11 @@ public class CatalogServiceImpl implements ICatalogService {
         return queries.search(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size);
     }
 
+    public List<String> scanIdsAfter(String after, int limit) {
+        require(limit >= 1 && limit <= 100, ResponseCode.ILLEGAL_PARAMETER);
+        return queries.scanIdsAfter(after == null ? "" : after, limit);
+    }
+
     private String checkedSort(String sort) {
         String value = sort == null || sort.isBlank() ? ProductSortEnumVO.NEWEST.getCode() : sort;
         return ProductSortEnumVO.filter(value);

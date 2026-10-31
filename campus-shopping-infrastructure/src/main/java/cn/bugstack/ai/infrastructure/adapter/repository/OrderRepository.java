@@ -95,6 +95,14 @@ public class OrderRepository implements IOrderRepository {
         return dao.expired(now);
     }
 
+    public List<String> expiredAfter(Instant now, String after, int limit) {
+        return dao.expiredAfter(now, after, limit);
+    }
+
+    public Instant oldestExpired(Instant now) {
+        return dao.oldestExpired(now);
+    }
+
     public void payment(String order, long amount) {
         dao.payment(order, amount);
     }

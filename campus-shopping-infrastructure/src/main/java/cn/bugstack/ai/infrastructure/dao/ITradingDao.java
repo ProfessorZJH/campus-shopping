@@ -29,7 +29,9 @@ public interface ITradingDao {
         @Param("q") String q
     );
     long countOrders(@Param("buyer") String buyer, @Param("merchant") String merchant, @Param("status") String status, @Param("q") String q);
+    java.time.Instant oldestExpired(@Param("now") Instant now);
     List<String> expired(@Param("now") Instant now);
+    List<String> expiredAfter(@Param("now") Instant now, @Param("after") String after, @Param("limit") int limit);
     int payment(@Param("order") String order, @Param("amount") long amount);
     int refund(@Param("order") String order, @Param("amount") long amount);
     List<CartItemPO> cart(@Param("user") String user);

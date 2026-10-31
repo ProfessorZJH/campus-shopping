@@ -52,13 +52,10 @@ public class ProductVectorSyncJob {
         MDC.put("requestId", UUID.randomUUID().toString());
         int scanned = 0;
         try {
-            for (int page = 1; page <= 1000; page++) {
+            String cursor = resources.productSyncCursor();
+            for (int page = 1; page <= 100; page++) {
                 // 当前商品业务只做上下架，不物理删除目录行；全目录扫描也覆盖失效索引。
-                var all = catalog.search(null, "", null, false, page, 40);
-                var ids = all
-                    .stream()
-                    .map(product -> product.getId())
-                    .toList();
+                var ids = catalog.scanIdsAfter(cursor, 40);
                 var active = catalog.recallByIds(ids);
                 var liveIds = new HashSet<>(
                     active
@@ -90,15 +87,20 @@ public class ProductVectorSyncJob {
                     .toList();
                 if (!batch.isEmpty()) ai.indexProducts(batch);
                 if (!stale.isEmpty()) ai.deleteProducts(stale);
-                scanned += all.size();
-                if (all.size() < 40) {
+                scanned += ids.size();
+                if (!ids.isEmpty()) {
+                    cursor = ids.get(ids.size() - 1);
+                    resources.saveProductSyncCursor(cursor);
+                }
+                if (ids.size() < 40) {
+                    resources.saveProductSyncCursor("");
                     lastSuccess = java.time.Instant.now();
                     lastFailure = null;
                     log.info("product_vector_sync_completed scanned={} duration_ms={}", scanned, (System.nanoTime() - started) / 1_000_000);
                     return;
                 }
             }
-            throw new IllegalStateException("Product sync scan capacity exceeded");
+            log.info("product_vector_sync_checkpoint scanned={} duration_ms={}", scanned, (System.nanoTime() - started) / 1_000_000);
         } catch (RuntimeException error) {
             lastFailure = java.time.Instant.now();
             // 不打印下游异常正文，避免 URL、密钥或商品内容进入日志。

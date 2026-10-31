@@ -6,6 +6,8 @@ from dataclasses import asdict
 from typing import Any
 import httpx
 from .config import Settings
+from .http_limits import bounded_json
+from .egress import minimized, audit
 from .observability import observed, failure
 
 def tokens(text: str) -> list[str]:
@@ -57,12 +59,13 @@ class Provider:
         result=[]
         with httpx.Client(timeout=25.0,follow_redirects=False,trust_env=False) as client:
             for start in range(0,len(texts),32):
-                batch=texts[start:start+32]
+                batch=[minimized(t,'content') for t in texts[start:start+32]]
                 payload={'model':s.embedding_model,'input':batch}
                 if s.embedding_model.startswith('nvidia/'):
                     payload.update(input_type=input_type,truncate='END')
-                r=client.post(s.embedding_url+'/embeddings',headers={'Authorization':'Bearer '+s.embedding_key},json=payload)
-                r.raise_for_status();data=r.json()['data'];data.sort(key=lambda x:x['index'])
+                # 审计仅含供应商、用途、数量和字节，不含待嵌入文本。
+                audit(s.embedding_url, 'embedding.'+input_type, len(batch), payload)
+                data=bounded_json(client,'POST',s.embedding_url+'/embeddings',limit=8_388_608,headers={'Authorization':'Bearer '+s.embedding_key},json=payload)['data'];data.sort(key=lambda x:x['index'])
                 if len(data)!=len(batch):raise ValueError('向量数量不匹配')
                 for item in data:
                     vector=item['embedding']
@@ -74,15 +77,16 @@ class Provider:
     def complete(self,system: str,payload: dict[str,Any]) -> dict[str,Any]:
         s=self.settings
         if not s.llm_key:raise RuntimeError('未配置真实模型')
+        payload=minimized(payload)
         data={'model':s.llm_model,'max_completion_tokens':2048,'stream':False,
               'messages':[{'role':'system','content':system},{'role':'user','content':json.dumps(payload,ensure_ascii=False)}]}
         # 星火兼容接口无须强制 response_format/temperature；其余供应商保留 JSON mode。
         if not s.llm_model.startswith('spark-'):
             data['response_format']={'type':'json_object'}
+        audit(s.llm_url, 'completion', len(payload.get('authorizedEvidence', [])), payload)
         with httpx.Client(timeout=httpx.Timeout(30.0,read=s.llm_timeout_seconds),follow_redirects=False,trust_env=False) as client:
-            r=client.post(s.llm_url+'/chat/completions',headers={'Authorization':'Bearer '+s.llm_key},json=data)
-            r.raise_for_status()
-            content=r.json()['choices'][0]['message']['content']
+            result=bounded_json(client,'POST',s.llm_url+'/chat/completions',limit=262_144,headers={'Authorization':'Bearer '+s.llm_key},json=data)
+            content=result['choices'][0]['message']['content']
             if not isinstance(content,str) or len(content)>20000:raise ValueError('模型输出无效或超限')
             content=content.strip()
             if content.startswith('```'):
@@ -101,11 +105,11 @@ class KnowledgeStore:
         self.db.execute('CREATE TABLE IF NOT EXISTS chunks(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,ordinal INTEGER NOT NULL,embedding TEXT NOT NULL,model TEXT NOT NULL)')
         self.db.execute('CREATE INDEX IF NOT EXISTS chunks_doc ON chunks(doc_id)')
     def close(self):self.db.close()
+    @observed('qdrant')
     def _qdrant(self,method: str,path: str,body: dict|None=None):
         s=self.settings
         with httpx.Client(timeout=30.0,follow_redirects=False,trust_env=False) as client:
-            r=client.request(method,s.qdrant_url+path,headers={'api-key':s.qdrant_key} if s.qdrant_key else {},json=body)
-            r.raise_for_status();return r.json().get('result')
+            return bounded_json(client,method,s.qdrant_url+path,limit=4_194_304,headers={'api-key':s.qdrant_key} if s.qdrant_key else {},json=body).get('result')
     def _ensure_collection(self,size: int):
         s=self.settings
         try:
@@ -116,24 +120,26 @@ class KnowledgeStore:
             if e.response.status_code!=404:raise
             self._qdrant('PUT','/collections/'+s.collection,{'vectors':{'size':size,'distance':'Cosine'}})
             self._qdrant('PUT','/collections/'+s.collection+'/index',{'field_name':'document_id','field_schema':'keyword'})
-    def index(self,doc_id: str,title: str,text: str) -> int:
+    @observed('knowledge.index')
+    def index(self,doc_id: str,title: str,text: str,external_allowed: bool=False) -> int:
         pieces=chunks(text);fingerprint=hashlib.sha256((title+'\0'+text).encode()).hexdigest()
         with self.lock:
             prior=self.db.execute('SELECT fingerprint,model FROM docs WHERE id=?',(doc_id,)).fetchone()
             if prior and prior['fingerprint']!=fingerprint:raise ValueError('文档版本内容不可变；请使用新版本ID')
-        vectors=self.provider.embed(pieces)
-        rows=[(str(uuid.uuid5(uuid.NAMESPACE_URL,doc_id+':'+str(i))),doc_id,title,body,i,json.dumps(vectors[i]),self.provider.model_tag) for i,body in enumerate(pieces)]
+        model=self.provider.model_tag if external_allowed else 'local-char-ngram-v1'
+        vectors=self.provider.embed(pieces) if external_allowed else [local_vector(t) for t in pieces]
+        rows=[(str(uuid.uuid5(uuid.NAMESPACE_URL,doc_id+':'+str(i))),doc_id,title,body,i,json.dumps(vectors[i]),model) for i,body in enumerate(pieces)]
         # 远端写入成功后才标记本地就绪；重试使用稳定点ID，不生成重复分片。
-        if self.settings.qdrant_url:
+        if self.settings.qdrant_url and external_allowed:
             self._ensure_collection(len(vectors[0]))
-            points=[{'id':row[0],'vector':vectors[i],'payload':{'document_id':doc_id,'ordinal':i,'model':self.provider.model_tag}} for i,row in enumerate(rows)]
+            points=[{'id':row[0],'vector':vectors[i],'payload':{'document_id':doc_id,'ordinal':i,'model':model}} for i,row in enumerate(rows)]
             self._qdrant('PUT','/collections/'+self.settings.collection+'/points?wait=true',{'points':points})
         with self.lock:
             self.db.execute('BEGIN IMMEDIATE')
             try:
                 self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,))
                 self.db.executemany('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)',rows)
-                self.db.execute('INSERT INTO docs VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated',(doc_id,fingerprint,self.provider.model_tag,time.time()))
+                self.db.execute('INSERT INTO docs VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated',(doc_id,fingerprint,model,time.time()))
                 self.db.execute('COMMIT')
             except Exception:self.db.execute('ROLLBACK');raise
         return len(rows)
@@ -144,7 +150,8 @@ class KnowledgeStore:
             try:
                 self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,));self.db.execute('DELETE FROM docs WHERE id=?',(doc_id,));self.db.execute('COMMIT')
             except Exception:self.db.execute('ROLLBACK');raise
-    def search(self,query: str,allowed: list[str],top_k: int=6,*,_strategy: str='hybrid',_trace: dict|None=None) -> tuple[list[dict],str]:
+    @observed('knowledge.search')
+    def search(self,query: str,allowed: list[str],top_k: int=6,*,_strategy: str='hybrid',_trace: dict|None=None,external_document_ids: list[str]|None=None) -> tuple[list[dict],str]:
         # 私有评测接缝；生产HTTP不接受策略或trace参数，默认排序保持不变。
         if _strategy not in ('hybrid','sparse','dense'):raise ValueError('unknown retrieval strategy')
         if not allowed:return [],self.provider.vector_mode
@@ -161,13 +168,25 @@ class KnowledgeStore:
         by_id={r['id']:i for i,r in enumerate(rows)};dense=[];mode=self.provider.vector_mode
         try:
             if _strategy=='sparse':raise _SparseOnly()
+            local_indices=[i for i,r in enumerate(rows) if r['model']=='local-char-ngram-v1']
+            if local_indices:
+                local=local_vector(query)
+                for i in local_indices:
+                    v=json.loads(rows[i]['embedding']);score=sum(a*b for a,b in zip(v,local))
+                    if score>0.05:dense.append((i,score))
+            remote_ids=list(dict.fromkeys(r['doc_id'] for r in rows if r['model']==self.provider.model_tag and r['model']!='local-char-ngram-v1' and r['doc_id'] in set(external_document_ids or [])))
+            if not remote_ids:
+                mode='LOCAL_CHAR_NGRAM_DEMO'
+                dense=sorted(dense,key=lambda x:-x[1])[:30]
+                raise _SparseOnly()
             vector=self.provider.embed([query],input_type="query")[0]
             if self.settings.qdrant_url:
-                result=self._qdrant('POST','/collections/'+self.settings.collection+'/points/query',{'query':vector,'filter':{'must':[{'key':'document_id','match':{'any':allowed}},{'key':'model','match':{'value':self.provider.model_tag}}]},'limit':30,'with_payload':False})
-                dense=[(by_id[str(p['id'])],p['score']) for p in result['points'] if str(p['id']) in by_id and p['score']>0.05]
+                result=self._qdrant('POST','/collections/'+self.settings.collection+'/points/query',{'query':vector,'filter':{'must':[{'key':'document_id','match':{'any':remote_ids}},{'key':'model','match':{'value':self.provider.model_tag}}]},'limit':30,'with_payload':False})
+                dense.extend((by_id[str(p['id'])],p['score']) for p in result['points'] if str(p['id']) in by_id and p['score']>0.05)
+                dense=sorted(dense,key=lambda x:-x[1])[:30]
             else:
                 for i,row in enumerate(rows):
-                    if row['model']!=self.provider.model_tag:continue
+                    if row['doc_id'] not in remote_ids:continue
                     v=json.loads(row['embedding'])
                     if len(v)==len(vector):
                         score=sum(a*b for a,b in zip(v,vector))/(math.sqrt(sum(x*x for x in v))*math.sqrt(sum(x*x for x in vector)) or 1)

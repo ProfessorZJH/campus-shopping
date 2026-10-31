@@ -178,6 +178,13 @@ CREATE TABLE IF NOT EXISTS iam_merchant_role_permission (
  CONSTRAINT fk_role_permission FOREIGN KEY (merchant_id,role_code) REFERENCES iam_merchant_role(merchant_id,role_code) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- 商品向量同步进度，批次远端成功后再保存；允许幂等重放。
+CREATE TABLE IF NOT EXISTS ai_sync_checkpoint (
+ id VARCHAR(64) PRIMARY KEY,
+ last_id VARCHAR(64) NOT NULL DEFAULT '',
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 -- BEGIN GENERATED SCHEMA HISTORY
 CREATE TABLE IF NOT EXISTS sys_schema_migration (
  version VARCHAR(32) PRIMARY KEY, checksum CHAR(64) NOT NULL,
@@ -189,3 +196,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261029_01','efdc1a
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261030_01','436372074fa9cd2fe0cb9c2c00ce29bb3196a93aa8d477042ac3c8437f200e32' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_01','8302633d94615ff84f1a4803e94131b26cb0be3bfccb2d93882446faebd2fc07' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a063f6ffd06d3b115175258fb59dd2f2ba3ce72e49cbea2a87a3371b8ca' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

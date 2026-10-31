@@ -50,6 +50,9 @@ campus:
   ai:
     url: ${AI_SERVICE_URL:http://127.0.0.1:8100}
     service-key: ${AI_SERVICE_KEY:}
+    egress:
+      base-ids: ${AI_EGRESS_BASE_IDS:}
+      merchant-ids: ${AI_EGRESS_MERCHANT_IDS:}
     product-sync:
       enabled: ${AI_PRODUCT_VECTOR_SYNC_ENABLED:false}
   uploads: ${UPLOAD_DIR:./var/uploads}

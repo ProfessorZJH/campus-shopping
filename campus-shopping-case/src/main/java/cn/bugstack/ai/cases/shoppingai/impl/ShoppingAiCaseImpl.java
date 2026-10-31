@@ -49,6 +49,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
+    private final cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy egress;
+
     private static final Logger log = LoggerFactory.getLogger(ShoppingAiCaseImpl.class);
 
     private final IConversationService state;
@@ -75,8 +77,10 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         IUserAccountService accounts,
         Clock clock,
         IConversationTurnCase turns,
-        IProposalConfirmationCase confirmation
+        IProposalConfirmationCase confirmation,
+        cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy egress
     ) {
+        this.egress = egress;
         this.state = state;
         this.proposals = proposals;
         this.engine = engine;
@@ -186,7 +190,19 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .map(SkuOfferVO::skuId)
             .toList();
         AiAnswerVO answer = engine.query(
-            new AiQueryEntity(question, documents.stream().map(KnowledgeScopeVO::id).toList(), candidates, history, recall.query(), semanticSkuIds)
+            new AiQueryEntity(
+                question,
+                documents.stream().map(KnowledgeScopeVO::id).toList(),
+                candidates,
+                history,
+                recall.query(),
+                semanticSkuIds,
+                documents
+                    .stream()
+                    .filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId()))
+                    .map(KnowledgeScopeVO::id)
+                    .toList()
+            )
         );
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
         var current = knowledge.readableScope(actor);

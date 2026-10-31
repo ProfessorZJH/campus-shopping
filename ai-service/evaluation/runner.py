@@ -55,8 +55,9 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                 if reason is None and not importing:
                     store = KnowledgeStore(settings)
                     store.provider = RecordedProvider(store.provider, recorder)
+                    # 本评测仅使用冻结合成语料；真实网络仍受preflight显式授权和预算控制。
                     for d in data['knowledge']:
-                        store.index(d['documentId'], d['title'], d['content'])
+                        store.index(d['documentId'], d['title'], d['content'], external_allowed=True)
                     if profile in ('real-milvus', 'live-full'):
                         owned = OwnedIndex(settings, store.provider, recorder)
                         products = [dict(productId=p['productId'], merchantId=p['merchantId'], title=p['title'],
@@ -66,7 +67,7 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                     # 预热同一种调用两次，不计质量/延迟；供应商预算仍计入。
                     warm = cases[0]
                     for _ in range(2):
-                        store.search(warm['originalQuery'], warm['allowedDocumentIds'])
+                        store.search(warm['originalQuery'], warm['allowedDocumentIds'], external_document_ids=warm['allowedDocumentIds'])
             except Exception as error:
                 reason = 'SETUP_' + type(error).__name__
             try:
@@ -102,7 +103,7 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                                     if task == 'knowledge':
                                         query = query_rewrite(original, history, store) if experiment.endswith('-R') else original
                                         hits, mode = store.search(query, case['allowedDocumentIds'], 6,
-                                            _strategy='sparse' if experiment == 'K-B' else 'dense' if experiment.startswith('K-D') else 'hybrid', _trace=trace)
+                                            _strategy='sparse' if experiment == 'K-B' else 'dense' if experiment.startswith('K-D') else 'hybrid', _trace=trace, external_document_ids=case['allowedDocumentIds'])
                                         recorder.event('knowledgeVector', 'SQLITE', 'SUCCESS', 'search')
                                         r.update(result=dict(citations=hits, answer=''), stages={
                                             'knowledge.chunks': [h['chunkId'] for h in hits],
@@ -118,7 +119,7 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                                         try:
                                             query = original
                                             result = answer(store, original, case['allowedDocumentIds'], offers, history,
-                                                            retrieval_query=query, _trace=trace)
+                                                            retrieval_query=query, _trace=trace, external_document_ids=case['allowedDocumentIds'])
                                         finally:
                                             store.settings = old_settings
                                         r.update(result=result, stages={'recommendations': trace['selected']}, trace=trace,

@@ -90,7 +90,8 @@ class AiConversationBoundaryTest {
             accounts,
             clock,
             turns,
-            mock(IProposalConfirmationCase.class)
+            mock(IProposalConfirmationCase.class),
+            new KnowledgeEgressPolicy("", "")
         );
         useCase.chat("buyer", "conversation", question);
         verify(knowledge).citationDocuments("buyer", List.of("used"));

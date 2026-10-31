@@ -1,3 +1,4 @@
+import json
 """真实 FastAPI 应用与本地 SQLite 检索测试；不伪装外部模型/Qdrant 已验收。"""
 import base64,json
 import pytest
@@ -290,18 +291,18 @@ def test_query_uses_server_retrieval_query(app_client):
 
 def test_spark_provider_uses_compatible_completion_payload(monkeypatch,tmp_path):
     from app.retrieval import Provider
-    from unittest.mock import MagicMock
-    import dataclasses
+    import httpx
     import app.retrieval as retrieval
-    fake=MagicMock()
-    fake.post.return_value.json.return_value={'choices':[{'message':{'content':'```json\n{"answer":"可以看看这款商品","recommendations":[]}\n```'}}]}
-    fake.post.return_value.raise_for_status.return_value=None
-    context=MagicMock();context.__enter__.return_value=fake
-    monkeypatch.setattr(retrieval.httpx,'Client',lambda **kwargs:context)
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200,json={'choices':[{'message':{'content':'```json\n{"answer":"可以看看这款商品","recommendations":[]}\n```'}}]})
+    original=httpx.Client
+    monkeypatch.setattr(retrieval.httpx,'Client',lambda **kwargs:original(transport=httpx.MockTransport(handler),**kwargs))
     settings=Settings(KEY,str(tmp_path/'k.db'),llm_url='https://example.invalid/v2',llm_key='test-only',llm_model='spark-x2.6')
     assert Provider(settings).complete('输出JSON',{'question':'推荐一支笔'})['answer']=='可以看看这款商品'
-    args,kw=fake.post.call_args
-    assert args[0]=='https://example.invalid/v2/chat/completions'
+    assert str(calls[0].url)=='https://example.invalid/v2/chat/completions'
+    kw={'json':json.loads(calls[0].content)}
     assert kw['json']['model']=='spark-x2.6'
     assert 'temperature' not in kw['json'] and 'response_format' not in kw['json']
     assert 'test-only' not in str(kw['json'])

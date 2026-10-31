@@ -16,5 +16,6 @@ public interface IAiEnginePort {
     void indexProducts(java.util.List<cn.bugstack.ai.domain.shoppingai.model.valobj.ProductIndexVO> products);
     void deleteProducts(java.util.List<String> productIds);
     void index(String documentId, String title, String content);
+    void index(String documentId, String title, String content, boolean externalAllowed);
     String extract(String filename, String contentType, byte[] bytes);
 }

@@ -17,7 +17,8 @@ public final class AiGatewayDTO {
         List<Offer> offers,
         List<History> history,
         String retrievalQuery,
-        List<String> semanticSkuIds
+        List<String> semanticSkuIds,
+        List<String> externalDocumentIds
     ) {}
 
     public record RecallRequest(String question, List<History> history) {}
@@ -49,7 +50,11 @@ public final class AiGatewayDTO {
         long latencyMs
     ) {}
 
-    public record Index(String documentId, String title, String content) {}
+    public record Index(String documentId, String title, String content, boolean externalAllowed) {
+        public Index(String documentId, String title, String content) {
+            this(documentId, title, content, false);
+        }
+    }
 
     public record Extract(String filename, String contentType, String base64) {}
 
