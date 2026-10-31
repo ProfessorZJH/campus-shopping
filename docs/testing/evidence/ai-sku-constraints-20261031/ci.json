@@ -1,0 +1,81 @@
+{
+  "runId": 41181311636,
+  "url": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41181311636",
+  "headSha": "edc5a4ede7c5cfe59801f5f7712190e25ac4a497",
+  "testedMergeSha": "b63d6102",
+  "event": "pull_request",
+  "status": "completed",
+  "conclusion": "success",
+  "checks": [
+    {
+      "name": "Maven / MySQL / FastAPI / Browser E2E",
+      "id": 124479103905,
+      "conclusion": "success",
+      "steps": [
+        {
+          "name": "Real fresh / upgrade / replay / checksum migration checks",
+          "conclusion": "success"
+        },
+        {
+          "name": "Real Maven build + MySQL tests",
+          "conclusion": "success"
+        },
+        {
+          "name": "Java domain / HTTP / Python AI tests",
+          "conclusion": "success"
+        },
+        {
+          "name": "Start independent real MySQL / Spring / FastAPI",
+          "conclusion": "success"
+        },
+        {
+          "name": "Real cross-service HTTP business E2E",
+          "conclusion": "success"
+        },
+        {
+          "name": "Real Redis cross-instance HTTP regression",
+          "conclusion": "success"
+        },
+        {
+          "name": "Real Spring frontend browser E2E",
+          "conclusion": "success"
+        }
+      ]
+    },
+    {
+      "name": "Chromium contract / legacy",
+      "id": 124479104010,
+      "conclusion": "success",
+      "steps": []
+    },
+    {
+      "name": "Chromium contract / current",
+      "id": 124479104082,
+      "conclusion": "success",
+      "steps": []
+    },
+    {
+      "name": "Actual delivery images / isolated Compose transaction chain",
+      "id": 124479104159,
+      "conclusion": "success",
+      "steps": []
+    },
+    {
+      "name": "Optional live NVIDIA / XFYUN / Milvus smoke",
+      "id": 124479104538,
+      "conclusion": "skipped",
+      "steps": []
+    }
+  ],
+  "counts": {
+    "mavenPassed": 195,
+    "mavenSkipped": 0,
+    "pythonPassed": 152,
+    "uvicornHttp": 10,
+    "http": 173,
+    "strictResponses": 117,
+    "redisShared": 9,
+    "browser": 8
+  },
+  "scope": "Remote isolated MySQL/Redis/HTTP/browser and delivery images; external AI SKIPPED; DRAFT evaluation PARTIAL; no merge or deployment"
+}

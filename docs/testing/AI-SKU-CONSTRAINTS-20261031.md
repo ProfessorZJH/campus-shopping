@@ -1,6 +1,6 @@
 # Issue #14：导购SKU规格过滤与完整CI复验
 
-状态：生产规格/否定过滤已修复，本地Python152项、真实Uvicorn HTTP10项通过；同一120例DRAFT数据的本地与受控实验均退出0/PARTIAL。新提交远端完整CI尚待执行，以PR #13最新HEAD检查为准。没有合并PR、部署或操作业务库。
+状态：生产规格/否定过滤已修复，本地Python152项、真实Uvicorn HTTP10项通过；同一120例DRAFT数据的本地与受控实验均退出0/PARTIAL。实现提交edc5a4e的[完整CI 41181311636](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41181311636)四项必需检查全部通过，此前跳过的HTTP/Redis/真实后端浏览器均实际执行。后续记录提交仍以PR #13最新HEAD检查为准。没有合并PR、部署或操作业务库。
 
 ## 业务目标与范围
 
@@ -28,6 +28,12 @@
 
 [四份运行摘要与逐例规格结果](evidence/ai-sku-constraints-20261031/runs.json) · [Python结果](evidence/ai-sku-constraints-20261031/python-tests.json) · [真实HTTP证据](evidence/ai-sku-constraints-20261031/http-local.json)
 
+## 远端完整CI（实现edc5a4e）
+
+[run 41181311636](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41181311636)对应PR HEAD edc5a4e，实际检出GitHub临时合并提交b63d6102，四项必需检查全部success。主作业实际包含：Maven195项零失败/错误/跳过、Python152项、本地dev/受控smoke/Java导入退出0、真实Uvicorn10项、真实跨服务HTTP173项及严格响应117份、Redis双实例9项、真实Spring浏览器8项。两个Chromium契约作业及独立交付镜像/Compose交易链路均成功。实际计数从当前产物路径读取，没有混入压缩包中附带的历史报告。
+
+可选NVIDIA/讯飞/Milvus作业仍SKIPPED，不计真实模型效果通过。四项CI绿色不表示已经合并main；[精简CI证据](evidence/ai-sku-constraints-20261031/ci.json)绑定实现SHA和运行，后续仅证据/任务记录提交的检查见PR最新HEAD。
+
 ## 原始失败与修正
 
 - 新规格测试首次因夹具共享密钥不足24字符导致22个setup错误，既有48项通过；修正测试密钥长度，没有削弱生产配置校验。
@@ -37,6 +43,6 @@
 
 ## 交付边界与后续
 
-OpenSpec当前21/25，6.5等待最终完整CI；7.1人工Gold、7.2真实供应商实验、7.3人工语义复核仍PENDING/NOT_RUN。不要求三项全部完成才交付基础设施，但不得宣称FR-023正式业务效果通过或归档。
+OpenSpec当前22/25，6.5已依据实现提交完整CI与本地复验完成；7.1人工Gold、7.2真实供应商实验、7.3人工语义复核仍PENDING/NOT_RUN。不要求三项全部完成才交付基础设施，但不得宣称FR-023正式业务效果通过或归档。
 
 PR #13仍依赖PR #12，当前均不合并。先核对新HEAD四项必需检查、主作业中的HTTP/Redis/真实后端浏览器步骤，再独立收口#12并按授权安排主线整合。回退本修复会恢复规格缺陷并由未削弱的scorer2门禁阻断；不得通过撤回门禁来合并。
