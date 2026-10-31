@@ -53,7 +53,7 @@ campus-shopping/
 
 ## 4. 脚手架部署模板的安全提示
 
-检查过上传的原始 `campus-shopping.zip`：`docs/dev-ops/docker-compose-environment.yml` 中有演示用 MySQL root 密码和可预测管理账号。**不要直接把此文件部署在公网，也不要继续使用这些默认口令**。先复制成个人本地配置并替换为本地密钥（从环境变量或 Secret 文件读取），数据库端口只绑定本地或受控网络，不对公网暴露 Redis/MySQL/管理后台。
+原始脚手架中的固定口令、特权容器和公开管理端口模板已移除，见[维护入口](../dev-ops/README.md)。本地使用 `python scripts/dev-up.py` 显式加载 `compose.local.yml`；生产只使用根 Compose，并先配置 HTTPS、MySQL 可信 CA 与认证 Redis。不要从 Git 历史恢复旧模板部署。
 
 ## 5. 第一条纵向业务 P1
 

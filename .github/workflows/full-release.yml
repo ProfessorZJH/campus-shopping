@@ -27,18 +27,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: ai-service/requirements-dev.lock
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22.16.0'
           cache: npm
@@ -60,12 +60,12 @@ jobs:
       - name: Python and Java deterministic regressions
         run: |
           (cd ai-service && python -m pytest -q)
-          bash ./mvnw -B -ntp test -Dtest=SkuConstraintPolicyTest,DddRulesTest,AiConversationBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false
+          bash ./mvnw -B -ntp test -Dtest=SkuConstraintPolicyTest,DddRulesTest,AiConversationBoundaryTest,ContextPathQuotaTest,ProductionSecurityGuardTest,ProtocolBoundaryTest -Dsurefire.failIfNoSpecifiedTests=false
           python scripts/verify-domain.py
           python scripts/verify-http-body.py
       - name: Upload quick diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: campus-quick-diagnostics
           retention-days: 7
@@ -77,22 +77,22 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Require full project checkout
         run: |
           test -f pom.xml || { echo 'Project source missing. Import v1.2.3 first.'; exit 1; }
           test -f scripts/smoke-full.py
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
         with:
           distribution: temurin
           java-version: '17'
           cache: maven
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: ai-service/requirements*.lock
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22.16.0'
           cache: npm
@@ -250,7 +250,7 @@ jobs:
             --evidence browser=docs/testing/evidence/frontend-live/results.json
       - name: Upload reports and failure diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: campus-acceptance-evidence
           if-no-files-found: warn
@@ -280,13 +280,13 @@ jobs:
       matrix:
         suite: [legacy, current]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
           cache: pip
           cache-dependency-path: ai-service/requirements-dev.lock
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22.16.0'
           cache: npm
@@ -311,7 +311,7 @@ jobs:
           exit "$status"
       - name: Upload browser contract evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: campus-browser-${{ matrix.suite }}-evidence
           if-no-files-found: warn
@@ -324,8 +324,8 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
           cache: pip
@@ -336,7 +336,7 @@ jobs:
         run: python scripts/verify-containers.py
       - name: Upload image acceptance evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: campus-delivery-images-evidence
           retention-days: 7
@@ -344,33 +344,39 @@ jobs:
 
   external-ai:
     name: Optional live NVIDIA / XFYUN / Milvus smoke
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.external_ai == true }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.external_ai == true && github.ref == 'refs/heads/main' }}
+    environment: external-ai
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
       EMBEDDING_BASE_URL: https://integrate.api.nvidia.com/v1
       EMBEDDING_MODEL: nvidia/nemotron-3.5-embed-1b
-      EMBEDDING_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
       LLM_BASE_URL: https://maas-api.cn-huabei-1.xf-yun.com/v2
       LLM_MODEL: ${{ vars.XFYUN_MODEL }}
-      LLM_API_KEY: ${{ secrets.XFYUN_API_KEY }}
-      MILVUS_URI: ${{ secrets.MILVUS_URI }}
-      MILVUS_TOKEN: ${{ secrets.MILVUS_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Require protected main HEAD
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          CURRENT=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          test "$GITHUB_SHA" = "$CURRENT" || { echo 'Only the current protected main commit may use provider credentials'; exit 1; }
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.11'
-      - name: Verify private configuration exists
-        shell: bash
-        run: |
-          test -f ai-service/requirements.txt
-          for key in EMBEDDING_API_KEY LLM_API_KEY LLM_MODEL MILVUS_URI MILVUS_TOKEN; do
-            if [ -z "$(printenv "$key" 2>/dev/null || true)" ]; then echo "Missing required secret or variable: $key"; exit 1; fi
-          done
       - name: Install AI service
         run: python -m pip install --require-hashes -r ai-service/requirements.lock
       - name: Live provider connectivity (read-only)
+        env:
+          EMBEDDING_API_KEY: ${{ secrets.LIVE_NVIDIA_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LIVE_XFYUN_API_KEY }}
+          MILVUS_URI: ${{ secrets.LIVE_MILVUS_URI }}
+          MILVUS_TOKEN: ${{ secrets.LIVE_MILVUS_TOKEN }}
         run: |
+          set -euo pipefail
+          for key in EMBEDDING_API_KEY LLM_API_KEY LLM_MODEL MILVUS_URI MILVUS_TOKEN; do
+            if [ -z "$(printenv "$key" 2>/dev/null || true)" ]; then echo "Missing protected environment configuration: $key"; exit 1; fi
+          done
           (cd ai-service && python -m app.smoke_model)
           (cd ai-service && python -m app.smoke_vector)

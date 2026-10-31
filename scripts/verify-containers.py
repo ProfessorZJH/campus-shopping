@@ -48,7 +48,7 @@ def main():
                   'BOOTSTRAP_ADMIN': 'true', 'SESSION_COOKIE_SECURE': 'false', 'AI_PRODUCT_VECTOR_SYNC_ENABLED': 'false',
                   'QDRANT_API_KEY': secrets.token_hex(24)}
         config.write_text(''.join(f'{key}={value}\n' for key,value in values.items()), encoding='utf-8')
-        command = ['docker', 'compose', '--project-name', project, '--env-file', str(config), '-f', str(ROOT/'compose.yml')]
+        command = ['docker', 'compose', '--project-name', project, '--env-file', str(config), '-f', str(ROOT/'compose.yml'), '-f', str(ROOT/'compose.local.yml')]
         try:
             subprocess.run(command+['up', '--build', '--wait', '--wait-timeout', '240'], cwd=ROOT, env=env, check=True)
             subprocess.run([sys.executable, '-X', 'utf8', str(ROOT/'scripts/smoke-full.py'),
