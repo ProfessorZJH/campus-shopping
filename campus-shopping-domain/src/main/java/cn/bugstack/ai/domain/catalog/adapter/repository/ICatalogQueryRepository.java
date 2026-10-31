@@ -5,6 +5,7 @@ import java.util.List;
 
 /** 目录只读查询，允许同库商户资格/库存排序投影，不可写入其他领域。 */
 public interface ICatalogQueryRepository {
+    List<String> scanIdsAfter(String after, int limit);
     List<ProductAggregate> search(String merchant, String q, String category, boolean pub, int offset, int limit);
     List<ProductAggregate> searchSorted(String merchant, String q, String category, boolean pub, int offset, int limit, String sort);
     List<ProductAggregate> searchManaged(String merchant, String q, String category, String status, int offset, int limit);

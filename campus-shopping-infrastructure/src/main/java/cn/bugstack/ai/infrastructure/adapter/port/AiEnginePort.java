@@ -64,7 +64,8 @@ public class AiEnginePort implements IAiEnginePort {
                     .map(m -> new AiGatewayDTO.History(m.role(), m.content()))
                     .toList(),
                 query.retrievalQuery(),
-                query.semanticSkuIds()
+                query.semanticSkuIds(),
+                query.externalDocumentIds()
             )
         );
         require(
@@ -161,7 +162,11 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public void index(String id, String title, String content) {
-        gateway.index(new AiGatewayDTO.Index(id, title, content));
+        index(id, title, content, false);
+    }
+
+    public void index(String id, String title, String content, boolean externalAllowed) {
+        gateway.index(new AiGatewayDTO.Index(id, title, content, externalAllowed));
     }
 
     public String extract(String filename, String type, byte[] bytes) {

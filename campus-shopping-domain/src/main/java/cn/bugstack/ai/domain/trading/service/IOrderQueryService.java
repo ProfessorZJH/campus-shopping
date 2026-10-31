@@ -14,5 +14,7 @@ public interface IOrderQueryService {
     long countOrders(String buyer, String merchant, String status);
     long countOrders(String buyer, String merchant, String status, String q);
     List<String> expired();
+    List<String> expiredAfter(String after, int limit);
+    Instant oldestExpired();
     TradingStatsVO statistics(String merchant);
 }

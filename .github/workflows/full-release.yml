@@ -145,7 +145,7 @@ jobs:
           done
           test "$READY" = 1 || { echo 'MySQL IT did not become ready'; exit 1; }
           docker exec -e MYSQL_PWD="$ROOT_PASSWORD" campus-mysql-it mysql -uroot \
-            -e "GRANT ALL ON campus_shopping_migration_it.* TO 'campus_it'@'%'"
+            -e "GRANT ALL ON campus_shopping_migration_it.* TO 'campus_it'@'%'; GRANT PROCESS ON *.* TO 'campus_it'@'%'"
       - name: Real fresh / upgrade / replay / checksum migration checks
         run: python scripts/verify-migrations.py
       - name: Start isolated Redis for shared-session and resource tests

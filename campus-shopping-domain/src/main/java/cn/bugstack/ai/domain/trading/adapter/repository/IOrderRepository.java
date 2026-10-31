@@ -18,6 +18,8 @@ public interface IOrderRepository {
     List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size);
     List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q);
     List<String> expired(Instant now);
+    List<String> expiredAfter(Instant now, String after, int limit);
+    Instant oldestExpired(Instant now);
     void payment(String order, long amount);
     void refund(String order, long amount);
     TradingStatsVO statistics(String merchant);

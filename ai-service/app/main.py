@@ -5,12 +5,13 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI,Header,HTTPException,Depends
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel,Field,ConfigDict
 from .config import Settings
 from .retrieval import KnowledgeStore
 from .engine import answer,recall_terms
 from .product_index import ProductIndex
-from .observability import RequestContext, failure, diagnostics
+from .observability import RequestContext, failure, diagnostics, ExecutionGate
 
 class RequestBodyLimit:
     """同时限制有 Content-Length 和分块传输的请求，不能只信任请求头。"""
@@ -38,6 +39,7 @@ class RequestBodyLimit:
         await self.app(scope,replay,send)
 class StrictModel(BaseModel):model_config=ConfigDict(extra='forbid')
 class IndexRequest(StrictModel):
+    externalAllowed: bool=False
     documentId: str=Field(min_length=1,max_length=64)
     title: str=Field(min_length=1,max_length=120)
     content: str=Field(min_length=1,max_length=100000)
@@ -50,6 +52,7 @@ class Offer(StrictModel):
     description: str=Field(default='',max_length=5000)
     priceCent: int=Field(gt=0,le=100000000);available: int=Field(ge=0)
 class QueryRequest(StrictModel):
+    externalDocumentIds: list[str]=Field(default_factory=list,max_length=1000)
     question: str=Field(min_length=1,max_length=2000)
     allowedDocumentIds: list[str]=Field(max_length=1000)
     offers: list[Offer]=Field(max_length=300)
@@ -79,26 +82,38 @@ class ExtractRequest(StrictModel):
     base64: str=Field(max_length=2800000)
 
 def create_app(settings: Settings|None=None):
-    settings=settings or Settings.from_env();settings.validate();store=KnowledgeStore(settings);products=ProductIndex(settings,store.provider);gate=threading.BoundedSemaphore(settings.max_concurrent_requests)
+    settings=settings or Settings.from_env();settings.validate();store=KnowledgeStore(settings);products=ProductIndex(settings,store.provider);gate=ExecutionGate(settings.max_concurrent_requests)
     @asynccontextmanager
     async def lifespan(app):
         yield
         store.close()
     app=FastAPI(title='校园导购检索服务',version='1.0.0',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
-    app.state.store=store;app.state.products=products
+    app.state.store=store;app.state.products=products;app.state.gate=gate
     def authorized(x_service_key: Annotated[str|None,Header()]=None):
         if x_service_key is None or not secrets.compare_digest(x_service_key,settings.api_key):raise HTTPException(401,'服务身份无效')
     app.add_middleware(RequestBodyLimit, limit=4_000_000)
     app.add_middleware(RequestContext)
     @app.get('/health')
     def health():return {'status':'UP','llmConfigured':bool(settings.llm_key),'retrievalMode':store.provider.vector_mode,'vectorStore':'QDRANT' if settings.qdrant_url else 'LOCAL_SQLITE','productIndex':'MILVUS' if products.enabled else 'DISABLED'}
+    @app.get('/ready',dependencies=[Depends(authorized)])
+    def readiness():
+        # 本地事实可读决定就绪；外部依赖只报告最近实际调用，不为探针额外发送数据。
+        try:
+            with store.lock:store.db.execute('SELECT 1').fetchone()
+        except Exception:
+            return JSONResponse(status_code=503,content={'status':'DOWN','storage':'UNAVAILABLE','execution':gate.snapshot()})
+        values=diagnostics();dependencies={}
+        for name,configured in [('llm',bool(settings.llm_key)),('embedding',bool(settings.embedding_key)),('product.search',products.enabled),('qdrant',bool(settings.qdrant_url)),('knowledge.index',True)]:
+            success=values.get(name+'.last_success_at',0);failed=values.get(name+'.last_failure_at',0)
+            dependencies[name]={'configured':configured,'state':'DISABLED' if not configured else 'DEGRADED' if failed>success else 'UP' if success else 'UNVERIFIED','lastSuccessAt':success or None,'lastFailureAt':failed or None}
+        degraded=any(d['configured'] and d['state'] in ('DEGRADED','UNVERIFIED') for d in dependencies.values())
+        return {'status':'DEGRADED' if degraded else 'UP','storage':'UP','execution':gate.snapshot(),'dependencies':dependencies}
     @app.post('/v1/index',dependencies=[Depends(authorized)])
     def index(request: IndexRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'索引服务繁忙')
-        try:return {'chunks':store.index(request.documentId,request.title,request.content),'mode':store.provider.vector_mode}
+        try:return {'chunks':store.index(request.documentId,request.title,request.content,external_allowed=request.externalAllowed),'mode':store.provider.vector_mode if request.externalAllowed else 'LOCAL_CHAR_NGRAM_DEMO'}
         except ValueError as e:raise HTTPException(400,str(e)) from None
         except Exception as error:
-            failure('knowledge.index', error)
             raise HTTPException(503,'索引依赖不可用，请重试') from None
         finally:gate.release()
     @app.delete('/v1/index/{document_id}',dependencies=[Depends(authorized)])
@@ -121,7 +136,7 @@ def create_app(settings: Settings|None=None):
     @app.post('/v1/query',dependencies=[Depends(authorized)])
     def query(request: QueryRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
-        try:return answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds)
+        try:return answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds)
         except Exception as error:
             failure('query', error)
             raise HTTPException(503,'检索暂不可用') from None

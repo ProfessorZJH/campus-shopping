@@ -125,6 +125,12 @@ class CommerceMySqlIntegrationTest {
     IAiEnginePort aiEngine;
 
     @Autowired
+    cn.bugstack.ai.domain.shoppingai.adapter.repository.IAiResourceRepository syncResources;
+
+    @Autowired
+    cn.bugstack.ai.domain.trading.service.IOrderQueryService expiryQuery;
+
+    @Autowired
     MutableClock clock;
 
     @SpyBean
@@ -166,6 +172,7 @@ class CommerceMySqlIntegrationTest {
             "ai_document",
             "ai_document_root",
             "ai_knowledge_usage",
+            "ai_sync_checkpoint",
             "ai_knowledge_base",
             "ful_pickup_verification",
             "ful_pickup_task",
@@ -245,6 +252,59 @@ class CommerceMySqlIntegrationTest {
             cn.bugstack.ai.types.enums.ResponseCode.ILLEGAL_PARAMETER.getCode(),
             code(() -> catalogQuery.managedPage(owner, merchant.id(), null, null, "UNKNOWN", 1, 10, "NEWEST"))
         );
+    }
+
+    @Test
+    void durableCursorAndExpiryKeysetUseCurrentDatabaseFacts() {
+        var resources = syncResources;
+        assertEquals("", resources.productSyncCursor());
+        resources.saveProductSyncCursor("p-cursor");
+        assertEquals("p-cursor", jdbc.queryForObject("SELECT last_id FROM ai_sync_checkpoint WHERE id='product-vector'", String.class));
+        assertEquals("p-cursor", resources.productSyncCursor());
+        var first = product(1);
+        var second = product(1);
+        var ids = catalogSearch.scanIdsAfter("", 1);
+        assertEquals(1, ids.size());
+        assertEquals(1, catalogSearch.scanIdsAfter(ids.get(0), 1).size());
+        for (int n = 0; n < 205; n++) jdbc.update(
+            "INSERT INTO trd_order(id,buyer_id,merchant_id,store_id,total_cent,status,deadline) VALUES(?,?,?,?,100,'PENDING_PAYMENT',?)",
+            String.format("expiry-%06d", n),
+            buyer,
+            merchant.id(),
+            merchant.storeId(),
+            java.sql.Timestamp.from(clock.instant().minusSeconds(60))
+        );
+        var query = expiryQuery;
+        var page1 = query.expiredAfter("", 100);
+        var page2 = query.expiredAfter(page1.get(99), 100);
+        var page3 = query.expiredAfter(page2.get(99), 100);
+        assertEquals(100, page1.size());
+        assertEquals(100, page2.size());
+        assertEquals(5, page3.size());
+        assertEquals(205, java.util.stream.Stream.of(page1, page2, page3).flatMap(List::stream).distinct().count());
+        assertNotNull(query.oldestExpired());
+    }
+
+    @Test
+    void concurrentPriceCheckoutAndProposalDoNotProduceInnoDbDeadlock() throws Exception {
+        long before = jdbc.queryForObject("SELECT COUNT FROM information_schema.INNODB_METRICS WHERE NAME='lock_deadlocks'", Long.class);
+        var product = product(100);
+        for (int n = 0; n < 20; n++) {
+            var current = catalogQuery.detail(product.getId()).product();
+            var proposal = proposal(current);
+            long price = current.getSkus().get(0).priceCent() == 1200 ? 1300 : 1200;
+            var results = race(
+                () -> catalog.changeSkuPrice(owner, merchant.id(), current.getId(), current.getSkus().get(0).id(), price, current.getVersion()),
+                () -> checkout.checkout(buyer, merchant.id(), List.of(item(current)), UUID.randomUUID().toString()),
+                () -> ai.confirm(buyer, proposal.id(), List.of(current.getSkus().get(0).id()))
+            );
+            assertTrue(
+                results.stream().allMatch(value -> Set.of("0000", "C0002", cn.bugstack.ai.types.enums.ResponseCode.STATE_CONFLICT.getCode()).contains(value)),
+                results.toString()
+            );
+        }
+        assertEquals(before, jdbc.queryForObject("SELECT COUNT FROM information_schema.INNODB_METRICS WHERE NAME='lock_deadlocks'", Long.class));
+        assertTrue(scalar("SELECT reserved FROM inv_stock_balance WHERE sku_id=?", product.getSkus().get(0).id()) <= 100);
     }
 
     @Test
@@ -522,9 +582,9 @@ class CommerceMySqlIntegrationTest {
         assertEquals(0L, scalar("SELECT COUNT(*) FROM ful_pickup_task"));
     }
 
-    private List<String> race(Runnable a, Runnable b) throws Exception {
-        var pool = Executors.newFixedThreadPool(2);
-        var ready = new CountDownLatch(2);
+    private List<String> race(Runnable... workItems) throws Exception {
+        var pool = Executors.newFixedThreadPool(workItems.length);
+        var ready = new CountDownLatch(workItems.length);
         var start = new CountDownLatch(1);
         java.util.function.Function<Runnable, Callable<String>> call = work -> () -> {
             ready.countDown();
@@ -532,11 +592,14 @@ class CommerceMySqlIntegrationTest {
             return code(work);
         };
         try {
-            var x = pool.submit(call.apply(a));
-            var y = pool.submit(call.apply(b));
+            var futures = java.util.Arrays.stream(workItems)
+                .map(work -> pool.submit(call.apply(work)))
+                .toList();
             assertTrue(ready.await(10, TimeUnit.SECONDS));
             start.countDown();
-            return List.of(x.get(30, TimeUnit.SECONDS), y.get(30, TimeUnit.SECONDS));
+            var results = new java.util.ArrayList<String>();
+            for (var future : futures) results.add(future.get(30, TimeUnit.SECONDS));
+            return results;
         } finally {
             start.countDown();
             pool.shutdownNow();

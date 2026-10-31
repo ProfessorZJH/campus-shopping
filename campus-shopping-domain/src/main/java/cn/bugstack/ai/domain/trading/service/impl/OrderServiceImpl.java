@@ -98,6 +98,15 @@ public class OrderServiceImpl implements IOrderService {
         return repository.expired(clock.instant());
     }
 
+    public List<String> expiredAfter(String after, int limit) {
+        cn.bugstack.ai.types.common.Checks.require(limit >= 1 && limit <= 100, cn.bugstack.ai.types.enums.ResponseCode.ILLEGAL_PARAMETER);
+        return repository.expiredAfter(clock.instant(), after == null ? "" : after, limit);
+    }
+
+    public Instant oldestExpired() {
+        return repository.oldestExpired(clock.instant());
+    }
+
     public TradingStatsVO statistics(String merchant) {
         return repository.statistics(merchant);
     }

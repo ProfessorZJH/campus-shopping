@@ -19,17 +19,42 @@ public class OrderExpiryJob {
     @Resource
     private IOrderLifecycleCase lifecycle;
 
+    private String cursor = "";
+    private final java.util.concurrent.atomic.AtomicLong failures = new java.util.concurrent.atomic.AtomicLong();
+
+    public long failures() {
+        return failures.get();
+    }
+
     @Scheduled(fixedDelayString = "${campus.order.expiry-scan-ms:15000}")
-    public void closeExpired() {
+    public synchronized void closeExpired() {
         try {
-            for (String id : trading.expired())
-                try {
-                    lifecycle.expire(id);
-                } catch (Exception e) {
-                    log.error("订单关闭失败，将在后续扫描重试 orderId={}", id, e);
+            var oldest = trading.oldestExpired();
+            log.info(
+                "order_expiry_scan oldest_overdue_seconds={} failure_total={}",
+                oldest == null ? 0 : Math.max(0, java.time.Duration.between(oldest, java.time.Instant.now()).toSeconds()),
+                failures.get()
+            );
+            // 每轮最多2000笔；游标跨轮保留，失败旧单不会长期占据第一页。重启可安全重扫。
+            for (int batch = 0; batch < 20; batch++) {
+                var ids = trading.expiredAfter(cursor, 100);
+                for (String id : ids) {
+                    try {
+                        lifecycle.expire(id);
+                    } catch (Exception error) {
+                        failures.incrementAndGet();
+                        log.warn("order_expiry_failed diagnostic={}", cn.bugstack.ai.types.common.FailureDiagnostics.describe(error));
+                    }
+                    cursor = id;
                 }
-        } catch (Exception e) {
-            log.error("订单到期扫描失败", e);
+                if (ids.size() < 100) {
+                    cursor = "";
+                    return;
+                }
+            }
+        } catch (Exception error) {
+            failures.incrementAndGet();
+            log.error("order_expiry_scan_failed diagnostic={}", cn.bugstack.ai.types.common.FailureDiagnostics.describe(error));
         }
     }
 }

@@ -30,6 +30,11 @@
       "version": "V20261031_02",
       "file": "V20261031_02__knowledge_leases_and_quota.sql",
       "sha256": "07a96a063f6ffd06d3b115175258fb59dd2f2ba3ce72e49cbea2a87a3371b8ca"
+    },
+    {
+      "version": "V20261031_03",
+      "file": "V20261031_03__ai_sync_checkpoint.sql",
+      "sha256": "90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d"
     }
   ]
 }

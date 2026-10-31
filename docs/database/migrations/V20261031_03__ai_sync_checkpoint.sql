@@ -1,0 +1,7 @@
+-- 商品向量同步进度，批次远端成功后再保存；允许幂等重放。
+CREATE TABLE IF NOT EXISTS ai_sync_checkpoint (
+ id VARCHAR(64) PRIMARY KEY,
+ last_id VARCHAR(64) NOT NULL DEFAULT '',
+ updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+

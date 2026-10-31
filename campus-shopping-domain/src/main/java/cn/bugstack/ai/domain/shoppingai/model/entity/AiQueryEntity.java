@@ -9,8 +9,20 @@ public record AiQueryEntity(
     List<cn.bugstack.ai.domain.shoppingai.model.valobj.AiOfferVO> offers,
     List<cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO> history,
     String retrievalQuery,
-    List<String> semanticSkuIds
+    List<String> semanticSkuIds,
+    List<String> externalDocumentIds
 ) {
+    public AiQueryEntity(
+        String question,
+        List<String> ids,
+        List<cn.bugstack.ai.domain.shoppingai.model.valobj.AiOfferVO> offers,
+        List<cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO> history,
+        String query,
+        List<String> skus
+    ) {
+        this(question, ids, offers, history, query, skus, List.of());
+    }
+
     public AiQueryEntity(
         String question,
         List<String> allowedDocumentIds,

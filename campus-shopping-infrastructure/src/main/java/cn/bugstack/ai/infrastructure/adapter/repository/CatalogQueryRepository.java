@@ -20,6 +20,10 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
     @Resource
     private ICatalogDao catalogDao;
 
+    public List<String> scanIdsAfter(String after, int limit) {
+        return dao.scanIdsAfter(after, limit);
+    }
+
     public List<ProductAggregate> search(String merchant, String q, String category, boolean publicOnly, int offset, int limit) {
         List<ProductPO> ps = dao.search(merchant, q, category, publicOnly, offset, limit, "NEWEST");
         if (ps.isEmpty()) return List.of();

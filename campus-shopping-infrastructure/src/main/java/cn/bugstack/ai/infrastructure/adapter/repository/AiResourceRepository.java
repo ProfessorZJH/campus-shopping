@@ -19,6 +19,29 @@ public class AiResourceRepository implements IAiResourceRepository {
     private final ObjectProvider<RedisClients> clients;
     private final int permits;
 
+    @jakarta.annotation.Resource
+    private cn.bugstack.ai.infrastructure.dao.IAiDao dao;
+
+    private final java.util.concurrent.atomic.AtomicLong syncSkips = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong syncLockFailures = new java.util.concurrent.atomic.AtomicLong();
+
+    public long syncSkips() {
+        return syncSkips.get();
+    }
+
+    public long syncLockFailures() {
+        return syncLockFailures.get();
+    }
+
+    public String productSyncCursor() {
+        String value = dao.productSyncCursor();
+        return value == null ? "" : value;
+    }
+
+    public void saveProductSyncCursor(String cursor) {
+        dao.saveProductSyncCursor(cursor);
+    }
+
     public AiResourceRepository(ObjectProvider<RedisClients> clients, @Value("${campus.ai.max-admitted:4}") int permits) {
         if (permits < 1 || permits > 32) throw new IllegalArgumentException("AI 准入容量须为1至32");
         this.clients = clients;
@@ -61,10 +84,14 @@ public class AiResourceRepository implements IAiResourceRepository {
         try {
             acquired = lock.tryLock();
         } catch (RuntimeException error) {
+            syncLockFailures.incrementAndGet();
             log.warn("product_sync_lock_unavailable diagnostic={}", FailureDiagnostics.describe(error));
             return false;
         }
-        if (!acquired) return false;
+        if (!acquired) {
+            log.info("product_sync_skipped reason=CONTENDED skip_total={}", syncSkips.incrementAndGet());
+            return false;
+        }
         try {
             task.run();
             return true;
@@ -72,6 +99,7 @@ public class AiResourceRepository implements IAiResourceRepository {
             try {
                 if (lock.isHeldByCurrentThread()) lock.unlock();
             } catch (RuntimeException error) {
+                syncLockFailures.incrementAndGet();
                 log.warn("product_sync_unlock_failed diagnostic={}", FailureDiagnostics.describe(error));
             }
         }
