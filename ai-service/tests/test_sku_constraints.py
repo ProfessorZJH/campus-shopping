@@ -141,3 +141,45 @@ def test_model_text_cannot_reintroduce_forbidden_spec(api, monkeypatch, field):
     assert [r['skuId'] for r in data['recommendations']] == ['standard']
     assert '家庭装' not in data['answer']
     assert all('家庭装' not in r['reason'] for r in data['recommendations'])
+
+
+@pytest.mark.parametrize('question', ['考试签字笔要标准装大杯', '考试签字笔要大杯标准装', '要500ml蓝色', '要标准装磨砂'])
+def test_compound_unknown_attributes_clarify_over_http(api, question):
+    items = offers()
+    if '500ml' in question: items[1]['specKey'] = '500ml'
+    data = ask(api, question, items)
+    assert data['recommendations'] == []
+    assert '规格' in data['answer']
+
+
+@pytest.mark.parametrize('model', ['local', 'valid', 'empty', 'failure'])
+def test_refund_knowledge_answer_survives_recalled_offers(api, monkeypatch, model):
+    app, client = api
+    app.state.store.index('refund', '退款说明', '这款签字笔申请退款请打开订单详情，选择申请售后，填写退款原因。')
+    if model != 'local':
+        app.state.store.settings = replace(app.state.store.settings, llm_key='unit-test-stub')
+        def complete(system, payload):
+            assert payload['candidates'] == []
+            if model == 'failure': raise TimeoutError('controlled failure')
+            return dict(answer='请打开订单详情并选择申请售后，填写退款原因。',
+                        recommendations=[] if model == 'empty' else [dict(skuId='family', reason='家庭装更适合')])
+        monkeypatch.setattr(app.state.store.provider, 'complete', complete)
+    response = client.post('/v1/query', json=dict(question='这款标准装签字笔怎么申请退款？', offers=offers(),
+                            allowedDocumentIds=['refund'], history=[]))
+    assert response.status_code == 200
+    data = response.json()
+    assert data['recommendations'] == []
+    assert '申请售后' in data['answer']
+    assert '当前没有' not in data['answer'] and '家庭装' not in data['answer']
+    assert data['citations'] and data['citations'][0]['documentId'] == 'refund'
+    assert data['mode'] == ('LOCAL_RETRIEVAL_DEMO' if model == 'local' else 'LOCAL_FALLBACK' if model == 'failure' else 'LLM')
+
+
+def test_empty_model_recommendations_mark_actual_local_fallback(api, monkeypatch):
+    app, _ = api
+    app.state.store.settings = replace(app.state.store.settings, llm_key='unit-test-stub')
+    monkeypatch.setattr(app.state.store.provider, 'complete', lambda *args: dict(answer='没有推荐', recommendations=[]))
+    data = ask(api, '要标准装，不要家庭装')
+    assert data['mode'] == 'LOCAL_FALLBACK'
+    assert [r['skuId'] for r in data['recommendations']] == ['standard']
+    assert '没有推荐' not in data['answer']

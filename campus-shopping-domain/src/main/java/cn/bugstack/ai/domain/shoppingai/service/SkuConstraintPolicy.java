@@ -67,17 +67,30 @@ public final class SkuConstraintPolicy {
                 if (at >= 0) token = token.substring(0, at);
             }
             token = token.replaceAll("的+$", "");
-            var attribute = Pattern.compile("^(.{1,12}?(?:装|色|码|杯|号|型))").matcher(token);
-            if (attribute.find()) token = attribute.group(1);
-            else if (
-                !(
-                    explicit.group().startsWith("规格为") ||
-                    explicit.group().startsWith("规格是") ||
-                    (explicit.group().matches("^(?:只要|要|换成|改成|改为).*") && token.length() <= 8)
+            String atoms = vocabulary
+                .stream()
+                .sorted(
+                    Comparator.comparingInt(String::length)
+                        .reversed()
+                        .thenComparing(v -> v)
                 )
-            ) continue;
-            String value = token;
-            if (!value.isEmpty() && vocabulary.stream().noneMatch(value::contains)) terms.add(value);
+                .map(Pattern::quote)
+                .collect(java.util.stream.Collectors.joining("|"));
+            String atomPattern = (atoms.isEmpty() ? "" : atoms + "|") + "\\d+(?:\\.\\d+)?(?:ml|kg|cm|mm|l|g|码)|.{1,12}?(?:装|色|码|杯|号|型)";
+            var attribute = Pattern.compile(atomPattern).matcher(token);
+            int cursor = 0;
+            while (attribute.find()) {
+                String value = attribute.group().replaceAll("^(?:和|及|与|并且|同时|的|也)+", "");
+                if (!value.isEmpty()) terms.add(value);
+                cursor = attribute.end();
+            }
+            String remainder = token.substring(cursor).replaceAll("^(?:和|及|与|并且|同时|的|也)+", "");
+            if (
+                !remainder.isEmpty() &&
+                (explicit.group().startsWith("规格为") ||
+                    explicit.group().startsWith("规格是") ||
+                    (explicit.group().matches("^(?:只要|要|换成|改成|改为).*") && remainder.length() <= 8))
+            ) terms.add(remainder);
         }
         Set<String> required = new HashSet<>(),
             forbidden = new HashSet<>();

@@ -29,6 +29,7 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IProposalService;
 import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
+import cn.bugstack.ai.domain.shoppingai.service.ShoppingAnswerPolicy;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Clock;
@@ -197,17 +198,20 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .toList();
         Map<String, Long> available = new HashMap<>();
         stocks.forEach((id, s) -> available.put(id, s.onHand() - s.reserved()));
-        List<ProposalItemVO> items = RecommendationPolicy.select(
-            answer.recommendations(),
-            quotes,
-            available,
-            question,
-            history
-                .stream()
-                .filter(m -> "user".equals(m.role()))
-                .map(MessageVO::content)
-                .toList()
-        );
+        boolean knowledgeOnly = ShoppingAnswerPolicy.knowledgeQuestion(question);
+        List<ProposalItemVO> items = knowledgeOnly
+            ? List.of()
+            : RecommendationPolicy.select(
+                  answer.recommendations(),
+                  quotes,
+                  available,
+                  question,
+                  history
+                      .stream()
+                      .filter(m -> "user".equals(m.role()))
+                      .map(MessageVO::content)
+                      .toList()
+              );
         // 不把模型提出但未通过 Java SKU/库存复核的条目输出给前端。
         List<AiRecommendationVO> verified = items
             .stream()
@@ -224,7 +228,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             quotes.stream().map(ProposalItemVO::title).toList()
         );
         String safeText = answer.answer();
-        if (!quotes.isEmpty() || specs.active()) {
+        if (!knowledgeOnly && (!items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
             safeText = items.isEmpty()
                 ? "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
                 : "可查看以下商品：" +

@@ -251,5 +251,93 @@
     "accepted": [
       "家庭装"
     ]
+  },
+  {
+    "question": "考试签字笔要标准装大杯",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "考试签字笔要大杯标准装",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "要500ml蓝色",
+    "history": [],
+    "specs": [
+      "500ml",
+      "1500ml"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "要500ml蓝色",
+    "history": [],
+    "specs": [
+      "容量:500ml;颜色:蓝色",
+      "容量:1500ml;颜色:红色"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "容量:500ml;颜色:蓝色"
+    ]
+  },
+  {
+    "question": "要标准装黑色",
+    "history": [],
+    "specs": [
+      "包装:标准装;颜色:黑色",
+      "包装:家庭装;颜色:红色"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": [
+      "包装:标准装;颜色:黑色"
+    ]
+  },
+  {
+    "question": "要标准装磨砂",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
+  },
+  {
+    "question": "考试签字笔不要标准装大杯",
+    "history": [],
+    "specs": [
+      "标准装",
+      "家庭装"
+    ],
+    "titles": [
+      "考试签字笔"
+    ],
+    "accepted": []
   }
 ]

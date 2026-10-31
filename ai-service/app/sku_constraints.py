@@ -57,10 +57,17 @@ def extract(question, vocabulary, titles=()):
         for title in sorted(titles, key=len, reverse=True):
             token = token.split(normalize(title), 1)[0]
         token = token.rstrip('的')
-        attribute = re.match(r'(.{1,12}?(?:装|色|码|杯|号|型))', token)
-        if attribute: token = attribute.group(1)
-        elif not (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(token) <= 8)): continue
-        if token and not any(v in token for v in vocabulary): terms.add(token)
+        # 逐个消费组合属性，不能因第一个属性已知就丢掉后续未知维度。
+        atoms = '|'.join(re.escape(v) for v in sorted(vocabulary, key=lambda v: (-len(v), v)))
+        atom_pattern = (atoms + '|' if atoms else '') + r'\d+(?:\.\d+)?(?:ml|kg|cm|mm|l|g|码)|.{1,12}?(?:装|色|码|杯|号|型)'
+        cursor = 0
+        for attribute in re.finditer(atom_pattern, token):
+            value = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', attribute.group())
+            if value: terms.add(value)
+            cursor = attribute.end()
+        remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
+        if remainder and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 8)):
+            terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))
     required, forbidden = set(), set()
