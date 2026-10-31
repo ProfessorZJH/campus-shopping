@@ -13,7 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -
 COPY --from=frontend /workspace/frontend/dist /workspace/campus-shopping-app/target/generated-ui
 RUN mvn -B -ntp verify -Dfrontend.skip=true
 
-FROM eclipse-temurin:17-jre-jammy@sha256:c35794d1348777e6bc310b9b7f420098ef8f37e988199549b545fded79a895a2
+FROM eclipse-temurin:22-jre-jammy@sha256:dbcae8b5dd4d63f81739a538ec2c09797735f04a21d814f9071b62f018326043
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 campus && useradd --uid 10001 --gid campus --no-create-home campus
