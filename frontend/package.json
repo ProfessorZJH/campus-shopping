@@ -12,7 +12,7 @@
   },
   "devDependencies": {
     "@vue/compiler-dom": "3.5.13",
-    "acorn": "8.14.1",
+    "acorn": "8.19.0",
     "magic-string": "0.30.17",
     "prettier": "3.9.10",
     "prettier-plugin-java": "2.11.0",
