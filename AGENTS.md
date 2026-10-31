@@ -10,6 +10,7 @@
 ## 规范与开发顺序
 
 - 先读 [AI 开发流程](docs/development/AI-WORKFLOW.md)，再读任务相关源码、测试与契约；复用已有能力，完成实际功能链路，不擅自扩大为无关重构。
+- 较大需求变更可按 [OpenSpec 试用](docs/development/OPENSPEC.md)管理提案、行为规格和任务；简单修复不强制使用。纳入新能力基线时明确与原 SDD 的归属并更新引用，不重复维护两份规则。
 - 业务目标以当前已接受需求、[R1及增量规格](docs/specs/RELEASE-01.md)、[已接受ADR](docs/architecture/decisions.md)为准。源码用于确认当前行为，不能用既有缺陷否定需求；发现冲突先说明并按本次授权范围收口，实质业务决策不确定时再澄清。
 - HTTP 以 [生成契约](docs/api/http-api.md)、[OpenAPI](docs/api/openapi.json)、[行为契约](docs/api/behavior-v1.1.md)核对。DDD 遵循现有小傅哥约定及 [Java规范](docs/development/JAVA-STYLE.md)，不重复建立另一套分层标准。
 - 普通修复在 PR 写清目标、范围、不变量和验收标准即可；跨域业务、API/数据/权限变化补齐相应规格或 ADR。历史教程、候选决策和测试记录不能自动覆盖当前已接受规则。

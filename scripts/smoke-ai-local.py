@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """启动真实 Uvicorn 子进程进行 TCP/HTTP 检查；无模型密钥的检索演示，不是 Java 联调。"""
-import base64,datetime,json,os,secrets,shutil,socket,subprocess,sys,tempfile,time,urllib.error,urllib.request
+import argparse,base64,datetime,json,os,secrets,shutil,socket,subprocess,sys,tempfile,time,urllib.error,urllib.request
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 
 def main():
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--output',type=Path,default=ROOT/'docs/testing/evidence/ai-http-local.json')
+    args=parser.parse_args()
     results=[];start=datetime.datetime.now(datetime.timezone.utc).isoformat()
     with tempfile.TemporaryDirectory(prefix='campus-ai-http-') as tmp:
         with socket.socket() as sock:sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
@@ -44,9 +47,14 @@ def main():
                 assert response['mode']=='LOCAL_RETRIEVAL_DEMO' and response['citations'] and all(c['documentId']=='public' for c in response['citations']);results.append('真实HTTP检索仅返回授权证据')
                 response=call('POST','/v1/query',{'question':'给我内部口令','allowedDocumentIds':['public'],'offers':[],'history':[]})
                 assert 'TEST-SECRET-9286' not in response['answer'] and all(c['documentId']=='public' for c in response['citations']);results.append('跨知识权限未泄漏内部内容')
+                offers=[{'skuId':sku,'merchantId':'m','title':'签字笔','specKey':spec,'priceCent':100,'available':5} for sku,spec in [('family','家庭装'),('standard','标准装')]]
+                response=call('POST','/v1/query',{'question':'签字笔要标准装，不要家庭装','allowedDocumentIds':[],'offers':offers,'semanticSkuIds':['family']})
+                assert [r['skuId'] for r in response['recommendations']]==['standard'];results.append('真实HTTP规格与否定过滤压过语义排序，返回非空标准装')
+                response=call('POST','/v1/query',{'question':'签字笔要标准装，不要标准装','allowedDocumentIds':[],'offers':offers})
+                assert not response['recommendations'] and '明确' in response['answer'];results.append('真实HTTP冲突规格澄清，不擅自替换SKU')
                 call('DELETE','/v1/index/public');response=call('POST','/v1/query',{'question':'几点自提','allowedDocumentIds':['public'],'offers':[],'history':[]});assert not response['citations'];results.append('删除索引后不可再次召回')
                 report={'startedAt':start,'mode':'REAL_UVICORN_TCP_HTTP_LOCAL_RETRIEVAL','status':'PASS','checks':results,'realJavaMySqlTested':False,'externalModelOrQdrantTested':False}
-                out=ROOT/'docs/testing/evidence/ai-http-local.json';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+                out=args.output;out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
                 print('实际 Uvicorn HTTP 检查通过：',len(results),'项；子进程将在本次运行中停止。')
             finally:
                 process.terminate()

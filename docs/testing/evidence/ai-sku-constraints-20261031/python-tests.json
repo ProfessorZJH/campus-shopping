@@ -1,0 +1,13 @@
+{
+  "command": "cd ai-service && python -m pytest -q --tb=short",
+  "passed": 152,
+  "failed": 0,
+  "warnings": 1,
+  "durationSeconds": 23.59,
+  "code": {
+    "commit": "aa5e551d02074c27e92836ae2c67d365fca20b35",
+    "dirtyHash": "1d5c340f2477039544b4ba2d28763f3396b0dfaf056c66c81406b856b5ba834f",
+    "sourceHash": "81c1f756cb03ae72623bde2da6174ab561ccb76e91fe6aef044cb703f5bd7037"
+  },
+  "scope": "Real FastAPI/SQLite; LLM controlled stubs, real external providers NOT_RUN"
+}

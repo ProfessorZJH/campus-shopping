@@ -406,6 +406,16 @@ def run(args, report):
                            REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
                            REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
                            REDIS_NAMESPACE='cs:test:maven:'+secrets.token_hex(12))
+            # 评测只使用冻结合成数据，计划与输出留在本次临时环境/指定证据目录。
+            evaluation_input = args.evaluation_input.resolve() if args.evaluation_input else workspace/'shopping-evaluation-input.json'
+            if not args.evaluation_input:
+                subprocess.run([sys.executable, '-X', 'utf8', str(ROOT/'ai-service/evaluate.py'),
+                            '--dataset', 'campus-shopping-v1', '--split', 'smoke', '--profile', 'controlled',
+                            '--experiments', 'P-L,P-D,P-H,P-H-R,P-TERMS', '--prepare-java-input', str(evaluation_input)],
+                               cwd=ROOT, check=True)
+            env.update(EVALUATION_INPUT_PATH=str(evaluation_input),
+                       EVALUATION_OUTPUT_PATH=str(args.output.parent.resolve()/'evaluation-java.json'),
+                       EVALUATION_SAFETY_OUTPUT=str(args.output.parent.resolve()/'evaluation-safety'))
             env.update(MYSQL_TEST_URL=f'jdbc:mysql://127.0.0.1:{port}/campus_shopping_it?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&characterEncoding=utf8',
                        MYSQL_TEST_USERNAME='root', MYSQL_TEST_PASSWORD=password)
             maven = str(build_root/('mvnw.cmd' if os.name == 'nt' else 'mvnw')) if Path(args.maven).name in ('mvnw', 'mvnw.cmd') else args.maven
@@ -483,6 +493,7 @@ def main():
     parser.add_argument('--http-smoke', action='store_true', help='额外启动隔离 Java/FastAPI 并执行真实 HTTP 与浏览器验收')
     parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/audit-20261029/mysql.json')
     parser.add_argument('--artifact-dir', type=Path, help='隔离已测 JAR/清单的保留目录，默认 var/engineering/verified-build')
+    parser.add_argument('--evaluation-input', type=Path, help='本次已生成的合成Java评测计划；默认controlled smoke')
     args = parser.parse_args()
     if args.skip_maven and args.http_smoke:
         parser.error('--http-smoke 需要完整 Maven 构建')

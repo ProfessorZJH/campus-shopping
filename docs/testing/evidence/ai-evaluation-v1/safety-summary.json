@@ -1,0 +1,100 @@
+{
+  "status": "PASS",
+  "planned": 10,
+  "notRun": 0,
+  "proposalSafety": {
+    "numerator": 8,
+    "denominator": 8,
+    "value": 1.0,
+    "status": "SCORED"
+  },
+  "authorizationSafety": {
+    "numerator": 2,
+    "denominator": 2,
+    "value": 1.0,
+    "status": "SCORED"
+  },
+  "cases": [
+    {
+      "caseId": "safe-expired",
+      "status": "PASSED",
+      "expectedCode": "AI0002",
+      "actualCode": "AI0002",
+      "snapshotHash": "74df688b37256ac9b323043e6a800881a2ad29d94ef4b6134dea5dda7f066366",
+      "evidence": "safe-expired.json"
+    },
+    {
+      "caseId": "safe-other_user",
+      "status": "PASSED",
+      "expectedCode": "G0001",
+      "actualCode": "G0001",
+      "snapshotHash": "4467d41b092783e57ad06f16ae8dfa805e96f051ea8874cabdc1faab4b5ec8a6",
+      "evidence": "safe-other_user.json"
+    },
+    {
+      "caseId": "safe-price_change",
+      "status": "PASSED",
+      "expectedCode": "C0002",
+      "actualCode": "C0002",
+      "snapshotHash": "ec9d21104e1b8f10ec9f560e409c25f60379b7066b1cbf90598df37d9f51d00c",
+      "evidence": "safe-price_change.json"
+    },
+    {
+      "caseId": "safe-no_stock",
+      "status": "PASSED",
+      "expectedCode": "I0001",
+      "actualCode": "I0001",
+      "snapshotHash": "fb8603cceca644e6377f0eb7b711a0a1dfbc8f91708ebf5914adbf4eb7d4b932",
+      "evidence": "safe-no_stock.json"
+    },
+    {
+      "caseId": "safe-unpublish",
+      "status": "PASSED",
+      "expectedCode": "C0001",
+      "actualCode": "C0001",
+      "snapshotHash": "8f2d3398adddc03701792d744b5d4a479a874948dfcb9ca10276280212673aeb",
+      "evidence": "safe-unpublish.json"
+    },
+    {
+      "caseId": "safe-suspend",
+      "status": "PASSED",
+      "expectedCode": "M0004",
+      "actualCode": "M0004",
+      "snapshotHash": "2d5d776f2a6256c176d9f0a7fd6681b971fa96ec9486038a13b18f6ffd6c8806",
+      "evidence": "safe-suspend.json"
+    },
+    {
+      "caseId": "safe-replay",
+      "status": "PASSED",
+      "expectedCode": "0000",
+      "actualCode": "0000",
+      "snapshotHash": "046baf27c85e85d86d01e2e67b0f27a14b0645b329e44a6156f37a874de73517",
+      "evidence": "safe-replay.json"
+    },
+    {
+      "caseId": "safe-rollback",
+      "status": "PASSED",
+      "expectedCode": "T0005",
+      "actualCode": "T0005",
+      "snapshotHash": "4e8b731f2f5129daa3a44a04afc9f3a39d9a3108697a2dd4c2e72f137be278a6",
+      "evidence": "safe-rollback.json"
+    },
+    {
+      "caseId": "safe-withdrawal",
+      "status": "PASSED",
+      "expectedCode": "AI0003",
+      "actualCode": "AI0003",
+      "snapshotHash": "517a6599709dc29bf63d6742159d7cf1d906ecb1ec844076df29b22f874804b7",
+      "evidence": "safe-withdrawal.json"
+    },
+    {
+      "caseId": "safe-acl",
+      "status": "PASSED",
+      "expectedCode": "0000",
+      "actualCode": "0000",
+      "snapshotHash": "928d1165fdc3e7f8301d0dd02f35d66219e9dd1f4ed03d723816b25d6ac83640",
+      "evidence": "safe-acl.json"
+    }
+  ],
+  "scope": "Real Java/MySQL fixture assertions; model STUB_OR_NOT_USED; not model leakage quality"
+}

@@ -1,0 +1,1992 @@
+[
+  {
+    "runId": "issue14-final-local-dev",
+    "split": "dev",
+    "profile": "local",
+    "code": {
+      "commit": "aa5e551d02074c27e92836ae2c67d365fca20b35",
+      "dirtyHash": "ba12e0fb5d21b5b8b0a7d199ee30cfe69a0bb53c4e98ad88b669e6d139d154c3",
+      "sourceHash": "81c1f756cb03ae72623bde2da6174ab561ccb76e91fe6aef044cb703f5bd7037"
+    },
+    "scorerVersion": "2",
+    "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+    "resultsHash": "9fdad612c98ee728fe63fe1cf42d03f7758b63a92c5222e79f53389751cbec3e",
+    "exitCode": 0,
+    "status": "PARTIAL",
+    "rows": 218,
+    "caseCount": 48,
+    "actualComponents": {
+      "embedding": {
+        "source": [
+          "LOCAL_CHAR_NGRAM"
+        ],
+        "attempts": 210,
+        "success": 210,
+        "failure": 0,
+        "operations": {
+          "passage": 24,
+          "query": 186
+        }
+      },
+      "llm": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      },
+      "productVector": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      },
+      "knowledgeVector": {
+        "source": [
+          "SQLITE"
+        ],
+        "attempts": 218,
+        "success": 218,
+        "failure": 0,
+        "operations": {
+          "search": 218
+        }
+      },
+      "javaMysql": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      }
+    },
+    "boundaryViolations": [],
+    "specCases": [
+      {
+        "caseId": "case-041",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s040-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s160-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s000-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-042",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s041-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s161-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s001-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-043",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s042-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s162-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s002-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-044",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s043-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s163-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s003-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "runId": "issue14-final-local-test",
+    "split": "test",
+    "profile": "local",
+    "code": {
+      "commit": "aa5e551d02074c27e92836ae2c67d365fca20b35",
+      "dirtyHash": "ba12e0fb5d21b5b8b0a7d199ee30cfe69a0bb53c4e98ad88b669e6d139d154c3",
+      "sourceHash": "81c1f756cb03ae72623bde2da6174ab561ccb76e91fe6aef044cb703f5bd7037"
+    },
+    "scorerVersion": "2",
+    "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+    "resultsHash": "d6a895da2ce9fdb7aeea3940241f1f5c7db16c39cd2032d2b8d678b00f87fc98",
+    "exitCode": 0,
+    "status": "PARTIAL",
+    "rows": 327,
+    "caseCount": 72,
+    "actualComponents": {
+      "embedding": {
+        "source": [
+          "LOCAL_CHAR_NGRAM"
+        ],
+        "attempts": 302,
+        "success": 302,
+        "failure": 0,
+        "operations": {
+          "passage": 24,
+          "query": 278
+        }
+      },
+      "llm": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      },
+      "productVector": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      },
+      "knowledgeVector": {
+        "source": [
+          "SQLITE"
+        ],
+        "attempts": 327,
+        "success": 327,
+        "failure": 0,
+        "operations": {
+          "search": 327
+        }
+      },
+      "javaMysql": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      }
+    },
+    "boundaryViolations": [],
+    "specCases": [
+      {
+        "caseId": "case-045",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s044-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s164-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s004-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-046",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s045-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s165-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s005-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-047",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s046-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s166-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s006-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-048",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s047-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s167-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s007-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-049",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s048-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s168-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s008-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-050",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s049-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s169-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s009-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "runId": "issue14-final-controlled-dev",
+    "split": "dev",
+    "profile": "controlled",
+    "code": {
+      "commit": "aa5e551d02074c27e92836ae2c67d365fca20b35",
+      "dirtyHash": "ba12e0fb5d21b5b8b0a7d199ee30cfe69a0bb53c4e98ad88b669e6d139d154c3",
+      "sourceHash": "81c1f756cb03ae72623bde2da6174ab561ccb76e91fe6aef044cb703f5bd7037"
+    },
+    "scorerVersion": "2",
+    "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+    "resultsHash": "5468e5017430d0b10227bcc18031cc458aca4151b3f6c2bc59f79a418ae77a00",
+    "exitCode": 0,
+    "status": "PARTIAL",
+    "rows": 294,
+    "caseCount": 48,
+    "actualComponents": {
+      "embedding": {
+        "source": [
+          "STUB"
+        ],
+        "attempts": 286,
+        "success": 286,
+        "failure": 0,
+        "operations": {
+          "embeddings": 286
+        }
+      },
+      "llm": {
+        "source": [
+          "STUB"
+        ],
+        "attempts": 138,
+        "success": 138,
+        "failure": 0,
+        "operations": {
+          "completions": 138
+        }
+      },
+      "productVector": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      },
+      "knowledgeVector": {
+        "source": [
+          "SQLITE"
+        ],
+        "attempts": 294,
+        "success": 294,
+        "failure": 0,
+        "operations": {
+          "search": 294
+        }
+      },
+      "javaMysql": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      }
+    },
+    "boundaryViolations": [],
+    "specCases": [
+      {
+        "caseId": "case-041",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s040-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s160-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s000-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-042",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s041-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s161-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s001-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-043",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s042-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s162-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s002-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-044",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s043-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s163-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s003-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-041",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s040-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s160-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s000-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-041",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s040-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s160-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s000-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-041",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s040-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s160-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s000-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-042",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s041-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s161-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s001-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-042",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s041-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s161-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s001-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-042",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s041-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s161-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s001-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-043",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s042-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s162-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s002-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-043",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s042-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s162-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s002-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-043",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s042-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s162-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s002-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-044",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s043-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s163-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s003-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-044",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s043-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s163-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s003-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-044",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s043-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s163-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s003-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      }
+    ]
+  },
+  {
+    "runId": "issue14-final-controlled-test",
+    "split": "test",
+    "profile": "controlled",
+    "code": {
+      "commit": "aa5e551d02074c27e92836ae2c67d365fca20b35",
+      "dirtyHash": "ba12e0fb5d21b5b8b0a7d199ee30cfe69a0bb53c4e98ad88b669e6d139d154c3",
+      "sourceHash": "81c1f756cb03ae72623bde2da6174ab561ccb76e91fe6aef044cb703f5bd7037"
+    },
+    "scorerVersion": "2",
+    "snapshotHash": "c7bf6e568c747999f90ebaaa3a10bd0d2c476e33277e973855e09e37d528be3c",
+    "resultsHash": "91bd27c0503ec4eb9c01b4de1733d1a1db3252a698e32067455f2312528c11ae",
+    "exitCode": 0,
+    "status": "PARTIAL",
+    "rows": 441,
+    "caseCount": 72,
+    "actualComponents": {
+      "embedding": {
+        "source": [
+          "STUB"
+        ],
+        "attempts": 416,
+        "success": 416,
+        "failure": 0,
+        "operations": {
+          "embeddings": 416
+        }
+      },
+      "llm": {
+        "source": [
+          "STUB"
+        ],
+        "attempts": 204,
+        "success": 204,
+        "failure": 0,
+        "operations": {
+          "completions": 204
+        }
+      },
+      "productVector": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      },
+      "knowledgeVector": {
+        "source": [
+          "SQLITE"
+        ],
+        "attempts": 441,
+        "success": 441,
+        "failure": 0,
+        "operations": {
+          "search": 441
+        }
+      },
+      "javaMysql": {
+        "source": [
+          "NOT_USED"
+        ],
+        "attempts": 0,
+        "success": 0,
+        "failure": 0,
+        "operations": {}
+      }
+    },
+    "boundaryViolations": [],
+    "specCases": [
+      {
+        "caseId": "case-045",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s044-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s164-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s004-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-046",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s045-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s165-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s005-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-047",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s046-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s166-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s006-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-048",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s047-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s167-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s007-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-049",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s048-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s168-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s008-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-050",
+        "experiment": "R-RULE",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s049-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s169-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "与当前需求相关，数量、库存和预算已校验",
+            "skuId": "s009-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-045",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s044-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s164-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s004-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-045",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s044-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s164-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s004-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-045",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s044-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s164-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s004-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-046",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s045-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s165-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s005-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-046",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s045-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s165-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s005-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-046",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s045-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s165-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s005-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-047",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s046-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s166-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s006-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-047",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s046-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s166-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s006-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-047",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s046-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s166-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s006-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-048",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s047-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s167-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s007-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-048",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s047-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s167-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s007-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-048",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s047-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s167-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s007-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-049",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s048-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s168-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s008-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-049",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s048-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s168-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s008-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-049",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s048-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s168-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s008-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-050",
+        "experiment": "R-LLM",
+        "repeat": 0,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s049-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s169-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s009-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-050",
+        "experiment": "R-LLM",
+        "repeat": 1,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s049-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s169-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s009-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      },
+      {
+        "caseId": "case-050",
+        "experiment": "R-LLM",
+        "repeat": 2,
+        "recommendations": [
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s049-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s169-0"
+          },
+          {
+            "quantity": 1,
+            "reason": "匹配当前需求",
+            "skuId": "s009-0"
+          }
+        ],
+        "attributes": {
+          "denominator": 3,
+          "numerator": 3,
+          "status": "SCORED",
+          "value": 1.0
+        },
+        "coverage": {
+          "denominator": 1,
+          "numerator": 1,
+          "status": "SCORED",
+          "value": 1.0
+        }
+      }
+    ]
+  }
+]

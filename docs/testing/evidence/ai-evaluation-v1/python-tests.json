@@ -1,0 +1,15 @@
+{
+  "status": "PASS",
+  "command": "python -m pytest -q",
+  "cwd": "ai-service",
+  "tests": 95,
+  "failures": 0,
+  "warnings": 1,
+  "durationSeconds": 16.92,
+  "code": {
+    "commit": "f60169e331e8d76711cdfa95bd17c322aefb922d",
+    "dirtyHash": "b1f368510863e64f27a2064622d0be7765d15429da912177e6a10865d09a35fb",
+    "sourceHash": "b71c27feb3a46f1268a7c89239735e2f6cb71c6b68ee3f621b8062df955c78b6"
+  },
+  "scope": "Python automated suite includes dev subprocess seeds 1/2, fixed LF digests and offline import; not formal human gold or live AI evaluation"
+}

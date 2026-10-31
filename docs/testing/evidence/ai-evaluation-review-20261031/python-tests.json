@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "command": "python -m pytest -q",
+  "cwd": "ai-service",
+  "tests": 125,
+  "failures": 0,
+  "warnings": 1,
+  "durationSeconds": 22.88,
+  "scorerVersion": "2",
+  "code": {
+    "commit": "cb65101e142746c74d8647c33a9f7cbe29cf7ce4",
+    "dirtyHash": "4ae1110cfb964e0d73bfc852b3801e90459985b163c4912ac9eab08bffa3a12e",
+    "sourceHash": "b2702ddbc1d31b21a8dd792c4cf6aeb5efeb9f3c5e15d7faddf28a5887eba13b"
+  },
+  "scope": "Evaluation tests; real Embedding/LLM/Milvus NOT_RUN; production recommendation rules unchanged"
+}

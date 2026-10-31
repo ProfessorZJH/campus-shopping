@@ -1,0 +1,38 @@
+schema: spec-driven
+
+context: |
+  用简体中文编写产物，保留 OpenSpec 结构标题和 SHALL/MUST 关键字。
+  本项目为校园智能导购与交易平台，支付为模拟：Java 17 / Spring Boot 3.4.3 /
+  MyBatis 3.0.4，Vue 3，Python 3.11 FastAPI；Node 22.16.0，Maven Wrapper 3.9.9。
+  先读 AGENTS.md、docs/development/AI-WORKFLOW.md、docs/development/OPENSPEC.md，
+  再读相关源码、测试、契约和 docs/specs/ 中已接受 SDD、docs/architecture/decisions.md。
+  Java 模块为 campus-shopping-{api,trigger,case,domain,infrastructure,app,types}。
+  沿用小傅哥 DDD 分层，跨域事务由 Case 编排；不要为接入 OpenSpec 重构业务。
+  MySQL 是价格、库存、权限与交易事实库；Redis/Redisson 提供共享会话、准入和缓存；
+  模型和 Milvus 只提供建议与检索投影。长 AI 调用不持有数据库事务，保留 600 秒租约。
+  OpenSpec 管本次变更的行为与任务，不替代 PRD、已接受 SDD/ADR、生成 API 契约。
+  尚未迁移的能力继续以原规格为准；纳入 openspec/specs/ 前明确能力范围，
+  核对现有规则与源码并更新原文档引用，避免两份权威；历史报告不是当前验收证明。
+  简单文案、样式和局部修复可继续只写 PR；跨域/API/数据库/权限语义变化补齐规格，
+  有架构取舍再补 ADR；纯工具/文档变更可用 skip_specs: true，不能借此省略业务规格。
+  不提交凭据、不操作现有业务库、不绕过鉴权或削弱测试；仅明确测试专用且显式配置 `REDIS_TEST_ADDRESS` 时可复用本机 Redis，并使用随机命名空间。
+  规格校验、任务完成、业务验收、PR 合并是不同状态；合并与部署按当次授权执行。
+
+rules:
+  proposal:
+    - 写明业务目标、范围、关键不变量和可观察的验收标准；复用相关已接受规格。
+  specs:
+    - 只描述可观察行为、输入输出和失败边界，用具体 Scenario 支持验证，避免实现细节。
+    - 修改既有能力前核对完整基线；不得从历史跳过或替身测试推断真实验收已通过。
+  design:
+    - 按实际影响说明兼容、事务、锁顺序、幂等、权限、故障、迁移和回退；不涉及则简述依据。
+  tasks:
+    - 每项写明可验证的完成条件，实际完成才勾选；工具校验不能替代对应业务回归。
+
+operations:
+  apply:
+    guidance:
+      - 沿用现有 AI 开发流程，按风险选测试；交易/权限变化补真实事务、并发、幂等与越权场景。
+  archive:
+    guidance:
+      - 先核对任务、测试证据与规格同步结果；报告未验证范围，本地归档不代表主线已交付。

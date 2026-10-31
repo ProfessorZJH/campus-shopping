@@ -1,0 +1,33 @@
+{
+  "implementationCommit": "c6312be98f27843e5efde9f31616263b5115fe89",
+  "runId": 41177820251,
+  "url": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41177820251",
+  "requiredChecks": [
+    {
+      "name": "Maven / MySQL / FastAPI / Browser E2E",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41177820251/job/124468923506"
+    },
+    {
+      "name": "Chromium contract / current",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41177820251/job/124468923532"
+    },
+    {
+      "name": "Actual delivery images / isolated Compose transaction chain",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41177820251/job/124468923561"
+    },
+    {
+      "name": "Chromium contract / legacy",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41177820251/job/124468923568"
+    }
+  ],
+  "externalAi": "SKIPPED",
+  "scope": "CI verification of implementation; no human gold or live AI evaluation"
+}

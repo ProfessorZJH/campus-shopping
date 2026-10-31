@@ -1,0 +1,40 @@
+{
+  "scope": "Controlled metric fixture, not a production/live run",
+  "scorerVersion": "2",
+  "planned": 3,
+  "failed": 1,
+  "notRun": 1,
+  "metric": "knowledge.documents/recall@5",
+  "aggregate": {
+    "value": 0.5,
+    "caseNumerators": [
+      2,
+      0
+    ],
+    "caseDenominators": [
+      2,
+      2
+    ],
+    "scored": 2,
+    "notApplicableOrPending": 1
+  },
+  "paired": {
+    "pairedCases": 1,
+    "leftUnpaired": 0,
+    "rightUnpaired": 0,
+    "meanDelta": -1.0,
+    "interval": [
+      -1.0,
+      -1.0
+    ],
+    "method": "family-paired-bootstrap-1000-seed-20261031",
+    "interpretation": "EXPLORATORY"
+  },
+  "failedStages": {},
+  "failedMetric": {
+    "numerator": 0,
+    "denominator": 2,
+    "value": 0.0,
+    "status": "SCORED"
+  }
+}
