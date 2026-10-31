@@ -2,7 +2,7 @@
 
 范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 为准。复用生产 KnowledgeStore、engine、ProductIndex 和 Java RecommendationPolicy，不提供交易写接口。数据目前为 **DRAFT，120例均待人工复核**；执行成功不等于正式业务效果通过。
 
-真实隔离MySQL发现的生成期间撤稿复权读取旧scope问题已修复；最终本地Python95项、Maven195项、安全场景10份、HTTP173项、双实例Redis9项及真实浏览器8项通过。远端CI独立核查，完整范围和原始失败见[实施报告](../../docs/testing/AI-EVALUATION-20261031.md)，不能把自动验收当作正式模型效果通过。
+真实隔离MySQL发现的生成期间撤稿复权读取旧scope问题已修复；最终本地Python95项、Maven195项、安全场景10份、HTTP173项、双实例Redis9项及真实浏览器8项通过，实现提交远端四项必需CI也通过。完整范围和原始失败见[实施报告](../../docs/testing/AI-EVALUATION-20261031.md)，不能把自动验收当作正式模型效果通过。
 
 ## 运行
 

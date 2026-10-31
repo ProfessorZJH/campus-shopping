@@ -1,6 +1,6 @@
 # FR-023 智能导购评测实施与验证
 
-状态：**实施与验证进行中，OpenSpec 21/25项完成；最终本地自动验收通过，远端CI待核查。** 120例标签全部为AI_ASSISTED/DRAFT，人工gold和回答语义均待实际复核。本轮没有调用真实Embedding、LLM或Milvus，不将历史真实联调计入本轮。
+状态：**自动实施与列明范围回归完成，OpenSpec 22/25项完成；最终本地自动验收与实现提交的远端四项必需CI全部通过。** 120例标签全部为AI_ASSISTED/DRAFT，人工gold和回答语义均待实际复核。本轮没有调用真实Embedding、LLM或Milvus，不将历史真实联调计入本轮。变更保留草稿，尚未归档。
 
 ## 范围
 
@@ -44,7 +44,7 @@
 | 真实Java/FastAPI HTTP | 173项、严格响应117份通过 | 全新隔离MySQL；本地检索 |
 | 双Java实例+本机Redis HTTP | 9项通过 | 会话、配额与隔离namespace；没有FLUSH |
 | 真实浏览器 | 8项通过 | 连接本轮隔离Java/MySQL，未使用API替身 |
-| 本轮远端CI | 待核查 | 本地通过不冒充远端通过 |
+| 本轮远端CI | 四个必需检查全部通过 | 实现提交c6312be；Maven/MySQL/FastAPI/浏览器、两套Chromium契约、实际交付镜像与隔离Compose链路通过；外部AI作业SKIPPED |
 | 本机Docker、生产、性能 | NOT_RUN | 没有自动合并或部署 |
 | 真实Embedding / LLM / Milvus | NOT_RUN | 未读取私有供应商配置、未继承历史调用授权 |
 
@@ -54,10 +54,12 @@
 
 格式检查、API生成契约与58条schema检查、源码/DDD检查、OpenSpec严格校验已执行通过；这些不代替真实业务验收。历史测试JSON保持原样。合成证据见[运行汇总](evidence/ai-evaluation-v1/runs-summary.json)、[逐例样本](evidence/ai-evaluation-v1/case-examples.jsonl)、[第四轮MySQL](evidence/ai-evaluation-v1/verification-round4-mysql.json)、[安全汇总](evidence/ai-evaluation-v1/safety-summary.json)、[本地HTTP](evidence/ai-evaluation-v1/python-http.json)。运行汇总保留各次code/sourceHash，较早结果不冒充后续代码版本的重验。
 
+最终本地证据：[第七轮隔离验收](evidence/ai-evaluation-v1/verification-round7-mysql.json)、[Python95项](evidence/ai-evaluation-v1/python-tests.json)。远端实现提交验收：[Actions运行41177820251](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41177820251)、[四项检查快照](evidence/ai-evaluation-v1/github-ci.json)。本机Docker仍未执行；GitHub runner执行的镜像/Compose验收独立记录，不能据此宣称本机Docker可用或生产通过。
+
 ## 未验证与后续人工工作
 
 - 任务5.3已完成：生成期间撤稿、撤权与旧历史遮蔽的真实MySQL回归通过，保留原失败记录。
-- 任务6.5：最终本地Python、隔离Java/MySQL、HTTP/Redis/浏览器已通过；对应远端CI尚待核查，保持未完成。
+- 任务6.5已完成：最终本地Python、隔离Java/MySQL、HTTP/Redis/浏览器及实现提交对应远端四项必需CI已通过。
 - 任务7.1：人类逐例核对完整相关集、证据位置、需求约束和争议后才能冻结ACCEPTED；现有120例全部DRAFT。
 - 任务7.2：真实Embedding、真实LLM三次配对及真实临时Milvus对照须本次明确授权、私有安全环境和请求预算；当前NOT_RUN。
 - 任务7.3：引用来源有效性不等于语义支撑；回答断言、解释及语义泄漏待实际人工评审，正式报告尚未形成。
