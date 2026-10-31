@@ -55,6 +55,11 @@ def main():
                             '--base-url', f'http://127.0.0.1:{port}', '--env-file', str(config),
                             '--output', str(report_path.parent/'container-http.json'), '--check-contract'],
                            cwd=ROOT, env=env, check=True)
+            image_jar = report_path.parent/'image-application.jar'
+            subprocess.run(command+['cp', 'app:/app/app.jar', str(image_jar.resolve())], cwd=ROOT, env=env, check=True)
+            subprocess.run([sys.executable, str(ROOT/'scripts/generate-sbom.py'), '--jar', str(image_jar.resolve()),
+                            '--output', str((report_path.parent/'image-application.cdx.json').resolve())], cwd=ROOT, env=env, check=True)
+            image_jar.unlink()
             http = json.loads((report_path.parent/'container-http.json').read_text('utf-8'))
             report.update(status=http['status'], httpChecks=len(http['checks']))
         finally:

@@ -45,4 +45,7 @@
 
 ## F：发布治理
 
-后续实施时补充对应增量。
+- 7种交付基础镜像固定官方Registry核实的digest，Actions固定SHA；离线门禁核对锁文件一致性，Dependabot按周提议且不自动合并。
+- 对实际测试JAR及镜像内JAR生成CycloneDX 1.5组件清单，原始清单与诊断保留CI artifact。清单覆盖JAR/npm/Python运行锁和基础镜像，不宣称OS包及完整漏洞扫描。
+- 完整CI执行隔离Qdrant真实存储/认证/故障重启测试和本地FastAPI小规模HTTP容量/持久化恢复；仍以最终HEAD的MySQL/Redis/HTTP/Chromium/实际镜像任务作为列明范围验收依据。
+- 生产TLS/代理、公网、真实供应商/Milvus、持续生产负载和灾备演练NOT_RUN。保留单人零审批，不自动合并/部署。详见[发布手册](../operations/R1-release-governance.md)。
