@@ -4,6 +4,10 @@
 
 > 版本 v1.0 · 2026-10-26 · **评测设计，不表示已有实验结果**。目标批次 P5～P6。
 
+> **2026-10-31 实施入口**：本次新增评测行为以[OpenSpec变更规格](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md)维护，原SDD-07/08继续管理导购业务。操作、精确公式、来源分层、报告契约与命令见[评测工具](../../ai-service/evaluation/README.md)。120例为AI辅助DRAFT，人工gold/回答语义及本轮真实供应商评测尚未通过，不能据工具测试宣称质量提升。
+
+当前映射：E0→K-D、E1→K-D-R、E2→K-H、E3→K-H-R；独立reranker E4为UNSUPPORTED。知识SQLite/BM25/dense与商品Milvus/Java SQL分别计分。CitationValidity与人工CitationGrounded分开；有效幂等重放应成功且不重复写入。首Token为N/A（非流式）；新结果位于忽略目录`var/evaluation/runs/{utc}-{sha}-{nonce}`，8例旧报告保留不覆盖。以下旧E4、引用、重复拒绝、首Token和结果路径描述仅作研究历史。
+
 ## 1. 核心研究问题
 
 - 中文复合购物需求的 Query 改写是否提高正确 SKU/知识片段召回？

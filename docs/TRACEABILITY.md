@@ -27,7 +27,7 @@
 | FR-020 | 候选检索、约束过滤、证据排序 | `ai-service/app/retrieval.py / engine.py` | `ai-service/evaluate.py` | 当前词面/语义 ID 复验与约束已测；真实 Milvus 为历史验收，Qdrant 未验收 |
 | FR-021 | 提案归属、过期、显式确认加购 | `ShoppingAiCaseImpl / ProposalAggregate` | `DomainRulesCheck / CommerceMySqlIntegrationTest` | 2026-10-30 隔离 Java/MySQL 与真实 HTTP 已覆盖；见本轮报告 |
 | FR-022 | 知识上传、版本、权限、索引 | `KnowledgeCaseImpl / ai-service/app/main.py` | `ai-service/tests/test_service.py / scripts/smoke-ai-local.py` | 2026-10-30 隔离 Java/MySQL 与真实 HTTP 已覆盖；见本轮报告 |
-| FR-023 | 可复现实验与结果记录 | `ai-service/evaluate.py` | `docs/testing/evidence/ai-retrieval-evaluation.json` | 8 条本地演示样本；论文级数据集、泛化与性能评测未完成 |
+| FR-023 | 可复现实验与结果记录 | [执行器/数据/口径](../ai-service/evaluation/README.md)、[评测规格](../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) | [本轮验证](testing/AI-EVALUATION-20261031.md)、`var/evaluation/runs/` | 120例DRAFT；本地/受控与Java真实MySQL分层；人工gold、真实Embedding/LLM/Milvus对比、泛化及生产性能尚未验收 |
 | FR-024 | 平台/商户必要统计 | `OrderQueryCaseImpl / OrderRepository` | `scripts/smoke-full.py` | 2026-10-30 隔离 Java/MySQL 与真实 HTTP 已覆盖；见本轮报告 |
 | FR-025 | 三角色产品入口与交互 | `frontend/src/main.js / pages/` | `frontend/tests/contract_ui.py / live_ui.py` | 真实后台浏览器及接口替身用例均有证据；范围见本轮与历史报告 |
 

@@ -144,7 +144,9 @@ class KnowledgeStore:
             try:
                 self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,));self.db.execute('DELETE FROM docs WHERE id=?',(doc_id,));self.db.execute('COMMIT')
             except Exception:self.db.execute('ROLLBACK');raise
-    def search(self,query: str,allowed: list[str],top_k: int=6) -> tuple[list[dict],str]:
+    def search(self,query: str,allowed: list[str],top_k: int=6,*,_strategy: str='hybrid',_trace: dict|None=None) -> tuple[list[dict],str]:
+        # 私有评测接缝；生产HTTP不接受策略或trace参数，默认排序保持不变。
+        if _strategy not in ('hybrid','sparse','dense'):raise ValueError('unknown retrieval strategy')
         if not allowed:return [],self.provider.vector_mode
         allowed=list(dict.fromkeys(allowed))
         if len(allowed)>1000:raise ValueError('allowed document scope exceeds 1000')
@@ -158,6 +160,7 @@ class KnowledgeStore:
         sparse=bm25(query,[r['title']+' '+r['body'] for r in rows])[:30]
         by_id={r['id']:i for i,r in enumerate(rows)};dense=[];mode=self.provider.vector_mode
         try:
+            if _strategy=='sparse':raise _SparseOnly()
             vector=self.provider.embed([query],input_type="query")[0]
             if self.settings.qdrant_url:
                 result=self._qdrant('POST','/collections/'+self.settings.collection+'/points/query',{'query':vector,'filter':{'must':[{'key':'document_id','match':{'any':allowed}},{'key':'model','match':{'value':self.provider.model_tag}}]},'limit':30,'with_payload':False})
@@ -170,11 +173,22 @@ class KnowledgeStore:
                         score=sum(a*b for a,b in zip(v,vector))/(math.sqrt(sum(x*x for x in v))*math.sqrt(sum(x*x for x in vector)) or 1)
                         if score>0.05:dense.append((i,score))
                 dense=sorted(dense,key=lambda x:-x[1])[:30]
+        except _SparseOnly:
+            pass
         except (httpx.HTTPError,ValueError,KeyError,TypeError) as error:
             failure('knowledge.vector_fallback', error)
             mode='BM25_DEGRADED'
         scores:dict[int,float]={}
-        for ranking in (sparse,dense):
+        rankings=(sparse,) if _strategy=='sparse' else (dense,) if _strategy=='dense' else (sparse,dense)
+        for ranking in rankings:
             for rank,(i,_) in enumerate(ranking,1):scores[i]=scores.get(i,0)+1/(60+rank)
         selected=sorted(scores,key=lambda i:(-scores[i],rows[i]['id']))[:top_k]
+        if _trace is not None:
+            _trace.update(authorized=[r['id'] for r in rows], sparse=[rows[i]['id'] for i,_ in sparse],
+                          dense=[rows[i]['id'] for i,_ in dense], selected=[rows[i]['id'] for i in selected],
+                          selectionDepth=top_k, strategy=_strategy, scores={rows[i]['id']:v for i,v in scores.items()})
         return [{'documentId':rows[i]['doc_id'],'chunkId':rows[i]['id'],'title':rows[i]['title'],'snippet':rows[i]['body'][:500],'score':scores[i]} for i in selected],mode
+
+
+class _SparseOnly(Exception):
+    """只在私有评测分支跳过向量请求，不触发生产降级。"""

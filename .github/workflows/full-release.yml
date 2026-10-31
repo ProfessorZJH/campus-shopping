@@ -114,6 +114,10 @@ jobs:
           } >> "$GITHUB_ENV"
       - name: Real Maven build + MySQL tests
         run: |
+          python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profile controlled --experiments P-L,P-D,P-H,P-H-R,P-TERMS --prepare-java-input "${{ github.workspace }}/var/evaluation/java-input.json"
+          export EVALUATION_INPUT_PATH="${{ github.workspace }}/var/evaluation/java-input.json"
+          export EVALUATION_OUTPUT_PATH="${{ github.workspace }}/var/evaluation/java-results.json"
+          export EVALUATION_SAFETY_OUTPUT="${{ github.workspace }}/var/evaluation/safety"
           bash ./mvnw -B -ntp clean verify
           python scripts/generate-release-manifest.py --require-full-tests
       - name: Java domain / HTTP / Python AI tests
@@ -124,6 +128,10 @@ jobs:
           mkdir -p docs/testing/evidence
           (cd ai-service && python -m pytest -q --junitxml=../docs/testing/evidence/ai-unit-tests.xml)
           python ai-service/evaluate.py
+          python ai-service/evaluate.py --dataset campus-shopping-v1 --split dev --profile local --experiments K-B,K-D,K-H,K-D-R,K-H-R,R-RULE
+          python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profile controlled --experiments K-B,K-D,K-H,R-RULE,R-LLM
+          python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profile controlled --adapter java-mysql --experiments P-L,P-D,P-H,P-H-R,P-TERMS --java-results var/evaluation/java-results.json
+          python ai-service/evaluate.py --safety-results var/evaluation/safety
           python scripts/smoke-ai-local.py
       - name: Start independent real MySQL / Spring / FastAPI
         shell: bash
@@ -200,6 +208,7 @@ jobs:
             campus-shopping-app/target/release-manifest.json
             docs/testing/evidence/**
             var/ci/*.log
+            var/evaluation/**
       - name: Stop isolated services
         if: always()
         shell: bash

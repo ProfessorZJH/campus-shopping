@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "campus-shopping-v1",
+  "version": "1.0-draft",
+  "status": "DRAFT",
+  "annotationVersion": "draft-v1",
+  "generatorVersion": "v1",
+  "seed": 20261031,
+  "snapshotAt": "2026-01-01T00:00:00Z",
+  "reviewedNearDuplicates": [],
+  "chunking": {
+    "length": 700,
+    "overlap": 80
+  },
+  "files": {
+    "merchants.json": "6d8325469461edff0ea221a7fb744a6bb1ddd2f750742e1c3fb04788e995358a",
+    "products.jsonl": "5248020f8b9ed1d84cd6116151e2984949b2840f7a9456179fb23ea42ee48dc7",
+    "knowledge.jsonl": "6dd43e01d11132b78f943b0ca1574d6a6b549a9ea3a084155dfc7669b50b2fea",
+    "cases.jsonl": "b377e1daf7a855a2ebc8fb54db3b33d3b2ca33fb2671f3bbefd93f4b4e1beb21",
+    "qrels.jsonl": "3ed392c5d54192a10e04a0ea23c3e8a084a71ed93e84fd97cfd5674f1855c460",
+    "annotations.jsonl": "4ef010997cf88d82d559b82e28183e7f0e7226ef291cc9408a42783d02c94159",
+    "splits.json": "0d7bd450486dbaf73d4455d11d622ff6d78118fde02c5521dbe9e781c66af367"
+  }
+}

@@ -147,6 +147,9 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         access.audit(actor, "KNOWLEDGE_WITHDRAWN", id, d.merchantId(), "撤回知识版本，后续检索立即排除");
     }
 
+    // NEVER长调用可能保留MyBatis会话缓存；每次复权用独立短只读事务重载数据库事实。
+    // 返回scope后立即结束事务，远程模型调用仍不持有数据库事务。
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public List<KnowledgeScopeVO> readableScope(String actor) {
         accounts.requireActive(actor);
         boolean admin = access.isAdmin(actor);
@@ -171,6 +174,7 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     }
 
     /** 原文仅按模型实际引用批量加载，调用者不能借此越过当前授权。 */
+    @Transactional(readOnly = true, propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public List<KnowledgeDocumentVO> citationDocuments(String actor, List<String> ids) {
         require(ids != null && ids.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
         Set<String> allowed = readableScope(actor).stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());

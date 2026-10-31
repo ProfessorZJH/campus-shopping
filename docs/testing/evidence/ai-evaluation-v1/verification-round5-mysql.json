@@ -1,0 +1,293 @@
+{
+  "status": "FAIL",
+  "checks": [
+    "replaying fresh schema on existing tables does not register unapplied upgrades",
+    "dirty historical amount stops migration without changing the row",
+    "old Redis V31 history without main V30 upgrades safely; legacy lease and V31 checksum/history preserved",
+    "all migrations replay twice and preserve historical snapshot",
+    "AI attempt and lease columns added to old schema without changing published knowledge or conversation history",
+    "fresh and upgraded database columns/indexes/constraints match",
+    "recorded migration checksum mismatch rejected before executing DDL",
+    "five invalid amount/quantity writes rejected by real MySQL CHECK"
+  ],
+  "existingDatabaseUsed": false,
+  "mysqlVersion": "8.0.31",
+  "indexesAdded": [
+    "ix_member_role",
+    "ix_app_applicant",
+    "ix_stock_sku",
+    "ix_movement_merchant",
+    "ix_document_base",
+    "ix_message_sequence",
+    "ix_proposal_conversation"
+  ],
+  "constraintsAdded": [
+    "ck_order_item_values",
+    "ck_payment_amount",
+    "ck_refund_amount"
+  ],
+  "mavenExitCode": 1,
+  "buildSource": "current source copied to isolated temporary Maven reactor (no .env/target)",
+  "junit": {
+    "suites": [
+      {
+        "name": "cn.bugstack.ai.test.commerce.AfterSaleAggregateTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.AiConversationBoundaryTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.AiGatewayProductIndexTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.AiGatewayProtocolTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.CatalogCartReadModelTest",
+        "tests": 9,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.CatalogPageSkuBatchTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+        "tests": 41,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.DddRulesTest",
+        "tests": 14,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.DomainStatusEnumTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.InvalidInputContractTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.KnowledgePublicationPolicyTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.OrderBatchQueryTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.ProductInformationAtomicityTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.ProductVectorSyncJobTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.RolePermissionContractTest",
+        "tests": 17,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.ShoppingEvaluationMySqlTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.commerce.ShoppingEvaluationSafetyMySqlTest",
+        "tests": 5,
+        "failures": 2,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.ApiProtocolIntegrationTest",
+        "tests": 6,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.AuthControllerTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.MerchantRbacMySqlIntegrationTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.MySqlIdentityIntegrationTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.ProtocolBoundaryTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.RedisInfrastructureIntegrationTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.RedisSessionCrossInstanceTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.RoleConflictRepositoryTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.SchemaVersionGuardTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.SessionAuthenticationIntegrationTest",
+        "tests": 11,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.UserAccountAuthenticationTest",
+        "tests": 7,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.UserAccountRepositoryTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.UserAccountServiceTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.identity.UserCredentialRepositoryTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.merchant.MerchantApplicationApiContractTest",
+        "tests": 2,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.merchant.MerchantApplicationControllerTest",
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.merchant.MerchantApplicationServiceTest",
+        "tests": 4,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.merchant.MerchantExceptionContractTest",
+        "tests": 3,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      {
+        "name": "cn.bugstack.ai.test.merchant.ResponseFactoryTest",
+        "tests": 1,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    ],
+    "tests": 195,
+    "failures": 2,
+    "errors": 0,
+    "skipped": 0
+  },
+  "temporaryDatabaseCleaned": true,
+  "failure": "Maven 构建或测试失败"
+}

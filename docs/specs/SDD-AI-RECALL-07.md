@@ -1,5 +1,7 @@
 # SDD-07 · 校园智能导购商品召回与讯飞模型接入
 
+> 2026-10-31：本规格继续拥有全目录召回、预算/数量与交易事实复验规则。新增FR-023评测行为见[OpenSpec评测规格](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md)、[数据/指标/复现](../../ai-service/evaluation/README.md)和[本轮验证](../testing/AI-EVALUATION-20261031.md)。下文历史验证状态不代表本轮评测通过。
+
 > 2026-10-29。基线 v1.2.1。独立 Python 内部契约新增 `/v1/recall`；对外 Java HTTP 路由不变。这里区分已实现、已执行离线测试与真实 MySQL/模型待验收。
 
 ## 1. 缺陷与范围

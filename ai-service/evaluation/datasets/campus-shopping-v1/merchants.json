@@ -1,0 +1,40 @@
+{
+  "merchants": [
+    {
+      "merchantId": "m0",
+      "name": "校园门店0",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m1",
+      "name": "校园门店1",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m2",
+      "name": "校园门店2",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m3",
+      "name": "校园门店3",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m4",
+      "name": "校园门店4",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m5",
+      "name": "校园门店5",
+      "status": "SUSPENDED"
+    }
+  ],
+  "applications": [
+    {
+      "applicationId": "application-pending",
+      "status": "SUBMITTED"
+    }
+  ]
+}

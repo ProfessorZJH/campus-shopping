@@ -123,9 +123,10 @@ def recall_terms(store: KnowledgeStore, question: str, history: list[dict]) -> d
         if len(terms)>=8:break
     return {'query':query,'terms':terms}
 
-def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[dict],history: list[dict],retrieval_query: str="",semantic_sku_ids: list[str]|None=None) -> dict:
+def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[dict],history: list[dict],retrieval_query: str="",semantic_sku_ids: list[str]|None=None,*,_trace: dict|None=None) -> dict:
     started=time.perf_counter();query=retrieval_query or query_rewrite(question,history,store)
     evidence,retrieval_mode=store.search(query,allowed,6)
+    if _trace is not None:_trace.update(offers=[o['skuId'] for o in offers], eligible=[], candidates=[], selected=[])
     (limit,budget_state),(requested,quantity_state)=purchase_constraints(question,history)
     if budget_state in ('AMBIGUOUS','INVALID'):
         return {'answer':'请明确预算金额（元），再为你推荐。','mode':'LOCAL_RETRIEVAL_DEMO','retrievalMode':retrieval_mode,'rewrittenQuery':query,'warning':'预算金额不明确。','citations':evidence,'recommendations':[],'latencyMs':round((time.perf_counter()-started)*1000)}
@@ -141,6 +142,7 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     semantic=[i for i,o in enumerate(eligible) if o['skuId'] in semantic_set]
     for rank,i in enumerate(semantic,1):scores[i]=scores.get(i,0)+1/(60+rank)
     candidates=[eligible[i] for i in sorted(scores,key=lambda i:(-scores[i],i))[:12]]
+    if _trace is not None:_trace.update(eligible=[o['skuId'] for o in eligible], candidates=[o['skuId'] for o in candidates])
     recommendations=[];total=0
     for o in candidates:
         if len(recommendations)>=(1 if requested else 3):break
@@ -183,4 +185,5 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
             parts.append('确认后只加入购物车，不会自动下单或付款。')
         if not parts:parts.append('没有找到足够相关且可访问的资料或可售商品，请补充品类、用途或预算。')
         text='\n'.join(parts)
+    if _trace is not None:_trace['selected']=[r['skuId'] for r in recommendations]
     return {'answer':text,'mode':mode,'retrievalMode':retrieval_mode,'rewrittenQuery':query,'warning':warning,'citations':evidence,'recommendations':recommendations,'latencyMs':round((time.perf_counter()-started)*1000)}
