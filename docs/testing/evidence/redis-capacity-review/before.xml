@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="4" time="1.721" timestamp="2026-10-31T10:51:49.587961+08:00" hostname="professorZ"><testcase classname="tests.test_capacity" name="test_all_resource_operations_share_capacity_until_execution_finishes[success-knowledge_delete]" time="0.245"><failure message="AssertionError: ('knowledge_delete', '/v1/index', 200)&#10;assert 200 == 429&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tmp_path = WindowsPath('C:/Windows/Temp/pytest-of-Profe/pytest-21/test_all_resource_operations_s0')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001F2F3750650&gt;
+operation = ('knowledge_delete', 'DELETE', '/v1/index/doc', None), fails = False
+
+    @pytest.mark.parametrize('operation', OPERATIONS, ids=[o[0] for o in OPERATIONS])
+    @pytest.mark.parametrize('fails', [False, True], ids=['success', 'failure'])
+    def test_all_resource_operations_share_capacity_until_execution_finishes(tmp_path, monkeypatch, operation, fails):
+        name, method, path, payload = operation
+        app = main.create_app(Settings(api_key=KEY, db_path=str(tmp_path / 'capacity.db'), max_concurrent_requests=1))
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        results = {
+            'knowledge_index': 1, 'knowledge_delete': None,
+            'recall': {'query': '测试', 'terms': ['测试']}, 'query': {'answer': '测试'},
+            'product_index': {'indexed': 1}, 'product_search': {'productIds': []},
+            'product_delete': {'deleted': 1},
+            'extract': SimpleNamespace(returncode=0, stdout=b'{"text":"extracted text"}'),
+        }
+    
+        def work(*args, **kwargs):
+            calls.append(name)
+            if len(calls) == 1:
+                entered.set()
+                assert release.wait(10), 'test did not release the controlled worker'
+                if fails:
+                    if name == 'extract':
+                        raise subprocess.TimeoutExpired('controlled-pdf-worker', 8)
+                    raise RuntimeError('controlled dependency failure')
+            return results[name]
+    
+        targets = {
+            'knowledge_index': (app.state.store, 'index'), 'knowledge_delete': (app.state.store, 'delete'),
+            'recall': (main, 'recall_terms'), 'query': (main, 'answer'),
+            'product_index': (app.state.products, 'upsert'), 'product_search': (app.state.products, 'search'),
+            'product_delete': (app.state.products, 'delete'), 'extract': (main.subprocess, 'run'),
+        }
+        monkeypatch.setattr(*targets[name], work)
+        with TestClient(app, headers={'X-Service-Key': KEY}) as client, ThreadPoolExecutor(1) as executor:
+            future = executor.submit(client.request, method, path, json=payload)
+            try:
+                assert entered.wait(5), 'resource operation did not start'
+                for _, other_method, other_path, other_payload in OPERATIONS:
+                    response = client.request(other_method, other_path, json=other_payload)
+&gt;                   assert response.status_code == 429, (name, other_path, response.status_code)
+E                   AssertionError: ('knowledge_delete', '/v1/index', 200)
+E                   assert 200 == 429
+E                    +  where 200 = &lt;Response [200 OK]&gt;.status_code
+
+tests\test_capacity.py:67: AssertionError</failure></testcase><testcase classname="tests.test_capacity" name="test_all_resource_operations_share_capacity_until_execution_finishes[success-extract]" time="0.032"><failure message="AssertionError: ('extract', '/v1/index', 200)&#10;assert 200 == 429&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tmp_path = WindowsPath('C:/Windows/Temp/pytest-of-Profe/pytest-21/test_all_resource_operations_s1')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001F2F3764590&gt;
+operation = ('extract', 'POST', '/v1/extract', {'base64': 'Y29udHJvbGxlZC1wZGYtZml4dHVyZQ==', 'filename': 'test.pdf'})
+fails = False
+
+    @pytest.mark.parametrize('operation', OPERATIONS, ids=[o[0] for o in OPERATIONS])
+    @pytest.mark.parametrize('fails', [False, True], ids=['success', 'failure'])
+    def test_all_resource_operations_share_capacity_until_execution_finishes(tmp_path, monkeypatch, operation, fails):
+        name, method, path, payload = operation
+        app = main.create_app(Settings(api_key=KEY, db_path=str(tmp_path / 'capacity.db'), max_concurrent_requests=1))
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        results = {
+            'knowledge_index': 1, 'knowledge_delete': None,
+            'recall': {'query': '测试', 'terms': ['测试']}, 'query': {'answer': '测试'},
+            'product_index': {'indexed': 1}, 'product_search': {'productIds': []},
+            'product_delete': {'deleted': 1},
+            'extract': SimpleNamespace(returncode=0, stdout=b'{"text":"extracted text"}'),
+        }
+    
+        def work(*args, **kwargs):
+            calls.append(name)
+            if len(calls) == 1:
+                entered.set()
+                assert release.wait(10), 'test did not release the controlled worker'
+                if fails:
+                    if name == 'extract':
+                        raise subprocess.TimeoutExpired('controlled-pdf-worker', 8)
+                    raise RuntimeError('controlled dependency failure')
+            return results[name]
+    
+        targets = {
+            'knowledge_index': (app.state.store, 'index'), 'knowledge_delete': (app.state.store, 'delete'),
+            'recall': (main, 'recall_terms'), 'query': (main, 'answer'),
+            'product_index': (app.state.products, 'upsert'), 'product_search': (app.state.products, 'search'),
+            'product_delete': (app.state.products, 'delete'), 'extract': (main.subprocess, 'run'),
+        }
+        monkeypatch.setattr(*targets[name], work)
+        with TestClient(app, headers={'X-Service-Key': KEY}) as client, ThreadPoolExecutor(1) as executor:
+            future = executor.submit(client.request, method, path, json=payload)
+            try:
+                assert entered.wait(5), 'resource operation did not start'
+                for _, other_method, other_path, other_payload in OPERATIONS:
+                    response = client.request(other_method, other_path, json=other_payload)
+&gt;                   assert response.status_code == 429, (name, other_path, response.status_code)
+E                   AssertionError: ('extract', '/v1/index', 200)
+E                   assert 200 == 429
+E                    +  where 200 = &lt;Response [200 OK]&gt;.status_code
+
+tests\test_capacity.py:67: AssertionError</failure></testcase><testcase classname="tests.test_capacity" name="test_all_resource_operations_share_capacity_until_execution_finishes[failure-knowledge_delete]" time="0.022"><failure message="AssertionError: ('knowledge_delete', '/v1/index', 200)&#10;assert 200 == 429&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tmp_path = WindowsPath('C:/Windows/Temp/pytest-of-Profe/pytest-21/test_all_resource_operations_s2')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001F2F3965410&gt;
+operation = ('knowledge_delete', 'DELETE', '/v1/index/doc', None), fails = True
+
+    @pytest.mark.parametrize('operation', OPERATIONS, ids=[o[0] for o in OPERATIONS])
+    @pytest.mark.parametrize('fails', [False, True], ids=['success', 'failure'])
+    def test_all_resource_operations_share_capacity_until_execution_finishes(tmp_path, monkeypatch, operation, fails):
+        name, method, path, payload = operation
+        app = main.create_app(Settings(api_key=KEY, db_path=str(tmp_path / 'capacity.db'), max_concurrent_requests=1))
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        results = {
+            'knowledge_index': 1, 'knowledge_delete': None,
+            'recall': {'query': '测试', 'terms': ['测试']}, 'query': {'answer': '测试'},
+            'product_index': {'indexed': 1}, 'product_search': {'productIds': []},
+            'product_delete': {'deleted': 1},
+            'extract': SimpleNamespace(returncode=0, stdout=b'{"text":"extracted text"}'),
+        }
+    
+        def work(*args, **kwargs):
+            calls.append(name)
+            if len(calls) == 1:
+                entered.set()
+                assert release.wait(10), 'test did not release the controlled worker'
+                if fails:
+                    if name == 'extract':
+                        raise subprocess.TimeoutExpired('controlled-pdf-worker', 8)
+                    raise RuntimeError('controlled dependency failure')
+            return results[name]
+    
+        targets = {
+            'knowledge_index': (app.state.store, 'index'), 'knowledge_delete': (app.state.store, 'delete'),
+            'recall': (main, 'recall_terms'), 'query': (main, 'answer'),
+            'product_index': (app.state.products, 'upsert'), 'product_search': (app.state.products, 'search'),
+            'product_delete': (app.state.products, 'delete'), 'extract': (main.subprocess, 'run'),
+        }
+        monkeypatch.setattr(*targets[name], work)
+        with TestClient(app, headers={'X-Service-Key': KEY}) as client, ThreadPoolExecutor(1) as executor:
+            future = executor.submit(client.request, method, path, json=payload)
+            try:
+                assert entered.wait(5), 'resource operation did not start'
+                for _, other_method, other_path, other_payload in OPERATIONS:
+                    response = client.request(other_method, other_path, json=other_payload)
+&gt;                   assert response.status_code == 429, (name, other_path, response.status_code)
+E                   AssertionError: ('knowledge_delete', '/v1/index', 200)
+E                   assert 200 == 429
+E                    +  where 200 = &lt;Response [200 OK]&gt;.status_code
+
+tests\test_capacity.py:67: AssertionError</failure></testcase><testcase classname="tests.test_capacity" name="test_all_resource_operations_share_capacity_until_execution_finishes[failure-extract]" time="0.024"><failure message="AssertionError: ('extract', '/v1/index', 200)&#10;assert 200 == 429&#10; +  where 200 = &lt;Response [200 OK]&gt;.status_code">tmp_path = WindowsPath('C:/Windows/Temp/pytest-of-Profe/pytest-21/test_all_resource_operations_s3')
+monkeypatch = &lt;_pytest.monkeypatch.MonkeyPatch object at 0x000001F2F3967DD0&gt;
+operation = ('extract', 'POST', '/v1/extract', {'base64': 'Y29udHJvbGxlZC1wZGYtZml4dHVyZQ==', 'filename': 'test.pdf'})
+fails = True
+
+    @pytest.mark.parametrize('operation', OPERATIONS, ids=[o[0] for o in OPERATIONS])
+    @pytest.mark.parametrize('fails', [False, True], ids=['success', 'failure'])
+    def test_all_resource_operations_share_capacity_until_execution_finishes(tmp_path, monkeypatch, operation, fails):
+        name, method, path, payload = operation
+        app = main.create_app(Settings(api_key=KEY, db_path=str(tmp_path / 'capacity.db'), max_concurrent_requests=1))
+        entered, release = threading.Event(), threading.Event()
+        calls = []
+        results = {
+            'knowledge_index': 1, 'knowledge_delete': None,
+            'recall': {'query': '测试', 'terms': ['测试']}, 'query': {'answer': '测试'},
+            'product_index': {'indexed': 1}, 'product_search': {'productIds': []},
+            'product_delete': {'deleted': 1},
+            'extract': SimpleNamespace(returncode=0, stdout=b'{"text":"extracted text"}'),
+        }
+    
+        def work(*args, **kwargs):
+            calls.append(name)
+            if len(calls) == 1:
+                entered.set()
+                assert release.wait(10), 'test did not release the controlled worker'
+                if fails:
+                    if name == 'extract':
+                        raise subprocess.TimeoutExpired('controlled-pdf-worker', 8)
+                    raise RuntimeError('controlled dependency failure')
+            return results[name]
+    
+        targets = {
+            'knowledge_index': (app.state.store, 'index'), 'knowledge_delete': (app.state.store, 'delete'),
+            'recall': (main, 'recall_terms'), 'query': (main, 'answer'),
+            'product_index': (app.state.products, 'upsert'), 'product_search': (app.state.products, 'search'),
+            'product_delete': (app.state.products, 'delete'), 'extract': (main.subprocess, 'run'),
+        }
+        monkeypatch.setattr(*targets[name], work)
+        with TestClient(app, headers={'X-Service-Key': KEY}) as client, ThreadPoolExecutor(1) as executor:
+            future = executor.submit(client.request, method, path, json=payload)
+            try:
+                assert entered.wait(5), 'resource operation did not start'
+                for _, other_method, other_path, other_payload in OPERATIONS:
+                    response = client.request(other_method, other_path, json=other_payload)
+&gt;                   assert response.status_code == 429, (name, other_path, response.status_code)
+E                   AssertionError: ('extract', '/v1/index', 200)
+E                   assert 200 == 429
+E                    +  where 200 = &lt;Response [200 OK]&gt;.status_code
+
+tests\test_capacity.py:67: AssertionError</failure></testcase></testsuite></testsuites>

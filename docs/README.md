@@ -1,10 +1,12 @@
 # 校园智能导购平台 · R1 文档索引
 
-> 当前维护状态：2026-10-30。Java/MySQL、真实 HTTP 和浏览器已有隔离验收，历史真实模型联调有独立证据；生产部署与性能尚未验收。最新代码、契约及文档收口见[本轮报告](testing/DDD-DOC-CLOSURE-20261030.md)，历史阶段的 NOT_RUN 仅代表当时范围。
+> 当前维护状态：2026-10-31。最新Redis共享会话及主线整合见[SDD-12验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)，前序领域、契约整改见[2026-10-30报告](testing/DDD-DOC-CLOSURE-20261030.md)。Java/MySQL、真实Redis、HTTP和浏览器已有隔离验收，整合提交的[远端CI与实际镜像验收](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41161066987)通过；真实模型有独立历史证据，生产部署与性能尚未验收。历史阶段的NOT_RUN仅代表当时范围，新修改须以对应提交验收为准。
 
 | 阅读目标 | 文档 |
-| 当前代码与文档整改 | [DDD 对照结论](architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)、[最终修复与复验](testing/DDD-DOC-CLOSURE-20261030.md) |
 |---|---|
+| **当前 SDD-12 Redis 交付** | [规格与验收矩阵](specs/SDD-REDIS-12.md)、[主线整合实际验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[配置、升级与回退](operations/REDIS-12-runbook.md) |
+| **PR #11 审查收口** | [文档状态与Python资源容量修复、复现及65项回归](testing/REDIS-REVIEW-FOLLOWUP-20261031.md) |
+| 前序代码与文档整改 | [DDD 对照结论](architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)、[最终修复与复验](testing/DDD-DOC-CLOSURE-20261030.md) |
 | 本次交付什么、还缺什么 | [交付清单](DELIVERY-R1.md) |
 | 当前冻结业务规则 | [R1实施规格](specs/RELEASE-01.md) |
 | 原始产品需求 | [PRD](requirements/PRD.md) |

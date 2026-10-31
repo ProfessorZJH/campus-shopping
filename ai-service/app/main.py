@@ -104,10 +104,12 @@ def create_app(settings: Settings|None=None):
     @app.delete('/v1/index/{document_id}',dependencies=[Depends(authorized)])
     def delete(document_id: str):
         if len(document_id)>64:raise HTTPException(400,'编号无效')
+        if not gate.acquire(blocking=False):raise HTTPException(429,'索引服务繁忙')
         try:store.delete(document_id);return {'deleted':True}
         except Exception as error:
             failure('knowledge.delete', error)
             raise HTTPException(503,'索引删除失败') from None
+        finally:gate.release()
     @app.post('/v1/recall',dependencies=[Depends(authorized)])
     def recall(request: RecallRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
@@ -154,22 +156,25 @@ def create_app(settings: Settings|None=None):
     def dependency_diagnostics():return diagnostics()
     @app.post('/v1/extract',dependencies=[Depends(authorized)])
     def extract(request: ExtractRequest):
-        try:data=base64.b64decode(request.base64,validate=True)
-        except Exception:raise HTTPException(400,'文件编码错误') from None
-        if not data or len(data)>2_000_000:raise HTTPException(400,'文件大小须为1至2000000字节')
-        suffix=Path(request.filename).suffix.lower()
-        if suffix in ('.txt','.md'):
-            try:text=data.decode('utf-8-sig')
-            except UnicodeError:raise HTTPException(400,'仅接受UTF-8文本') from None
-        elif suffix=='.pdf':
-            try:
-                process=subprocess.run([sys.executable,str(Path(__file__).with_name('pdf_extract.py'))],input=data,capture_output=True,timeout=8,check=False)
-                result=json.loads(process.stdout)
-                if process.returncode or 'text' not in result:raise ValueError()
-                text=result['text']
-            except Exception:raise HTTPException(400,'PDF无法安全解析，扫描件不在本版范围') from None
-        else:raise HTTPException(400,'仅支持TXT、MD和文本PDF')
-        text=text.replace('\x00','').strip()
-        if not text or len(text)>100000:raise HTTPException(400,'文字长度须为1至100000字符')
-        return {'text':text}
+        if not gate.acquire(blocking=False):raise HTTPException(429,'文件解析服务繁忙')
+        try:
+            try:data=base64.b64decode(request.base64,validate=True)
+            except Exception:raise HTTPException(400,'文件编码错误') from None
+            if not data or len(data)>2_000_000:raise HTTPException(400,'文件大小须为1至2000000字节')
+            suffix=Path(request.filename).suffix.lower()
+            if suffix in ('.txt','.md'):
+                try:text=data.decode('utf-8-sig')
+                except UnicodeError:raise HTTPException(400,'仅接受UTF-8文本') from None
+            elif suffix=='.pdf':
+                try:
+                    process=subprocess.run([sys.executable,str(Path(__file__).with_name('pdf_extract.py'))],input=data,capture_output=True,timeout=8,check=False)
+                    result=json.loads(process.stdout)
+                    if process.returncode or 'text' not in result:raise ValueError()
+                    text=result['text']
+                except Exception:raise HTTPException(400,'PDF无法安全解析，扫描件不在本版范围') from None
+            else:raise HTTPException(400,'仅支持TXT、MD和文本PDF')
+            text=text.replace('\x00','').strip()
+            if not text or len(text)>100000:raise HTTPException(400,'文字长度须为1至100000字符')
+            return {'text':text}
+        finally:gate.release()
     return app

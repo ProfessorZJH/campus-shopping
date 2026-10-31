@@ -2,6 +2,8 @@
 
 ## 结论
 
+当前交付状态更新至2026-10-31：SDD-12已实现并验收Redis共享Session、限流、公开展示缓存、AI准入和索引锁，支持多个Java实例连接同一MySQL/Redis及单Python服务。见[整合验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[运行手册](operations/REDIS-12-runbook.md)；整合提交的[远端CI与实际交付镜像](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41161066987)通过。本机未启动Docker，生产HA和压力测试未验收。下文各日期测试记录保留当时范围，新修改须以对应提交验收为准。
+
 七个业务领域、跨领域用例、三端页面、Python 检索服务、部署与验收脚本均已写入工程。2026-10-29 已完成[本机真实 Spring/MySQL、AI 导购与浏览器交易闭环验收](testing/LOCAL-LIVE-20261029.md)：173 项 HTTP 检查及列明的页面、角色、数据库核对通过，原始失败与复测保留。Docker、Qdrant、生产部署和性能验收不在该结论范围；有限验收不等于没有任何集成缺陷。此前独立 AI 子链路见[前序报告](testing/AI-LIVE-20261029.md)。
 
 工程化后续修复及隔离库验证见 [ENGINEERING-10](testing/ENGINEERING-10.md)。交付清单由每次 Maven verify 生成到 `campus-shopping-app/target/release-manifest.json`，记录实际 JAR、源码和测试摘要；根目录旧静态清单已移除。标准源码构建增加 Node22.16.0 / Python3.11 要求，已有库必须通过显式迁移入口登记版本后再启动。
@@ -31,11 +33,11 @@
 
 ## 实现仍有明确边界
 
-- Java/Spring/MySQL、BCrypt、真实 HTTP 与浏览器交易链路已有列明范围的验收；当前源码复验、失败修复与环境边界见[最新报告](testing/DDD-DOC-CLOSURE-20261030.md)。
+- Java/Spring/MySQL、BCrypt、真实 HTTP 与浏览器交易链路已有列明范围的验收；当前Redis及主线整合见[SDD-12报告](testing/REDIS-MAIN-INTEGRATION-20261031.md)，前序整改见[2026-10-30报告](testing/DDD-DOC-CLOSURE-20261030.md)。
 - 讯飞 LLM、NVIDIA Embedding 与商品 Milvus 已有历史真实联调证据；本轮使用本地检索与受控模型替身，没有重新验收远程供应商。知识库可选 Qdrant 尚未完成真实验收，凭据由运行环境私有配置。
 - AI 返回完整 JSON；MySQL 对全量公开商品按需求召回最多 200 件，再与可选 Milvus 语义 ID 融合，SKU 均衡取样最多 300。Milvus 只保存商品 ID、文本指纹和向量，价格、库存、权限仍以 Java/MySQL 为准。知识检索单次最多 1000 份可见文档，超限明确返回 AI0005，详见[行为契约](api/behavior-v1.1.md)。
 - 本地检索评测只有8条人工演示样本，不足以支持毕业论文泛化效果或生产性能结论。
-- 单实例服务端会话；未交付跨实例共享会话、SLA、真实压力测试、生产安全评审和自动备份恢复演练。
+- 默认使用Redis共享服务端会话，身份与CSRF已验证跨Java实例读取，注销及权限撤回实时生效；显式关闭Redis仅用于单实例开发/隔离测试。多Java部署还须共享上传存储，本轮不代表SLA、生产HA、真实压力测试、生产安全评审或自动备份恢复演练通过。
 - 扫描PDF OCR、部分退款、已提货退货、物流配送、真实支付/分账不在既定首版范围。
 - 会话删除、细粒度审计留存和高级可观测性未实现；不能把这些非核心后续能力标为完成。
 
