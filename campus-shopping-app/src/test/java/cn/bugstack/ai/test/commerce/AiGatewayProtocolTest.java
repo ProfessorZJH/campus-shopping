@@ -65,6 +65,54 @@ class AiGatewayProtocolTest {
         }
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = { "null", "", " ", "{}", "{\"text\":null}", "{\"text\":\" \"}", "invalid-json" })
+    void emptyOrMalformedSuccessfulExtractionIsUnavailable(String responseBody) throws Exception {
+        assertExtractionUnavailable(responseBody);
+    }
+
+    @Test
+    void oversizedExtractedTextIsUnavailable() throws Exception {
+        assertExtractionUnavailable(new ObjectMapper().writeValueAsString(java.util.Map.of("text", "x".repeat(100001))));
+    }
+
+    private void assertExtractionUnavailable(String responseBody) throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/extract", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = responseBody.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var error = assertThrows(AppException.class, () -> gateway(server).extract(new AiGatewayDTO.Extract("rules.md", "text/markdown", "eA==")));
+            assertEquals("AI0001", error.getCode());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void jsonNullIsRejectedAtSharedBoundaryForRecallAndQuery() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            exchange.sendResponseHeaders(200, 4);
+            exchange.getResponseBody().write("null".getBytes(StandardCharsets.UTF_8));
+            exchange.close();
+        });
+        server.start();
+        try {
+            var client = gateway(server);
+            assertEquals("AI0001", assertThrows(AppException.class, () -> client.recall(null)).getCode());
+            assertEquals("AI0001", assertThrows(AppException.class, () -> client.query(null)).getCode());
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private AiGatewayService gateway(HttpServer server) {
         var gateway = new AiGatewayService();
         ReflectionTestUtils.setField(

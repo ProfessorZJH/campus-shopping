@@ -37,3 +37,6 @@
 
 项目根目录`AGENTS.md`负责开发约束，`xfg-ddd-skills`负责DDD工程习惯，用户上传的group-buy-market负责具体编码风格参考。代码正确性最终必须由真实构建、业务测试和验收证据支撑。
 **开发接口以当前 `frontend/src/services/api.js` 与 Java Controller/DTO 为准。** 旧 `static/assets/app.js`、P1 教学草案、旧 SSE 描述只能作历史材料，禁止合并到当前 HTTP 契约中。接口契约代码变更后执行 `python scripts/generate-api-contract.py && python scripts/verify-api-contract.py`。
+
+- [PR-A：退款裁决与商户状态幂等](testing/BUSINESS-FIXES-A-20261031.md)
+- [PR-B：边界输入与异常契约](testing/BUSINESS-FIXES-B-20261031.md)

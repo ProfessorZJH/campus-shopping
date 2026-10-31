@@ -1,0 +1,19 @@
+{
+  "formatCheck": "PASS",
+  "releaseSourceDdd": "PASS",
+  "javaReadability": "PASS",
+  "productionDomainChecks": 56,
+  "apiContract": "PASS",
+  "apiSchemaChecks": 58,
+  "uiBuildAndSnapshot": "PASS after build-ui-bundle.py normalized residual local CRLF",
+  "schemaContract": "PASS",
+  "python": {
+    "command": "cd ai-service; python -m pytest -q",
+    "passed": 211,
+    "warnings": 1,
+    "durationSeconds": 40.78
+  },
+  "existingBusinessDatabaseUsed": false,
+  "existingRedisUsed": false,
+  "externalModels": "NOT_RUN"
+}
