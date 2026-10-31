@@ -10,12 +10,14 @@ public interface IAccessRepository {
     MembershipVO member(String userId, String merchantId, boolean lock);
     List<MembershipVO> memberships(String userId);
     List<MembershipVO> members(String merchantId);
+    Map<String, Set<String>> activeCustomPermissions(String userId);
     void grantOwner(String merchantId, String userId, String applicationId);
     void grantClerk(String merchantId, String userId);
     void revoke(String merchantId, String userId);
     void invite(InvitationVO invitation, String inviter);
     InvitationVO invitation(String id);
-    List<InvitationVO> invitations(String userId);
+    List<InvitationVO> invitations(String userId, int offset, int size);
     void accept(String id);
+    void cancelPendingInvitations(String merchantId, String userId);
     void audit(String actor, String action, String target, String merchantId, String detail);
 }

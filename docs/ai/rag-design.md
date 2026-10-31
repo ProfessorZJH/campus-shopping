@@ -2,7 +2,7 @@
 
 > **R1 对齐说明（2026-10-28）**：本文保留需求来源与历史设计；当前冻结规则以 [R1 实施规格](../specs/RELEASE-01.md) 为准，实际实现/验证状态见 [R1 交付清单](../DELIVERY-R1.md)。历史“下一批/待开发/已通过”描述不作为本次执行证据。
 
-> 版本 v1.0 · 2026-10-26 · **历史设计稿。2026-10-29 现行商品召回以 [SDD-07](../specs/SDD-AI-RECALL-07.md) 为准：MySQL 关键词召回、Python BM25 和可选 LLM；商品 Qdrant 向量召回尚未实现。**  
+> 版本 v1.0 · 2026-10-26 · **历史设计稿。现行商品召回以 [SDD-08](../specs/SDD-AI-HYBRID-08.md) 和[上下文映射](../architecture/context-map.md)为准：MySQL 词面、可选 Milvus 商品语义 ID、Python BM25/LLM；Qdrant 仅为可选知识文档检索。当前容量与规则见[行为契约](../api/behavior-v1.1.md)。**
 > 本文件只记录本项目额外的 AI/RAG 技术决策；DDD Java 分层/命名仍以 `xfg-ddd-skills` 为准。相关 [ShoppingAI 领域](../domains/shoppingai.md) · [评测](evaluation-plan.md)。
 
 ## 1. 目标与非目标

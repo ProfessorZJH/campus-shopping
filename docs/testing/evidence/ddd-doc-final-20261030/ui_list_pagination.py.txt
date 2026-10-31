@@ -1,0 +1,1 @@
+{"status": "PASS", "type": "CHROMIUM_WITH_HTTP_CONTRACT_DOUBLE", "checks": ["会话加载至第 101 条，末页隐藏继续加载", "邀请第六页可访问第 101 条，并可返回上一页"]}

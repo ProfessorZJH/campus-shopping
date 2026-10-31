@@ -31,7 +31,7 @@ public interface IAiDao {
     int activeDocument(@Param("root") String root, @Param("id") String id);
     int conversationInsert(@Param("p") ConversationPO p);
     ConversationPO conversation(@Param("id") String id);
-    List<ConversationPO> conversations(@Param("user") String user);
+    List<ConversationPO> conversations(@Param("user") String user, @Param("offset") int offset, @Param("size") int size);
     List<MessagePO> messages(@Param("conversation") String conversation, @Param("limit") int limit);
     int claimTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int finishTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);

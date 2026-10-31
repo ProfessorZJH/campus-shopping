@@ -14,10 +14,11 @@ public interface IAccessService {
     void bootstrapAdmin(String userId);
     InvitationVO invite(String actor, String merchantId, String username);
     void accept(String actor, String invitationId);
-    List<InvitationVO> invitations(String actor);
+    List<InvitationVO> invitations(String actor, int page, int size);
     void revoke(String actor, String merchantId, String targetUserId);
     void audit(String actor, String action, String target, String merchantId, String detail);
     /** 所有商户敏感读写均通过当前数据库成员关系与角色实时复权。 */
     void requirePermission(String actor, String merchantId, String permission);
     Set<String> permissions(String actor, String merchantId);
+    Map<String, Set<String>> workspacePermissions(String actor, List<MembershipVO> memberships);
 }

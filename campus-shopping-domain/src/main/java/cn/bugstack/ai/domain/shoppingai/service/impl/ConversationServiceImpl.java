@@ -38,8 +38,8 @@ public class ConversationServiceImpl implements IConversationService {
         return c;
     }
 
-    public List<ConversationVO> conversations(String actor) {
-        return repository.conversations(actor);
+    public List<ConversationVO> conversations(String actor, int page, int size) {
+        return repository.conversations(actor, cn.bugstack.ai.types.common.Checks.offset(page, size), size);
     }
 
     public List<MessageVO> messages(String actor, String id, int limit) {

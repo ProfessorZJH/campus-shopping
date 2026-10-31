@@ -10,6 +10,7 @@ import java.util.*;
 public interface ICartRepository {
     void lockCart(String user);
     List<CartItemVO> cart(String user);
+    int cartSizeForUpdate(String user);
     CartItemVO cartItem(String user, String sku);
     void setCart(String user, String merchant, String sku, int quantity);
     void deleteCart(String user, String sku);

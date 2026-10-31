@@ -12,7 +12,6 @@ import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.trading.ICheckoutCase;
 import cn.bugstack.ai.cases.trading.IOrderLifecycleCase;
 import cn.bugstack.ai.cases.trading.IOrderQueryCase;
-import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
@@ -61,7 +60,7 @@ public class OrderController implements IOrderApi {
                     )
                 )
                 .toList();
-            return view(checkoutCase.checkout(actor(principal), request.getMerchantId(), items, key));
+            return readView(checkoutCase.checkout(actor(principal), request.getMerchantId(), items, key));
         });
     }
 
@@ -132,7 +131,7 @@ public class OrderController implements IOrderApi {
     @PostMapping("/orders/{orderId}/pay")
     public Response<OrderResponseDTO> pay(@PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
-            return view(lifecycle.pay(actor(principal), orderId));
+            return readView(lifecycle.pay(actor(principal), orderId));
         });
     }
 
@@ -141,7 +140,7 @@ public class OrderController implements IOrderApi {
     @PostMapping("/orders/{orderId}/cancel")
     public Response<OrderResponseDTO> cancel(@PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
-            return view(lifecycle.cancel(actor(principal), orderId));
+            return readView(lifecycle.cancel(actor(principal), orderId));
         });
     }
 
@@ -184,10 +183,6 @@ public class OrderController implements IOrderApi {
             var result = query.platform(actor(principal), state, page, size, q);
             return PageResponseDTO.of(result.items().stream().map(this::readView).toList(), page, size, result.total());
         });
-    }
-
-    private OrderResponseDTO view(OrderAggregate order) {
-        return readView(query.view(order));
     }
 
     private OrderResponseDTO readView(cn.bugstack.ai.cases.trading.model.OrderReadModel model) {

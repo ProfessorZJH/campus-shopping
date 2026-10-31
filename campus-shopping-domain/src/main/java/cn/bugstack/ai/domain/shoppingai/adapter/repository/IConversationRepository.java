@@ -9,7 +9,7 @@ import java.util.List;
 public interface IConversationRepository {
     void createConversation(ConversationVO conversation);
     ConversationVO conversation(String id);
-    List<ConversationVO> conversations(String user);
+    List<ConversationVO> conversations(String user, int offset, int size);
     List<MessageVO> messages(String conversation, int limit);
     void append(MessageVO message);
     boolean claimTurn(String id, String actor, String token);

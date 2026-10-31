@@ -75,13 +75,14 @@ public class KnowledgeRepository implements IKnowledgeRepository {
     }
 
     public List<KnowledgeScopeVO> visibleScope(List<String> bases) {
-        return bases.isEmpty()
-            ? List.of()
-            : dao
-                  .visibleScope(bases)
-                  .stream()
-                  .map(p -> new KnowledgeScopeVO(p.getId(), p.getTitle(), p.getVisibility()))
-                  .toList();
+        if (bases.isEmpty()) return List.of();
+        var scope = new java.util.ArrayList<KnowledgeScopeVO>();
+        for (int start = 0; start < bases.size() && scope.size() <= 1000; start += 100) {
+            dao.visibleScope(bases.subList(start, Math.min(start + 100, bases.size()))).forEach(p ->
+                scope.add(new KnowledgeScopeVO(p.getId(), p.getTitle(), p.getVisibility()))
+            );
+        }
+        return scope;
     }
 
     public List<KnowledgeDocumentVO> documentsByIds(List<String> ids) {

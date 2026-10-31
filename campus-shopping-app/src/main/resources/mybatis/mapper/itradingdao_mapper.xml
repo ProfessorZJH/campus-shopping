@@ -45,6 +45,9 @@ INSERT INTO trd_refund(order_id,amount_cent) VALUES(#{order},#{amount})
     <select id="cart" resultType="cn.bugstack.ai.infrastructure.dao.po.CartItemPO">
 SELECT * FROM trd_cart_item WHERE user_id=#{user} ORDER BY merchant_id,sku_id LIMIT 100
     </select>
+    <select id="cartSkuIdsForUpdate" resultType="string">
+SELECT sku_id FROM trd_cart_item WHERE user_id=#{user} ORDER BY sku_id FOR UPDATE
+    </select>
     <select id="cartItem" resultType="cn.bugstack.ai.infrastructure.dao.po.CartItemPO">
 SELECT * FROM trd_cart_item WHERE user_id=#{user} AND sku_id=#{sku} FOR UPDATE
     </select>

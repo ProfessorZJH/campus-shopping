@@ -3,7 +3,6 @@ package cn.bugstack.ai.test.commerce;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
@@ -34,9 +33,9 @@ import org.junit.jupiter.api.Test;
 
 class CatalogCartReadModelTest {
 
-    private final ICatalogCase products = mock(ICatalogCase.class);
     private final ICartCase cart = mock(ICartCase.class);
     private final ICatalogService catalog = mock(ICatalogService.class);
+    private final IAccessService access = mock(IAccessService.class);
     private final IInventoryService inventory = mock(IInventoryService.class);
     private final IMerchantService merchants = mock(IMerchantService.class);
 
@@ -108,10 +107,10 @@ class CatalogCartReadModelTest {
             );
             shops.add(merchant("m" + i, "ACTIVE"));
         }
-        when(products.publicProducts(null, "", null, 1, 100)).thenReturn(rows);
+        when(catalog.search(null, "", null, true, 1, 100)).thenReturn(rows);
         var ids = rows.stream().map(ProductAggregate::getMerchantId).toList();
         when(merchants.findAll(ids)).thenReturn(shops);
-        var query = new CatalogQueryCaseImpl(products, catalog, inventory, merchants);
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access);
         var result = query.publicProducts(null, "", null, 1, 100).stream().map(ApiViews::product).toList();
         assertEquals(100, result.size());
         for (int i = 0; i < 100; i++) assertEquals("商户m" + i, result.get(i).getMerchantName());
@@ -122,8 +121,8 @@ class CatalogCartReadModelTest {
 
     @Test
     void deniedAndEmptyProductPagesDoNotReadEnrichment() {
-        when(products.managedProducts("u", "m", 1, 20)).thenThrow(new AppException(ResponseCode.AUTH_FORBIDDEN));
-        var query = new CatalogQueryCaseImpl(products, catalog, inventory, merchants);
+        doThrow(new AppException(ResponseCode.AUTH_FORBIDDEN)).when(access).requirePermission("u", "m", "product.read");
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access);
         assertThrows(AppException.class, () -> query.managedProducts("u", "m", 1, 20));
         assertTrue(query.publicProducts(null, "", null, 1, 20).isEmpty());
         verifyNoInteractions(inventory, merchants);
@@ -166,32 +165,33 @@ class CatalogCartReadModelTest {
     void stockPageLoadsOnlyAuthorizedMerchantFacts() {
         var stock = new StockVO("m", "store", "sku", 5, 2, 3);
         var offer = new SkuOfferVO("sku", "product", "m", "store", "笔", "黑色", 150, 1, "PUBLISHED", "ACTIVE", "", "");
-        when(products.stocks("u", "m", 1, 20, "")).thenReturn(List.of(stock));
-        when(products.stockOffers("u", "m", List.of("sku"))).thenReturn(Map.of("sku", offer));
-        when(products.countStocks("u", "m", "")).thenReturn(1L);
-        var query = new CatalogQueryCaseImpl(products, catalog, inventory, merchants);
+        when(inventory.list("m", 1, 20, "")).thenReturn(List.of(stock));
+        when(catalog.offers(List.of("sku"))).thenReturn(List.of(offer));
+        when(inventory.countStocks("m", "")).thenReturn(1L);
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access);
         var page = query.stockPage("u", "m", 1, 20, "");
         assertEquals(1L, page.total());
         assertEquals(List.of(stock), page.items());
         assertEquals(offer, page.offers().get("sku"));
-        verify(products).stocks("u", "m", 1, 20, "");
-        verify(products).stockOffers("u", "m", List.of("sku"));
+        verify(inventory).list("m", 1, 20, "");
+        verify(catalog).offers(List.of("sku"));
     }
 
     @Test
     void workspaceQueryLoadsMerchantDetailsInOneBatch() {
         var access = mock(IAccessService.class);
-        when(access.memberships("actor")).thenReturn(
-            List.of(new MembershipVO("m1", "actor", "OWNER", "ACTIVE"), new MembershipVO("m2", "actor", "CLERK", "ACTIVE"))
-        );
+        var memberships = List.of(new MembershipVO("m1", "actor", "OWNER", "ACTIVE"), new MembershipVO("m2", "actor", "CLERK", "ACTIVE"));
+        when(access.memberships("actor")).thenReturn(memberships);
         when(merchants.findAll(List.of("m1", "m2"))).thenReturn(List.of(merchant("m2", "ACTIVE"), merchant("m1", "ACTIVE")));
-        when(access.permissions("actor", "m1")).thenReturn(java.util.Set.of("product.read"));
+        when(access.workspacePermissions("actor", memberships)).thenReturn(Map.of("m1", java.util.Set.of("product.read")));
         var query = new WorkspaceQueryCaseImpl(access, merchants);
         var result = query.workspace("actor");
         assertEquals(List.of("m1", "m2"), result.merchants().stream().map(MerchantVO::id).toList());
         assertEquals(java.util.Set.of("product.read"), result.merchantPermissions().get("m1"));
         verify(merchants).findAll(List.of("m1", "m2"));
         verify(merchants, never()).find(anyString());
+        verify(access).workspacePermissions("actor", memberships);
+        verify(access, never()).permissions(anyString(), anyString());
     }
 
     @Test
@@ -204,6 +204,7 @@ class CatalogCartReadModelTest {
             stores.add(merchant("m" + i, "ACTIVE"));
         }
         when(access.memberships("actor")).thenReturn(memberships);
+        when(access.workspacePermissions("actor", memberships)).thenReturn(Map.of());
         when(merchants.findAll(anyList())).thenAnswer(invocation -> {
             List<String> ids = invocation.getArgument(0);
             assertTrue(ids.size() <= 100);
@@ -217,5 +218,6 @@ class CatalogCartReadModelTest {
         assertEquals(101, result.merchants().size());
         assertEquals("m100", result.merchants().get(100).id());
         verify(merchants, times(2)).findAll(anyList());
+        verify(access).workspacePermissions("actor", memberships);
     }
 }

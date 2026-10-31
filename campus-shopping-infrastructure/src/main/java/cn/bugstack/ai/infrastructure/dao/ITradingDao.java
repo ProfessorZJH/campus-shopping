@@ -33,6 +33,7 @@ public interface ITradingDao {
     int payment(@Param("order") String order, @Param("amount") long amount);
     int refund(@Param("order") String order, @Param("amount") long amount);
     List<CartItemPO> cart(@Param("user") String user);
+    List<String> cartSkuIdsForUpdate(@Param("user") String user);
     CartItemPO cartItem(@Param("user") String user, @Param("sku") String sku);
     int setCart(@Param("user") String user, @Param("merchant") String merchant, @Param("sku") String sku, @Param("quantity") int quantity);
     int deleteCart(@Param("user") String user, @Param("sku") String sku);

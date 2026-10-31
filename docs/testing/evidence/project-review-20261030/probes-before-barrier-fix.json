@@ -1,0 +1,40 @@
+{
+  "commit": "37124d0a114a0d79611528c69684276c1685f7e2",
+  "existingDatabaseUsed": false,
+  "externalModelUsed": false,
+  "probes": [
+    {
+      "id": "INVITATION_ROLE_OVERRIDE",
+      "status": "REPRODUCED",
+      "beforeCode": "A0006",
+      "afterCode": "0000",
+      "roleAfter": "CLERK"
+    },
+    {
+      "id": "PRODUCT_LOST_UPDATE",
+      "status": "REPRODUCED",
+      "writerCommittedPrice": 2000,
+      "afterPublishPrice": 1000,
+      "afterPublishSkuVersion": 0,
+      "responseCode": "0000"
+    }
+  ],
+  "isolation": "REPEATABLE-READ",
+  "status": "ERROR",
+  "errorType": "AssertionError",
+  "errorFrames": [
+    {
+      "file": "probe-project-review.py",
+      "line": 248
+    },
+    {
+      "file": "probe-project-review.py",
+      "line": 151
+    },
+    {
+      "file": "probe-project-review.py",
+      "line": 124
+    }
+  ],
+  "temporaryDatabaseCleaned": true
+}

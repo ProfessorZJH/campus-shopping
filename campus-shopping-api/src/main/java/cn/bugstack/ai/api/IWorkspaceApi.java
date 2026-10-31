@@ -14,7 +14,7 @@ public interface IWorkspaceApi {
     /** 邀请已注册账号成为店员。 */
     Response<InvitationResponseDTO> invite(String merchantId, InvitationRequestDTO request, Principal principal);
     /** 查看本人收到的邀请。 */
-    Response<List<InvitationResponseDTO>> invitations(Principal principal);
+    Response<List<InvitationResponseDTO>> invitations(int page, int size, Principal principal);
     /** 接受本人邀请。 */
     Response<Void> accept(String id, Principal principal);
     /** 撤销本商户店员，后续请求立即复权。 */

@@ -30,6 +30,10 @@ public class CartRepository implements ICartRepository {
         return dao.cart(user).stream().map(this::cartItem).toList();
     }
 
+    public int cartSizeForUpdate(String user) {
+        return dao.cartSkuIdsForUpdate(user).size();
+    }
+
     public CartItemVO cartItem(String user, String sku) {
         return cartItem(dao.cartItem(user, sku));
     }

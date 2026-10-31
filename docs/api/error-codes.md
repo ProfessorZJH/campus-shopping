@@ -45,6 +45,7 @@
 | `PROPOSAL_EXPIRED` | `AI0002` | 推荐建议已过期，请重新生成 |
 | `KNOWLEDGE_NOT_READY` | `AI0003` | 知识索引尚未就绪 |
 | `UPLOAD_INVALID` | `AI0004` | 文件格式、大小或内容不符合要求 |
+| `KNOWLEDGE_SCOPE_TOO_LARGE` | `AI0005` | 可访问知识文档超过单次检索上限，请联系管理员整理知识库 |
 
 Domain/Case 抛出 AppException，异常穿过事务代理后由 Controller 内部捕获；禁止在事务方法内吞异常返回成功。
 

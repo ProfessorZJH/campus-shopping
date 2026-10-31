@@ -23,7 +23,6 @@ import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.merchant.model.aggregate.MerchantApplicationAggregate;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
-import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
 import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 
@@ -132,22 +131,21 @@ public final class ApiViews {
     }
 
     public static OrderResponseDTO order(OrderReadModel model) {
-        OrderAggregate o = model.order();
         PickupVO p = model.pickup();
         AfterSaleVO a = model.afterSale();
         return OrderResponseDTO.builder()
-            .orderId(o.getId())
+            .orderId(model.orderId())
             .merchantName(model.merchantName())
-            .buyerId(o.getBuyerId())
-            .merchantId(o.getMerchantId())
-            .storeId(o.getStoreId())
-            .status(o.getStatus())
-            .totalCent(o.getTotalCent())
-            .deadline(o.getDeadline())
-            .createdAt(o.getCreatedAt())
+            .buyerId(model.buyerId())
+            .merchantId(model.merchantId())
+            .storeId(model.storeId())
+            .status(model.status())
+            .totalCent(model.totalCent())
+            .deadline(model.deadline())
+            .createdAt(model.createdAt())
             .items(
-                o
-                    .getItems()
+                model
+                    .items()
                     .stream()
                     .map(i ->
                         OrderItemResponseDTO.builder()

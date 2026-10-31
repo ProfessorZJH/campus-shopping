@@ -1,6 +1,6 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
-import { api } from '../services/api.js';
+import { api, query } from '../services/api.js';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
@@ -23,6 +23,8 @@ export default {
     const error = ref('');
     const historyOpen = ref(false);
     const conversations = ref([]);
+    const historyPage = ref(1);
+    const historyHasMore = ref(false);
     const loadingHistory = ref(false);
     const openingConversation = ref(false);
     let conversationEpoch = 0,
@@ -62,6 +64,8 @@ export default {
         store.conversationId = '';
         messages.value = [];
         conversations.value = [];
+        historyPage.value = 1;
+        historyHasMore.value = false;
         proposal.value = null;
         selectedIds.value = [];
         mode.value = '';
@@ -130,15 +134,23 @@ export default {
         if (stamp === conversationEpoch) thinking.value = false;
       }
     }
-    async function loadHistory() {
+    async function loadHistory(reset = true) {
       if (preview) return;
+      if (loadingHistory.value && !reset) return;
       const stamp = ++historyEpoch;
+      const page = reset ? 1 : historyPage.value + 1;
       loadingHistory.value = true;
       try {
-        const result = await api('/ai/conversations');
-        if (stamp === historyEpoch) conversations.value = result || [];
+        const result = (await api('/ai/conversations' + query({ page, size: 20 }))) || [];
+        if (stamp === historyEpoch) {
+          conversations.value = reset
+            ? result
+            : [...new Map([...conversations.value, ...result].map((c) => [c.id, c])).values()];
+          historyPage.value = page;
+          historyHasMore.value = result.length === 20;
+        }
       } catch {
-        if (stamp === historyEpoch) conversations.value = [];
+        if (stamp === historyEpoch && reset) conversations.value = [];
       } finally {
         if (stamp === historyEpoch) loadingHistory.value = false;
       }
@@ -244,6 +256,7 @@ export default {
       reject,
       historyOpen,
       conversations,
+      historyHasMore,
       loadingHistory,
       openingConversation,
       loadHistory,
@@ -257,7 +270,7 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span></div>
+      <div v-if="!preview" class="ai-history-head"><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <section class="chat-thread" aria-label="AI对话">
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>

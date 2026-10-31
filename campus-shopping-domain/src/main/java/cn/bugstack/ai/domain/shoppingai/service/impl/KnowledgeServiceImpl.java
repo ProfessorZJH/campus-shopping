@@ -68,8 +68,9 @@ public class KnowledgeServiceImpl implements IKnowledgeService {
     }
 
     public List<KnowledgeScopeVO> visibleScope(List<String> bases) {
-        require(bases.size() <= 1000, ResponseCode.ILLEGAL_PARAMETER);
-        return repository.visibleScope(bases);
+        List<KnowledgeScopeVO> scope = repository.visibleScope(bases);
+        require(scope.size() <= 1000, ResponseCode.KNOWLEDGE_SCOPE_TOO_LARGE);
+        return scope;
     }
 
     public List<KnowledgeDocumentVO> documentsByIds(List<String> ids) {

@@ -168,11 +168,65 @@ def test_quantity_above_available_never_creates_recommendation(app_client):
     assert not query(client,'买3支签字笔',[],offers).json()['recommendations']
 
 def test_quantity_parser_does_not_guess_multi_item_quantities():
-    from app.engine import requested_quantity
+    from app.engine import requested_quantity,quantity_intent
     assert requested_quantity('买2瓶牛奶')==2
     assert requested_quantity('买两盒笔')==2
     assert requested_quantity('买两盒笔和三瓶水') is None
     assert requested_quantity('预算20元买苹果') is None
+    assert requested_quantity('买十二瓶矿泉水')==12
+    assert requested_quantity('买二十瓶矿泉水')==20
+    assert requested_quantity('买二十一瓶矿泉水')==21
+    assert quantity_intent('买100瓶矿泉水')==(None,'INVALID')
+
+def test_invalid_or_ambiguous_quantity_never_defaults_to_one(app_client):
+    _,client=app_client
+    offers=[{'skuId':'water','merchantId':'m','title':'矿泉水','specKey':'瓶','priceCent':200,'available':150}]
+    for question in ('买100瓶矿泉水','买两瓶矿泉水和三瓶牛奶','买1.5瓶矿泉水'):
+        data=query(client,question,[],offers).json()
+        assert data['recommendations']==[] and '明确' in data['answer']
+
+def test_invalid_model_answer_is_discarded_on_fallback(app_client,monkeypatch):
+    app,client=app_client
+    import dataclasses
+    app.state.store.settings=dataclasses.replace(app.state.store.settings,llm_key='configured-for-unit-test')
+    monkeypatch.setattr(app.state.store.provider,'complete',lambda *a,**kw:{'answer':'X'*8001,'recommendations':[]})
+    data=query(client,'买一瓶矿泉水',[],[{'skuId':'water','merchantId':'m','title':'矿泉水','specKey':'瓶','priceCent':200,'available':5}]).json()
+    assert data['mode']=='LOCAL_FALLBACK'
+    assert 'X' not in data['answer'] and len(data['answer'])<8001
+
+def test_chinese_budget_and_unclear_constraints(app_client):
+    _,client=app_client
+    offers=[{'skuId':'water','merchantId':'m','title':'矿泉水','specKey':'瓶','priceCent':3000,'available':99}]
+    assert budget_cent('预算二十元买一瓶矿泉水')==2000
+    assert budget_cent('十二点五元以内')==1250
+    assert budget_cent('不到20元')==2000
+    assert not query(client,'预算二十元买一瓶矿泉水',[],offers).json()['recommendations']
+    for question in ('买十几瓶矿泉水','买二十到三十瓶矿泉水','预算几十元买矿泉水'):
+        data=query(client,question,[],offers).json()
+        assert not data['recommendations'] and '明确' in data['answer']
+
+def test_followup_preserves_user_constraints_without_trusting_rewrite(app_client):
+    _,client=app_client
+    offers=[{'skuId':'water','merchantId':'m','title':'矿泉水','specKey':'瓶','priceCent':800,'available':99}]
+    history=[{'role':'user','content':'预算二十元买两瓶矿泉水'}]
+    data=query(client,'换一个',[],offers,history).json()
+    assert data['recommendations'][0]['quantity']==2
+    # 检索改写可以省略或改写数值，成交约束仍来自可信用户消息。
+    data=client.post('/v1/query',json={'question':'换一个','history':history,'retrievalQuery':'矿泉水','allowedDocumentIds':[],'offers':offers}).json()
+    assert data['recommendations'][0]['quantity']==2
+    data=query(client,'换一个，买三瓶',[],offers,history).json()
+    assert not data['recommendations']  # 三瓶超过继承的 20 元预算。
+    data=query(client,'买一瓶矿泉水',[],offers,history).json()
+    assert data['recommendations'][0]['quantity']==1
+
+def test_knowledge_scope_limit_is_explicit_and_never_silently_truncated(app_client):
+    app,client=app_client
+    ids=[f'doc-{i}' for i in range(1001)]
+    assert client.post('/v1/query',json={'question':'自提','allowedDocumentIds':ids,'offers':[]}).status_code==422
+    import pytest
+    with pytest.raises(ValueError,match='exceeds 1000'):app.state.store.search('自提',ids)
+    app.state.store.index(ids[999],'自提','图书馆领取商品')
+    assert app.state.store.search('领取',ids[:1000])[0][0]['documentId']==ids[999]
 
 def test_chunked_body_has_actual_size_limit(app_client):
     _,client=app_client

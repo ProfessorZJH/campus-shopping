@@ -470,7 +470,22 @@
       "controller": "ShoppingAiController.java",
       "handler": "conversations",
       "responseType": "List<ConversationResponseDTO>",
-      "inputs": [],
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "100"
+        }
+      ],
       "access": "authenticated + domain ACL",
       "csrf": false
     },
@@ -672,7 +687,22 @@
       "controller": "WorkspaceController.java",
       "handler": "invitations",
       "responseType": "List<InvitationResponseDTO>",
-      "inputs": [],
+      "inputs": [
+        {
+          "in": "query",
+          "name": "page",
+          "type": "int",
+          "required": false,
+          "default": "1"
+        },
+        {
+          "in": "query",
+          "name": "size",
+          "type": "int",
+          "required": false,
+          "default": "100"
+        }
+      ],
       "access": "authenticated + domain ACL",
       "csrf": false
     },

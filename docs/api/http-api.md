@@ -10,7 +10,7 @@
 - 使用同源 `JSESSIONID` Session；写请求先从 `GET /api/v1/auth/csrf` 取得 `data.token` 与 `data.headerName`，随请求头发送。
 - 公共匿名 GET：商品、分类、公开商户；注册/登录仅匿名用户可 POST，且必须带 CSRF。其他 API 需登录并执行领域权限校验。
 - 幂等键：入驻申请、补货、结算的 `Idempotency-Key` **业务必填且最长 64 字符**；同键不同内容返回业务冲突。
-- 分页：`page` 从 1 开始，`size` 范围 1–100；`data.items/page/size/total/hasNext`。搜索参数 `q` 先在 SQL 过滤，再按相同条件 COUNT。
+- 分页：`page` 从 1 开始，`size` 范围 1–100；`/page` 返回 `data.items/page/size/total/hasNext`。会话/邀请保留分页 List 响应，末页规则见行为契约。搜索参数 `q` 先在 SQL 过滤，再按相同条件 COUNT。
 - 错误码以 `ResponseCode.java` 为准；HTTP 状态与业务码相互独立，鉴权缺失一般 401、CSRF/拒绝访问一般 403。
 - 协议错误返回同一 JSON 信封：400/0002、404/G0001、405/G0005、406/G0007、413/G0004、415/G0006。限流 429/A0007 附正确 Retry-After。
 - 金额、数量、版本禁止小数截断；每个正文只接受一个 JSON 值。未知字段继续忽略，附加的身份/角色字段没有授权效力。
@@ -38,7 +38,7 @@
 | `POST` | `/api/v1/admin/products/{productId}/unpublish` | productId:String | `Void` | platform-admin | `CatalogController.java` |
 | `GET` | `/api/v1/admin/statistics` | — | `StatisticsResponseDTO` | platform-admin | `OrderController.java` |
 | `POST` | `/api/v1/ai/chat` | body:ChatRequestDTO | `ChatResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
-| `GET` | `/api/v1/ai/conversations` | — | `List<ConversationResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
+| `GET` | `/api/v1/ai/conversations` | page?:int、size?:int | `List<ConversationResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations/{conversationId}/messages` | conversationId:String | `List<MessageResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations/{conversationId}/proposals` | conversationId:String | `List<ProposalResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `POST` | `/api/v1/ai/proposals/{proposalId}/confirm` | proposalId:String、body:ConfirmProposalRequestDTO | `ProposalResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
@@ -52,7 +52,7 @@
 | `PUT` | `/api/v1/cart` | body:CartSetRequestDTO | `Void` | authenticated + domain ACL | `CartController.java` |
 | `DELETE` | `/api/v1/cart/{skuId}` | skuId:String | `Void` | authenticated + domain ACL | `CartController.java` |
 | `GET` | `/api/v1/categories` | — | `List<CategoryResponseDTO>` | anonymous | `CatalogController.java` |
-| `GET` | `/api/v1/invitations` | — | `List<InvitationResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
+| `GET` | `/api/v1/invitations` | page?:int、size?:int | `List<InvitationResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
 | `POST` | `/api/v1/invitations/{id}/accept` | id:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/knowledge/bases` | — | `List<KnowledgeBaseResponseDTO>` | authenticated + domain ACL | `KnowledgeController.java` |
 | `POST` | `/api/v1/knowledge/bases` | body:KnowledgeBaseRequestDTO | `KnowledgeBaseResponseDTO` | authenticated + domain ACL | `KnowledgeController.java` |

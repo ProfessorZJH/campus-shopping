@@ -3,6 +3,8 @@ package cn.bugstack.ai.cases.trading.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.cases.trading.ICheckoutCase;
+import cn.bugstack.ai.cases.trading.IOrderQueryCase;
+import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
@@ -32,6 +34,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
     private final IInventoryService inventory;
     private final IOrderService trading;
     private final ICartService cart;
+    private final IOrderQueryCase query;
     private final Clock clock;
 
     @Value("${campus.order.payment-minutes:15}")
@@ -44,6 +47,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
         IInventoryService inventory,
         IOrderService trading,
         ICartService cart,
+        IOrderQueryCase query,
         Clock clock
     ) {
         this.accounts = accounts;
@@ -52,11 +56,12 @@ public class CheckoutCaseImpl implements ICheckoutCase {
         this.inventory = inventory;
         this.trading = trading;
         this.cart = cart;
+        this.query = query;
         this.clock = clock;
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public OrderAggregate checkout(String buyer, String merchant, List<CheckoutItemEntity> items, String requestKey) {
+    public OrderReadModel checkout(String buyer, String merchant, List<CheckoutItemEntity> items, String requestKey) {
         accounts.requireActive(buyer);
         String key = text(requestKey, "下单幂等键", 64);
         text(merchant, "商户编号", 36);
@@ -83,7 +88,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
             fp.add(i.expectedVersion());
         }
         String existing = trading.beginCheckout(buyer, key, Fingerprints.of(fp.toArray()));
-        if (existing != null) return trading.orderForUpdate(existing);
+        if (existing != null) return query.view(trading.orderForUpdate(existing));
         cart.lockCart(buyer);
         var m = merchants.requireActiveForNewTrade(merchant);
         Map<String, SkuOfferVO> offers = catalog
@@ -111,6 +116,6 @@ public class CheckoutCaseImpl implements ICheckoutCase {
         );
         cart.consumeCart(buyer, snapshots);
         trading.finishCheckout(buyer, key, orderId);
-        return order;
+        return query.view(order);
     }
 }

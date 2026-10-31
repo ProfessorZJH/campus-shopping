@@ -3,6 +3,8 @@ package cn.bugstack.ai.cases.trading.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.cases.trading.IOrderLifecycleCase;
+import cn.bugstack.ai.cases.trading.IOrderQueryCase;
+import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.fulfillment.model.valobj.PickupTokenVO;
 import cn.bugstack.ai.domain.fulfillment.service.IFulfillmentService;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
@@ -32,6 +34,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     private final IAccessService access;
     private final IUserAccountService accounts;
     private final IMerchantService merchants;
+    private final IOrderQueryCase query;
     private final Clock clock;
 
     public OrderLifecycleCaseImpl(
@@ -42,6 +45,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         IAccessService access,
         IUserAccountService accounts,
         IMerchantService merchants,
+        IOrderQueryCase query,
         Clock clock
     ) {
         this.trading = trading;
@@ -51,11 +55,12 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         this.access = access;
         this.accounts = accounts;
         this.merchants = merchants;
+        this.query = query;
         this.clock = clock;
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public OrderAggregate pay(String buyer, String id) {
+    public OrderReadModel pay(String buyer, String id) {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
         o.requireBuyer(buyer);
@@ -65,11 +70,11 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             fulfillment.create(id, o.getMerchantId(), o.getStoreId(), buyer);
             trading.save(o);
         }
-        return o;
+        return query.view(o);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public OrderAggregate cancel(String buyer, String id) {
+    public OrderReadModel cancel(String buyer, String id) {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
         o.requireBuyer(buyer);
@@ -77,7 +82,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             inventory.release(id);
             trading.save(o);
         }
-        return o;
+        return query.view(o);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -90,7 +95,16 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void prepare(String actor, String merchant, String id, boolean ready) {
+    public void startPreparing(String actor, String merchant, String id) {
+        prepare(actor, merchant, id, false);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void markReady(String actor, String merchant, String id) {
+        prepare(actor, merchant, id, true);
+    }
+
+    private void prepare(String actor, String merchant, String id, boolean ready) {
         access.requirePermission(actor, merchant, "order.prepare");
         OrderAggregate o = trading.orderForUpdate(id);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
@@ -100,7 +114,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public PickupTokenVO token(String buyer, String id) {
+    public PickupTokenVO issuePickupToken(String buyer, String id) {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
         o.requireBuyer(buyer);
@@ -110,7 +124,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public OrderAggregate verify(String actor, String merchant, String id, String token) {
+    public OrderReadModel verifyPickup(String actor, String merchant, String id, String token) {
         access.requirePermission(actor, merchant, "pickup.verify");
         OrderAggregate o = trading.orderForUpdate(id);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
@@ -122,7 +136,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             trading.save(o);
             access.audit(actor, "PICKUP_COMPLETED", id, merchant, "凭证核销成功");
         }
-        return o;
+        return query.view(o);
     }
 
     private void requireNoPendingRefund(String order) {
@@ -144,13 +158,31 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void merchantDecideRefund(String actor, String merchant, String id, boolean approved, String reason) {
+    public void merchantApproveRefund(String actor, String merchant, String id, String reason) {
+        merchantDecideRefund(actor, merchant, id, true, reason);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void merchantRejectRefund(String actor, String merchant, String id, String reason) {
+        merchantDecideRefund(actor, merchant, id, false, reason);
+    }
+
+    private void merchantDecideRefund(String actor, String merchant, String id, boolean approved, String reason) {
         access.requirePermission(actor, merchant, "aftersale.review");
         decideRefund(actor, merchant, id, approved, reason, false);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void platformDecideRefund(String actor, String id, boolean approved, String reason) {
+    public void platformApproveRefund(String actor, String id, String reason) {
+        platformDecideRefund(actor, id, true, reason);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void platformRejectRefund(String actor, String id, String reason) {
+        platformDecideRefund(actor, id, false, reason);
+    }
+
+    private void platformDecideRefund(String actor, String id, boolean approved, String reason) {
         access.requireAdmin(actor);
         decideRefund(actor, null, id, approved, reason, true);
     }
@@ -158,7 +190,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     private void decideRefund(String actor, String merchant, String id, boolean approved, String reason, boolean platform) {
         OrderAggregate o = trading.orderForUpdate(id);
         if (!platform) require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
-        AfterSaleVO a = afterSales.afterSale(id, true);
+        AfterSaleVO a = afterSales.afterSaleForUpdate(id);
         require(a != null, ResponseCode.NOT_FOUND);
         if (a.state() == AfterSaleStatusEnumVO.APPROVED && o.state() == OrderStatusEnumVO.REFUNDED && approved) return;
         require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.REFUND_STATE_INVALID);

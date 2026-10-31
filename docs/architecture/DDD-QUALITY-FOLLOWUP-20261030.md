@@ -1,5 +1,7 @@
 # DDD 代码风格与职责收敛复查（2026-10-30）
 
+> 本页为前轮决策记录。后续已完成 Catalog 命令/查询分离和订单只读模型收口，当前结果见[DDD 对照](DDD-REFERENCE-DOC-AUDIT-20261030.md)及[复验报告](../testing/DDD-DOC-CLOSURE-20261030.md)。
+
 基线：`codex/integrate-engineering`；本批不改变数据库结构、对外 HTTP 路由、订单锁顺序或业务响应码。本报告为源码复核与设计决策，不代替新增提交的 GitHub Actions 验收。
 
 ## 1. 已落地的最小改动

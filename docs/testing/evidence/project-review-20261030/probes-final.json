@@ -1,0 +1,71 @@
+{
+  "commit": "37124d0a114a0d79611528c69684276c1685f7e2",
+  "existingDatabaseUsed": false,
+  "externalModelUsed": false,
+  "probes": [
+    {
+      "id": "INVITATION_ROLE_OVERRIDE",
+      "status": "REPRODUCED",
+      "beforeCode": "A0006",
+      "afterCode": "0000",
+      "roleAfter": "CLERK"
+    },
+    {
+      "id": "PRODUCT_LOST_UPDATE",
+      "status": "REPRODUCED",
+      "writerCommittedPrice": 2000,
+      "afterPublishPrice": 1000,
+      "afterPublishSkuVersion": 0,
+      "responseCode": "0000"
+    },
+    {
+      "id": "CART_LINE_LIMIT_RACE",
+      "status": "REPRODUCED",
+      "actualRows": 101,
+      "visibleRows": 100,
+      "responseCode": "0000"
+    },
+    {
+      "id": "PROPOSAL_STALE_STOCK",
+      "status": "REPRODUCED",
+      "responseCode": "0000",
+      "currentAvailable": 0
+    },
+    {
+      "id": "MEMBERSHIP_TRUNCATION",
+      "status": "REPRODUCED",
+      "actualActiveMemberships": 105,
+      "returnedMemberships": 100,
+      "returnedMerchants": 100
+    },
+    {
+      "id": "FORWARDED_RATE_BYPASS",
+      "status": "REPRODUCED",
+      "ordinaryBlocked": 4,
+      "forwardedBlocked": 0,
+      "forwardedRequests": 32,
+      "profile": "prod",
+      "boundToLoopback": true
+    },
+    {
+      "id": "AI_QUANTITY",
+      "status": "REPRODUCED",
+      "parsed": {
+        "买十二瓶矿泉水": 2,
+        "买二十瓶矿泉水": 10,
+        "买100瓶矿泉水": null
+      },
+      "recommendedQuantity": 2
+    },
+    {
+      "id": "AI_FALLBACK",
+      "status": "REPRODUCED",
+      "mode": "LOCAL_FALLBACK",
+      "answerLength": 8001,
+      "externalModelUsed": false
+    }
+  ],
+  "isolation": "REPEATABLE-READ",
+  "status": "REPRODUCED",
+  "temporaryDatabaseCleaned": true
+}

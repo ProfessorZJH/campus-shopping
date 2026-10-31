@@ -9,6 +9,7 @@ import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
@@ -38,9 +39,9 @@ class CatalogPageSkuBatchTest {
         var merchants = mock(IMerchantService.class);
         var inventory = mock(IInventoryService.class);
         ReflectionTestUtils.setField(c, "catalogCase", useCase);
-        ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(useCase, catalog, inventory, merchants));
-        when(useCase.publicProductsSorted(null, "", null, 1, 100, "NEWEST")).thenReturn(products);
-        when(useCase.countPublicProducts(null, "", null)).thenReturn(51L);
+        ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(catalog, inventory, merchants, mock(IAccessService.class)));
+        when(catalog.searchSorted(null, "", null, true, 1, 100, "NEWEST")).thenReturn(products);
+        when(catalog.count(null, "", null, true)).thenReturn(51L);
         when(merchants.findAll(List.of("m1"))).thenReturn(List.of(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园")));
         when(inventory.stocks(anyList())).thenAnswer(invocation -> {
             List<String> ids = invocation.getArgument(0);

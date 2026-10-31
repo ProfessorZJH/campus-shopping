@@ -35,8 +35,8 @@ public class AfterSaleServiceImpl implements IAfterSaleService {
         return repository.countAfterSales(buyer, merchant, AfterSaleStatusEnumVO.filter(status));
     }
 
-    public AfterSaleVO afterSale(String order, boolean lock) {
-        return repository.afterSale(order, lock);
+    public AfterSaleVO afterSaleForUpdate(String order) {
+        return repository.afterSale(order, true);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

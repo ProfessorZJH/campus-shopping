@@ -146,9 +146,14 @@ class KnowledgeStore:
             except Exception:self.db.execute('ROLLBACK');raise
     def search(self,query: str,allowed: list[str],top_k: int=6) -> tuple[list[dict],str]:
         if not allowed:return [],self.provider.vector_mode
-        allowed=list(dict.fromkeys(allowed))[:1000]
+        allowed=list(dict.fromkeys(allowed))
+        if len(allowed)>1000:raise ValueError('allowed document scope exceeds 1000')
         with self.lock:
-            rows=[dict(r) for r in self.db.execute('SELECT * FROM chunks WHERE doc_id IN ('+','.join('?' for _ in allowed)+') ORDER BY doc_id,ordinal',allowed)]
+            rows=[]
+            for start in range(0,len(allowed),500):
+                batch=allowed[start:start+500]
+                rows.extend(dict(r) for r in self.db.execute('SELECT * FROM chunks WHERE doc_id IN ('+','.join('?' for _ in batch)+') ORDER BY doc_id,ordinal',batch))
+            rows.sort(key=lambda r:(r['doc_id'],r['ordinal']))
         if not rows:return [],self.provider.vector_mode
         sparse=bm25(query,[r['title']+' '+r['body'] for r in rows])[:30]
         by_id={r['id']:i for i,r in enumerate(rows)};dense=[];mode=self.provider.vector_mode

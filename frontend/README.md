@@ -4,6 +4,8 @@
 
 2026-10-29 已完成真实 Chromium + Spring/MySQL + NVIDIA/Milvus/讯飞验收：商品上传/双 SKU/上架、导购确认、模拟支付、自提、退款、28 条页面路由及自定义角色授予/撤销。见[完整报告与截图](../docs/testing/LOCAL-LIVE-20261029.md)。运行中的本机地址为 `http://127.0.0.1:8091/#/`，不加 `demo=1`；脚本入口 `tests/live_shopping.py` 的三个 stage 及依赖顺序见报告。
 
+2026-10-30：会话历史增加继续加载，邀请页增加翻页，均按 page/size 请求更早记录；新增 tests/ui_list_pagination.py 覆盖第 101 条，当前验证范围见[本轮报告](../docs/testing/DDD-DOC-CLOSURE-20261030.md)。
+
 ## UI-06 前端精简与移动导航
 
 商户角色权限：`#/merchant/roles`；Owner 可编辑自定义角色并在 `#/merchant/team` 分配成员。权限卡只显示功能名称，不显示内部权限代码。商户与平台的移动端采用横向导航，自动显示当前选中页面；与桌面菜单使用相同的权限判定。`?demo=1#/merchant/roles` 展示只读权限示例，真实写操作始终禁用。运行 `python frontend/tests/ui_copy_polish.py` 查看专项浏览器检查。
@@ -19,7 +21,7 @@
 
 - 购物车与 AI 提案商品主图由 Java API 响应；历史订单只使用**成交时 `OrderItemResponseDTO.imageUrl`**，空值显示通用占位图，不读取当前 Catalog 兜底。
 - 商品、商户、订单等列表采用新增 `/page` 接口，返回 `items/page/size/total/hasNext`；商户商品页签数字来自服务端总数而不是当页行数。
-- 相关规格及检查：[`SDD-INTEGRATION-02.md`](../docs/specs/SDD-INTEGRATION-02.md)，`python frontend/tests/ui_sdd_integration.py`。完整 Java + MySQL 联调尚未验收。
+- 相关规格及检查：[`SDD-INTEGRATION-02.md`](../docs/specs/SDD-INTEGRATION-02.md)，`python frontend/tests/ui_sdd_integration.py`。该阶段的替身结果保留为历史；后续真实 Java/MySQL 及当前源码复验见[最新报告](../docs/testing/DDD-DOC-CLOSURE-20261030.md)。
 
 ## 预览与真实运行
 

@@ -24,7 +24,7 @@ python scripts/smoke-full.py
 
 ```sql
 -- 执行 docs/dev-ops/mysql/sql/00_r1_schema.sql，包含建库与选库。
--- 随后在 campus_shopping 库执行 app/resources/data.sql。
+-- 随后在 campus_shopping 库执行 campus-shopping-app/src/main/resources/data.sql。
 ```
 
 PowerShell示例；密码用你自己的安全值，不复制示意文字：
@@ -66,7 +66,7 @@ Qdrant可通过`QDRANT_URL=http://qdrant:6333`和随机`QDRANT_API_KEY`启用，
 python scripts/dev-up.py --vector
 ```
 
-未配置模型时，界面明确显示本地检索演示；模型失败则降级并显示实际模式。更换Embedding模型或维度必须使用新的QDRANT_COLLECTION并重建文档索引，不能让不同维度混进同一集合。NVIDIA/Milvus/讯飞的独立真实 AI 验收已补充，见[验收报告](../testing/AI-LIVE-20261029.md)；Qdrant 与 Java/MySQL 全栈仍未验收。
+未配置模型时，界面明确显示本地检索演示；模型失败则降级并显示实际模式。更换Embedding模型或维度必须使用新的QDRANT_COLLECTION并重建文档索引，不能让不同维度混进同一集合。NVIDIA/Milvus/讯飞的独立真实 AI 验收已补充，见[验收报告](../testing/AI-LIVE-20261029.md)；Qdrant 尚未真实验收。Java/MySQL 与浏览器闭环已有[本机验收](../testing/LOCAL-LIVE-20261029.md)及[当前隔离复验](../testing/DDD-DOC-CLOSURE-20261030.md)。商品语义索引使用 Milvus，知识库的可选远端向量检索使用 Qdrant，二者不能混用。
 
 已配置完整模型及安全 Milvus 连接时，在仓库根目录使用安装了 `ai-service/requirements.lock` 的 Python 执行：
 
@@ -103,20 +103,20 @@ Java真实并发测试连接**独立**`campus_shopping_it`库，设置`MYSQL_TES
 ## 5. 从教学版升级
 
 1. 备份数据库和本地Git改动；检查旧表的真实DDL。
-2. 仅原IAM-01/P1教学结构：先应用`03_upgrade_teaching_schema.sql`，再应用`00_r1_schema.sql`和data.sql创建缺失表，最后应用`04_case_sensitive_keys.sql`。
+2. 仅原 IAM-01/P1 教学结构：先在备份副本核对历史 `03_upgrade_teaching_schema.sql`、`00_r1_schema.sql`、data.sql 与 `04_case_sensitive_keys.sql` 的兼容步骤；完成结构转换后，仍须通过下方显式迁移入口登记全部 R1 迁移，不能仅重放初始化 SQL 当作升级完成。
 3. 旧申请缺经营/门店资料将不能直接审核；重新提交完整资料，不伪造历史字段。
 4. 曾执行其他P1草案或有自行改表时，不能直接套这个升级脚本。先比较逻辑数据模型和现有列/索引，写单独迁移。
 5. 删除清单中的旧演示安全配置、模板Mapper、空占位包等不要留在新工程，否则可能产生重复Bean或错误Mapper。
 
 ## 6. 上线前仍需做
 
-完成真实Maven/MySQL/浏览器验收、依赖漏洞检查、HTTPS反代与Secure Cookie、数据库备份/恢复演练、日志脱敏、实际压测和真实模型评测。当前默认单实例内存会话，应用重启会退出登录；需要多副本时另行引入共享会话，而不是临时添加JWT。
+针对实际部署版本与环境重新执行 Maven/MySQL/浏览器验收，并完成依赖漏洞检查、HTTPS反代与Secure Cookie、数据库备份/恢复演练、日志脱敏、实际压测和真实模型评测。`prod` 不解析客户端转发头，认证限流按实际连接对端计数；部署反向代理时应仅允许可信代理连接应用，由代理清洗转发头，并在 HTTPS 入口显式设置 `SESSION_COOKIE_SECURE=true`。多客户端共用代理地址时，还需在可信入口配置统一限流。当前默认单实例内存会话，应用重启会退出登录；需要多副本时另行引入共享会话，而不是临时添加JWT。
 
 不要执行`docker compose down -v`删除已有数据库卷。普通停止只使用`docker compose down`。
 
 ## SDD-02 升级：历史订单图片快照
 
-此版本增加 `trd_order_item.image_url`，现有库**必须先备份和运行** `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`，再部署 Java。全新库的 `docs/dev-ops/mysql/sql/00_r1_schema.sql` 已包含此字段。不要重新建库、清表或给历史订单回填当前商品图。完整规格见 [SDD-02](../specs/SDD-INTEGRATION-02.md)。
+订单图片由 `V20261028_01` 增加；现有库先备份，在维护窗口按[迁移手册](../database/migrations/README.md)运行 `scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campus_shopping`，顺序应用并登记全部迁移及校验和，然后部署 Java。以前手工执行 SQL 也须通过该入口登记历史；当前版本还要求 V20261030_01 的知识请求/会话租约字段，不能只升级图片字段。全新库初始化 SQL 已含全部字段。历史订单缺图保留为空，完整图片规格见 [SDD-02](../specs/SDD-INTEGRATION-02.md)。
 
 升级后先确认 `SHOW COLUMNS FROM trd_order_item LIKE 'image_url'`，再用测试账号上传图片、创建订单、替换商品图、检查订单项图片不变。必须使用测试库执行真实 Maven/HTTP 验收；未运行时报告 NOT_RUN。
 

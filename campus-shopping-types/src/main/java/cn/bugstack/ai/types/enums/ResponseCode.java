@@ -42,7 +42,8 @@ public enum ResponseCode {
     AI_UNAVAILABLE("AI0001", "智能服务暂不可用，普通购物不受影响"),
     PROPOSAL_EXPIRED("AI0002", "推荐建议已过期，请重新生成"),
     KNOWLEDGE_NOT_READY("AI0003", "知识索引尚未就绪"),
-    UPLOAD_INVALID("AI0004", "文件格式、大小或内容不符合要求");
+    UPLOAD_INVALID("AI0004", "文件格式、大小或内容不符合要求"),
+    KNOWLEDGE_SCOPE_TOO_LARGE("AI0005", "可访问知识文档超过单次检索上限，请联系管理员整理知识库");
 
     private final String code;
     private final String info;

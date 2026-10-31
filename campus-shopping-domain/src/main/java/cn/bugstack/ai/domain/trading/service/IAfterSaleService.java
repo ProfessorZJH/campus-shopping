@@ -8,7 +8,7 @@ import java.util.*;
 
 /** 按业务能力限定的领域端口。 */
 public interface IAfterSaleService extends IAfterSaleQueryService {
-    AfterSaleVO afterSale(String order, boolean lock);
+    AfterSaleVO afterSaleForUpdate(String order);
     AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason);
     void requirePickupAllowed(String order);
     void rejectAfterSale(String order, String reason);

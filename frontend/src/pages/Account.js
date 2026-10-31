@@ -4,7 +4,7 @@ import { api, idempotency, query } from '../services/api.js';
 import { store, go, preview, notify, loadSession } from '../services/store.js';
 import { DEMO_APPLICATIONS } from '../services/pages-demo.js';
 import { label } from '../services/page-utils.js';
-const { ref, computed, onMounted, watch } = Vue;
+const { ref, computed, onMounted, onUnmounted, watch } = Vue;
 export default {
   name: 'Account',
   components: { ConsumerShell, AuthDialog },
@@ -14,9 +14,12 @@ export default {
     const login = ref(false),
       apps = ref([]),
       invitations = ref([]),
+      invitePage = ref(1),
       error = ref(''),
       busy = ref(false),
+      loading = ref(false),
       key = ref('');
+    let loadEpoch = 0;
     const form = ref({
       merchantName: '',
       category: '便利零售',
@@ -28,6 +31,7 @@ export default {
     const isApply = computed(() => store.route === '/apply');
     const isInvite = computed(() => store.route === '/invitations');
     async function load() {
+      const stamp = ++loadEpoch;
       error.value = '';
       if (preview) {
         apps.value = DEMO_APPLICATIONS;
@@ -41,8 +45,11 @@ export default {
         ];
         return;
       }
+      loading.value = true;
       try {
         await loadSession();
+        if (stamp !== loadEpoch) return;
+        const actor = store.user?.userId;
         if (!store.user) {
           apps.value = [];
           invitations.value = [];
@@ -50,18 +57,23 @@ export default {
         }
         const [a, i] = await Promise.all([
           api('/merchant-applications/mine/page' + query({ page: page.value, size: 10 })),
-          api('/invitations'),
+          api('/invitations' + query({ page: invitePage.value, size: 20 })),
         ]);
+        if (stamp !== loadEpoch || actor !== store.user?.userId) return;
         apps.value = a.items || [];
         pageInfo.value = a;
         invitations.value = i || [];
       } catch (e) {
-        error.value = e.message;
+        if (stamp === loadEpoch) error.value = e.message;
+      } finally {
+        if (stamp === loadEpoch) loading.value = false;
       }
     }
     onMounted(load);
     watch(() => store.route, load);
     watch(page, load);
+    watch(invitePage, load);
+    onUnmounted(() => ++loadEpoch);
     async function submit() {
       if (preview || busy.value) return;
       const f = form.value;
@@ -105,8 +117,10 @@ export default {
       page,
       pageInfo,
       invitations,
+      invitePage,
       error,
       busy,
+      loading,
       form,
       isApply,
       isInvite,
@@ -119,5 +133,5 @@ export default {
   template: `<ConsumerShell active="account"><div class="mobile-page-top"><button @click="go('/account')" aria-label="返回"><Icon name="arrowLeft"/></button><b>{{isApply?'商户入驻':isInvite?'收到的邀请':'个人中心'}}</b><button v-if="!isApply&&!isInvite" @click="load" aria-label="刷新"><Icon name="refresh"/></button></div>
  <template v-if="!isApply&&!isInvite"><section class="account-profile"><div class="profile-avatar"><Icon name="user" :size="30"/></div><div><h1>{{store.user?.displayName||'校园同学'}}</h1><p>{{store.user?.username||'登录后查看订单与申请'}}</p></div><button v-if="!store.user&&!preview" class="outline-button" @click="login=true">登录 / 注册</button><span v-if="preview" class="demo-pill">设计预览</span></section><div class="account-quick"><button @click="go('/orders')"><Icon name="order"/><span>我的订单</span></button><button @click="go('/cart')"><Icon name="cart"/><span>购物车</span></button><button @click="go('/apply')"><Icon name="store"/><span>商户入驻</span></button><button @click="go('/invitations')"><Icon name="users"/><span>邀请</span></button></div><div class="account-section-head"><h2>入驻记录</h2><button @click="go('/apply')">去申请 <Icon name="chevronRight" :size="15"/></button></div><div v-if="error" class="inline-error">{{error}}</div><div class="account-application" v-for="a in apps" :key="a.applicationId"><div><strong>{{a.merchantName}}</strong><span>{{a.storeName}} · {{a.location}}</span></div><b class="status-tag" :class="a.status==='APPROVED'?'published':'draft'">{{label(a.status)}}</b><p v-if="a.rejectionReason">{{a.rejectionReason}}</p></div><div v-if="!apps.length&&!error" class="mobile-empty">暂无入驻记录</div><div class="sdd-pager" v-if="!preview&&pageInfo.total>0"><span>{{pageInfo.total}} 条</span><button :disabled="page<=1" @click="page--">上一页</button><span>{{page}}</span><button :disabled="!pageInfo.hasNext" @click="page++">下一页</button></div></template>
  <form v-else-if="isApply" class="account-form detail-card" @submit.prevent="submit"><label>经营名称<input v-model.trim="form.merchantName" required maxlength="100" placeholder="商户名称"/></label><label>经营品类<select v-model="form.category"><option>便利零售</option><option>水果生鲜</option><option>文具用品</option><option>饮品</option><option>其他</option></select></label><label>联系人<input v-model.trim="form.contactName" required maxlength="50"/></label><label>联系电话<input v-model.trim="form.contactPhone" required maxlength="30"/></label><label>首个门店名称<input v-model.trim="form.storeName" required maxlength="100"/></label><label>自提位置<input v-model.trim="form.location" required maxlength="200" placeholder="如：学一食堂一层"/></label><button class="teal-button" type="submit" :disabled="preview||busy||!store.user">{{!store.user&&!preview?'请先登录':'提交入驻申请'}}</button></form>
- <section v-else class="detail-card"><h2>待处理邀请</h2><div class="invitation-line" v-for="i in invitations" :key="i.id"><div><strong>{{i.merchantId}}</strong><small>{{label(i.status)}}</small></div><button class="outline-button" :disabled="preview||busy||i.status!=='PENDING'" @click="accept(i)">接受</button></div><div v-if="!invitations.length" class="mobile-empty">暂无邀请</div></section><AuthDialog v-if="login" @close="login=false" @success="load"/></ConsumerShell>`,
+ <section v-else class="detail-card"><h2>收到的邀请</h2><div class="invitation-line" v-for="i in invitations" :key="i.id"><div><strong>{{i.merchantId}}</strong><small>{{label(i.status)}}</small></div><button class="outline-button" :disabled="preview||busy||loading||i.status!=='PENDING'" @click="accept(i)">接受</button></div><div v-if="!invitations.length" class="mobile-empty">暂无邀请</div><div v-if="!preview&&(invitePage>1||invitations.length===20)" class="sdd-pager"><button :disabled="loading||invitePage<=1" @click="invitePage--">上一页</button><span>{{invitePage}}</span><button :disabled="loading||invitations.length<20" @click="invitePage++">下一页</button></div></section><AuthDialog v-if="login" @close="login=false" @success="load"/></ConsumerShell>`,
 };

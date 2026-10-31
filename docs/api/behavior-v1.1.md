@@ -1,10 +1,10 @@
 # API 行为契约 v1.1（当前版本）
 
-> 适用范围：`campus-shopping` R1 + SDD-02 + SDD-03。HTTP 路由、字段名和 DTO 结构以[自动生成路由表](http-api.md)及[OpenAPI](openapi.json)为准；本文件补充静态提取无法准确表达的授权、数据语义与业务不变量。**源码已实现不等于真实联调通过**。
+> 适用范围：`campus-shopping` R1 及截至 2026-10-30 的 SDD 增量。HTTP 路由、字段名和 DTO 结构以[自动生成路由表](http-api.md)及[OpenAPI](openapi.json)为准；本文件补充静态提取无法准确表达的授权、数据语义与业务不变量。**源码已实现不等于真实联调通过**。
 
 ## 1. 优先级与来源
 
-1. 已提交的 `Controller`、`Request/Response DTO`、`SessionSecurityConfig` 和领域校验是当前实现事实。
+1. 当前源码中的 `Controller`、`Request/Response DTO`、`SessionSecurityConfig` 和领域校验是当前实现事实。
 2. `scripts/generate-api-contract.py` 生成 `route-manifest.json`、`openapi.json`、`http-api.md`，不可手工追加路由。`scripts/verify-api-contract.py` 在 CI 复验安全白名单、路由集合、DTO 字段和查询/统计一致性。
 3. 本文件定义跨接口业务语义；`docs/domains/` 解释领域模型。旧 P1 草案、旧前端模板和示例脚本不能覆盖 v1.1 的路径/语义。重大改变先修改 SDD，再修改代码并重新生成契约。
 
@@ -31,7 +31,7 @@ MVC 协议错误由 `ApiProtocolExceptionResolver` 明确匹配框架异常；�
 
 JSON 中金额、数量、版本必须为整数，禁止把 `1.5` 静默变成 `1`；额外的尾随 JSON 值也返回 400。继续兼容忽略未知属性，附加 `applicantUserId`、`role` 等字段不会改变可信身份或权限。调用方应使用 JSON 数字；当前 Jackson 仍兼容可转换的整数字符串。上传文件使用标准 Base64，解码后限 1–2,000,000 字节；请求正文（包括编码及 JSON 外壳）限 3,000,000 字节。
 
-HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败；失败的 `data` 为 null，不能强制套成功 DTO。Java 响应 DTO 的引用字段允许 null，历史缺失字段及可选快照不会因 Schema 误报。Java→Python 的内部请求固定使用 HTTP/1.1，避免 Uvicorn 不支持的 h2c 升级；文件提取服务明确返回 400/413/415/422 时转为 `AI0004`，依赖故障仍为 `AI0001`。
+HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败；失败的 `data` 为 null，不能强制套成功 DTO。成功 DTO 的必填字段及 null 规则由 `scripts/api_response_rules.py` 显式维护；仅契约声明的可选快照允许 null，禁止把全部引用字段改为可缺失或可空。Java→Python 的内部请求固定使用 HTTP/1.1，避免 Uvicorn 不支持的 h2c 升级；文件提取服务明确返回 400/413/415/422 时转为 `AI0004`，依赖故障仍为 `AI0001`。
 
 前端同源发送 `JSESSIONID` Cookie，使用 `GET /api/v1/auth/csrf` 的 `data.headerName` + `data.token` 发起 `POST/PUT/PATCH/DELETE`。注册与登录同样需要 CSRF；登录和退出会刷新 Session/令牌状态。登录后重新调用 CSRF 接口，不复用匿名会话的旧令牌。生产环境需要 HTTPS、合适的 Secure Cookie 配置，不可把浏览器端指定的用户 ID 当成可信身份。
 
@@ -47,7 +47,9 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 {"code":"0000","info":"成功","data":{"items":[],"page":1,"size":20,"total":0,"hasNext":false}}
 ```
 
-`total` 必须是与当前 `state`、`status`、`category`、`merchantId`、`q` **同一过滤条件**下的数据库 `COUNT`，不能使用当前页 `items.length`。`hasNext` 基于 `page*size<total`。查询过滤在 SQL 分页之前生效，列表与 COUNT 保持等价条件。旧 `List<T>` 路由保留兼容，但新前端应使用 `/page`。
+会话 `GET /ai/conversations` 与邀请 `GET /invitations` 保留 `List<T>` 响应，支持 `page=1`、`size=100` 默认值，范围同上；按 `created_at DESC,id ASC` 稳定排序。前端每次取 20 条并提供继续加载/翻页；返回少于 size 条表示末页，满页后允许下一页为空。这两个接口不提供 total。页码最大 10000，越界返回 `0002`。
+
+`total` 必须是与当前 `state`、`status`、`category`、`merchantId`、`q` **同一过滤条件**下的数据库 `COUNT`，不能使用当前页 `items.length`。`hasNext` 基于 `page*size<total`。查询过滤在 SQL 分页之前生效，列表与 COUNT 保持等价条件。旧 `List<T>` 路由保留兼容；已提供 `/page` 的列表由新前端优先使用 `/page`。
 
 当前支持 `q` 的长列表：平台商户、平台入驻申请、商户/平台订单、商户商品、商户库存、平台/公共商品。其余没有声明 `q` 的接口不能在 UI 中声称“跨所有页全文搜索”。`q` 为可选关键字，采用字面子串搜索，而不是让用户传入 SQL 通配符。建议在前端搜索时防抖，旧请求返回不得覆盖新一轮查询。
 
@@ -88,6 +90,10 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 - `ProposalItemResponseDTO.imageUrl` 是生成提案时可信 Catalog 数据，不要求新增数据库表；过期提案仍拒绝执行。
 - `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。
 - `POST /ai/chat` 首版返回完整 JSON，**不支持 SSE 流式 token**。未配置真实模型时，响应 `mode` 必须正确标识本地检索/降级；禁止用演示结果宣称真实模型评测通过。知识库有发布状态与权限范围，外部引用只显示可授权的信息。
+
+知识库列表返回完整的授权元数据，授权判断不再先截取 1000 个知识库。单次知识检索白名单最多 1000 份当前 PUBLISHED + READY + 根活动版本文档；Java 查询额外检测超限，超过上限返回 `AI0005`，不调用模型、不保存本轮回答/提案。Python 对超过 1000 个 ID 的内部请求返回 422，直接检索调用也拒绝超限，不静默切片；1000 个 ID 的 SQLite 查询分批执行。历史消息接口是最近 100 条的上下文窗口，提案列表是最近 20 条；二者不承诺完整导出。
+
+中文与阿拉伯数字的明确预算/数量由 Python 规则校验总价与库存；含糊金额或数量、数量超出 1–99 时要求澄清并返回空建议。明确的继续/替换追问沿用最近用户需求的预算和数量，当前消息中的明确约束优先；检索改写和模型不能覆盖该约束。Java 仍在提案生成/确认时独立复核当前商品、库存、权限和报价。
 
 ## 6. 前端、CI 与验收证据
 

@@ -2,6 +2,10 @@
 
 > **本地真实 Spring/MySQL、真实 AI 导购与浏览器交易闭环已完成列明范围的验收。** Docker、Qdrant、生产部署与性能验收不在本次通过范围，具体证据见下文。
 
+## 当前代码与文档收口（2026-10-30）
+
+当前 Case 职责、命名、只读响应模型、会话/邀请分页、知识容量和 AI 预算/数量修复及本轮隔离复验，统一见[最终报告](docs/testing/DDD-DOC-CLOSURE-20261030.md)与[DDD 参考对照](docs/architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)。现行接口以[生成契约](docs/api/http-api.md)和[行为契约](docs/api/behavior-v1.1.md)为准。以下日期分节保留各阶段执行范围，旧 NOT_RUN 不表示当前仍未运行。
+
 ## 工程化收敛（2026-10-29）
 
 前端构建接入 Maven、迁移版本及校验和校验、AI 请求关联与脱敏诊断、商品索引清理、锁定依赖、格式及镜像 CI 门禁、自动交付清单已补齐。构建需 JDK17、Node 22.16.0、Python3.11，使用仓库 `mvnw.cmd` / `mvnw`。已有数据库须先通过 `scripts/migrate-database.py` 升级并登记历史，应用启动只读校验。见[工程化变更与实际验证](docs/testing/ENGINEERING-10.md)及[迁移手册](docs/database/migrations/README.md)。

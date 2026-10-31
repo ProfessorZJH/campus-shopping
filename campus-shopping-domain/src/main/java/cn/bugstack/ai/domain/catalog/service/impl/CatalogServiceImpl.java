@@ -6,7 +6,7 @@ import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
-import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateEntity;
+import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
@@ -51,7 +51,7 @@ public class CatalogServiceImpl implements ICatalogService {
         return ids.isEmpty() ? List.of() : queries.publicByIds(ids.stream().distinct().toList());
     }
 
-    public ProductAggregate create(String merchant, String store, ProductCreateEntity c) {
+    public ProductAggregate create(String merchant, String store, ProductCreateCommandEntity c) {
         require(c != null && c.skus() != null && !c.skus().isEmpty(), ResponseCode.ILLEGAL_PARAMETER);
         validCategory(c.categoryCode());
         List<ProductSkuEntity> skus = c

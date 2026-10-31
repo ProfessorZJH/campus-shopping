@@ -68,7 +68,7 @@ public class ProposalConfirmationCaseImpl implements IProposalConfirmationCase {
             .stream()
             .collect(Collectors.toMap(SkuOfferVO::skuId, o -> o));
         var stocks = inventory
-            .stocks(ids)
+            .stocksForConfirmation(ids)
             .stream()
             .collect(Collectors.toMap(StockVO::skuId, s -> s));
         for (String sku : ids) {

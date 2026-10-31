@@ -1,0 +1,23 @@
+{
+  "status": "PASS",
+  "runs": [
+    {
+      "script": "ui_fix_regression.py",
+      "exitCode": 0,
+      "log": "ui_fix_regression.py.txt",
+      "backend": "HTTP_CONTRACT_DOUBLE"
+    },
+    {
+      "script": "ui_rbac_regression.py",
+      "exitCode": 0,
+      "log": "ui_rbac_regression.py.txt",
+      "backend": "HTTP_CONTRACT_DOUBLE"
+    },
+    {
+      "script": "ui_list_pagination.py",
+      "exitCode": 0,
+      "log": "ui_list_pagination.py.txt",
+      "backend": "HTTP_CONTRACT_DOUBLE"
+    }
+  ]
+}

@@ -885,7 +885,7 @@
       };
     })()
   };
-  const { ref: ref$d, computed: computed$e, onUnmounted: onUnmounted$9 } = Vue;
+  const { ref: ref$d, computed: computed$e, onUnmounted: onUnmounted$a } = Vue;
   const staticCategoryArt = {
     food: "./images/category-snacks.webp",
     drink: "./images/category-drinks.webp",
@@ -965,7 +965,7 @@
           if (publicSearchCurrent(stamp)) store.loading = false;
         }
       }
-      onUnmounted$9(() => beginPublicSearch());
+      onUnmounted$a(() => beginPublicSearch());
       function setCategory(c) {
         category.value = category.value === c ? "" : c;
         page.value = 1;
@@ -1562,7 +1562,7 @@
       };
     })()
   };
-  const { ref: ref$c, computed: computed$d, onMounted: onMounted$c, onUnmounted: onUnmounted$8, watch: watch$c } = Vue;
+  const { ref: ref$c, computed: computed$d, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$c } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
     { label: "高蛋白零食", icon: "sparkles", query: "想买点高蛋白的零食，有什么推荐？" },
@@ -1582,6 +1582,8 @@
       const error = ref$c("");
       const historyOpen = ref$c(false);
       const conversations = ref$c([]);
+      const historyPage = ref$c(1);
+      const historyHasMore = ref$c(false);
       const loadingHistory = ref$c(false);
       const openingConversation = ref$c(false);
       let conversationEpoch = 0, historyEpoch = 0;
@@ -1623,6 +1625,8 @@
           store.conversationId = "";
           messages.value = [];
           conversations.value = [];
+          historyPage.value = 1;
+          historyHasMore.value = false;
           proposal.value = null;
           selectedIds.value = [];
           mode.value = "";
@@ -1692,15 +1696,21 @@
           if (stamp === conversationEpoch) thinking.value = false;
         }
       }
-      async function loadHistory() {
+      async function loadHistory(reset = true) {
         if (preview) return;
+        if (loadingHistory.value && !reset) return;
         const stamp = ++historyEpoch;
+        const page = reset ? 1 : historyPage.value + 1;
         loadingHistory.value = true;
         try {
-          const result = await api("/ai/conversations");
-          if (stamp === historyEpoch) conversations.value = result || [];
+          const result = await api("/ai/conversations" + query({ page, size: 20 })) || [];
+          if (stamp === historyEpoch) {
+            conversations.value = reset ? result : [...new Map([...conversations.value, ...result].map((c) => [c.id, c])).values()];
+            historyPage.value = page;
+            historyHasMore.value = result.length === 20;
+          }
         } catch {
-          if (stamp === historyEpoch) conversations.value = [];
+          if (stamp === historyEpoch && reset) conversations.value = [];
         } finally {
           if (stamp === historyEpoch) loadingHistory.value = false;
         }
@@ -1732,7 +1742,7 @@
           if (stamp === conversationEpoch) openingConversation.value = false;
         }
       }
-      onUnmounted$8(() => {
+      onUnmounted$9(() => {
         ++conversationEpoch;
         ++historyEpoch;
       });
@@ -1807,6 +1817,7 @@
         reject,
         historyOpen,
         conversations,
+        historyHasMore,
         loadingHistory,
         openingConversation,
         loadHistory,
@@ -1891,7 +1902,12 @@
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                !_ctx.conversations.length ? (_openBlock(), _createElementBlock("span", { key: 0 }, "暂无历史记录")) : _createCommentVNode("v-if", true)
+                !_ctx.conversations.length ? (_openBlock(), _createElementBlock("span", { key: 0 }, "暂无历史记录")) : _createCommentVNode("v-if", true),
+                _ctx.historyHasMore ? (_openBlock(), _createElementBlock("button", {
+                  key: 1,
+                  onClick: ($event) => _ctx.loadHistory(false),
+                  disabled: _ctx.loadingHistory
+                }, "加载更多会话", 8, ["onClick", "disabled"])) : _createCommentVNode("v-if", true)
               ])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", {
                 class: "quick-prompts",
@@ -2394,7 +2410,7 @@
       };
     })()
   };
-  const { ref: ref$a, computed: computed$b, watch: watch$a, nextTick: nextTick$1, onMounted: onMounted$b, onUnmounted: onUnmounted$7 } = Vue;
+  const { ref: ref$a, computed: computed$b, watch: watch$a, nextTick: nextTick$1, onMounted: onMounted$b, onUnmounted: onUnmounted$8 } = Vue;
   const MENU = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
@@ -2471,7 +2487,7 @@
         { immediate: true, flush: "post" }
       );
       onMounted$b(() => window.addEventListener("resize", alignMobileNav));
-      onUnmounted$7(() => window.removeEventListener("resize", alignMobileNav));
+      onUnmounted$8(() => window.removeEventListener("resize", alignMobileNav));
       const canReplenish = computed$b(() => hasPermission("stock.replenish"));
       const canRead = computed$b(() => hasPermission("product.read"));
       const items2 = computed$b(() => store.products.filter((p) => p.merchantId === store.merchantId));
@@ -4395,7 +4411,7 @@
       };
     })()
   };
-  const { ref: ref$8, computed: computed$9, onMounted: onMounted$9, onUnmounted: onUnmounted$6, watch: watch$8 } = Vue;
+  const { ref: ref$8, computed: computed$9, onMounted: onMounted$9, onUnmounted: onUnmounted$7, watch: watch$8 } = Vue;
   const Shop = {
     name: "Shop",
     components: { ConsumerShell, ProductImage },
@@ -4438,7 +4454,7 @@
         }
       }
       onMounted$9(load);
-      onUnmounted$6(() => ++loadVersion);
+      onUnmounted$7(() => ++loadVersion);
       watch$8(id, () => {
         if (page.value !== 1) page.value = 1;
         else load();
@@ -5754,13 +5770,14 @@
       };
     })()
   };
-  const { ref: ref$5, computed: computed$6, onMounted: onMounted$6, watch: watch$6 } = Vue;
+  const { ref: ref$5, computed: computed$6, onMounted: onMounted$6, onUnmounted: onUnmounted$6, watch: watch$6 } = Vue;
   const Account = {
     name: "Account",
     components: { ConsumerShell, AuthDialog },
     setup() {
       const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
-      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), error = ref$5(""), busy = ref$5(false), key = ref$5("");
+      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5("");
+      let loadEpoch = 0;
       const form = ref$5({
         merchantName: "",
         category: "便利零售",
@@ -5772,6 +5789,8 @@
       const isApply = computed$6(() => store.route === "/apply");
       const isInvite = computed$6(() => store.route === "/invitations");
       async function load() {
+        var _a, _b;
+        const stamp = ++loadEpoch;
         error.value = "";
         if (preview) {
           apps.value = DEMO_APPLICATIONS;
@@ -5785,8 +5804,11 @@
           ];
           return;
         }
+        loading.value = true;
         try {
           await loadSession();
+          if (stamp !== loadEpoch) return;
+          const actor = (_a = store.user) == null ? void 0 : _a.userId;
           if (!store.user) {
             apps.value = [];
             invitations.value = [];
@@ -5794,18 +5816,23 @@
           }
           const [a, i] = await Promise.all([
             api("/merchant-applications/mine/page" + query({ page: page.value, size: 10 })),
-            api("/invitations")
+            api("/invitations" + query({ page: invitePage.value, size: 20 }))
           ]);
+          if (stamp !== loadEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return;
           apps.value = a.items || [];
           pageInfo.value = a;
           invitations.value = i || [];
         } catch (e) {
-          error.value = e.message;
+          if (stamp === loadEpoch) error.value = e.message;
+        } finally {
+          if (stamp === loadEpoch) loading.value = false;
         }
       }
       onMounted$6(load);
       watch$6(() => store.route, load);
       watch$6(page, load);
+      watch$6(invitePage, load);
+      onUnmounted$6(() => ++loadEpoch);
       async function submit() {
         if (preview || busy.value) return;
         const f = form.value;
@@ -5849,8 +5876,10 @@
         page,
         pageInfo,
         invitations,
+        invitePage,
         error,
         busy,
+        loading,
         form,
         isApply,
         isInvite,
@@ -6161,7 +6190,7 @@
                 key: 2,
                 class: "detail-card"
               }, [
-                _createElementVNode("h2", null, "待处理邀请"),
+                _createElementVNode("h2", null, "收到的邀请"),
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
                   null,
@@ -6188,7 +6217,7 @@
                       ]),
                       _createElementVNode("button", {
                         class: "outline-button",
-                        disabled: _ctx.preview || _ctx.busy || i.status !== "PENDING",
+                        disabled: _ctx.preview || _ctx.busy || _ctx.loading || i.status !== "PENDING",
                         onClick: ($event) => _ctx.accept(i)
                       }, "接受", 8, ["disabled", "onClick"])
                     ]);
@@ -6199,7 +6228,27 @@
                 !_ctx.invitations.length ? (_openBlock(), _createElementBlock("div", {
                   key: 0,
                   class: "mobile-empty"
-                }, "暂无邀请")) : _createCommentVNode("v-if", true)
+                }, "暂无邀请")) : _createCommentVNode("v-if", true),
+                !_ctx.preview && (_ctx.invitePage > 1 || _ctx.invitations.length === 20) ? (_openBlock(), _createElementBlock("div", {
+                  key: 1,
+                  class: "sdd-pager"
+                }, [
+                  _createElementVNode("button", {
+                    disabled: _ctx.loading || _ctx.invitePage <= 1,
+                    onClick: ($event) => _ctx.invitePage--
+                  }, "上一页", 8, ["disabled", "onClick"]),
+                  _createElementVNode(
+                    "span",
+                    null,
+                    _toDisplayString(_ctx.invitePage),
+                    1
+                    /* TEXT */
+                  ),
+                  _createElementVNode("button", {
+                    disabled: _ctx.loading || _ctx.invitations.length < 20,
+                    onClick: ($event) => _ctx.invitePage++
+                  }, "下一页", 8, ["disabled", "onClick"])
+                ])) : _createCommentVNode("v-if", true)
               ])),
               _ctx.login ? (_openBlock(), _createBlock(_component_AuthDialog, {
                 key: 3,

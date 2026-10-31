@@ -36,6 +36,10 @@ public class InventoryRepository implements IInventoryRepository {
         return skus.isEmpty() ? List.of() : dao.stocks(skus).stream().map(this::convert).toList();
     }
 
+    public List<StockVO> stocksForUpdate(List<String> skus) {
+        return skus.isEmpty() ? List.of() : dao.stocksForUpdate(skus).stream().map(this::convert).toList();
+    }
+
     public void save(StockVO s) {
         require(
             dao.save(

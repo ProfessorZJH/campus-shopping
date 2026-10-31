@@ -9,7 +9,6 @@ import cn.bugstack.ai.api.dto.TokenResponseDTO;
 import cn.bugstack.ai.api.dto.VerifyPickupRequestDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.trading.IOrderLifecycleCase;
-import cn.bugstack.ai.cases.trading.IOrderQueryCase;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
@@ -26,9 +25,6 @@ import org.springframework.web.bind.annotation.*;
 public class FulfillmentController implements IFulfillmentApi {
 
     @Resource
-    private IOrderQueryCase query;
-
-    @Resource
     private IOrderLifecycleCase lifecycle;
 
     /** 开始备货。 */
@@ -36,7 +32,7 @@ public class FulfillmentController implements IFulfillmentApi {
     @PostMapping("/merchants/{merchantId}/orders/{orderId}/prepare")
     public Response<Void> prepare(@PathVariable("merchantId") String merchantId, @PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
-            lifecycle.prepare(actor(principal), merchantId, orderId, false);
+            lifecycle.startPreparing(actor(principal), merchantId, orderId);
             return null;
         });
     }
@@ -46,7 +42,7 @@ public class FulfillmentController implements IFulfillmentApi {
     @PostMapping("/merchants/{merchantId}/orders/{orderId}/ready")
     public Response<Void> ready(@PathVariable("merchantId") String merchantId, @PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
-            lifecycle.prepare(actor(principal), merchantId, orderId, true);
+            lifecycle.markReady(actor(principal), merchantId, orderId);
             return null;
         });
     }
@@ -56,7 +52,7 @@ public class FulfillmentController implements IFulfillmentApi {
     @PostMapping("/orders/{orderId}/pickup-token")
     public Response<TokenResponseDTO> token(@PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
-            var token = lifecycle.token(actor(principal), orderId);
+            var token = lifecycle.issuePickupToken(actor(principal), orderId);
             return TokenResponseDTO.builder().token(token.token()).expiresAt(token.expiresAt()).build();
         });
     }
@@ -71,8 +67,8 @@ public class FulfillmentController implements IFulfillmentApi {
         Principal principal
     ) {
         return execute(() -> {
-            var o = lifecycle.verify(actor(principal), merchantId, orderId, required(request).getToken());
-            return ApiViews.order(query.view(o));
+            var o = lifecycle.verifyPickup(actor(principal), merchantId, orderId, required(request).getToken());
+            return ApiViews.order(o);
         });
     }
 
