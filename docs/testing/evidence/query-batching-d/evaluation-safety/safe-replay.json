@@ -1,0 +1,35 @@
+{
+  "caseId" : "safe-replay",
+  "assertions" : "PASSED",
+  "javaMysql" : "REAL",
+  "scenario" : "COMPETING_CONFIRM_AND_REPLAY",
+  "before" : {
+    "stock" : [ {
+      "sku_id" : "76f2755b-139f-4916-9a93-30c2a1927eff",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ],
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "after" : {
+    "stock" : [ {
+      "sku_id" : "76f2755b-139f-4916-9a93-30c2a1927eff",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ],
+    "cart" : [ {
+      "sku_id" : "76f2755b-139f-4916-9a93-30c2a1927eff",
+      "quantity" : 1
+    } ],
+    "proposals" : [ {
+      "status" : "CONFIRMED",
+      "selection_hash" : "8dda66d9cb1f874056d692de931aeca17f7e2ac667d749115f77e1305eb05eb5"
+    } ]
+  },
+  "actualCode" : "0000"
+}

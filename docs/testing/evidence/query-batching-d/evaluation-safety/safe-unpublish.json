@@ -1,0 +1,32 @@
+{
+  "caseId" : "safe-unpublish",
+  "assertions" : "PASSED",
+  "javaMysql" : "REAL",
+  "scenario" : "UNPUBLISH",
+  "before" : {
+    "stock" : [ {
+      "sku_id" : "9bcb1080-0932-4009-93db-e3cc01fcde57",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ],
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "after" : {
+    "stock" : [ {
+      "sku_id" : "9bcb1080-0932-4009-93db-e3cc01fcde57",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ],
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "actualCode" : "C0001"
+}

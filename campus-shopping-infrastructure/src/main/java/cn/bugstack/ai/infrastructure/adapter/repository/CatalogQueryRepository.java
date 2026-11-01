@@ -17,9 +17,6 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
     @Resource
     private ICatalogQueryDao dao;
 
-    @Resource
-    private ICatalogDao catalogDao;
-
     public List<String> scanIdsAfter(String after, int limit) {
         return dao.scanIdsAfter(after, limit);
     }
@@ -27,7 +24,7 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
     public List<ProductAggregate> search(String merchant, String q, String category, boolean publicOnly, int offset, int limit) {
         List<ProductPO> ps = dao.search(merchant, q, category, publicOnly, offset, limit, "NEWEST");
         if (ps.isEmpty()) return List.of();
-        List<SkuPO> ss = catalogDao.skus(ps.stream().map(ProductPO::getId).toList());
+        List<SkuPO> ss = dao.skus(ps.stream().map(ProductPO::getId).toList());
         return ps
             .stream()
             .map(p ->
@@ -62,7 +59,7 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
 
     private List<ProductAggregate> fromProducts(List<ProductPO> ps) {
         if (ps.isEmpty()) return List.of();
-        List<SkuPO> ss = catalogDao.skus(ps.stream().map(ProductPO::getId).toList());
+        List<SkuPO> ss = dao.skus(ps.stream().map(ProductPO::getId).toList());
         return ps
             .stream()
             .map(p ->
@@ -84,7 +81,7 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
     public List<ProductAggregate> searchManaged(String merchant, String q, String category, String status, int offset, int limit) {
         List<ProductPO> ps = dao.searchManaged(merchant, q, category, status, offset, limit, "NEWEST");
         if (ps.isEmpty()) return List.of();
-        List<SkuPO> ss = catalogDao.skus(ps.stream().map(ProductPO::getId).toList());
+        List<SkuPO> ss = dao.skus(ps.stream().map(ProductPO::getId).toList());
         return ps
             .stream()
             .map(p ->

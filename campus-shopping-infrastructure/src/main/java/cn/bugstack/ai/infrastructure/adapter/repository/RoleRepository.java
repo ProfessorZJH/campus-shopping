@@ -18,10 +18,15 @@ public class RoleRepository implements IRoleRepository {
     private IAccessDao accsessDao;
 
     public List<MerchantRoleVO> customRoles(String merchantId) {
-        return accsessDao
-            .roles(merchantId)
+        var roles = accsessDao.roles(merchantId);
+        if (roles.isEmpty()) return List.of();
+        Map<String, Set<String>> permissions = new HashMap<>();
+        for (var row : accsessDao.rolePermissionRows(merchantId)) {
+            permissions.computeIfAbsent(row.getRoleCode(), ignored -> new HashSet<>()).add(row.getPermission());
+        }
+        return roles
             .stream()
-            .map(r -> new MerchantRoleVO(r.getRoleCode(), r.getName(), accsessDao.rolePermissions(merchantId, r.getRoleCode()), false))
+            .map(r -> new MerchantRoleVO(r.getRoleCode(), r.getName(), permissions.getOrDefault(r.getRoleCode(), Set.of()), false))
             .toList();
     }
 

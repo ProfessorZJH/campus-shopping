@@ -54,6 +54,9 @@ SELECT merchant_id,role_code,name FROM iam_merchant_role WHERE merchant_id=#{mer
     <select id="role" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantRolePO">
 SELECT merchant_id,role_code,name FROM iam_merchant_role WHERE merchant_id=#{merchantId} AND role_code=#{code}<if test="lock"> FOR UPDATE</if>
     </select>
+    <select id="rolePermissionRows" resultType="cn.bugstack.ai.infrastructure.dao.po.RolePermissionPO">
+SELECT role_code,permission FROM iam_merchant_role_permission WHERE merchant_id=#{merchantId} ORDER BY role_code,permission
+    </select>
     <select id="rolePermissions" resultType="string">
 SELECT permission FROM iam_merchant_role_permission WHERE merchant_id=#{merchantId} AND role_code=#{code}
     </select>

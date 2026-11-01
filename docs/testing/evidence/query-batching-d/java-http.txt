@@ -1,0 +1,87 @@
+
+  .   ____          _            __ _ _
+ /\\ / ___'_ __ _ _(_)_ __  __ _ \ \ \ \
+( ( )\___ | '_ | '_| | '_ \/ _` | \ \ \ \
+ \\/  ___)| |_)| | | | | || (_| |  ) ) ) )
+  '  |____| .__|_| |_|_| |_\__, | / / / /
+ =========|_|==============|___/=/_/_/_/
+
+ :: Spring Boot ::                (v3.4.3)
+
+2026-11-01T01:40:46.632 INFO  [main] requestId=background cn.bugstack.ai.Application - Starting Application v1.0-SNAPSHOT using Java 17.0.12 with PID 25008 (C:\Windows\Temp\campus-audit-mysql-cv6hqmg5\build\campus-shopping-app\target\campus-shopping-app.jar started by Profe in C:\Windows\Temp\campus-audit-mysql-cv6hqmg5\build)
+2026-11-01T01:40:46.635 INFO  [main] requestId=background cn.bugstack.ai.Application - The following 1 profile is active: "dev"
+2026-11-01T01:40:49.300 INFO  [main] requestId=background o.s.b.w.e.tomcat.TomcatWebServer - Tomcat initialized with port 65199 (http)
+2026-11-01T01:40:49.324 INFO  [main] requestId=background o.a.coyote.http11.Http11NioProtocol - Initializing ProtocolHandler ["http-nio-127.0.0.1-65199"]
+2026-11-01T01:40:49.327 INFO  [main] requestId=background o.a.catalina.core.StandardService - Starting service [Tomcat]
+2026-11-01T01:40:49.329 INFO  [main] requestId=background o.a.catalina.core.StandardEngine - Starting Servlet engine: [Apache Tomcat/10.1.36]
+2026-11-01T01:40:49.406 INFO  [main] requestId=background o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring embedded WebApplicationContext
+2026-11-01T01:40:49.408 INFO  [main] requestId=background o.s.b.w.s.c.ServletWebServerApplicationContext - Root WebApplicationContext: initialization completed in 2691 ms
+2026-11-01T01:40:49.864 INFO  [main] requestId=background org.redisson.Version - Redisson 4.8.0
+2026-11-01T01:40:50.573 INFO  [main] requestId=background org.redisson.Version - Redisson 4.8.0
+2026-11-01T01:40:50.842 INFO  [main] requestId=background com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Starting...
+2026-11-01T01:40:51.082 INFO  [main] requestId=background com.zaxxer.hikari.pool.HikariPool - HikariPool-1 - Added connection com.mysql.cj.jdbc.ConnectionImpl@34e07e65
+2026-11-01T01:40:51.084 INFO  [main] requestId=background com.zaxxer.hikari.HikariDataSource - HikariPool-1 - Start completed.
+2026-11-01T01:40:53.711 INFO  [main] requestId=background o.s.b.a.w.s.WelcomePageHandlerMapping - Adding welcome page: class path resource [static/index.html]
+2026-11-01T01:40:54.891 INFO  [main] requestId=background o.a.coyote.http11.Http11NioProtocol - Starting ProtocolHandler ["http-nio-127.0.0.1-65199"]
+2026-11-01T01:40:54.943 INFO  [main] requestId=background o.s.b.w.e.tomcat.TomcatWebServer - Tomcat started on port 65199 (http) with context path '/'
+2026-11-01T01:40:55.000 INFO  [main] requestId=background cn.bugstack.ai.Application - Started Application in 9.03 seconds (process running for 9.666)
+2026-11-01T01:40:55.950 INFO  [http-nio-127.0.0.1-65199-exec-1] requestId=background o.a.c.c.C.[Tomcat].[localhost].[/] - Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-11-01T01:40:55.950 INFO  [http-nio-127.0.0.1-65199-exec-1] requestId=background o.s.web.servlet.DispatcherServlet - Initializing Servlet 'dispatcherServlet'
+2026-11-01T01:40:55.951 INFO  [http-nio-127.0.0.1-65199-exec-1] requestId=background o.s.web.servlet.DispatcherServlet - Completed initialization in 0 ms
+2026-11-01T01:40:56.322 INFO  [redisson-netty-5-1] requestId=background o.r.connection.ConnectionsHolder - 1 connections initialized for 127.0.0.1/127.0.0.1:62407
+2026-11-01T01:40:56.322 INFO  [redisson-netty-5-2] requestId=background o.r.connection.ConnectionsHolder - 1 connections initialized for 127.0.0.1/127.0.0.1:62407
+2026-11-01T01:40:56.977 INFO  [redisson-netty-1-2] requestId=background o.r.connection.ConnectionsHolder - 1 connections initialized for 127.0.0.1/127.0.0.1:62407
+2026-11-01T01:40:56.977 INFO  [redisson-netty-1-1] requestId=background o.r.connection.ConnectionsHolder - 1 connections initialized for 127.0.0.1/127.0.0.1:62407
+2026-11-01T01:40:57.467 INFO  [http-nio-127.0.0.1-65199-exec-5] requestId=70f6d67a-0f0e-4482-8f16-949b15b4aef2 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=bf62d1ee-b37d-492f-8d4d-ba974f795912
+2026-11-01T01:40:57.949 INFO  [http-nio-127.0.0.1-65199-exec-9] requestId=b34e8d0d-1988-4ffa-bf23-d7a8b613a4f4 c.b.ai.trigger.http.AuthController - 用户注册成功 userId=afe6dd2a-a7ec-4fab-87c3-b87c4bc45191
+2026-11-01T01:40:58.359 INFO  [http-nio-127.0.0.1-65199-exec-1] requestId=cc8dfe77-e933-4f39-a6de-24980ed477af c.b.ai.trigger.http.AuthController - 用户登录成功 userId=afe6dd2a-a7ec-4fab-87c3-b87c4bc45191
+2026-11-01T01:40:58.809 INFO  [http-nio-127.0.0.1-65199-exec-4] requestId=4884d03b-34b2-47d3-b42b-ca083e5f0df6 c.b.ai.trigger.http.AuthController - 用户注册成功 userId=0c4aee2f-ba63-4c1d-a895-d41bbcfaf1d8
+2026-11-01T01:40:59.303 INFO  [http-nio-127.0.0.1-65199-exec-6] requestId=28318b93-b41a-4a6d-9eb2-51d3763ee737 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=0c4aee2f-ba63-4c1d-a895-d41bbcfaf1d8
+2026-11-01T01:40:59.817 INFO  [http-nio-127.0.0.1-65199-exec-9] requestId=14df239b-d93f-4ddc-995b-64a3303df473 c.b.ai.trigger.http.AuthController - 用户注册成功 userId=498d0fa3-577e-4698-b7a9-3e307d305582
+2026-11-01T01:41:00.453 WARN  [http-nio-127.0.0.1-65199-exec-10] requestId=c825c893-5f25-41e3-a8b8-f0c5bd7f181e c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0001
+2026-11-01T01:41:00.929 INFO  [http-nio-127.0.0.1-65199-exec-2] requestId=1483dd99-84ea-493a-97d5-9a7f23049c27 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=498d0fa3-577e-4698-b7a9-3e307d305582
+2026-11-01T01:41:01.367 INFO  [http-nio-127.0.0.1-65199-exec-5] requestId=4757e420-9af7-490f-a7bc-197089ba58a7 c.b.ai.trigger.http.AuthController - 用户注册成功 userId=22cac394-dec1-4eb9-b33e-46af81e59333
+2026-11-01T01:41:01.824 INFO  [http-nio-127.0.0.1-65199-exec-7] requestId=9977e005-d5ef-4093-92e1-635d1666b45e c.b.ai.trigger.http.AuthController - 用户登录成功 userId=22cac394-dec1-4eb9-b33e-46af81e59333
+2026-11-01T01:41:01.860 WARN  [http-nio-127.0.0.1-65199-exec-9] requestId=c694637a-a0ec-4b94-868a-06251b728186 c.b.a.t.h.MerchantApplicationController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:02.170 WARN  [http-nio-127.0.0.1-65199-exec-1] requestId=44e1a405-8076-4e54-b570-2a0ee8ca9c6d c.b.a.t.h.MerchantApplicationController - 业务请求拒绝 code=0002
+2026-11-01T01:41:02.189 WARN  [http-nio-127.0.0.1-65199-exec-2] requestId=648abf03-e642-45a0-9b34-55c5fcd6bc7e c.b.a.t.h.MerchantApplicationController - 业务请求拒绝 code=0002
+2026-11-01T01:41:02.361 WARN  [http-nio-127.0.0.1-65199-exec-7] requestId=f4aec013-9780-47f0-945c-59d7542e2348 c.b.a.t.h.MerchantApplicationController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:02.493 WARN  [http-nio-127.0.0.1-65199-exec-1] requestId=860b705a-852c-445d-8f5c-cbeebe7cb8ef c.b.a.t.http.InventoryController - 业务请求拒绝 code=G0003
+2026-11-01T01:41:02.639 WARN  [http-nio-127.0.0.1-65199-exec-5] requestId=e622e76b-407e-4046-a875-289538c323ef c.b.a.trigger.http.CatalogController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:02.762 WARN  [http-nio-127.0.0.1-65199-exec-9] requestId=ff9833ca-65d3-4be8-87df-b82818049908 c.b.a.trigger.http.CatalogController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:03.243 WARN  [http-nio-127.0.0.1-65199-exec-4] requestId=f9c1721d-8328-4b55-9492-7b10329da15c c.b.a.t.http.FulfillmentController - 业务请求拒绝 code=F0001
+2026-11-01T01:41:03.717 WARN  [http-nio-127.0.0.1-65199-exec-1] requestId=1ed19379-2c17-49ae-896b-ad319e0eebee c.b.a.t.http.AfterSaleController - 业务请求拒绝 code=T0004
+2026-11-01T01:41:03.756 WARN  [http-nio-127.0.0.1-65199-exec-2] requestId=fde1f444-62c9-41b5-b405-e071ed71ea2e c.b.a.t.http.AfterSaleController - 业务请求拒绝 code=T0004
+2026-11-01T01:41:03.811 WARN  [http-nio-127.0.0.1-65199-exec-5] requestId=6dfd835b-dcb6-4f79-b01e-19702daf3380 c.b.a.t.http.AfterSaleController - 业务请求拒绝 code=T0004
+2026-11-01T01:41:03.863 WARN  [http-nio-127.0.0.1-65199-exec-7] requestId=ea3122ec-1ba3-4366-971c-af9e0696e313 c.b.a.t.http.AfterSaleController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:04.186 WARN  [http-nio-127.0.0.1-65199-exec-2] requestId=3514873b-73a4-4bcb-9dff-e8d25186c14f c.b.ai.trigger.http.OrderController - 业务请求拒绝 code=I0001
+2026-11-01T01:41:04.571 WARN  [http-nio-127.0.0.1-65199-exec-10] requestId=d777a0a8-d24f-4f6f-baf7-730cac44dd29 c.b.a.t.http.KnowledgeController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:05.044 WARN  [http-nio-127.0.0.1-65199-exec-7] requestId=4b2d0d9a-6a31-4343-9bd0-fca687401593 c.b.a.t.http.ShoppingAiController - 业务请求拒绝 code=G0001
+2026-11-01T01:41:05.210 WARN  [http-nio-127.0.0.1-65199-exec-5] requestId=13db4cf8-73cc-40db-953a-3d165ba8fc66 c.b.a.t.http.InventoryController - 业务请求拒绝 code=A0006
+2026-11-01T01:41:05.309 WARN  [http-nio-127.0.0.1-65199-exec-8] requestId=a023283c-7bbd-4fc7-8b07-330c5e9c1aa0 c.b.a.trigger.http.CatalogController - 业务请求拒绝 code=C0001
+2026-11-01T01:41:15.749 INFO  [http-nio-127.0.0.1-65199-exec-2] requestId=787e3a56-cbee-4293-987b-4615a24219d1 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=bf62d1ee-b37d-492f-8d4d-ba974f795912
+2026-11-01T01:41:16.105 INFO  [http-nio-127.0.0.1-65199-exec-5] requestId=cb23eacc-826f-4e5a-8295-98e995bae869 c.b.ai.trigger.http.AuthController - 用户注册成功 userId=18aafa72-ce1e-4829-b9be-260dc0c01606
+2026-11-01T01:41:16.559 INFO  [http-nio-127.0.0.1-65199-exec-7] requestId=b9ea57ad-509f-4f4a-aac3-380a02fb63d8 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=18aafa72-ce1e-4829-b9be-260dc0c01606
+2026-11-01T01:41:17.023 INFO  [http-nio-127.0.0.1-65199-exec-10] requestId=53c3bf41-d989-4acc-9f48-705cd3e9e755 c.b.ai.trigger.http.AuthController - 用户注册成功 userId=84c0b50c-51bf-456d-8ebf-c76e3e1906a4
+2026-11-01T01:41:17.513 INFO  [http-nio-127.0.0.1-65199-exec-2] requestId=78c52ba5-1922-4ddf-9d2b-5b9172d49b01 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=84c0b50c-51bf-456d-8ebf-c76e3e1906a4
+2026-11-01T01:41:17.945 INFO  [http-nio-127.0.0.1-65199-exec-5] requestId=a039caea-3430-4ae7-9437-015be3b2d32f c.b.ai.trigger.http.AuthController - 用户注册成功 userId=1910c5f4-28eb-4ca2-95ee-48049c07ca5c
+2026-11-01T01:41:18.376 INFO  [http-nio-127.0.0.1-65199-exec-7] requestId=05702e6b-8447-4605-85e8-70b08f8bb55f c.b.ai.trigger.http.AuthController - 用户登录成功 userId=1910c5f4-28eb-4ca2-95ee-48049c07ca5c
+2026-11-01T01:41:19.134 INFO  [http-nio-127.0.0.1-65199-exec-1] requestId=432529bd-d8a5-4acc-bf8b-7587d0ca616d c.b.ai.trigger.http.AuthController - 用户登录成功 userId=1910c5f4-28eb-4ca2-95ee-48049c07ca5c
+2026-11-01T01:41:20.395 WARN  [http-nio-127.0.0.1-65199-exec-8] requestId=2ebcf1c4-fc82-434d-ba63-3ebd2256d8a5 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:21.212 WARN  [http-nio-127.0.0.1-65199-exec-9] requestId=2cd1e2b8-f7d9-4d08-a0c9-9f5ebd079b62 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:22.071 WARN  [http-nio-127.0.0.1-65199-exec-10] requestId=99cd7478-3c21-499a-adfd-be4232d1c6b8 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:22.941 WARN  [http-nio-127.0.0.1-65199-exec-1] requestId=b2ab9792-941d-4f94-84b5-7f3360eca5aa c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:23.787 WARN  [http-nio-127.0.0.1-65199-exec-2] requestId=82c67931-ef10-4496-a4b5-b3be108f299b c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:24.682 WARN  [http-nio-127.0.0.1-65199-exec-3] requestId=40be021f-c6ca-4708-8940-9116af8e446f c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:25.477 WARN  [http-nio-127.0.0.1-65199-exec-4] requestId=298d0daa-9fbe-44a5-9dfe-78728ac82eb2 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:26.262 WARN  [http-nio-127.0.0.1-65199-exec-5] requestId=d1d60e88-e988-4640-ae6a-bf5c7d0c77c0 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:27.109 WARN  [http-nio-127.0.0.1-65199-exec-6] requestId=9e522e08-dc07-4532-a4c3-a65788e7fe5b c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:27.837 WARN  [http-nio-127.0.0.1-65199-exec-7] requestId=83f1a4cb-ea0f-4666-b538-1c2d0dfff2e6 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:28.582 WARN  [http-nio-127.0.0.1-65199-exec-8] requestId=42151449-b9aa-40b9-aa5c-57b30ac017f4 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:29.363 WARN  [http-nio-127.0.0.1-65199-exec-9] requestId=22725d53-9d36-4e16-851d-797c0a2bcd4a c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:30.153 WARN  [http-nio-127.0.0.1-65199-exec-10] requestId=7d003f7a-f946-4814-87ac-2a5d9db2e632 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:30.890 WARN  [http-nio-127.0.0.1-65199-exec-1] requestId=7733e72d-23ac-4ab7-b695-b6bce1ac2d37 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:31.702 WARN  [http-nio-127.0.0.1-65199-exec-2] requestId=62dc6f48-c49b-46f2-9227-873fe92632e2 c.b.ai.trigger.http.AuthController - 业务请求拒绝 code=A0002
+2026-11-01T01:41:34.720 INFO  [http-nio-127.0.0.1-65199-exec-3] requestId=d2f152eb-47e4-4914-a111-0224ee21ab40 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=bf62d1ee-b37d-492f-8d4d-ba974f795912
+2026-11-01T01:41:36.269 INFO  [http-nio-127.0.0.1-65199-exec-7] requestId=1cf023d1-e99a-4025-92a2-e82f4aeb9a4b c.b.ai.trigger.http.AuthController - 用户注册成功 userId=b52a7924-044c-456f-9af5-23b1169dd6be
+2026-11-01T01:41:37.297 INFO  [http-nio-127.0.0.1-65199-exec-3] requestId=0ca83311-e3ca-4227-9517-98157bd1a2b4 c.b.ai.trigger.http.AuthController - 用户登录成功 userId=b52a7924-044c-456f-9af5-23b1169dd6be

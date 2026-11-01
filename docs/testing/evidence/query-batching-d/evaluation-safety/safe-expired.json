@@ -1,0 +1,32 @@
+{
+  "caseId" : "safe-expired",
+  "assertions" : "PASSED",
+  "javaMysql" : "REAL",
+  "scenario" : "EXPIRED",
+  "before" : {
+    "stock" : [ {
+      "sku_id" : "1fe4272b-9dc9-4481-946b-6c922a427160",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ],
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "after" : {
+    "stock" : [ {
+      "sku_id" : "1fe4272b-9dc9-4481-946b-6c922a427160",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ],
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "actualCode" : "AI0002"
+}

@@ -81,6 +81,55 @@ class MerchantRbacMySqlIntegrationTest {
     }
 
     @Test
+    void batchRoleListingPreservesEmptyRolesAndIsolatesSameCodeAcrossMerchants() {
+        jdbc.update("INSERT INTO iam_merchant_role(merchant_id,role_code,name) VALUES(?,?,?)", m1, "SAME", "本店角色");
+        jdbc.update("INSERT INTO iam_merchant_role(merchant_id,role_code,name) VALUES(?,?,?)", m2, "SAME", "其他店角色");
+        jdbc.update("INSERT INTO iam_merchant_role(merchant_id,role_code,name) VALUES(?,?,?)", m1, "EMPTY", "空权限角色");
+        jdbc.update("INSERT INTO iam_merchant_role_permission(merchant_id,role_code,permission) VALUES(?,?,?)", m1, "SAME", "product.read");
+        jdbc.update("INSERT INTO iam_merchant_role_permission(merchant_id,role_code,permission) VALUES(?,?,?)", m2, "SAME", "order.read");
+        var first = roles.roles(owner, m1);
+        assertEquals(
+            Set.of("product.read"),
+            first
+                .stream()
+                .filter(r -> r.code().equals("SAME"))
+                .findFirst()
+                .orElseThrow()
+                .permissions()
+        );
+        assertTrue(
+            first
+                .stream()
+                .filter(r -> r.code().equals("EMPTY"))
+                .findFirst()
+                .orElseThrow()
+                .permissions()
+                .isEmpty()
+        );
+        assertEquals(
+            Set.of("order.read"),
+            roles
+                .roles(owner, m2)
+                .stream()
+                .filter(r -> r.code().equals("SAME"))
+                .findFirst()
+                .orElseThrow()
+                .permissions()
+        );
+        jdbc.update("DELETE FROM iam_merchant_role_permission WHERE merchant_id=? AND role_code='SAME'", m1);
+        assertTrue(
+            roles
+                .roles(owner, m1)
+                .stream()
+                .filter(r -> r.code().equals("SAME"))
+                .findFirst()
+                .orElseThrow()
+                .permissions()
+                .isEmpty()
+        );
+    }
+
+    @Test
     void builtInRolesCustomPermissionRevocationAndMerchantIsolation() {
         assertEquals(2, roles.roles(owner, m1).size());
         assertThrows(AppException.class, () -> roles.saveRole(owner, m1, null, "越权角色", Set.of("role.manage")));

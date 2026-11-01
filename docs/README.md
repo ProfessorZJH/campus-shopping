@@ -40,3 +40,6 @@
 
 - [PR-A：退款裁决与商户状态幂等](testing/BUSINESS-FIXES-A-20261031.md)
 - [PR-B：边界输入与异常契约](testing/BUSINESS-FIXES-B-20261031.md)
+
+- [PR-C：查询职责收敛](testing/QUERY-C-20261101.md)
+- [PR-D：角色批量查询与只读适配器](testing/QUERY-D-20261101.md)

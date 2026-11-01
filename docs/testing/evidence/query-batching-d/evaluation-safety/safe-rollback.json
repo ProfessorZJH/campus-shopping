@@ -1,0 +1,46 @@
+{
+  "caseId" : "safe-rollback",
+  "assertions" : "PASSED",
+  "javaMysql" : "REAL",
+  "scenario" : "PARTIAL_ADDITION_ROLLBACK",
+  "before" : {
+    "stock" : [ {
+      "sku_id" : "1181a1e8-8616-44d3-8cae-1e0ce31f765f",
+      "on_hand" : 5,
+      "reserved" : 0
+    }, {
+      "sku_id" : "75164591-8098-4a17-922f-27dd2acc9af2",
+      "on_hand" : 105,
+      "reserved" : 0
+    } ],
+    "cart" : [ {
+      "sku_id" : "75164591-8098-4a17-922f-27dd2acc9af2",
+      "quantity" : 99
+    } ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "after" : {
+    "stock" : [ {
+      "sku_id" : "1181a1e8-8616-44d3-8cae-1e0ce31f765f",
+      "on_hand" : 5,
+      "reserved" : 0
+    }, {
+      "sku_id" : "75164591-8098-4a17-922f-27dd2acc9af2",
+      "on_hand" : 105,
+      "reserved" : 0
+    } ],
+    "cart" : [ {
+      "sku_id" : "75164591-8098-4a17-922f-27dd2acc9af2",
+      "quantity" : 99
+    } ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ]
+  },
+  "actualCode" : "T0005"
+}
