@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-11-01T11:46:19.723005+00:00",
+  "testType": "REAL_BROWSER_REAL_JAVA_HTTP",
+  "status": "FAILED",
+  "error": "Locator expected to have count '0'\nActual value: 1 \nCall log:\n  - LocatorAssertions.to_have_count with timeout 5000ms\n  - waiting for locator(\"tr\").filter(has_text=\"联调多规格f1912a52\").get_by_role(\"button\", name=\"强制下架\", exact=True)\n    9 × locator resolved to 1 element\n      - unexpected value \"1\"\n",
+  "checks": [
+    "新版 Vue 匿名消费者首页加载",
+    "匿名商户列表与详情放行；平台私有数据拒绝匿名访问",
+    "新版管理员 Session 登录并访问入驻审核",
+    "管理员退出后 Session 与私有数据失效",
+    "注册真实数据库账号且注册后不自动登录",
+    "普通用户登录后仍无法访问管理员页面",
+    "移动端真实前端无横向溢出",
+    "真实 HTTP 拒绝零库存和超库存加购，原购物车数量保留",
+    "真实商户页面独立停用/启用 SKU，最后一个有效 SKU 不可停用",
+    "首页按累计数量拒绝加购，库存 3 已有 2 再加 2 保持原数量",
+    "同会话首页和详情两个标签页提交 POST 增量，已有 1 各加 1 最终为 3",
+    "真实购物车失效商品禁止增加，仍可减少和直接移除",
+    "真实资料 PUT 后表单及 MySQL 回显一致，无额外商户 GET",
+    "真实多规格最低价与标签一致，数量5切低库存归1并按选定SKU加购",
+    "真实角色删除竞态被服务端拒绝，下拉与持久化成员角色均保持原值",
+    "真实页面搜索后立即离开，无延迟商品列表请求，购物车不附带公共商品请求"
+  ],
+  "browserErrors": [],
+  "apiMockUsed": false
+}

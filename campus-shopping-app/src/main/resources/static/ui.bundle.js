@@ -1,5 +1,116 @@
 (function() {
   "use strict";
+  const PREFIX = "/api/v1";
+  let csrf = null;
+  let csrfPromise = null;
+  let generation = 0;
+  let unauthorized = () => {
+  };
+  function onUnauthorized(handler) {
+    unauthorized = handler;
+  }
+  function requireIdentity(stamp) {
+    if (stamp !== generation) throw fail("登录身份已变化，请重试", "IDENTITY_CHANGED", 0);
+  }
+  function fail(message, code, status) {
+    return Object.assign(new Error(message), { code, status });
+  }
+  async function getCsrf() {
+    if (csrfPromise) return csrfPromise;
+    const stamp = generation;
+    const pending = (async () => {
+      const data = await api("/auth/csrf", { retry: false });
+      requireIdentity(stamp);
+      csrf = data;
+      return csrf;
+    })();
+    csrfPromise = pending;
+    try {
+      return await pending;
+    } finally {
+      if (csrfPromise === pending) csrfPromise = null;
+    }
+  }
+  async function api(path, options = {}) {
+    var _a, _b, _c;
+    if ((options.method || "GET") !== "GET") return request(path, options);
+    const controller = new AbortController();
+    let timedOut = false;
+    const abort = () => controller.abort();
+    (_a = options.signal) == null ? void 0 : _a.addEventListener("abort", abort, { once: true });
+    if ((_b = options.signal) == null ? void 0 : _b.aborted) abort();
+    const timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, options.timeoutMs ?? 15e3);
+    try {
+      return await request(path, { ...options, signal: controller.signal });
+    } catch (e) {
+      if (timedOut) throw fail("请求超时，请重试", "TIMEOUT", 0);
+      throw e;
+    } finally {
+      clearTimeout(timer);
+      (_c = options.signal) == null ? void 0 : _c.removeEventListener("abort", abort);
+    }
+  }
+  async function request(path, { method = "GET", body, signal, key, retry = true } = {}) {
+    const stamp = generation;
+    const payload = body === void 0 ? void 0 : JSON.stringify(body);
+    const headers = { Accept: "application/json" };
+    if (method !== "GET") {
+      const token = csrf || await getCsrf();
+      requireIdentity(stamp);
+      headers[token.headerName] = token.token;
+    }
+    if (body !== void 0) headers["Content-Type"] = "application/json";
+    if (key) headers["Idempotency-Key"] = key;
+    let r;
+    try {
+      r = await fetch(PREFIX + path, {
+        method,
+        headers,
+        body: payload,
+        signal,
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      throw fail("服务连接失败，请确认 Java 后端已启动", "NETWORK", 0);
+    }
+    let j;
+    try {
+      j = await r.json();
+    } catch (e) {
+      if (e.name === "AbortError") throw e;
+      throw fail("服务器响应格式异常", "RESPONSE", r.status);
+    }
+    requireIdentity(stamp);
+    if (r.status === 401 || j.code === "A0004") unauthorized();
+    if (r.status === 403 && j.code === "A0005" && retry) {
+      csrf = null;
+      await getCsrf();
+      requireIdentity(stamp);
+      return api(path, {
+        method,
+        body: payload === void 0 ? void 0 : JSON.parse(payload),
+        signal,
+        key,
+        retry: false
+      });
+    }
+    if (!r.ok || j.code !== "0000") throw fail(j.info || "请求失败", j.code || "HTTP", r.status);
+    return j.data;
+  }
+  const resetCsrf = () => {
+    ++generation;
+    csrf = null;
+    csrfPromise = null;
+  };
+  const query = (params) => "?" + new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== void 0 && v !== null && v !== "")
+  ).toString();
+  const idempotency = () => crypto.randomUUID();
   const modal = {
     mounted(element, binding) {
       const previous = document.activeElement;
@@ -290,101 +401,6 @@
     { role: "user", content: "我想买点夜宵，预算 30 元以内，吃得饱一点。" },
     { role: "assistant", content: "给你挑了 3 件方便自提的好物。", demo: true }
   ];
-  const PREFIX = "/api/v1";
-  let csrf = null;
-  let csrfPromise = null;
-  let generation = 0;
-  let unauthorized = () => {
-  };
-  function onUnauthorized(handler) {
-    unauthorized = handler;
-  }
-  function requireIdentity(stamp) {
-    if (stamp !== generation) throw fail("登录身份已变化，请重试", "IDENTITY_CHANGED", 0);
-  }
-  function fail(message, code, status) {
-    return Object.assign(new Error(message), { code, status });
-  }
-  async function getCsrf() {
-    if (csrfPromise) return csrfPromise;
-    const stamp = generation;
-    const pending = (async () => {
-      const r = await fetch(PREFIX + "/auth/csrf", { credentials: "same-origin", cache: "no-store" });
-      let j;
-      try {
-        j = await r.json();
-      } catch {
-        throw fail("安全令牌响应异常", "RESPONSE", r.status);
-      }
-      if (!r.ok || j.code !== "0000") throw fail("无法获取安全令牌", j.code, r.status);
-      requireIdentity(stamp);
-      csrf = j.data;
-      return csrf;
-    })();
-    csrfPromise = pending;
-    try {
-      return await pending;
-    } finally {
-      if (csrfPromise === pending) csrfPromise = null;
-    }
-  }
-  async function api(path, { method = "GET", body, signal, key, retry = true } = {}) {
-    const stamp = generation;
-    const payload = body === void 0 ? void 0 : JSON.stringify(body);
-    const headers = { Accept: "application/json" };
-    if (method !== "GET") {
-      const token = csrf || await getCsrf();
-      requireIdentity(stamp);
-      headers[token.headerName] = token.token;
-    }
-    if (body !== void 0) headers["Content-Type"] = "application/json";
-    if (key) headers["Idempotency-Key"] = key;
-    let r;
-    try {
-      r = await fetch(PREFIX + path, {
-        method,
-        headers,
-        body: payload,
-        signal,
-        credentials: "same-origin",
-        cache: "no-store"
-      });
-    } catch (err) {
-      if (err.name === "AbortError") throw err;
-      throw fail("服务连接失败，请确认 Java 后端已启动", "NETWORK", 0);
-    }
-    let j;
-    try {
-      j = await r.json();
-    } catch {
-      throw fail("服务器响应格式异常", "RESPONSE", r.status);
-    }
-    requireIdentity(stamp);
-    if (r.status === 401 || j.code === "A0004") unauthorized();
-    if (r.status === 403 && j.code === "A0005" && retry) {
-      csrf = null;
-      await getCsrf();
-      requireIdentity(stamp);
-      return api(path, {
-        method,
-        body: payload === void 0 ? void 0 : JSON.parse(payload),
-        signal,
-        key,
-        retry: false
-      });
-    }
-    if (!r.ok || j.code !== "0000") throw fail(j.info || "请求失败", j.code || "HTTP", r.status);
-    return j.data;
-  }
-  const resetCsrf = () => {
-    ++generation;
-    csrf = null;
-    csrfPromise = null;
-  };
-  const query = (params) => "?" + new URLSearchParams(
-    Object.entries(params).filter(([, v]) => v !== void 0 && v !== null && v !== "")
-  ).toString();
-  const idempotency = () => crypto.randomUUID();
   const { reactive } = Vue;
   const preview = window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get("demo") === "1";
   const store = reactive({
@@ -464,6 +480,9 @@
     store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
     store.error = "";
   }
+  function invalidateMerchantSearch() {
+    ++merchantEpoch;
+  }
   function beginPublicSearch() {
     return ++publicEpoch;
   }
@@ -488,7 +507,7 @@
     store.route = next;
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }
-  async function loadPublic() {
+  async function loadPublic({ signal } = {}) {
     const stamp = ++publicEpoch, baseStamp = ++baseEpoch;
     store.error = "";
     store.loading = true;
@@ -502,15 +521,15 @@
     }
     try {
       const [merchants, categories, products] = await Promise.all([
-        api("/merchants/public/page" + query({ page: 1, size: 50 })).then((result) => {
+        api("/merchants/public/page" + query({ page: 1, size: 50 }), { signal }).then((result) => {
           if (baseStamp === baseEpoch) store.merchants = (result == null ? void 0 : result.items) || [];
           return result;
         }),
-        api("/categories").then((result) => {
+        api("/categories", { signal }).then((result) => {
           if (baseStamp === baseEpoch) store.categories = result || [];
           return result;
         }),
-        api("/products/page" + query({ page: 1, size: 20 }))
+        api("/products/page" + query({ page: 1, size: 20 }), { signal })
       ]);
       if (!publicSearchCurrent(stamp)) return;
       store.merchants = (merchants == null ? void 0 : merchants.items) || [];
@@ -537,7 +556,9 @@
     q = "",
     category = "",
     status = "",
-    sort = "NEWEST"
+    sort = "NEWEST",
+    contextOnly = false,
+    signal
   } = {}) {
     var _a, _b, _c;
     const stamp = ++merchantEpoch, authStamp = sessionEpoch;
@@ -563,8 +584,8 @@
       return;
     }
     try {
-      const [user, workspace, categories] = await Promise.all([
-        api("/auth/me"),
+      const [user, workspace, categories] = store.workspace && store.user && !contextOnly ? [store.user, store.workspace, store.categories] : await Promise.all([
+        store.user ? Promise.resolve(store.user) : api("/auth/me"),
         api("/workspace"),
         api("/categories")
       ]);
@@ -583,10 +604,12 @@
         store.error = "当前账号没有商户权限";
         return;
       }
+      if (contextOnly) return;
       const id = encodeURIComponent(next), permissions = ((_c = workspace == null ? void 0 : workspace.merchantPermissions) == null ? void 0 : _c[next]) || [];
+      const read = (path) => api(path, { signal });
       const [products, stocks] = await Promise.all([
-        permissions.includes("product.read") ? api(`/merchants/${id}/products/page` + query({ page, size, q, category, status, sort })) : Promise.resolve({ items: [], page: 1, size, total: 0, hasNext: false }),
-        permissions.includes("stock.read") ? api(`/merchants/${id}/stocks/page` + query({ page: 1, size: 100 })) : Promise.resolve({ items: [] })
+        permissions.includes("product.read") ? read(`/merchants/${id}/products/page` + query({ page, size, q, category, status, sort })) : Promise.resolve({ items: [], page: 1, size, total: 0, hasNext: false }),
+        permissions.includes("stock.read") && !contextOnly ? read(`/merchants/${id}/stocks/page` + query({ page: 1, size: 100 })) : Promise.resolve({ items: [] })
       ]);
       if (stamp !== merchantEpoch || authStamp !== sessionEpoch || !store.route.startsWith("/merchant") || store.merchantId !== next || actorId(store.user) !== actorId(user))
         return;
@@ -615,6 +638,7 @@
       const user = await api("/auth/me");
       if (stamp === sessionEpoch && actorId(store.user) === original) store.user = user;
     } catch (err) {
+      if (err.status !== 401 && err.code !== "A0004") throw err;
       if (stamp === sessionEpoch && actorId(store.user) === original && store.user && (err.status === 401 || err.code === "A0004"))
         replaceSession(null);
     }
@@ -774,17 +798,17 @@
   function positiveInt(v, max = 99) {
     return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
-  const { ref: ref$g } = Vue;
+  const { ref: ref$h } = Vue;
   const AuthDialog = {
     name: "AuthDialog",
     emits: ["close", "success"],
     setup(props, { emit }) {
-      const mode = ref$g("login");
-      const username = ref$g("");
-      const password = ref$g("");
-      const displayName = ref$g("");
-      const busy = ref$g(false);
-      const error = ref$g("");
+      const mode = ref$h("login");
+      const username = ref$h("");
+      const password = ref$h("");
+      const displayName = ref$h("");
+      const busy = ref$h(false);
+      const error = ref$h("");
       async function submit() {
         if (busy.value) return;
         error.value = "";
@@ -948,13 +972,13 @@
       };
     })()
   };
-  const { ref: ref$f } = Vue;
+  const { ref: ref$g } = Vue;
   const ConsumerShell = {
     name: "ConsumerShell",
     components: { AuthDialog },
     props: { active: { type: String, default: "home" } },
     setup() {
-      const loginOpen = ref$f(false);
+      const loginOpen = ref$g(false);
       async function logout() {
         try {
           await api("/auth/logout", { method: "POST" });
@@ -1088,7 +1112,7 @@
       };
     })()
   };
-  const { computed: computed$f, ref: ref$e, watch: watch$d } = Vue;
+  const { computed: computed$f, ref: ref$f, watch: watch$d } = Vue;
   const ProductImage = {
     name: "ProductImage",
     props: {
@@ -1097,7 +1121,7 @@
       loading: { type: String, default: "lazy" }
     },
     setup(props) {
-      const broken = ref$e(false);
+      const broken = ref$f(false);
       watch$d(
         () => props.src,
         () => {
@@ -1127,7 +1151,7 @@
       };
     })()
   };
-  const { ref: ref$d, computed: computed$e } = Vue;
+  const { ref: ref$e, computed: computed$e, onMounted: onMounted$d } = Vue;
   const staticCategoryArt = {
     food: "./images/category-snacks.webp",
     drink: "./images/category-drinks.webp",
@@ -1141,15 +1165,15 @@
     setup() {
       const scope = requestScope();
       const keywords = ["泡面", "牛奶", "水果", "文具", "纸巾", "零食"];
-      const search = ref$d("");
-      const category = ref$d("");
-      const merchant = ref$d("");
-      const sort = ref$d("popular");
-      const page = ref$d(1);
-      const selected = ref$d(null);
-      const chosenSku = ref$d("");
-      const count = ref$d(1);
-      const saving = ref$d(false);
+      const search = ref$e("");
+      const category = ref$e("");
+      const merchant = ref$e("");
+      const sort = ref$e("popular");
+      const page = ref$e(1);
+      const selected = ref$e(null);
+      const chosenSku = ref$e("");
+      const count = ref$e(1);
+      const saving = ref$e(false);
       const categories = computed$e(() => store.categories.filter((c) => c.active).slice(0, 5));
       const shops = computed$e(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
       const shown = computed$e(() => {
@@ -1161,12 +1185,14 @@
         if (category.value) arr = arr.filter((p) => p.categoryCode === category.value);
         if (merchant.value) arr = arr.filter((p) => p.merchantId === merchant.value);
         if (preview && sort.value === "price")
-          arr = [...arr].sort((a, b) => Number(skuOf(a).priceCent) - Number(skuOf(b).priceCent));
+          arr = [...arr].sort(
+            (a, b) => Number(priceSku(a).priceCent) - Number(priceSku(b).priceCent)
+          );
         if (preview && sort.value === "stock")
           arr = [...arr].sort((a, b) => available(b) - available(a));
         return arr;
       });
-      const priceSku2 = (p) => [...(p == null ? void 0 : p.skus) || []].filter((s) => s.status === "ACTIVE").sort((a, b) => Number(a.priceCent) - Number(b.priceCent))[0] || skuOf(p);
+      onMounted$d(() => loadPublic({ signal: scope.begin().signal }));
       const pageInfo = computed$e(() => store.publicPage);
       const chosen = computed$e(
         () => {
@@ -1181,7 +1207,8 @@
       const currentShop = (p) => store.merchants.find((m) => m.merchantId === p.merchantId) || {};
       async function loadSearch() {
         if (preview) return;
-        const current = scope.capture();
+        const request2 = scope.begin();
+        const current = request2.current;
         const stamp = beginPublicSearch();
         const params = {
           q: search.value,
@@ -1194,7 +1221,7 @@
         store.loading = true;
         store.error = "";
         try {
-          const result = await api("/products/page" + query(params));
+          const result = await api("/products/page" + query(params), { signal: request2.signal });
           if (!(current() && publicSearchCurrent(stamp))) return;
           store.products = result.items || [];
           store.publicPage = {
@@ -1220,15 +1247,22 @@
         loadSearch();
       }
       function showDetail(p) {
+        var _a, _b;
         selected.value = p;
-        chosenSku.value = skuOf(p).skuId || "";
+        chosenSku.value = ((_b = (_a = p.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available) > 0)) == null ? void 0 : _b.skuId) || "";
         count.value = 1;
       }
+      const canAdd = computed$e(
+        () => {
+          var _a;
+          return ((_a = chosen.value) == null ? void 0 : _a.status) === "ACTIVE" && positiveInt(count.value, 99) && Number(count.value) <= Number(chosen.value.available);
+        }
+      );
       async function addCart() {
         var _a;
         if (!selected.value || saving.value || previewGuard()) return;
-        if (!((_a = chosen.value) == null ? void 0 : _a.skuId)) {
-          notify("请选择有效规格");
+        if (!((_a = chosen.value) == null ? void 0 : _a.skuId) || !canAdd.value) {
+          notify("请选择有效规格及库存范围内的数量");
           return;
         }
         const valid = scope.capture(), productId = selected.value.productId, skuId = chosen.value.skuId, requested = Number(count.value);
@@ -1255,7 +1289,7 @@
         go,
         money,
         skuOf,
-        priceSku: priceSku2,
+        priceSku,
         available,
         shopName,
         preview,
@@ -1274,6 +1308,7 @@
         chosenSku,
         count,
         saving,
+        canAdd,
         productCategory,
         currentShop,
         staticCategoryArt,
@@ -1600,7 +1635,7 @@
                           _createElementVNode(
                             "span",
                             null,
-                            _toDisplayString(_ctx.skuOf(p).specKey),
+                            _toDisplayString(_ctx.priceSku(p).specKey),
                             1
                             /* TEXT */
                           ),
@@ -1616,7 +1651,7 @@
                           _createElementVNode(
                             "span",
                             { class: "price-main" },
-                            _toDisplayString(_ctx.money(_ctx.priceSku(p).priceCent)),
+                            _toDisplayString(_ctx.money(_ctx.priceSku(p).priceCent)) + " 起",
                             1
                             /* TEXT */
                           ),
@@ -1751,8 +1786,11 @@
                         key: sku2.skuId,
                         class: _normalizeClass({ active: _ctx.chosenSku === sku2.skuId }),
                         "aria-pressed": _ctx.chosenSku === sku2.skuId,
-                        disabled: _ctx.saving || sku2.status !== "ACTIVE" || sku2.available === 0,
-                        onClick: ($event) => _ctx.chosenSku = sku2.skuId
+                        disabled: _ctx.saving || sku2.status !== "ACTIVE" || Number(sku2.available) <= 0,
+                        onClick: ($event) => {
+                          _ctx.chosenSku = sku2.skuId;
+                          _ctx.count = 1;
+                        }
                       }, _toDisplayString(sku2.specKey), 11, ["aria-pressed", "disabled", "onClick"]);
                     }),
                     128
@@ -1793,7 +1831,7 @@
                 ]),
                 _createElementVNode("button", {
                   class: "primary-wide",
-                  disabled: !_ctx.chosen.skuId || !_ctx.chosen.available || _ctx.saving || _ctx.preview,
+                  disabled: !_ctx.canAdd || _ctx.saving || _ctx.preview,
                   onClick: _ctx.addCart
                 }, _toDisplayString(_ctx.saving ? "加入中…" : "加入购物车"), 9, ["disabled", "onClick"])
               ], 8, ["aria-label"])
@@ -1807,7 +1845,7 @@
       };
     })()
   };
-  const { ref: ref$c, computed: computed$d, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$c } = Vue;
+  const { ref: ref$d, computed: computed$d, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$c } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
     { label: "高蛋白零食", icon: "sparkles", query: "想买点高蛋白的零食，有什么推荐？" },
@@ -1818,19 +1856,19 @@
     name: "Guide",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const input = ref$c("");
-      const thinking = ref$c(false);
-      const selectedIds = ref$c([]);
-      const messages = ref$c([]);
-      const proposal = ref$c(null);
-      const mode = ref$c("");
-      const error = ref$c("");
-      const historyOpen = ref$c(false);
-      const conversations = ref$c([]);
-      const historyPage = ref$c(1);
-      const historyHasMore = ref$c(false);
-      const loadingHistory = ref$c(false);
-      const openingConversation = ref$c(false);
+      const input = ref$d("");
+      const thinking = ref$d(false);
+      const selectedIds = ref$d([]);
+      const messages = ref$d([]);
+      const proposal = ref$d(null);
+      const mode = ref$d("");
+      const error = ref$d("");
+      const historyOpen = ref$d(false);
+      const conversations = ref$d([]);
+      const historyPage = ref$d(1);
+      const historyHasMore = ref$d(false);
+      const loadingHistory = ref$d(false);
+      const openingConversation = ref$d(false);
       let conversationEpoch = 0, historyEpoch = 0;
       const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$d(
@@ -2476,7 +2514,7 @@
       };
     })()
   };
-  const { ref: ref$b, computed: computed$c, onBeforeUnmount, watch: watch$b } = Vue;
+  const { ref: ref$c, computed: computed$c, onBeforeUnmount, watch: watch$b } = Vue;
   const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES = 2e6;
   const ProductImageField = {
@@ -2491,7 +2529,7 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit }) {
-      const busy = ref$b(false), error = ref$b(""), notice = ref$b(""), localUrl = ref$b("");
+      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), localUrl = ref$c("");
       const scope = requestScope();
       let alive = true, epoch = 0;
       watch$b(
@@ -2672,7 +2710,7 @@
       };
     })()
   };
-  const { ref: ref$a, computed: computed$b, watch: watch$a, nextTick: nextTick$1, onMounted: onMounted$b, onUnmounted: onUnmounted$8 } = Vue;
+  const { ref: ref$b, computed: computed$b, watch: watch$a, nextTick: nextTick$1, onMounted: onMounted$b, onUnmounted: onUnmounted$8 } = Vue;
   const MENU = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
@@ -2689,33 +2727,34 @@
     name: "Merchant",
     components: { AuthDialog, ProductImage, ProductImageField },
     setup() {
-      const search = ref$a("");
-      const category = ref$a("");
-      const status = ref$a("");
-      const sort = ref$a("NEWEST");
-      const page = ref$a(1);
-      const selectedId = ref$a("");
-      const selectedSkuId = ref$a("");
-      const drawerTab = ref$a("stock");
-      const loginOpen = ref$a(false);
-      const adjustment = ref$a(1);
-      const pendingReplenishKey = ref$a("");
-      const pendingReplenishPayload = ref$a("");
-      const saving = ref$a(false);
-      const modal2 = ref$a("");
-      const activePriceSku = ref$a(null);
-      const newPrice = ref$a("");
-      const form = ref$a({
+      const scope = requestScope();
+      const search = ref$b("");
+      const category = ref$b("");
+      const status = ref$b("");
+      const sort = ref$b("NEWEST");
+      const page = ref$b(1);
+      const selectedId = ref$b("");
+      const selectedSkuId = ref$b("");
+      const drawerTab = ref$b("stock");
+      const loginOpen = ref$b(false);
+      const adjustment = ref$b(1);
+      const pendingReplenishKey = ref$b("");
+      const pendingReplenishPayload = ref$b("");
+      const saving = ref$b(false);
+      const modal2 = ref$b("");
+      const activePriceSku = ref$b(null);
+      const newPrice = ref$b("");
+      const form = ref$b({
         title: "",
         description: "",
         categoryCode: "food",
         imageUrl: "",
         skus: [{ specKey: "默认规格", price: "4.50" }]
       });
-      const skuForm = ref$a({ specKey: "", price: "" });
-      const info = ref$a({ title: "", description: "", categoryCode: "food", imageUrl: "" });
-      const createImageUploading = ref$a(false), editImageUploading = ref$a(false);
-      const createImageInvalid = ref$a(false), editImageInvalid = ref$a(false);
+      const skuForm = ref$b({ specKey: "", price: "" });
+      const info = ref$b({ title: "", description: "", categoryCode: "food", imageUrl: "" });
+      const createImageUploading = ref$b(false), editImageUploading = ref$b(false);
+      const createImageInvalid = ref$b(false), editImageInvalid = ref$b(false);
       const merchant = computed$b(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {}
       );
@@ -2733,7 +2772,7 @@
         "/merchant/settings": "store.manage"
       };
       const visibleMenu = computed$b(() => MENU.filter(([, , path]) => hasPermission(required[path])));
-      const mobileNav = ref$a(null);
+      const mobileNav = ref$b(null);
       const alignMobileNav = () => {
         var _a;
         const nav = mobileNav.value;
@@ -2831,6 +2870,7 @@
       function refreshPage() {
         if (preview) return;
         loadMerchant({
+          signal: scope.begin().signal,
           page: page.value,
           size: 9,
           q: search.value,
@@ -2839,16 +2879,29 @@
           sort: sort.value
         });
       }
-      watch$a([category, status, sort], () => {
-        page.value = 1;
-        refreshPage();
-      });
-      watch$a(search, () => {
-        page.value = 1;
-        clearTimeout(searchDelay);
-        searchDelay = setTimeout(refreshPage, 280);
-      });
-      watch$a(page, refreshPage);
+      onMounted$b(refreshPage);
+      onUnmounted$8(() => clearTimeout(searchDelay));
+      let resettingPage = false;
+      watch$a(
+        [page, search, category, status, sort],
+        (next, previous) => {
+          if (resettingPage) return;
+          clearTimeout(searchDelay);
+          if (!preview) {
+            invalidateMerchantSearch();
+            scope.begin();
+            store.loading = true;
+          }
+          const changed = next.slice(1).some((v, i) => v !== previous[i + 1]);
+          if (changed) {
+            resettingPage = true;
+            page.value = 1;
+            resettingPage = false;
+          }
+          searchDelay = setTimeout(refreshPage, next[1] !== previous[1] ? 280 : 0);
+        },
+        { flush: "sync" }
+      );
       function openCreate() {
         var _a;
         createImageUploading.value = false;
@@ -3102,7 +3155,6 @@
         }
         switchMerchantContext(e.target.value);
         selectedId.value = "";
-        await loadMerchant();
       }
       return {
         mobileNav,
@@ -3125,6 +3177,7 @@
         previewGuard,
         notify,
         loadMerchant,
+        invalidateMerchantSearch,
         owned,
         merchant,
         visibleMenu,
@@ -4460,13 +4513,13 @@
       };
     })()
   };
-  const { ref: ref$9, computed: computed$a, onMounted: onMounted$a, watch: watch$9 } = Vue;
+  const { ref: ref$a, computed: computed$a, onMounted: onMounted$a, watch: watch$9 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
     components: { ConsumerShell, ProductImage },
     setup() {
       const scope = requestScope();
-      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), error = ref$9("");
+      const product = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), error = ref$a("");
       const id = computed$a(() => safeDecodeId(store.route.split("/")[2] || ""));
       const sku2 = computed$a(
         () => {
@@ -4481,7 +4534,7 @@
         }) || {}
       );
       async function load() {
-        const request = scope.begin();
+        const request2 = scope.begin();
         const target = id.value;
         product.value = null;
         error.value = "";
@@ -4490,18 +4543,17 @@
         } else {
           try {
             if (!target) throw Error("无效商品地址");
-            const p = await api("/products/" + pathId(target), { signal: request.signal });
-            if (request.current()) product.value = p;
+            const p = await api("/products/" + pathId(target), { signal: request2.signal });
+            if (request2.current()) product.value = p;
           } catch (e) {
-            if (request.current()) error.value = e.message;
+            if (request2.current()) error.value = e.message;
           }
         }
-        if (!request.current()) return;
+        if (!request2.current()) return;
         chosen.value = skuOf(product.value).skuId || "";
         count.value = 1;
       }
       onMounted$a(load);
-      watch$9(id, load);
       async function add() {
         var _a;
         if (preview || busy.value || !((_a = sku2.value) == null ? void 0 : _a.skuId)) return;
@@ -4623,7 +4675,7 @@
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.merchant.name || "校园商户"),
+                        _toDisplayString(_ctx.product.merchantName || _ctx.merchant.name || "校园商户"),
                         1
                         /* TEXT */
                       ),
@@ -4733,22 +4785,23 @@
       };
     })()
   };
-  const { ref: ref$8, computed: computed$9, onMounted: onMounted$9, onUnmounted: onUnmounted$7, watch: watch$8 } = Vue;
+  const { ref: ref$9, computed: computed$9, onMounted: onMounted$9, onUnmounted: onUnmounted$7, watch: watch$8 } = Vue;
   const Shop = {
     name: "Shop",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
+      const merchant = ref$9(null), products = ref$9([]), error = ref$9(""), loading = ref$9(false), page = ref$9(1), hasNext = ref$9(false);
       const id = computed$9(
         () => safeDecodeId(store.route.slice("/shops/".length).split("/")[0] || "")
       );
       let loadVersion = 0;
       async function load() {
+        var _a;
         const stamp = ++loadVersion, current = id.value, currentPage = page.value;
         const valid = () => stamp === loadVersion && current === id.value && currentPage === page.value;
         error.value = "";
         loading.value = true;
-        merchant.value = null;
+        if (((_a = merchant.value) == null ? void 0 : _a.merchantId) !== current) merchant.value = null;
         products.value = [];
         hasNext.value = false;
         try {
@@ -4761,7 +4814,7 @@
             hasNext.value = all.length > currentPage * 12;
           } else {
             const [m, p] = await Promise.all([
-              api("/merchants/public/" + encodeURIComponent(current)),
+              merchant.value ? Promise.resolve(merchant.value) : api("/merchants/public/" + encodeURIComponent(current)),
               api("/products/page" + query({ merchantId: current, page: currentPage, size: 12 }))
             ]);
             if (!valid()) return;
@@ -4777,10 +4830,6 @@
       }
       onMounted$9(load);
       onUnmounted$7(() => ++loadVersion);
-      watch$8(id, () => {
-        if (page.value !== 1) page.value = 1;
-        else load();
-      });
       watch$8(page, load);
       return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
     },
@@ -5164,13 +5213,13 @@
       permissions: ["product.read", "product.write", "stock.read"]
     }
   ];
-  const { ref: ref$7, computed: computed$8, onMounted: onMounted$8 } = Vue;
+  const { ref: ref$8, computed: computed$8, onMounted: onMounted$8 } = Vue;
   const Cart = {
     name: "Cart",
     components: { ConsumerShell, ProductImage },
     setup() {
       const scope = requestScope();
-      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7("");
+      const items2 = ref$8([]), merchantId = ref$8(""), busy = ref$8(false), loading = ref$8(true), error = ref$8(""), orderKey = ref$8(""), fingerprint = ref$8("");
       const groups = computed$8(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
@@ -5194,23 +5243,23 @@
       };
       async function load() {
         var _a;
-        const request = scope.begin();
+        const request2 = scope.begin();
         loading.value = true;
         error.value = "";
         if (preview) {
           items2.value = DEMO_CART.map((i) => ({ ...i }));
         } else {
           try {
-            const result = await api("/cart", { signal: request.signal });
-            if (!request.current()) return;
+            const result = await api("/cart", { signal: request2.signal });
+            if (!request2.current()) return;
             items2.value = result || [];
           } catch (e) {
-            if (!request.current()) return;
+            if (!request2.current()) return;
             error.value = e.message;
             items2.value = [];
           }
         }
-        if (!request.current()) return;
+        if (!request2.current()) return;
         loading.value = false;
         if (!items2.value.some((i) => i.merchantId === merchantId.value))
           merchantId.value = ((_a = items2.value[0]) == null ? void 0 : _a.merchantId) || "";
@@ -5236,7 +5285,7 @@
         }
       }
       async function checkout() {
-        if (preview || busy.value || !selected.value.length) return;
+        if (preview || busy.value || loading.value || !selected.value.length) return;
         if (selected.value.length > 20) {
           notify("每笔订单最多支持20个SKU行，请减少商品规格后结算");
           return;
@@ -5530,7 +5579,7 @@
               ]),
               _createElementVNode("button", {
                 class: "teal-button",
-                disabled: _ctx.preview || _ctx.busy || !_ctx.selected.length,
+                disabled: _ctx.preview || _ctx.busy || _ctx.loading || !_ctx.selected.length,
                 onClick: _ctx.checkout
               }, _toDisplayString(_ctx.busy ? "提交中" : "提交订单"), 9, ["disabled", "onClick"])
             ])) : _createCommentVNode("v-if", true)
@@ -5541,13 +5590,13 @@
       };
     })()
   };
-  const { ref: ref$6, computed: computed$7, onMounted: onMounted$7, watch: watch$7 } = Vue;
+  const { ref: ref$7, computed: computed$7, onMounted: onMounted$7, watch: watch$7 } = Vue;
   const Orders = {
     name: "Orders",
     components: { ConsumerShell, ProductImage },
     setup() {
       const scope = requestScope();
-      const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
+      const orders = ref$7([]), detail = ref$7(null), token = ref$7(null), error = ref$7(""), busy = ref$7(false), loading = ref$7(true), tab = ref$7("ALL"), page = ref$7(1), pageInfo = ref$7({ total: 0, hasNext: false }), refundOpen = ref$7(false), reason = ref$7("");
       const id = computed$7(
         () => store.route.startsWith("/orders/") ? safeDecodeId(store.route.slice("/orders/".length)) : null
       );
@@ -5559,7 +5608,7 @@
         return (record == null ? void 0 : record.merchantName) || ((_a = store.merchants.find((m) => m.merchantId === id2)) == null ? void 0 : _a.name) || "校内商户";
       };
       async function load() {
-        const request = scope.begin();
+        const request2 = scope.begin();
         const target = id.value;
         loading.value = true;
         error.value = "";
@@ -5575,32 +5624,31 @@
         try {
           if (store.route.startsWith("/orders/") && !target) throw Error("无效订单地址");
           if (id.value) {
-            const result = await api("/orders/" + pathId(target), { signal: request.signal });
-            if (request.current()) detail.value = result;
+            const result = await api("/orders/" + pathId(target), { signal: request2.signal });
+            if (request2.current()) detail.value = result;
           } else {
             detail.value = null;
             const result = await api(
               "/orders/page" + query({ page: page.value, size: 10, state: tab.value === "ALL" ? "" : tab.value }),
-              { signal: request.signal }
+              { signal: request2.signal }
             );
-            if (!request.current()) return;
+            if (!request2.current()) return;
             orders.value = result.items || [];
             pageInfo.value = result;
           }
         } catch (e) {
-          if (request.current()) error.value = e.message;
+          if (request2.current()) error.value = e.message;
         } finally {
-          if (request.current()) loading.value = false;
+          if (request2.current()) loading.value = false;
         }
       }
       onMounted$7(load);
-      watch$7(id, load);
       watch$7([page, tab], () => {
         if (!id.value) load();
       });
       async function action(endpoint, method = "POST", body) {
         var _a;
-        if (preview || busy.value || !detail.value) return;
+        if (preview || busy.value || loading.value || !!error.value || !detail.value) return;
         const current = scope.capture(), orderId = detail.value.orderId;
         busy.value = true;
         try {
@@ -5696,11 +5744,12 @@
                   /* TEXT */
                 ),
                 _createElementVNode("button", {
+                  disabled: _ctx.busy || _ctx.loading,
                   onClick: _ctx.load,
                   "aria-label": "刷新"
                 }, [
                   _createVNode(_component_Icon, { name: "refresh" })
-                ], 8, ["onClick"])
+                ], 8, ["disabled", "onClick"])
               ]),
               _ctx.loading ? (_openBlock(), _createElementBlock("div", {
                 key: 0,
@@ -5974,7 +6023,7 @@
                     ])),
                     _createElementVNode("button", {
                       class: "teal-button",
-                      disabled: _ctx.preview || _ctx.busy || !_ctx.allowToken,
+                      disabled: _ctx.preview || _ctx.busy || _ctx.loading || !!_ctx.error || !_ctx.allowToken,
                       onClick: ($event) => _ctx.action("/pickup-token")
                     }, _toDisplayString(_ctx.token ? "重新签发自提凭证" : "领取自提凭证"), 9, ["disabled", "onClick"])
                   ])) : _createCommentVNode("v-if", true),
@@ -6091,24 +6140,25 @@
                     _ctx.detail.status === "PENDING_PAYMENT" ? (_openBlock(), _createElementBlock("button", {
                       key: 0,
                       class: "teal-button",
-                      disabled: _ctx.busy,
+                      disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
                       onClick: ($event) => _ctx.action("/pay")
                     }, "模拟支付", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
                     _ctx.detail.status === "PENDING_PAYMENT" ? (_openBlock(), _createElementBlock("button", {
                       key: 1,
                       class: "outline-button",
-                      disabled: _ctx.busy,
+                      disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
                       onClick: ($event) => _ctx.action("/cancel")
                     }, "取消订单", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
                     _ctx.detail.status === "PAID" && !_ctx.detail.afterSale ? (_openBlock(), _createElementBlock("button", {
                       key: 2,
                       class: "outline-button",
+                      disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
                       onClick: ($event) => _ctx.refundOpen = !_ctx.refundOpen
-                    }, "申请退款", 8, ["onClick"])) : _createCommentVNode("v-if", true),
+                    }, "申请退款", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
                     _ctx.detail.status === "PAID" && ((_e = _ctx.detail.afterSale) == null ? void 0 : _e.status) === "REJECTED" ? (_openBlock(), _createElementBlock("button", {
                       key: 3,
                       class: "outline-button",
-                      disabled: _ctx.busy,
+                      disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
                       onClick: ($event) => _ctx.action("/appeal")
                     }, "申请平台介入", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                   ])) : _createCommentVNode("v-if", true),
@@ -6134,7 +6184,7 @@
                     _createElementVNode("button", {
                       type: "submit",
                       class: "teal-button",
-                      disabled: _ctx.busy
+                      disabled: _ctx.busy || _ctx.loading || !!_ctx.error
                     }, "提交退款申请", 8, ["disabled"])
                   ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
                 ],
@@ -6152,16 +6202,16 @@
       };
     })()
   };
-  const { ref: ref$5, computed: computed$6, onMounted: onMounted$6, onUnmounted: onUnmounted$6, watch: watch$6 } = Vue;
+  const { ref: ref$6, computed: computed$6, onMounted: onMounted$6, onUnmounted: onUnmounted$6, watch: watch$6 } = Vue;
   const Account = {
     name: "Account",
     components: { ConsumerShell, AuthDialog },
     setup() {
       const scope = requestScope();
-      const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
-      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5(""), fingerprint = ref$5("");
+      const page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false });
+      const login = ref$6(false), apps = ref$6([]), invitations = ref$6([]), invitePage = ref$6(1), error = ref$6(""), busy = ref$6(false), loading = ref$6(false), key = ref$6(""), fingerprint = ref$6("");
       let loadEpoch = 0;
-      const form = ref$5({
+      const form = ref$6({
         merchantName: "",
         category: "便利零售",
         contactName: "",
@@ -6189,7 +6239,6 @@
         }
         loading.value = true;
         try {
-          await loadSession();
           if (stamp !== loadEpoch) return;
           const actor = (_a = store.user) == null ? void 0 : _a.userId;
           if (!store.user) {
@@ -6198,8 +6247,8 @@
             return;
           }
           const [a, i] = await Promise.all([
-            api("/merchant-applications/mine/page" + query({ page: page.value, size: 10 })),
-            api("/invitations" + query({ page: invitePage.value, size: 20 }))
+            !isApply.value && !isInvite.value ? api("/merchant-applications/mine/page" + query({ page: page.value, size: 10 })) : Promise.resolve({ items: [], total: 0 }),
+            !isApply.value ? api("/invitations" + query({ page: invitePage.value, size: 20 })) : Promise.resolve([])
           ]);
           if (stamp !== loadEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return;
           apps.value = a.items || [];
@@ -6212,7 +6261,6 @@
         }
       }
       onMounted$6(load);
-      watch$6(() => store.route, load);
       watch$6(page, load);
       watch$6(invitePage, load);
       onUnmounted$6(() => ++loadEpoch);
@@ -6660,7 +6708,7 @@
       };
     })()
   };
-  const { ref: ref$4, computed: computed$5, watch: watch$5, nextTick, onMounted: onMounted$5, onUnmounted: onUnmounted$5 } = Vue;
+  const { ref: ref$5, computed: computed$5, watch: watch$5, nextTick, onMounted: onMounted$5, onUnmounted: onUnmounted$5 } = Vue;
   const merchantNav = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
@@ -6688,7 +6736,7 @@
     props: { role: { type: String, default: "merchant" }, title: String },
     components: { AuthDialog },
     setup() {
-      const loginOpen = ref$4(false), mobileNav = ref$4(null);
+      const loginOpen = ref$5(false), mobileNav = ref$5(null);
       const required = {
         "/merchant": "order.read",
         "/merchant/products": "product.read",
@@ -6726,7 +6774,6 @@
           return;
         }
         switchMerchantContext(e.target.value);
-        await loadMerchant();
       }
       return {
         store,
@@ -6942,7 +6989,7 @@
       };
     })()
   };
-  const { ref: ref$3, computed: computed$4, onMounted: onMounted$4, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
+  const { ref: ref$4, computed: computed$4, onMounted: onMounted$4, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
   const names = {
     "/merchant": "经营概览",
     "/merchant/inventory": "库存管理",
@@ -6959,11 +7006,11 @@
       const scope = requestScope();
       const route = computed$4(() => store.route);
       const title = computed$4(() => names[route.value] || "经营概览");
-      const filter = ref$3("");
-      const q = ref$3("");
-      const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3("");
-      const page = ref$3(1), pageInfo = ref$3({ total: 0, hasNext: false }), amount = ref$3(1), sku2 = ref$3(""), inviteUser = ref$3(""), profile = ref$3({ name: "", storeName: "", location: "" });
-      const replenishKey = ref$3(""), replenishFingerprint = ref$3("");
+      const filter = ref$4("");
+      const q = ref$4("");
+      const stats = ref$4(null), orders = ref$4([]), afterSales = ref$4([]), members = ref$4([]), moves = ref$4([]), stockRows = ref$4([]), error = ref$4(""), loading = ref$4(false), busy = ref$4(false), picked = ref$4(null), token = ref$4(""), decision = ref$4(""), reason = ref$4("");
+      const page = ref$4(1), pageInfo = ref$4({ total: 0, hasNext: false }), amount = ref$4(1), sku2 = ref$4(""), inviteUser = ref$4(""), profile = ref$4({ name: "", storeName: "", location: "" });
+      const replenishKey = ref$4(""), replenishFingerprint = ref$4("");
       const merchant = computed$4(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || {}
       );
@@ -6996,7 +7043,7 @@
       );
       const canOwner = computed$4(() => isOwner());
       const can = computed$4(() => (code) => hasPermission(code));
-      const roles = ref$3([]);
+      const roles = ref$4([]);
       const routePermission = {
         "/merchant": "order.read",
         "/merchant/inventory": "stock.read",
@@ -7010,33 +7057,13 @@
         () => !preview && !hasPermission(routePermission[route.value] || "order.read")
       );
       const canAct = computed$4(
-        () => !preview && !busy.value && !!store.merchantId && !restricted.value
+        () => !preview && !busy.value && !loading.value && !error.value && !!store.merchantId && !restricted.value
       );
       let loadVersion = 0;
-      function clearPrivateViews() {
-        token.value = "";
-        reason.value = "";
-        filter.value = "";
-        q.value = "";
-        sku2.value = "";
-        amount.value = 1;
-        inviteUser.value = "";
-        replenishKey.value = "";
-        replenishFingerprint.value = "";
-        profile.value = { name: "", storeName: "", location: "" };
-        roles.value = [];
-        stats.value = null;
-        orders.value = [];
-        afterSales.value = [];
-        members.value = [];
-        moves.value = [];
-        stockRows.value = [];
-        picked.value = null;
-        decision.value = "";
-        pageInfo.value = { total: 0, hasNext: false };
-      }
       async function load() {
         var _a;
+        const request2 = scope.begin();
+        const read = (path) => api(path, { signal: request2.signal });
         const stamp = ++loadVersion;
         const section = route.value;
         error.value = "";
@@ -7068,11 +7095,12 @@
           var _a2;
           return stamp === loadVersion && route.value === section && store.merchantId === mid && ((_a2 = store.user) == null ? void 0 : _a2.userId) === actor;
         };
+        loading.value = true;
         try {
           if (section === "/merchant") {
             const [s, o] = await Promise.all([
-              hasPermission("dashboard.read") ? api(base + "/statistics") : Promise.resolve(null),
-              api(base + "/orders/page" + query({ page: 1, size: 5 }))
+              hasPermission("dashboard.read") ? read(base + "/statistics") : Promise.resolve(null),
+              read(base + "/orders/page" + query({ page: 1, size: 5 }))
             ]);
             if (!current()) return;
             stats.value = s;
@@ -7080,7 +7108,7 @@
             pageInfo.value = o;
           }
           if (section === "/merchant/orders" || section === "/merchant/pickup") {
-            const result = await api(
+            const result = await read(
               base + "/orders/page" + query({ page: page.value, size: 10, state: filter.value, q: q.value })
             );
             if (!current()) return;
@@ -7088,7 +7116,7 @@
             pageInfo.value = result;
           }
           if (section === "/merchant/aftersales") {
-            const result = await api(
+            const result = await read(
               base + "/aftersales/page" + query({ page: page.value, size: 10 })
             );
             if (!current()) return;
@@ -7097,8 +7125,8 @@
           }
           if (section === "/merchant/inventory") {
             const [stockResult, movements] = await Promise.all([
-              api(base + "/stocks/page" + query({ page: page.value, size: 10, q: q.value })),
-              api(base + "/stock-movements/page" + query({ page: 1, size: 8 }))
+              read(base + "/stocks/page" + query({ page: page.value, size: 10, q: q.value })),
+              read(base + "/stock-movements/page" + query({ page: 1, size: 8 }))
             ]);
             if (!current()) return;
             stockRows.value = stockResult.items || [];
@@ -7106,7 +7134,7 @@
             pageInfo.value = stockResult;
           }
           if (section === "/merchant/team") {
-            const [m, r] = await Promise.all([api(base + "/members"), api(base + "/rbac/roles")]);
+            const [m, r] = await Promise.all([read(base + "/members"), read(base + "/rbac/roles")]);
             if (!current()) return;
             members.value = m || [];
             roles.value = r || [];
@@ -7119,6 +7147,8 @@
             };
         } catch (e) {
           if (current()) error.value = e.message;
+        } finally {
+          if (current()) loading.value = false;
         }
       }
       onMounted$4(load);
@@ -7126,29 +7156,25 @@
         ++loadVersion;
         clearTimeout(searchDelay);
       });
-      watch$4([route, () => store.merchantId, () => {
-        var _a;
-        return (_a = store.user) == null ? void 0 : _a.userId;
-      }], () => {
-        ++loadVersion;
-        clearPrivateViews();
-        page.value = 1;
-        load();
-      });
-      watch$4(page, load);
-      watch$4(filter, () => {
-        page.value = 1;
-        if (route.value === "/merchant/orders" || route.value === "/merchant/pickup") load();
-      });
       let searchDelay;
-      watch$4(q, () => {
-        if (!preview && ["/merchant/orders", "/merchant/pickup", "/merchant/inventory"].includes(route.value)) {
-          ++loadVersion;
-          page.value = 1;
+      let resettingPage = false;
+      watch$4(
+        [page, q, filter],
+        (next, previous) => {
+          if (resettingPage) return;
           clearTimeout(searchDelay);
-          searchDelay = setTimeout(load, 280);
-        }
-      });
+          ++loadVersion;
+          loading.value = true;
+          const changed = next.slice(1).some((v, i) => v !== previous[i + 1]);
+          if (changed) {
+            resettingPage = true;
+            page.value = 1;
+            resettingPage = false;
+          }
+          searchDelay = setTimeout(load, next[1] !== previous[1] ? 280 : 0);
+        },
+        { flush: "sync" }
+      );
       async function perform(url, body, method = "POST", key) {
         if (!canAct.value) return;
         const current = scope.capture();
@@ -7214,7 +7240,9 @@
         if (!window.confirm("确定撤销该成员的商户权限？")) return;
         await perform(midPath() + "/members/" + pathId(m.userId), void 0, "DELETE");
       }
-      async function assignMember(m, code) {
+      async function assignMember(m, event) {
+        const code = event.target.value;
+        event.target.value = m.role;
         if (!canOwner.value || !code || code === m.role || m.role === "OWNER") return;
         await perform(
           midPath() + "/rbac/members/" + pathId(m.userId) + "/role",
@@ -7223,13 +7251,27 @@
         );
       }
       async function saveProfile() {
-        if (!canOwner.value) return;
+        if (!canOwner.value || !canAct.value) return;
+        const current = scope.capture();
         const v = profile.value;
         if (!v.name.trim() || !v.storeName.trim() || !v.location.trim()) {
           notify("请完善门店资料");
           return;
         }
-        if (await perform(midPath() + "/profile", { ...v }, "PUT")) await loadMerchant();
+        busy.value = true;
+        try {
+          const saved = await api(midPath() + "/profile", { method: "PUT", body: { ...v } });
+          if (!current()) return;
+          const index = store.merchants.findIndex((m) => m.merchantId === saved.merchantId);
+          if (index >= 0) store.merchants[index] = saved;
+          if (store.workspace) store.workspace.merchants = store.merchants;
+          profile.value = { name: saved.name, storeName: saved.storeName, location: saved.location };
+          notify("门店资料已保存");
+        } catch (e) {
+          if (current()) notify(e.message);
+        } finally {
+          if (current()) busy.value = false;
+        }
       }
       async function decisionAction(s, approved) {
         var _a;
@@ -7269,6 +7311,7 @@
         stockRows,
         error,
         busy,
+        loading,
         picked,
         selectedOrder,
         visibleOrders,
@@ -7309,7 +7352,7 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -7333,18 +7376,24 @@
           default: _withCtx(() => {
             var _a, _b, _c, _d, _e;
             return [
-              _ctx.error ? (_openBlock(), _createElementBlock(
-                "div",
-                {
-                  key: 0,
-                  class: "inline-error"
-                },
-                _toDisplayString(_ctx.error),
-                1
-                /* TEXT */
-              )) : _createCommentVNode("v-if", true),
-              _ctx.restricted ? (_openBlock(), _createElementBlock("div", {
+              _ctx.loading ? (_openBlock(), _createElementBlock("div", {
+                key: 0,
+                class: "inline-loading",
+                role: "status"
+              }, "正在加载…")) : _createCommentVNode("v-if", true),
+              _ctx.error ? (_openBlock(), _createElementBlock("div", {
                 key: 1,
+                class: "inline-error"
+              }, [
+                _createTextVNode(
+                  _toDisplayString(_ctx.error) + " ",
+                  1
+                  /* TEXT */
+                ),
+                _createElementVNode("button", { onClick: _ctx.load }, "重试", 8, ["onClick"])
+              ])) : _createCommentVNode("v-if", true),
+              _ctx.restricted ? (_openBlock(), _createElementBlock("div", {
+                key: 2,
                 class: "ops-card access-denied"
               }, [
                 _createVNode(_component_Icon, {
@@ -7354,7 +7403,7 @@
                 _createElementVNode("h2", null, "无权限访问")
               ])) : _ctx.route === "/merchant" ? (_openBlock(), _createElementBlock(
                 _Fragment,
-                { key: 2 },
+                { key: 3 },
                 [
                   _ctx.stats ? (_openBlock(), _createElementBlock("div", {
                     key: 0,
@@ -7512,7 +7561,7 @@
                 64
                 /* STABLE_FRAGMENT */
               )) : _ctx.route === "/merchant/inventory" ? (_openBlock(), _createElementBlock("div", {
-                key: 3,
+                key: 4,
                 class: "ops-grid inventory-grid"
               }, [
                 _createElementVNode("section", { class: "ops-card" }, [
@@ -7743,7 +7792,7 @@
                   ))
                 ])
               ])) : _ctx.route === "/merchant/orders" || _ctx.route === "/merchant/pickup" ? (_openBlock(), _createElementBlock("div", {
-                key: 4,
+                key: 5,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -7980,7 +8029,7 @@
                   ])) : _createCommentVNode("v-if", true)
                 ])
               ])) : _ctx.route === "/merchant/aftersales" ? (_openBlock(), _createElementBlock("section", {
-                key: 5,
+                key: 6,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -8081,7 +8130,7 @@
                   ])
                 ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
               ])) : _ctx.route === "/merchant/team" ? (_openBlock(), _createElementBlock("div", {
-                key: 6,
+                key: 7,
                 class: "ops-grid"
               }, [
                 _createElementVNode("section", { class: "ops-card" }, [
@@ -8127,8 +8176,8 @@
                           key: 0,
                           class: "admin-input compact-select",
                           value: m.role,
-                          disabled: !_ctx.canAct,
-                          onChange: ($event) => _ctx.assignMember(m, $event.target.value)
+                          disabled: !_ctx.canAct || !_ctx.canOwner,
+                          onChange: ($event) => _ctx.assignMember(m, $event)
                         }, [
                           (_openBlock(true), _createElementBlock(
                             _Fragment,
@@ -8186,7 +8235,7 @@
                   }, "管理角色和权限", 8, ["onClick"])
                 ])
               ])) : _ctx.route === "/merchant/settings" ? (_openBlock(), _createElementBlock("section", {
-                key: 7,
+                key: 8,
                 class: "ops-card ops-settings"
               }, [
                 _createElementVNode("h2", null, "门店资料"),
@@ -8234,7 +8283,7 @@
                 ], 40, ["onSubmit"])
               ])) : _createCommentVNode("v-if", true),
               !_ctx.preview && ["/merchant/orders", "/merchant/pickup", "/merchant/aftersales", "/merchant/inventory"].includes(_ctx.route) && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
-                key: 8,
+                key: 9,
                 class: "sdd-pager"
               }, [
                 _createElementVNode(
@@ -8268,17 +8317,19 @@
       };
     })()
   };
-  const { ref: ref$2, computed: computed$3, onMounted: onMounted$3, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
+  const { ref: ref$3, computed: computed$3, onMounted: onMounted$3, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
   const Knowledge = {
     name: "Knowledge",
     components: { BackofficeShell },
     setup() {
       const scope = requestScope();
+      const docScope = requestScope();
+      const contentScope = requestScope();
       const role = computed$3(() => store.route.startsWith("/admin") ? "admin" : "merchant");
-      const bases = ref$2([]), docs = ref$2([]), active = ref$2(""), selected = ref$2(null), text = ref$2("");
-      const error = ref$2(""), busy = ref$2(false), newBase = ref$2(false), uploading = ref$2(false), baseName = ref$2(""), visibility = ref$2("PUBLIC"), title = ref$2(""), file = ref$2(null);
-      const docPage = ref$2(1), docInfo = ref$2({ total: 0, hasNext: false });
-      const versionRoot = ref$2(null), versionBase = ref$2(""), fileVersion = ref$2(0);
+      const bases = ref$3([]), docs = ref$3([]), active = ref$3(""), selected = ref$3(null), text = ref$3("");
+      const error = ref$3(""), busy = ref$3(false), newBase = ref$3(false), uploading = ref$3(false), baseName = ref$3(""), visibility = ref$3("PUBLIC"), title = ref$3(""), file = ref$3(null);
+      const docPage = ref$3(1), docInfo = ref$3({ total: 0, hasNext: false });
+      const versionRoot = ref$3(null), versionBase = ref$3(""), fileVersion = ref$3(0);
       function clearUpload() {
         versionRoot.value = null;
         versionBase.value = "";
@@ -8303,9 +8354,11 @@
         }
       );
       const context = (targetRole, targetMid) => targetRole === role.value && targetMid === store.merchantId;
+      let refreshingBases = false;
       async function load() {
         var _a, _b;
-        const valid = scope.capture();
+        const request2 = scope.begin();
+        const valid = request2.current;
         const stamp = ++baseEpoch2, currentRole = role.value, mid = store.merchantId;
         ++docEpoch;
         ++readEpoch;
@@ -8330,20 +8383,23 @@
           return;
         }
         try {
-          const result = preview ? DEMO_BASES : await api("/knowledge/bases");
+          const result = preview ? DEMO_BASES : await api("/knowledge/bases", { signal: request2.signal });
           if (!valid() || stamp !== baseEpoch2 || !context(currentRole, mid)) return;
           bases.value = (result || []).filter(
             (b) => currentRole === "admin" ? b.merchantId == null : b.merchantId === mid
           );
           if (!bases.value.some((b) => b.id === active.value))
             active.value = ((_b = bases.value[0]) == null ? void 0 : _b.id) || "";
+          refreshingBases = true;
           docPage.value = 1;
+          refreshingBases = false;
           await loadDocs();
         } catch (e) {
           if (stamp === baseEpoch2 && context(currentRole, mid)) error.value = e.message;
         }
       }
       async function loadDocs() {
+        const request2 = docScope.begin();
         const stamp = ++docEpoch, id = active.value, page = docPage.value, currentRole = role.value, mid = store.merchantId;
         ++readEpoch;
         selected.value = null;
@@ -8353,14 +8409,15 @@
           docInfo.value = { total: 0, hasNext: false };
           return;
         }
-        const valid = () => stamp === docEpoch && active.value === id && docPage.value === page && context(currentRole, mid);
+        const valid = () => request2.current() && stamp === docEpoch && active.value === id && docPage.value === page && context(currentRole, mid);
         try {
           const result = preview ? {
             items: DEMO_DOCS.filter((d) => d.baseId === id),
             total: DEMO_DOCS.filter((d) => d.baseId === id).length,
             hasNext: false
           } : await api(
-            "/knowledge/bases/" + pathId(id) + "/documents/page" + query({ page, size: 15 })
+            "/knowledge/bases/" + pathId(id) + "/documents/page" + query({ page, size: 15 }),
+            { signal: request2.signal }
           );
           if (!valid()) return;
           docs.value = result.items || [];
@@ -8375,11 +8432,24 @@
         ++docEpoch;
         ++readEpoch;
       });
-      watch$3([role, () => store.merchantId, canRead, canManage], load);
-      watch$3(docPage, loadDocs);
+      watch$3(
+        docPage,
+        () => {
+          if (!refreshingBases) loadDocs();
+        },
+        { flush: "sync" }
+      );
+      function selectBase(id) {
+        active.value = id;
+        refreshingBases = true;
+        docPage.value = 1;
+        refreshingBases = false;
+        loadDocs();
+      }
       async function read(d) {
         var _a;
-        const valid = scope.capture();
+        const request2 = contentScope.begin();
+        const valid = request2.current;
         const stamp = ++readEpoch, id = active.value, mid = store.merchantId, currentRole = role.value;
         selected.value = d;
         text.value = "";
@@ -8388,7 +8458,9 @@
           return;
         }
         try {
-          const result = await api("/knowledge/documents/" + pathId(d.id));
+          const result = await api("/knowledge/documents/" + pathId(d.id), {
+            signal: request2.signal
+          });
           if (stamp === readEpoch && active.value === id && ((_a = selected.value) == null ? void 0 : _a.id) === d.id && context(currentRole, mid)) {
             text.value = result.content || "";
             selected.value = result;
@@ -8547,6 +8619,7 @@
         read,
         load,
         loadDocs,
+        selectBase,
         docPage,
         docInfo,
         create,
@@ -8727,11 +8800,7 @@
                         class: _normalizeClass(["kb-base", { active: _ctx.active === b.id }]),
                         disabled: _ctx.busy,
                         "aria-pressed": _ctx.active === b.id,
-                        onClick: ($event) => {
-                          _ctx.active = b.id;
-                          _ctx.docPage = 1;
-                          _ctx.loadDocs();
-                        }
+                        onClick: ($event) => _ctx.selectBase(b.id)
                       }, [
                         _createElementVNode("span", { class: "mini-icon" }, [
                           _createVNode(_component_Icon, { name: "book" })
@@ -9014,7 +9083,7 @@
       };
     })()
   };
-  const { ref: ref$1, computed: computed$2, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
+  const { ref: ref$2, computed: computed$2, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
   const titles = {
     "/admin": "平台总览",
     "/admin/applications": "商户审核",
@@ -9028,9 +9097,10 @@
     name: "Platform",
     components: { BackofficeShell, ProductImage },
     setup() {
+      const scope = requestScope();
       const route = computed$2(() => store.route), title = computed$2(() => titles[route.value] || "平台总览");
-      const stats = ref$1(null), applications = ref$1([]), merchants = ref$1([]), products = ref$1([]), orders = ref$1([]), aftersales = ref$1([]), categories = ref$1([]);
-      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), category = ref$1({ code: "", name: "", active: true }), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      const stats = ref$2(null), applications = ref$2([]), merchants = ref$2([]), products = ref$2([]), orders = ref$2([]), aftersales = ref$2([]), categories = ref$2([]);
+      const selectedId = ref$2(""), search = ref$2(""), state = ref$2(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$2(1), pageInfo = ref$2({ total: 0, hasNext: false }), reason = ref$2(""), category = ref$2({ code: "", name: "", active: true }), loading = ref$2(false), busy = ref$2(false), error = ref$2(""), allowed = ref$2(preview);
       const pickedApplication = computed$2(
         () => applications.value.find((a) => a.applicationId === selectedId.value) || applications.value[0] || null
       );
@@ -9046,18 +9116,10 @@
         );
       });
       let loadVersion = 0;
-      function clearPrivateViews() {
-        stats.value = null;
-        applications.value = [];
-        merchants.value = [];
-        products.value = [];
-        orders.value = [];
-        aftersales.value = [];
-        selectedId.value = "";
-        pageInfo.value = { total: 0, hasNext: false };
-      }
       async function load() {
         var _a;
+        const request2 = scope.begin();
+        const read = (path) => api(path, { signal: request2.signal });
         const stamp = ++loadVersion;
         const current = route.value;
         error.value = "";
@@ -9072,24 +9134,24 @@
           categories.value = DEMO_CATEGORIES;
           return;
         }
+        loading.value = true;
         try {
-          await loadSession();
           if (stamp !== loadVersion) return;
           const actor = (_a = store.user) == null ? void 0 : _a.userId;
           const valid = () => {
             var _a2;
             return stamp === loadVersion && route.value === current && ((_a2 = store.user) == null ? void 0 : _a2.userId) === actor;
           };
-          const work = await api("/workspace");
+          const work = store.workspace || await read("/workspace");
           if (!valid()) return;
           store.workspace = work;
           allowed.value = !!(work == null ? void 0 : work.platformAdmin);
           if (!allowed.value) return;
           if (current === "/admin") {
             const [s, m, o] = await Promise.all([
-              api("/admin/statistics"),
-              api("/admin/merchants/page" + query({ page: 1, size: 6 })),
-              api("/admin/orders/page" + query({ page: 1, size: 6 }))
+              read("/admin/statistics"),
+              read("/admin/merchants/page" + query({ page: 1, size: 6 })),
+              read("/admin/orders/page" + query({ page: 1, size: 6 }))
             ]);
             if (!valid()) return;
             stats.value = s;
@@ -9097,7 +9159,7 @@
             orders.value = o.items || [];
           }
           if (current === "/admin/applications") {
-            const result = await api(
+            const result = await read(
               "/admin/merchant-applications/page" + query({ page: page.value, size: 12, state: state.value, q: search.value })
             );
             if (!valid()) return;
@@ -9105,7 +9167,7 @@
             pageInfo.value = result;
           }
           if (current === "/admin/merchants") {
-            const result = await api(
+            const result = await read(
               "/admin/merchants/page" + query({ page: page.value, size: 12, q: search.value })
             );
             if (!valid()) return;
@@ -9113,7 +9175,7 @@
             pageInfo.value = result;
           }
           if (current === "/admin/products") {
-            const result = await api(
+            const result = await read(
               "/admin/products/page" + query({ page: page.value, size: 12, q: search.value })
             );
             if (!valid()) return;
@@ -9121,7 +9183,7 @@
             pageInfo.value = result;
           }
           if (current === "/admin/orders") {
-            const result = await api(
+            const result = await read(
               "/admin/orders/page" + query({ page: page.value, size: 12, state: state.value, q: search.value })
             );
             if (!valid()) return;
@@ -9129,7 +9191,7 @@
             pageInfo.value = result;
           }
           if (current === "/admin/disputes") {
-            const result = await api(
+            const result = await read(
               "/admin/aftersales/page" + query({ page: page.value, size: 12, state: state.value })
             );
             if (!valid()) return;
@@ -9137,12 +9199,14 @@
             pageInfo.value = result;
           }
           if (current === "/admin/categories") {
-            const result = await api("/categories");
+            const result = await read("/categories");
             if (!valid()) return;
             categories.value = result || [];
           }
         } catch (e) {
           if (stamp === loadVersion && route.value === current) error.value = e.message;
+        } finally {
+          if (stamp === loadVersion) loading.value = false;
         }
       }
       onMounted$2(load);
@@ -9150,52 +9214,39 @@
         ++loadVersion;
         clearTimeout(searchDelay);
       });
-      watch$2(
-        () => {
-          var _a;
-          return (_a = store.user) == null ? void 0 : _a.userId;
-        },
-        () => {
-          ++loadVersion;
-          allowed.value = preview;
-          clearPrivateViews();
-          if (!preview && route.value.startsWith("/admin")) load();
-        }
-      );
-      watch$2(route, () => {
-        page.value = 1;
-        search.value = "";
-        state.value = route.value === "/admin/disputes" ? "DISPUTED" : "";
-        selectedId.value = "";
-        load();
-      });
-      watch$2(page, load);
-      watch$2(state, () => {
-        page.value = 1;
-        if (route.value !== "/admin") load();
-      });
       let searchDelay;
-      watch$2(search, () => {
-        page.value = 1;
-        if (!preview && ["/admin/products", "/admin/merchants", "/admin/applications", "/admin/orders"].includes(
-          route.value
-        )) {
+      let resettingPage = false;
+      watch$2(
+        [page, search, state],
+        (next, previous) => {
+          if (resettingPage) return;
           clearTimeout(searchDelay);
-          searchDelay = setTimeout(load, 280);
-        }
-      });
+          ++loadVersion;
+          loading.value = true;
+          const changed = next.slice(1).some((v, i) => v !== previous[i + 1]);
+          if (changed) {
+            resettingPage = true;
+            page.value = 1;
+            resettingPage = false;
+          }
+          searchDelay = setTimeout(load, next[1] !== previous[1] ? 280 : 0);
+        },
+        { flush: "sync" }
+      );
       async function perform(path, body) {
-        if (preview || busy.value || !allowed.value) return;
+        if (preview || busy.value || loading.value || !!error.value || !allowed.value) return;
+        const current = scope.capture();
         busy.value = true;
         try {
           await api(path, { method: "POST", body });
+          if (!current()) return;
           notify("操作成功");
           reason.value = "";
           await load();
         } catch (e) {
-          notify(e.message);
+          if (current()) notify(e.message);
         } finally {
-          busy.value = false;
+          if (current()) busy.value = false;
         }
       }
       function review(approved) {
@@ -9211,12 +9262,27 @@
         });
       }
       function stateMerchant(m) {
+        if (preview || busy.value || loading.value || !allowed.value) return;
+        const active = m.status !== "ACTIVE";
+        let comment = reason.value.trim();
+        if (!active) {
+          comment = window.prompt("请输入停用商户“" + m.name + "”的原因", comment);
+          if (comment === null) return;
+          comment = comment.trim();
+          if (!comment || comment.length > 500) {
+            notify("停用原因须为1~500字");
+            return;
+          }
+        }
+        if (!window.confirm("确定" + (active ? "启用" : "停用") + "商户“" + m.name + "”？")) return;
         perform("/admin/merchants/" + pathId(m.merchantId) + "/state", {
           active: m.status !== "ACTIVE",
-          reason: reason.value || "平台管理操作"
+          reason: comment || "平台管理操作"
         });
       }
       function forceProduct(p) {
+        if (preview || busy.value || loading.value || !allowed.value) return;
+        if (!window.confirm("确定强制下架商品“" + p.title + "”？")) return;
         perform("/admin/products/" + pathId(p.productId) + "/unpublish");
       }
       function decideRefund(a, approved) {
@@ -9269,6 +9335,7 @@
         reason,
         category,
         busy,
+        loading,
         error,
         allowed,
         pickedApplication,
@@ -9294,7 +9361,7 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -9318,18 +9385,24 @@
           default: _withCtx(() => {
             var _a;
             return [
-              _ctx.error ? (_openBlock(), _createElementBlock(
-                "div",
-                {
-                  key: 0,
-                  class: "inline-error"
-                },
-                _toDisplayString(_ctx.error),
-                1
-                /* TEXT */
-              )) : _createCommentVNode("v-if", true),
-              !_ctx.allowed && !_ctx.preview ? (_openBlock(), _createElementBlock("div", {
+              _ctx.loading ? (_openBlock(), _createElementBlock("div", {
+                key: 0,
+                class: "inline-loading",
+                role: "status"
+              }, "正在加载…")) : _createCommentVNode("v-if", true),
+              _ctx.error ? (_openBlock(), _createElementBlock("div", {
                 key: 1,
+                class: "inline-error"
+              }, [
+                _createTextVNode(
+                  _toDisplayString(_ctx.error) + " ",
+                  1
+                  /* TEXT */
+                ),
+                _createElementVNode("button", { onClick: _ctx.load }, "重试", 8, ["onClick"])
+              ])) : _createCommentVNode("v-if", true),
+              !_ctx.loading && !_ctx.error && !_ctx.allowed && !_ctx.preview ? (_openBlock(), _createElementBlock("div", {
+                key: 2,
                 class: "ops-card access-denied"
               }, [
                 _createVNode(_component_Icon, {
@@ -9339,7 +9412,7 @@
                 _createElementVNode("h2", null, "无权限访问")
               ])) : _ctx.route === "/admin" ? (_openBlock(), _createElementBlock(
                 _Fragment,
-                { key: 2 },
+                { key: 3 },
                 [
                   _ctx.stats ? (_openBlock(), _createElementBlock("div", {
                     key: 0,
@@ -9487,7 +9560,7 @@
                 64
                 /* STABLE_FRAGMENT */
               )) : _ctx.route === "/admin/applications" ? (_openBlock(), _createElementBlock("div", {
-                key: 3,
+                key: 4,
                 class: "ops-grid admin-review-grid"
               }, [
                 _createElementVNode("section", { class: "ops-card" }, [
@@ -9705,12 +9778,12 @@
                       _createElementVNode("div", { class: "form-buttons" }, [
                         _createElementVNode("button", {
                           class: "outline-button",
-                          disabled: _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
+                          disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
                           onClick: ($event) => _ctx.review(false)
                         }, "驳回", 8, ["disabled", "onClick"]),
                         _createElementVNode("button", {
                           class: "teal-button",
-                          disabled: _ctx.preview || _ctx.busy,
+                          disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy,
                           onClick: ($event) => _ctx.review(true)
                         }, "通过审核", 8, ["disabled", "onClick"])
                       ])
@@ -9720,7 +9793,7 @@
                   )) : _createCommentVNode("v-if", true)
                 ])) : _createCommentVNode("v-if", true)
               ])) : _ctx.route === "/admin/merchants" ? (_openBlock(), _createElementBlock("section", {
-                key: 4,
+                key: 5,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -9816,7 +9889,7 @@
                             _createElementVNode("td", null, [
                               _createElementVNode("button", {
                                 class: "row-link",
-                                disabled: _ctx.preview || _ctx.busy,
+                                disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy,
                                 onClick: ($event) => _ctx.stateMerchant(m)
                               }, _toDisplayString(m.status === "ACTIVE" ? "停用" : "恢复"), 9, ["disabled", "onClick"])
                             ])
@@ -9829,7 +9902,7 @@
                   ])
                 ])
               ])) : _ctx.route === "/admin/products" ? (_openBlock(), _createElementBlock("section", {
-                key: 5,
+                key: 6,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -9931,7 +10004,7 @@
                             _createElementVNode("td", null, [
                               _createElementVNode("button", {
                                 class: "row-link",
-                                disabled: _ctx.preview || _ctx.busy || p.status !== "PUBLISHED",
+                                disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || p.status !== "PUBLISHED",
                                 onClick: ($event) => _ctx.forceProduct(p)
                               }, "强制下架", 8, ["disabled", "onClick"])
                             ])
@@ -9944,7 +10017,7 @@
                   ])
                 ])
               ])) : _ctx.route === "/admin/orders" ? (_openBlock(), _createElementBlock("section", {
-                key: 6,
+                key: 7,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -10044,7 +10117,7 @@
                   ])
                 ])
               ])) : _ctx.route === "/admin/disputes" ? (_openBlock(), _createElementBlock("section", {
-                key: 7,
+                key: 8,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -10136,18 +10209,18 @@
                   _createElementVNode("div", { class: "form-buttons" }, [
                     _createElementVNode("button", {
                       class: "outline-button",
-                      disabled: _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
+                      disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
                       onClick: ($event) => _ctx.decideRefund(_ctx.aftersales.find((a) => a.id === _ctx.selectedId), false)
                     }, "驳回", 8, ["disabled", "onClick"]),
                     _createElementVNode("button", {
                       class: "teal-button",
-                      disabled: _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
+                      disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
                       onClick: ($event) => _ctx.decideRefund(_ctx.aftersales.find((a) => a.id === _ctx.selectedId), true)
                     }, "批准退款", 8, ["disabled", "onClick"])
                   ])
                 ])) : _createCommentVNode("v-if", true)
               ])) : _ctx.route === "/admin/categories" ? (_openBlock(), _createElementBlock("div", {
-                key: 8,
+                key: 9,
                 class: "ops-grid"
               }, [
                 _createElementVNode("section", { class: "ops-card" }, [
@@ -10266,12 +10339,12 @@
                   _createElementVNode("button", {
                     type: "submit",
                     class: "teal-button",
-                    disabled: _ctx.preview || _ctx.busy
+                    disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy
                   }, _toDisplayString(_ctx.preview ? "设计预览" : "保存分类"), 9, ["disabled"])
                 ], 40, ["onSubmit"])
               ])) : _createCommentVNode("v-if", true),
               !_ctx.preview && _ctx.route !== "/admin" && _ctx.route !== "/admin/categories" && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
-                key: 9,
+                key: 10,
                 class: "sdd-pager"
               }, [
                 _createElementVNode(
@@ -10305,13 +10378,13 @@
       };
     })()
   };
-  const { ref, computed: computed$1, onMounted: onMounted$1, onUnmounted: onUnmounted$1, watch: watch$1 } = Vue;
+  const { ref: ref$1, computed: computed$1, onMounted: onMounted$1, onUnmounted: onUnmounted$1, watch: watch$1 } = Vue;
   const RoleManager = {
     name: "RoleManager",
     components: { BackofficeShell },
     setup() {
-      const roles = ref([]), permissions = ref([]), selected = ref(""), name = ref(""), grants = ref([]);
-      const error = ref(""), busy = ref(false), loading = ref(false), count = ref(0);
+      const roles = ref$1([]), permissions = ref$1([]), selected = ref$1(""), name = ref$1(""), grants = ref$1([]);
+      const error = ref$1(""), busy = ref$1(false), loading = ref$1(false), count = ref$1(0);
       const canManage = computed$1(() => hasPermission("role.manage"));
       const current = computed$1(() => roles.value.find((r) => r.code === selected.value) || null);
       const assigned = computed$1(() => count.value);
@@ -10684,10 +10757,22 @@
       };
     })()
   };
-  const { createApp, onMounted, onUnmounted, watch, computed } = Vue;
+  const { createApp, ref, onMounted, onUnmounted, watch, computed } = Vue;
   const App = {
     name: "CampusApp",
     components: {
+      NotFound: {
+        render: (() => {
+          const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock } = Vue;
+          return function render(_ctx, _cache) {
+            return _openBlock(), _createElementBlock("main", { class: "mobile-empty" }, [
+              _createElementVNode("h1", null, "404"),
+              _createElementVNode("p", null, "页面不存在"),
+              _createElementVNode("a", { href: "#/" }, "返回首页")
+            ]);
+          };
+        })()
+      },
       Home,
       Guide,
       Merchant,
@@ -10707,31 +10792,80 @@
         if (r === "/merchant/products") return "Merchant";
         if (r === "/merchant/roles") return "RoleManager";
         if (r === "/merchant/knowledge" || r === "/admin/knowledge") return "Knowledge";
-        if (r.startsWith("/merchant")) return "MerchantOps";
-        if (r.startsWith("/admin")) return "Platform";
+        if ([
+          "/merchant",
+          "/merchant/inventory",
+          "/merchant/orders",
+          "/merchant/pickup",
+          "/merchant/aftersales",
+          "/merchant/team",
+          "/merchant/settings"
+        ].includes(r))
+          return "MerchantOps";
+        if ([
+          "/admin",
+          "/admin/applications",
+          "/admin/merchants",
+          "/admin/products",
+          "/admin/orders",
+          "/admin/disputes",
+          "/admin/categories"
+        ].includes(r))
+          return "Platform";
         if (r.startsWith("/product/")) return "ProductDetail";
         if (r.startsWith("/shops/")) return "Shop";
         if (r === "/cart") return "Cart";
         if (r === "/orders" || r.startsWith("/orders/")) return "Orders";
         if (["/account", "/apply", "/invitations"].includes(r)) return "Account";
         if (r === "/ai") return "Guide";
-        return "Home";
+        return r === "/" ? "Home" : "NotFound";
       });
+      const ready = ref(false), contextError = ref("");
+      let version = 0, restoredIdentity = -1, sessionPending;
       async function refresh() {
-        if (store.route.startsWith("/merchant")) await loadMerchant();
-        else if (!store.route.startsWith("/admin")) await loadPublic();
+        const stamp = ++version;
+        ready.value = false;
+        contextError.value = "";
+        try {
+          if (!preview) {
+            const identity = store.identityVersion;
+            if (restoredIdentity !== identity) {
+              restoredIdentity = identity;
+              sessionPending = loadSession();
+            }
+            try {
+              await sessionPending;
+            } catch (e) {
+              if (restoredIdentity === identity) restoredIdentity = -1;
+              throw e;
+            }
+          }
+          if (stamp !== version) return;
+          if (store.route.startsWith("/merchant")) await loadMerchant({ contextOnly: true });
+          else if (!preview && store.route.startsWith("/admin")) {
+            const workspace = await api("/workspace");
+            if (stamp !== version) return;
+            store.workspace = workspace;
+          } else if (preview) await loadPublic();
+        } catch (e) {
+          if (stamp === version) contextError.value = e.message;
+        } finally {
+          if (stamp === version) ready.value = true;
+        }
       }
       onMounted(() => {
         window.addEventListener("hashchange", setRoute);
         refresh();
-        if (!preview && !store.route.startsWith("/merchant")) loadSession();
       });
-      onUnmounted(() => window.removeEventListener("hashchange", setRoute));
+      onUnmounted(() => {
+        ++version;
+        window.removeEventListener("hashchange", setRoute);
+      });
       watch([() => store.route, () => store.identityVersion], refresh);
-      return { store, current };
+      return { store, current, ready, contextError, refresh };
     },
     render: (() => {
-      const { resolveDynamicComponent: _resolveDynamicComponent, openBlock: _openBlock, createBlock: _createBlock, toDisplayString: _toDisplayString, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass } = Vue;
+      const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, resolveDynamicComponent: _resolveDynamicComponent, createBlock: _createBlock, normalizeClass: _normalizeClass } = Vue;
       return function render(_ctx, _cache) {
         return _openBlock(), _createElementBlock(
           "div",
@@ -10739,13 +10873,27 @@
             class: _normalizeClass(["application", { "admin-mode": _ctx.current === "Merchant" || _ctx.current === "MerchantOps" || _ctx.current === "Platform" || _ctx.current === "Knowledge" || _ctx.current === "RoleManager" }])
           },
           [
-            (_openBlock(), _createBlock(_resolveDynamicComponent(_ctx.current), {
+            !_ctx.ready ? (_openBlock(), _createElementBlock("div", {
+              key: 0,
+              class: "inline-loading",
+              role: "status"
+            }, "正在恢复身份与权限…")) : _ctx.contextError ? (_openBlock(), _createElementBlock("div", {
+              key: 1,
+              class: "inline-error"
+            }, [
+              _createTextVNode(
+                _toDisplayString(_ctx.contextError) + " ",
+                1
+                /* TEXT */
+              ),
+              _createElementVNode("button", { onClick: _ctx.refresh }, "重试", 8, ["onClick"])
+            ])) : (_openBlock(), _createBlock(_resolveDynamicComponent(_ctx.current), {
               key: _ctx.store.route + ":" + _ctx.store.identityVersion + ":" + _ctx.store.merchantId
             })),
             _ctx.store.toast ? (_openBlock(), _createElementBlock(
               "div",
               {
-                key: 0,
+                key: 3,
                 class: "toast",
                 role: "status"
               },

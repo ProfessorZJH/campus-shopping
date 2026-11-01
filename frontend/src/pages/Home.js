@@ -1,5 +1,5 @@
 import { requestScope } from '../services/request-scope.js';
-import { pathId } from '../services/page-utils.js';
+import { pathId, priceSku, positiveInt } from '../services/page-utils.js';
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
 import { api, query } from '../services/api.js';
@@ -13,10 +13,11 @@ import {
   preview,
   previewGuard,
   notify,
+  loadPublic,
   beginPublicSearch,
   publicSearchCurrent,
 } from '../services/store.js';
-const { ref, computed } = Vue;
+const { ref, computed, onMounted } = Vue;
 const staticCategoryArt = {
   food: './images/category-snacks.webp',
   drink: './images/category-drinks.webp',
@@ -50,15 +51,14 @@ export default {
       if (category.value) arr = arr.filter((p) => p.categoryCode === category.value);
       if (merchant.value) arr = arr.filter((p) => p.merchantId === merchant.value);
       if (preview && sort.value === 'price')
-        arr = [...arr].sort((a, b) => Number(skuOf(a).priceCent) - Number(skuOf(b).priceCent));
+        arr = [...arr].sort(
+          (a, b) => Number(priceSku(a).priceCent) - Number(priceSku(b).priceCent),
+        );
       if (preview && sort.value === 'stock')
         arr = [...arr].sort((a, b) => available(b) - available(a));
       return arr;
     });
-    const priceSku = (p) =>
-      [...(p?.skus || [])]
-        .filter((s) => s.status === 'ACTIVE')
-        .sort((a, b) => Number(a.priceCent) - Number(b.priceCent))[0] || skuOf(p);
+    onMounted(() => loadPublic({ signal: scope.begin().signal }));
     const pageInfo = computed(() => store.publicPage);
     const chosen = computed(
       () => selected.value?.skus?.find((s) => s.skuId === chosenSku.value) || skuOf(selected.value),
@@ -68,7 +68,8 @@ export default {
     const currentShop = (p) => store.merchants.find((m) => m.merchantId === p.merchantId) || {};
     async function loadSearch() {
       if (preview) return;
-      const current = scope.capture();
+      const request = scope.begin();
+      const current = request.current;
       const stamp = beginPublicSearch();
       const params = {
         q: search.value,
@@ -82,7 +83,7 @@ export default {
       store.loading = true;
       store.error = '';
       try {
-        const result = await api('/products/page' + query(params));
+        const result = await api('/products/page' + query(params), { signal: request.signal });
         if (!(current() && publicSearchCurrent(stamp))) return;
         store.products = result.items || [];
         store.publicPage = {
@@ -109,13 +110,20 @@ export default {
     }
     function showDetail(p) {
       selected.value = p;
-      chosenSku.value = skuOf(p).skuId || '';
+      chosenSku.value =
+        p.skus?.find((s) => s.status === 'ACTIVE' && Number(s.available) > 0)?.skuId || '';
       count.value = 1;
     }
+    const canAdd = computed(
+      () =>
+        chosen.value?.status === 'ACTIVE' &&
+        positiveInt(count.value, 99) &&
+        Number(count.value) <= Number(chosen.value.available),
+    );
     async function addCart() {
       if (!selected.value || saving.value || previewGuard()) return;
-      if (!chosen.value?.skuId) {
-        notify('请选择有效规格');
+      if (!chosen.value?.skuId || !canAdd.value) {
+        notify('请选择有效规格及库存范围内的数量');
         return;
       }
       const valid = scope.capture(),
@@ -164,6 +172,7 @@ export default {
       chosenSku,
       count,
       saving,
+      canAdd,
       productCategory,
       currentShop,
       staticCategoryArt,
@@ -203,7 +212,7 @@ export default {
       <div class="home-product-grid">
         <article class="home-product" v-for="p in shown" :key="p.productId" @click="showDetail(p)">
           <div class="home-product-photo"><ProductImage :src="p.imageUrl" :alt="p.title"/><span v-if="p.tag" class="corner-tag">{{p.tag}}</span><span class="floating-pickup">可自提</span></div>
-          <div class="home-product-info"><button class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button><div class="product-minor"><span>{{skuOf(p).specKey}}</span><span>库存 {{available(p)>0?'充足':'售罄'}}</span></div><div class="product-price-row"><span class="price-main">{{money(priceSku(p).priceCent)}}</span><button @click.stop="showDetail(p)" :aria-label="'查看'+p.title"><Icon name="plus" :size="20" /></button></div></div>
+          <div class="home-product-info"><button class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button><div class="product-minor"><span>{{priceSku(p).specKey}}</span><span>库存 {{available(p)>0?'充足':'售罄'}}</span></div><div class="product-price-row"><span class="price-main">{{money(priceSku(p).priceCent)}} 起</span><button @click.stop="showDetail(p)" :aria-label="'查看'+p.title"><Icon name="plus" :size="20" /></button></div></div>
         </article>
       </div>
       <div class="sdd-pager" v-if="!preview && pageInfo.total>0"><span>共 {{pageInfo.total}} 件</span><button :disabled="page<=1||store.loading" @click="page--;loadSearch()">上一页</button><span>{{page}}</span><button :disabled="!pageInfo.hasNext||store.loading" @click="page++;loadSearch()">下一页</button></div>
@@ -212,9 +221,9 @@ export default {
     <div v-if="selected" v-modal="() => selected=null" class="ui-overlay" @click.self="selected=null"><div class="product-sheet" role="dialog" aria-modal="true" :aria-label="selected.title">
       <button class="sheet-close" @click="selected=null" aria-label="关闭"><Icon name="x" :size="19"/></button>
       <div class="sheet-product-line"><ProductImage :src="selected.imageUrl" :alt="selected.title"/><div><span class="mini-category">{{productCategory(selected)}}</span><h3>{{selected.title}}</h3><div class="sheet-price">{{money(chosen.priceCent)}}</div><span class="sheet-muted">{{currentShop(selected).name||'校内商户'}}</span></div></div>
-      <button class="more-product-detail" @click="go('/product/'+pathId(selected.productId));selected=null">查看商品详情 <Icon name="chevronRight" :size="15"/></button><label class="sheet-field-label">选择规格</label><div class="sku-picker"><button v-for="sku in selected.skus" :key="sku.skuId" :class="{active:chosenSku===sku.skuId}" :aria-pressed="chosenSku===sku.skuId" :disabled="saving||sku.status!=='ACTIVE'||sku.available===0" @click="chosenSku=sku.skuId">{{sku.specKey}}</button></div>
+      <button class="more-product-detail" @click="go('/product/'+pathId(selected.productId));selected=null">查看商品详情 <Icon name="chevronRight" :size="15"/></button><label class="sheet-field-label">选择规格</label><div class="sku-picker"><button v-for="sku in selected.skus" :key="sku.skuId" :class="{active:chosenSku===sku.skuId}" :aria-pressed="chosenSku===sku.skuId" :disabled="saving||sku.status!=='ACTIVE'||Number(sku.available)<=0" @click="chosenSku=sku.skuId;count=1">{{sku.specKey}}</button></div>
       <div class="quantity-picker"><span>购买数量</span><div><button @click="count=Math.max(1,count-1)" aria-label="减少数量" :disabled="saving"><Icon name="minus" :size="17" /></button><b>{{count}}</b><button @click="count=Math.min(99,Number(chosen.available||0),count+1)" aria-label="增加数量" :disabled="saving||count>=Number(chosen.available||0)"><Icon name="plus" :size="17"/></button></div></div>
-      <button class="primary-wide" :disabled="!chosen.skuId || !chosen.available || saving || preview" @click="addCart">{{saving?'加入中…':'加入购物车'}}</button>
+      <button class="primary-wide" :disabled="!canAdd || saving || preview" @click="addCart">{{saving?'加入中…':'加入购物车'}}</button>
     </div></div>
   </ConsumerShell>`,
 };

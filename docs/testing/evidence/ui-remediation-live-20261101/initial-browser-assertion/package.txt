@@ -1,0 +1,318 @@
+[INFO] Scanning for projects...
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO]
+[INFO] campus-shopping                                                    [pom]
+[INFO] campus-shopping-types                                              [jar]
+[INFO] campus-shopping-api                                                [jar]
+[INFO] campus-shopping-domain                                             [jar]
+[INFO] campus-shopping-case                                               [jar]
+[INFO] campus-shopping-infrastructure                                     [jar]
+[INFO] campus-shopping-trigger                                            [jar]
+[INFO] campus-shopping-app                                                [jar]
+[INFO]
+[INFO] -------------------< cn.bugstack.ai:campus-shopping >-------------------
+[INFO] Building campus-shopping 1.0-SNAPSHOT                              [1/8]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping ---
+[INFO]
+[INFO] ----------------< cn.bugstack.ai:campus-shopping-types >----------------
+[INFO] Building campus-shopping-types 1.0-SNAPSHOT                        [2/8]
+[INFO]   from campus-shopping-types\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-types ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-types ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-types\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-types\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-types ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 7 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-types ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-types\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-types ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-types ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-types ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-types\target\campus-shopping-types-1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< cn.bugstack.ai:campus-shopping-api >-----------------
+[INFO] Building campus-shopping-api 1.0-SNAPSHOT                          [3/8]
+[INFO]   from campus-shopping-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-api ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-api ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-api\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-api\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-api ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 75 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-api ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-api\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-api ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-api ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-api ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-api\target\campus-shopping-api-1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ---------------< cn.bugstack.ai:campus-shopping-domain >----------------
+[INFO] Building campus-shopping-domain 1.0-SNAPSHOT                       [4/8]
+[INFO]   from campus-shopping-domain\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-domain ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-domain ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-domain\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-domain\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-domain ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 123 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-domain ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-domain\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-domain ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-domain ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-domain ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-domain\target\campus-shopping-domain-1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ----------------< cn.bugstack.ai:campus-shopping-case >-----------------
+[INFO] Building campus-shopping-case 1.0-SNAPSHOT                         [5/8]
+[INFO]   from campus-shopping-case\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-case ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-case ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-case\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-case\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-case ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 34 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-case ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-case\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-case ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-case ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-case ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-case\target\campus-shopping-case-1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------< cn.bugstack.ai:campus-shopping-infrastructure >------------
+[INFO] Building campus-shopping-infrastructure 1.0-SNAPSHOT               [6/8]
+[INFO]   from campus-shopping-infrastructure\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-infrastructure ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-infrastructure ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-infrastructure\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-infrastructure\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-infrastructure ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 73 source files with javac [debug parameters release 17] to target\classes
+[INFO] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/redis/RedisInfrastructureConfig.java: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-infrastructure\src\main\java\cn\bugstack\ai\infrastructure\redis\RedisInfrastructureConfig.javaÊ¹ÓÃ»ò¸²¸ÇÁËÒÑ¹ýÊ±µÄ API¡£
+[INFO] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/redis/RedisInfrastructureConfig.java: ÓÐ¹ØÏêÏ¸ÐÅÏ¢, ÇëÊ¹ÓÃ -Xlint:deprecation ÖØÐÂ±àÒë¡£
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-infrastructure ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-infrastructure\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-infrastructure ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-infrastructure ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-infrastructure ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-infrastructure\target\campus-shopping-infrastructure-1.0-SNAPSHOT.jar
+[INFO]
+[INFO] ---------------< cn.bugstack.ai:campus-shopping-trigger >---------------
+[INFO] Building campus-shopping-trigger 1.0-SNAPSHOT                      [7/8]
+[INFO]   from campus-shopping-trigger\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-trigger ---
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-trigger ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-trigger\src\main\resources
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-trigger\src\main\resources
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-trigger ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 29 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-trigger ---
+[INFO] skip non existing resourceDirectory C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-trigger\src\test\resources
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-trigger ---
+[INFO] No sources to compile
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-trigger ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-trigger ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-trigger\target\campus-shopping-trigger-1.0-SNAPSHOT.jar
+[INFO]
+[INFO] -----------------< cn.bugstack.ai:campus-shopping-app >-----------------
+[INFO] Building campus-shopping-app 1.0-SNAPSHOT                          [8/8]
+[INFO]   from campus-shopping-app\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] --- clean:3.4.1:clean (default-clean) @ campus-shopping-app ---
+[INFO]
+[INFO] --- exec:3.5.0:exec (verify-schema-contract) @ campus-shopping-app ---
+Schema version/checksum contract verified
+[INFO]
+[INFO] --- exec:3.5.0:exec (record-build-source) @ campus-shopping-app ---
+Recorded build source checksum
+[INFO]
+[INFO] --- exec:3.5.0:exec (install-locked-ui-dependencies) @ campus-shopping-app ---
+
+added 29 packages in 4s
+[INFO]
+[INFO] --- exec:3.5.0:exec (build-ui-from-source) @ campus-shopping-app ---
+vite v6.4.5 building for production...
+transforming...
+âœ“ 26 modules transformed.
+rendering chunks...
+computing gzip size...
+../campus-shopping-app/target/generated-ui/ui.bundle.js  474.58 kB â”‚ gzip: 73.92 kB
+âœ“ built in 776ms
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ campus-shopping-app ---
+[INFO] Copying 25 resources from src\main\resources to target\classes
+[INFO] Copying 45 resources from target\generated-ui to target\classes\static
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ campus-shopping-app ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 12 source files with javac [debug parameters release 17] to target\classes
+[INFO]
+[INFO] --- resources:3.3.1:testResources (default-testResources) @ campus-shopping-app ---
+[INFO] Copying 6 resources from src\test\resources to target\test-classes
+[INFO]
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ campus-shopping-app ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 50 source files with javac [debug parameters release 17] to target\test-classes
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[88,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[88,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[88,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[88,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[88,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[97,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[97,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[97,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[97,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[97,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[103,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[103,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[103,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[103,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[103,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[106,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[106,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[106,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[106,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[106,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[133,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[133,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[133,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[133,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[133,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[145,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[145,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[145,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[145,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[145,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[148,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[148,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[148,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[148,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[148,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[226,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[226,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[226,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[226,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[226,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[827,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[827,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[827,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[827,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[827,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[879,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[879,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[879,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[879,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java:[879,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[40,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[40,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[40,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[40,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationMySqlTest.java:[40,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationSafetyMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationSafetyMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationSafetyMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationSafetyMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[WARNING] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/ShoppingEvaluationSafetyMySqlTest.java:[37,6] org.springframework.boot.test.mock.mockito ÖÐµÄ org.springframework.boot.test.mock.mockito.SpyBean ÒÑ¹ýÊ±, ÇÒ±ê¼ÇÎª´ýÉ¾³ý
+[INFO] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/AiConversationBoundaryTest.java: Ä³Ð©ÊäÈëÎÄ¼þÊ¹ÓÃÁËÎ´¾­¼ì²é»ò²»°²È«µÄ²Ù×÷¡£
+[INFO] /C:/Windows/Temp/campus-ui-live-t3lg8ea1/build/campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/AiConversationBoundaryTest.java: ÓÐ¹ØÏêÏ¸ÐÅÏ¢, ÇëÊ¹ÓÃ -Xlint:unchecked ÖØÐÂ±àÒë¡£
+[INFO]
+[INFO] --- surefire:3.5.2:test (default-test) @ campus-shopping-app ---
+[INFO] Tests are skipped.
+[INFO]
+[INFO] --- jar:3.4.2:jar (default-jar) @ campus-shopping-app ---
+[INFO] Building jar: C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-app\target\campus-shopping-app.jar
+[INFO]
+[INFO] --- spring-boot:3.4.3:repackage (repackage) @ campus-shopping-app ---
+[INFO] Replacing main artifact C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-app\target\campus-shopping-app.jar with repackaged archive, adding nested dependencies in BOOT-INF/.
+[INFO] The original artifact has been renamed to C:\Windows\Temp\campus-ui-live-t3lg8ea1\build\campus-shopping-app\target\campus-shopping-app.jar.original
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for campus-shopping 1.0-SNAPSHOT:
+[INFO]
+[INFO] campus-shopping .................................... SUCCESS [  0.125 s]
+[INFO] campus-shopping-types .............................. SUCCESS [  2.251 s]
+[INFO] campus-shopping-api ................................ SUCCESS [  2.512 s]
+[INFO] campus-shopping-domain ............................. SUCCESS [  3.173 s]
+[INFO] campus-shopping-case ............................... SUCCESS [  2.582 s]
+[INFO] campus-shopping-infrastructure ..................... SUCCESS [  5.826 s]
+[INFO] campus-shopping-trigger ............................ SUCCESS [  2.710 s]
+[INFO] campus-shopping-app ................................ SUCCESS [ 19.444 s]
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  39.054 s
+[INFO] Finished at: 2026-11-01T19:45:22+08:00
+[INFO] ------------------------------------------------------------------------

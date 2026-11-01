@@ -1,0 +1,4 @@
+warning: in the working copy of 'docs/README.md', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/testing/evidence/ddd-refactor-20261029/boundaries.json', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'docs/testing/evidence/static-release.json', CRLF will be replaced by LF the next time Git touches it
+warning: in the working copy of 'frontend/tests/ui_fix_regression.py', CRLF will be replaced by LF the next time Git touches it

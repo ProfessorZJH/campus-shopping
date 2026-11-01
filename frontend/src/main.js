@@ -1,3 +1,4 @@
+import { api } from './services/api.js';
 import { modal } from './services/modal.js';
 import Icon from './components/Icon.js';
 import Home from './pages/Home.js';
@@ -20,10 +21,13 @@ import {
   loadSession,
   preview,
 } from './services/store.js';
-const { createApp, onMounted, onUnmounted, watch, computed } = Vue;
+const { createApp, ref, onMounted, onUnmounted, watch, computed } = Vue;
 const App = {
   name: 'CampusApp',
   components: {
+    NotFound: {
+      template: `<main class="mobile-empty"><h1>404</h1><p>页面不存在</p><a href="#/">返回首页</a></main>`,
+    },
     Home,
     Guide,
     Merchant,
@@ -43,30 +47,86 @@ const App = {
       if (r === '/merchant/products') return 'Merchant';
       if (r === '/merchant/roles') return 'RoleManager';
       if (r === '/merchant/knowledge' || r === '/admin/knowledge') return 'Knowledge';
-      if (r.startsWith('/merchant')) return 'MerchantOps';
-      if (r.startsWith('/admin')) return 'Platform';
+      if (
+        [
+          '/merchant',
+          '/merchant/inventory',
+          '/merchant/orders',
+          '/merchant/pickup',
+          '/merchant/aftersales',
+          '/merchant/team',
+          '/merchant/settings',
+        ].includes(r)
+      )
+        return 'MerchantOps';
+      if (
+        [
+          '/admin',
+          '/admin/applications',
+          '/admin/merchants',
+          '/admin/products',
+          '/admin/orders',
+          '/admin/disputes',
+          '/admin/categories',
+        ].includes(r)
+      )
+        return 'Platform';
       if (r.startsWith('/product/')) return 'ProductDetail';
       if (r.startsWith('/shops/')) return 'Shop';
       if (r === '/cart') return 'Cart';
       if (r === '/orders' || r.startsWith('/orders/')) return 'Orders';
       if (['/account', '/apply', '/invitations'].includes(r)) return 'Account';
       if (r === '/ai') return 'Guide';
-      return 'Home';
+      return r === '/' ? 'Home' : 'NotFound';
     });
+    const ready = ref(false),
+      contextError = ref('');
+    let version = 0,
+      restoredIdentity = -1,
+      sessionPending;
     async function refresh() {
-      if (store.route.startsWith('/merchant')) await loadMerchant();
-      else if (!store.route.startsWith('/admin')) await loadPublic();
+      const stamp = ++version;
+      ready.value = false;
+      contextError.value = '';
+      try {
+        if (!preview) {
+          const identity = store.identityVersion;
+          if (restoredIdentity !== identity) {
+            restoredIdentity = identity;
+            sessionPending = loadSession();
+          }
+          try {
+            await sessionPending;
+          } catch (e) {
+            if (restoredIdentity === identity) restoredIdentity = -1;
+            throw e;
+          }
+        }
+        if (stamp !== version) return;
+        if (store.route.startsWith('/merchant')) await loadMerchant({ contextOnly: true });
+        else if (!preview && store.route.startsWith('/admin')) {
+          const workspace = await api('/workspace');
+          if (stamp !== version) return;
+          store.workspace = workspace;
+        } else if (preview) await loadPublic();
+      } catch (e) {
+        if (stamp === version) contextError.value = e.message;
+      } finally {
+        if (stamp === version) ready.value = true;
+      }
     }
     onMounted(() => {
       window.addEventListener('hashchange', setRoute);
       refresh();
-      if (!preview && !store.route.startsWith('/merchant')) loadSession();
     });
-    onUnmounted(() => window.removeEventListener('hashchange', setRoute));
+    onUnmounted(() => {
+      ++version;
+      window.removeEventListener('hashchange', setRoute);
+    });
     watch([() => store.route, () => store.identityVersion], refresh);
-    return { store, current };
+    return { store, current, ready, contextError, refresh };
   },
-  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><component :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
+  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
 };
 const app = createApp(App);
 app.component('Icon', Icon);

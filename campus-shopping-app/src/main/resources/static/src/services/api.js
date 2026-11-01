@@ -16,16 +16,9 @@ async function getCsrf() {
   if (csrfPromise) return csrfPromise;
   const stamp = generation;
   const pending = (async () => {
-    const r = await fetch(PREFIX + '/auth/csrf', { credentials: 'same-origin', cache: 'no-store' });
-    let j;
-    try {
-      j = await r.json();
-    } catch {
-      throw fail('安全令牌响应异常', 'RESPONSE', r.status);
-    }
-    if (!r.ok || j.code !== '0000') throw fail('无法获取安全令牌', j.code, r.status);
+    const data = await api('/auth/csrf', { retry: false });
     requireIdentity(stamp);
-    csrf = j.data;
+    csrf = data;
     return csrf;
   })();
   csrfPromise = pending;
@@ -36,7 +29,28 @@ async function getCsrf() {
   }
 }
 /** 校验业务code，不能把HTTP 200当成执行成功。 */
-export async function api(path, { method = 'GET', body, signal, key, retry = true } = {}) {
+export async function api(path, options = {}) {
+  if ((options.method || 'GET') !== 'GET') return request(path, options);
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort();
+  options.signal?.addEventListener('abort', abort, { once: true });
+  if (options.signal?.aborted) abort();
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options.timeoutMs ?? 15000);
+  try {
+    return await request(path, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (timedOut) throw fail('请求超时，请重试', 'TIMEOUT', 0);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', abort);
+  }
+}
+async function request(path, { method = 'GET', body, signal, key, retry = true } = {}) {
   const stamp = generation;
   const payload = body === undefined ? undefined : JSON.stringify(body);
   const headers = { Accept: 'application/json' };
@@ -64,7 +78,8 @@ export async function api(path, { method = 'GET', body, signal, key, retry = tru
   let j;
   try {
     j = await r.json();
-  } catch {
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
     throw fail('服务器响应格式异常', 'RESPONSE', r.status);
   }
   requireIdentity(stamp);

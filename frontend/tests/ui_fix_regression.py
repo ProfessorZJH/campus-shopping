@@ -52,7 +52,7 @@ class TwoMerchantBackend(BackendContractDouble):
         return super().handle(route)
 
 
-def browser_page(browser, route, fixture, *, race=False):
+def browser_page(browser, route, fixture, *, race=False, before_mount=None):
     page=browser.new_page(viewport={'width':1448,'height':970},locale='zh-CN')
     page.on('pageerror',lambda exc:ERRORS.append(str(exc)))
     page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"></head><body><div id="app"></div></body></html>')
@@ -81,6 +81,8 @@ def browser_page(browser, route, fixture, *, race=False):
       };
     }''',{'race':race})
     page.add_script_tag(path=str(UI/'vendor/vue.global.prod.js'))
+    if before_mount:
+        page.evaluate(before_mount)
     page.add_script_tag(path=str(UI/'ui.bundle.js'))
     expect(page.locator('.application')).to_have_count(1)
     return page

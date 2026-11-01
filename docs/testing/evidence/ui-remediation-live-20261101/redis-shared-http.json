@@ -1,0 +1,272 @@
+{
+  "status": "PASS",
+  "testType": "TWO_REAL_JAVA_MYSQL_REDIS_INSTANCES",
+  "apiMockUsed": false,
+  "checks": [
+    {
+      "name": "A登录后B识别同一Redis会话",
+      "status": "PASS"
+    },
+    {
+      "name": "B退出后A持有的旧Cookie立即失效",
+      "status": "PASS"
+    },
+    {
+      "name": "B实时读取A授予的stock.read且拒绝product.read",
+      "status": "PASS"
+    },
+    {
+      "name": "A撤回角色权限后B既有会话立即被拒绝",
+      "status": "PASS"
+    },
+    {
+      "name": "B展示已缓存商品时立即读取A修改后的价格版本",
+      "status": "PASS"
+    },
+    {
+      "name": "B展示缓存不覆盖A补货后的实时库存",
+      "status": "PASS"
+    },
+    {
+      "name": "A下架后B不能从展示缓存读取已下架商品",
+      "status": "PASS"
+    },
+    {
+      "name": "A撤销成员后B已登录会话权限实时失效",
+      "status": "PASS"
+    },
+    {
+      "name": "跨实例共享规范化账号限额与Retry-After",
+      "status": "PASS"
+    }
+  ],
+  "testData": {
+    "userIds": {
+      "owner": "0953e301-88bd-4b87-91cd-ccfba57c6b5b",
+      "clerk": "08aa048c-33d1-4027-928c-aac98899f2f5",
+      "buyer": "577b3d34-9124-47ba-95b7-14f5f7f02acf"
+    },
+    "merchantId": "93a85d7f-588f-45cc-b0e4-4985aeab7335",
+    "productId": "86112fe8-bcbf-4c91-9257-fb16b68ff6e6",
+    "skuId": "50347996-0ea8-45e8-8e87-4bd96abd175c"
+  },
+  "quotaAttempts": [
+    {
+      "attempt": 1,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 2,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 3,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 4,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 5,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 6,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 7,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 8,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 9,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 10,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 11,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 12,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 13,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 14,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 15,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 16,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 17,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 18,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 19,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 20,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 21,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 22,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 23,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 24,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 25,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 26,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 27,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 28,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 29,
+      "node": 0,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 30,
+      "node": 1,
+      "http": 200,
+      "code": "A0002",
+      "retryAfter": null
+    },
+    {
+      "attempt": 31,
+      "node": 0,
+      "http": 429,
+      "code": "A0007",
+      "retryAfter": "60"
+    }
+  ]
+}

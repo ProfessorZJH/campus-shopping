@@ -26,7 +26,7 @@ export default {
         stamp === loadVersion && current === id.value && currentPage === page.value;
       error.value = '';
       loading.value = true;
-      merchant.value = null;
+      if (merchant.value?.merchantId !== current) merchant.value = null;
       products.value = [];
       hasNext.value = false;
       try {
@@ -39,7 +39,9 @@ export default {
           hasNext.value = all.length > currentPage * 12;
         } else {
           const [m, p] = await Promise.all([
-            api('/merchants/public/' + encodeURIComponent(current)),
+            merchant.value
+              ? Promise.resolve(merchant.value)
+              : api('/merchants/public/' + encodeURIComponent(current)),
             api('/products/page' + query({ merchantId: current, page: currentPage, size: 12 })),
           ]);
           if (!valid()) return;
@@ -55,10 +57,6 @@ export default {
     }
     onMounted(load);
     onUnmounted(() => ++loadVersion);
-    watch(id, () => {
-      if (page.value !== 1) page.value = 1;
-      else load();
-    });
     watch(page, load);
     return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
   },

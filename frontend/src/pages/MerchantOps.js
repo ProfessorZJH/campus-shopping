@@ -57,6 +57,7 @@ export default {
       moves = ref([]),
       stockRows = ref([]),
       error = ref(''),
+      loading = ref(false),
       busy = ref(false),
       picked = ref(null),
       token = ref(''),
@@ -118,32 +119,18 @@ export default {
       () => !preview && !hasPermission(routePermission[route.value] || 'order.read'),
     );
     const canAct = computed(
-      () => !preview && !busy.value && !!store.merchantId && !restricted.value,
+      () =>
+        !preview &&
+        !busy.value &&
+        !loading.value &&
+        !error.value &&
+        !!store.merchantId &&
+        !restricted.value,
     );
     let loadVersion = 0;
-    function clearPrivateViews() {
-      token.value = '';
-      reason.value = '';
-      filter.value = '';
-      q.value = '';
-      sku.value = '';
-      amount.value = 1;
-      inviteUser.value = '';
-      replenishKey.value = '';
-      replenishFingerprint.value = '';
-      profile.value = { name: '', storeName: '', location: '' };
-      roles.value = [];
-      stats.value = null;
-      orders.value = [];
-      afterSales.value = [];
-      members.value = [];
-      moves.value = [];
-      stockRows.value = [];
-      picked.value = null;
-      decision.value = '';
-      pageInfo.value = { total: 0, hasNext: false };
-    }
     async function load() {
+      const request = scope.begin();
+      const read = (path) => api(path, { signal: request.signal });
       const stamp = ++loadVersion;
       const section = route.value;
       error.value = '';
@@ -176,11 +163,12 @@ export default {
         route.value === section &&
         store.merchantId === mid &&
         store.user?.userId === actor;
+      loading.value = true;
       try {
         if (section === '/merchant') {
           const [s, o] = await Promise.all([
-            hasPermission('dashboard.read') ? api(base + '/statistics') : Promise.resolve(null),
-            api(base + '/orders/page' + query({ page: 1, size: 5 })),
+            hasPermission('dashboard.read') ? read(base + '/statistics') : Promise.resolve(null),
+            read(base + '/orders/page' + query({ page: 1, size: 5 })),
           ]);
           if (!current()) return;
           stats.value = s;
@@ -188,7 +176,7 @@ export default {
           pageInfo.value = o;
         }
         if (section === '/merchant/orders' || section === '/merchant/pickup') {
-          const result = await api(
+          const result = await read(
             base +
               '/orders/page' +
               query({ page: page.value, size: 10, state: filter.value, q: q.value }),
@@ -198,7 +186,7 @@ export default {
           pageInfo.value = result;
         }
         if (section === '/merchant/aftersales') {
-          const result = await api(
+          const result = await read(
             base + '/aftersales/page' + query({ page: page.value, size: 10 }),
           );
           if (!current()) return;
@@ -207,8 +195,8 @@ export default {
         }
         if (section === '/merchant/inventory') {
           const [stockResult, movements] = await Promise.all([
-            api(base + '/stocks/page' + query({ page: page.value, size: 10, q: q.value })),
-            api(base + '/stock-movements/page' + query({ page: 1, size: 8 })),
+            read(base + '/stocks/page' + query({ page: page.value, size: 10, q: q.value })),
+            read(base + '/stock-movements/page' + query({ page: 1, size: 8 })),
           ]);
           if (!current()) return;
           stockRows.value = stockResult.items || [];
@@ -216,7 +204,7 @@ export default {
           pageInfo.value = stockResult;
         }
         if (section === '/merchant/team') {
-          const [m, r] = await Promise.all([api(base + '/members'), api(base + '/rbac/roles')]);
+          const [m, r] = await Promise.all([read(base + '/members'), read(base + '/rbac/roles')]);
           if (!current()) return;
           members.value = m || [];
           roles.value = r || [];
@@ -229,6 +217,8 @@ export default {
           };
       } catch (e) {
         if (current()) error.value = e.message;
+      } finally {
+        if (current()) loading.value = false;
       }
     }
     onMounted(load);
@@ -236,29 +226,25 @@ export default {
       ++loadVersion;
       clearTimeout(searchDelay);
     });
-    watch([route, () => store.merchantId, () => store.user?.userId], () => {
-      ++loadVersion;
-      clearPrivateViews();
-      page.value = 1;
-      load();
-    });
-    watch(page, load);
-    watch(filter, () => {
-      page.value = 1;
-      if (route.value === '/merchant/orders' || route.value === '/merchant/pickup') load();
-    });
     let searchDelay;
-    watch(q, () => {
-      if (
-        !preview &&
-        ['/merchant/orders', '/merchant/pickup', '/merchant/inventory'].includes(route.value)
-      ) {
-        ++loadVersion;
-        page.value = 1;
+    let resettingPage = false;
+    watch(
+      [page, q, filter],
+      (next, previous) => {
+        if (resettingPage) return;
         clearTimeout(searchDelay);
-        searchDelay = setTimeout(load, 280);
-      }
-    });
+        ++loadVersion;
+        loading.value = true;
+        const changed = next.slice(1).some((v, i) => v !== previous[i + 1]);
+        if (changed) {
+          resettingPage = true;
+          page.value = 1;
+          resettingPage = false;
+        }
+        searchDelay = setTimeout(load, next[1] !== previous[1] ? 280 : 0);
+      },
+      { flush: 'sync' },
+    );
     async function perform(url, body, method = 'POST', key) {
       if (!canAct.value) return;
       const current = scope.capture();
@@ -326,7 +312,9 @@ export default {
       if (!window.confirm('确定撤销该成员的商户权限？')) return;
       await perform(midPath() + '/members/' + pathId(m.userId), undefined, 'DELETE');
     }
-    async function assignMember(m, code) {
+    async function assignMember(m, event) {
+      const code = event.target.value;
+      event.target.value = m.role;
       if (!canOwner.value || !code || code === m.role || m.role === 'OWNER') return;
       await perform(
         midPath() + '/rbac/members/' + pathId(m.userId) + '/role',
@@ -335,13 +323,27 @@ export default {
       );
     }
     async function saveProfile() {
-      if (!canOwner.value) return;
+      if (!canOwner.value || !canAct.value) return;
+      const current = scope.capture();
       const v = profile.value;
       if (!v.name.trim() || !v.storeName.trim() || !v.location.trim()) {
         notify('请完善门店资料');
         return;
       }
-      if (await perform(midPath() + '/profile', { ...v }, 'PUT')) await loadMerchant();
+      busy.value = true;
+      try {
+        const saved = await api(midPath() + '/profile', { method: 'PUT', body: { ...v } });
+        if (!current()) return;
+        const index = store.merchants.findIndex((m) => m.merchantId === saved.merchantId);
+        if (index >= 0) store.merchants[index] = saved;
+        if (store.workspace) store.workspace.merchants = store.merchants;
+        profile.value = { name: saved.name, storeName: saved.storeName, location: saved.location };
+        notify('门店资料已保存');
+      } catch (e) {
+        if (current()) notify(e.message);
+      } finally {
+        if (current()) busy.value = false;
+      }
     }
     async function decisionAction(s, approved) {
       if (!hasPermission('aftersale.review') || !s) return;
@@ -382,6 +384,7 @@ export default {
       stockRows,
       error,
       busy,
+      loading,
       picked,
       selectedOrder,
       visibleOrders,
@@ -421,13 +424,13 @@ export default {
       decisionAction,
     };
   },
-  template: `<BackofficeShell role="merchant" :title="title"><template #actions><button class="outline-button small" @click="load"><Icon name="refresh" :size="16"/>刷新</button></template><div v-if="error" class="inline-error">{{error}}</div>
+  template: `<BackofficeShell role="merchant" :title="title"><template #actions><button class="outline-button small" @click="load"><Icon name="refresh" :size="16"/>刷新</button></template><div v-if="loading" class="inline-loading" role="status">正在加载…</div><div v-if="error" class="inline-error">{{error}} <button @click="load">重试</button></div>
  <div v-if="restricted" class="ops-card access-denied"><Icon name="shield" :size="32"/><h2>无权限访问</h2></div>
  <template v-else-if="route==='/merchant'"><div class="ops-kpis" v-if="stats"><div><span>订单总数</span><strong>{{stats.totalOrders||0}}</strong></div><div><span>待处理</span><strong>{{stats.pendingCount||0}}</strong></div><div><span>已完成</span><strong>{{stats.completedCount||0}}</strong></div><div><span>完成金额</span><strong>{{money(stats.completedAmountCent)}}</strong></div></div><div class="ops-grid"><section class="ops-card"><div class="ops-card-header"><h2>最近订单</h2><button @click="go('/merchant/orders')">查看全部 <Icon name="chevronRight" :size="15"/></button></div><div class="ops-list-line" v-for="o in topOrders" :key="o.orderId"><span class="mini-icon"><Icon name="order" :size="19"/></span><div><strong>{{o.items?.[0]?.title||'校园订单'}}</strong><small>{{o.orderId}} · {{dateTime(o.createdAt)}}</small></div><b>{{money(o.totalCent)}}</b><span class="status-tag" :class="o.status==='COMPLETED'?'published':'draft'">{{orderStatusLabel(o.status)}}</span></div><div v-if="!topOrders.length" class="admin-empty">暂无订单</div></section><section class="ops-card"><div class="ops-card-header"><h2>快捷操作</h2></div><div class="ops-quick"><button v-if="can('product.read')" @click="go('/merchant/products')"><Icon name="package"/>商品管理</button><button v-if="can('stock.read')" @click="go('/merchant/inventory')"><Icon name="box"/>库存管理</button><button v-if="can('pickup.verify')" @click="go('/merchant/pickup')"><Icon name="scan"/>核销</button><button v-if="can('knowledge.read')" @click="go('/merchant/knowledge')"><Icon name="book"/>知识库</button></div></section></div></template>
  <template v-else-if="route==='/merchant/inventory'"><div class="ops-grid inventory-grid"><section class="ops-card"><div class="ops-card-header"><h2>库存清单</h2><span>{{preview?skuRows.length:pageInfo.total}} SKU</span></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="q" placeholder="商品 / SKU"/></label><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>商品 / 规格</th><th>实物</th><th>预占</th><th>可售</th><th>操作</th></tr></thead><tbody><tr v-for="row in (preview?skuRows.filter(r=>!q||r.product.title.includes(q)||r.sku.specKey.includes(q)):skuRows)" :key="row.sku.skuId" :class="{active:sku===row.sku.skuId}"><td><div class="table-product-cell"><ProductImage :src="row.product.imageUrl" :alt="row.product.title"/><div><strong>{{row.product.title}}</strong><span>{{row.sku.specKey}}</span></div></div></td><td>{{row.stock?.onHand??'—'}}</td><td>{{row.stock?.reserved??'—'}}</td><td :class="{'red-text':Number(row.stock?.available||0)<10}">{{row.stock?.available??'—'}}</td><td><button v-if="can('stock.replenish')" class="row-link" @click="sku=row.sku.skuId">补货</button></td></tr></tbody></table></div></section><section class="ops-card ops-sideform"><template v-if="can('stock.replenish')"><h2>库存补货</h2><form @submit.prevent="replenish"><label class="field-label" for="merchantops-field-1">SKU</label><select id="merchantops-field-1" class="admin-input" v-model="sku" required><option disabled value="">选择规格</option><option v-for="row in skuRows" :key="row.sku.skuId" :value="row.sku.skuId">{{row.product.title}} · {{row.sku.specKey}}</option></select><label class="field-label" for="merchantops-field-2">补货数量</label><input id="merchantops-field-2" type="number" class="admin-input" v-model.number="amount" min="1" max="1000000" required/><button class="teal-button" type="submit" :disabled="!canAct">确认补货</button></form></template><div class="ops-card-header compact"><h3>库存流水</h3></div><div class="ops-list-line" v-for="m in moves.slice(0,8)" :key="m.id"><span class="mini-icon"><Icon name="box" :size="16"/></span><div><strong>{{inventoryOperationLabel(m.type)}}</strong><small>{{dateTime(m.createdAt)}}</small></div><b>{{inventoryQuantityLabel(m)}}</b></div></section></div></template>
  <template v-else-if="route==='/merchant/orders'||route==='/merchant/pickup'"><div class="ops-card"><div class="ops-card-header"><h2>{{route==='/merchant/pickup'?'交付核销':'订单列表'}}</h2><div class="filter-pills"><button :class="{active:filter===''}" @click="filter=''">全部</button><button :class="{active:filter==='PAID'}" @click="filter='PAID'">已支付</button><button :class="{active:filter==='COMPLETED'}" @click="filter='COMPLETED'">已完成</button></div></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="q" placeholder="搜索订单号 / 商品"/></label><div class="ops-grid orders-split"><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>订单</th><th>商品</th><th>金额</th><th>状态</th><th></th></tr></thead><tbody><tr v-for="o in visibleOrders" :key="o.orderId" :class="{active:selectedOrder?.orderId===o.orderId}" @click="picked=o.orderId"><td><button class="row-link" @click.stop="picked=o.orderId" :aria-pressed="selectedOrder?.orderId===o.orderId">#{{o.orderId}}</button><small>{{dateTime(o.createdAt)}}</small></td><td>{{o.items?.[0]?.title||'—'}}</td><td>{{money(o.totalCent)}}</td><td><span class="status-tag" :class="o.status==='COMPLETED'?'published':'draft'">{{orderStatusLabel(o.status)}}</span></td><td><Icon name="chevronRight" :size="16"/></td></tr></tbody></table><div v-if="!visibleOrders.length" class="admin-empty">暂无订单</div></div><aside class="order-inspector" v-if="selectedOrder"><h2>订单详情</h2><div class="inspector-row"><span>订单编号</span><strong>{{selectedOrder.orderId}}</strong></div><div class="inspector-row"><span>订单状态</span><strong>{{orderStatusLabel(selectedOrder.status)}}</strong></div><div class="inspector-row"><span>自提进度</span><strong>{{pickupStatusLabel(selectedOrder.pickup?.status)}}</strong></div><div class="inspector-row"><span>金额</span><b class="red-text">{{money(selectedOrder.totalCent)}}</b></div><div class="order-detail-line" v-for="i in selectedOrder.items" :key="i.skuId"><span class="mini-icon"><Icon name="package"/></span><div><strong>{{i.title}}</strong><small>{{i.specKey}} × {{i.quantity}}</small></div></div><div class="form-buttons"><button v-if="can('order.prepare')&&selectedOrder.status==='PAID'&&selectedOrder.pickup?.status==='WAIT_PREP'" class="outline-button" :disabled="!canAct" @click="prepare(selectedOrder,false)">开始备货</button><button v-if="can('order.prepare')&&selectedOrder.status==='PAID'&&selectedOrder.pickup?.status==='PREPARING'" class="teal-button" :disabled="!canAct" @click="prepare(selectedOrder,true)">备货完成</button></div><form v-if="can('pickup.verify')&&selectedOrder.status==='PAID'&&selectedOrder.pickup?.status==='READY'" class="verify-form" @submit.prevent="verify(selectedOrder)"><label class="field-label" for="merchantops-field-3">买家自提令牌</label><textarea id="merchantops-field-3" class="admin-input" v-model="token" rows="3" required placeholder="输入买家自提令牌"></textarea><button type="submit" class="teal-button" :disabled="!canAct">核销自提</button></form></aside></div></div></template>
  <template v-else-if="route==='/merchant/aftersales'"><section class="ops-card"><div class="ops-card-header"><h2>售后申请</h2><span>{{preview?afterSales.length:pageInfo.total}} 条</span></div><div class="ops-list-line" v-for="s in afterSales" :key="s.id"><span class="mini-icon"><Icon name="shield"/></span><div><strong>{{s.orderId}}</strong><small>{{s.reason}}</small></div><span class="status-tag">{{afterSaleStatusLabel(s.status)}}</span><button v-if="can('aftersale.review')&&s.status==='REQUESTED'" class="outline-button small" @click="decision=s.orderId;reason=''">审核</button></div><div v-if="!afterSales.length" class="admin-empty">暂无售后</div><form class="review-inline" v-if="decision&&can('aftersale.review')&&afterSales.find(s=>s.orderId===decision)?.status==='REQUESTED'" @submit.prevent="decisionAction(afterSales.find(s=>s.orderId===decision),true)"><h3>售后审核 · {{decision}}</h3><textarea class="admin-input" rows="3" v-model="reason" maxlength="500" required placeholder="审核说明（必填）"></textarea><div class="form-buttons"><button type="button" class="outline-button" :disabled="!canAct||!reason.trim()" @click="decisionAction(afterSales.find(s=>s.orderId===decision),false)">驳回</button><button type="submit" class="teal-button" :disabled="!canAct||!reason.trim()">同意退款</button></div></form></section></template>
- <template v-else-if="route==='/merchant/team'"><div class="ops-grid"><section class="ops-card"><div class="ops-card-header"><h2>成员</h2><span>{{members.length}} 人</span></div><div class="ops-list-line" v-for="m in members" :key="m.userId"><span class="mini-icon"><Icon name="user"/></span><div><strong>{{m.userId}}</strong><small>{{roles.find(r=>r.code===m.role)?.name||m.role}} · {{membershipStatusLabel(m.status)}}</small></div><select v-if="m.role!=='OWNER'&&m.status==='ACTIVE'" class="admin-input compact-select" :value="m.role" :disabled="!canAct" @change="assignMember(m,$event.target.value)"><option v-for="r in roles.filter(r=>r.code!=='OWNER')" :value="r.code" :key="r.code">{{r.name}}</option></select><button v-if="m.role!=='OWNER'&&m.status==='ACTIVE'" class="outline-button small" :disabled="!canAct||!canOwner" @click="revoke(m)">撤销</button></div></section><section class="ops-card ops-sideform"><h2>邀请店员</h2><form @submit.prevent="invite"><label class="field-label" for="merchantops-field-4">已注册用户名</label><input id="merchantops-field-4" class="admin-input" v-model="inviteUser" required maxlength="32" placeholder="用户名"/><button type="submit" class="teal-button" :disabled="!canAct||!canOwner">发送邀请</button></form><button class="outline-button small" @click="go('/merchant/roles')">管理角色和权限</button></section></div></template>
+ <template v-else-if="route==='/merchant/team'"><div class="ops-grid"><section class="ops-card"><div class="ops-card-header"><h2>成员</h2><span>{{members.length}} 人</span></div><div class="ops-list-line" v-for="m in members" :key="m.userId"><span class="mini-icon"><Icon name="user"/></span><div><strong>{{m.userId}}</strong><small>{{roles.find(r=>r.code===m.role)?.name||m.role}} · {{membershipStatusLabel(m.status)}}</small></div><select v-if="m.role!=='OWNER'&&m.status==='ACTIVE'" class="admin-input compact-select" :value="m.role" :disabled="!canAct||!canOwner" @change="assignMember(m,$event)"><option v-for="r in roles.filter(r=>r.code!=='OWNER')" :value="r.code" :key="r.code">{{r.name}}</option></select><button v-if="m.role!=='OWNER'&&m.status==='ACTIVE'" class="outline-button small" :disabled="!canAct||!canOwner" @click="revoke(m)">撤销</button></div></section><section class="ops-card ops-sideform"><h2>邀请店员</h2><form @submit.prevent="invite"><label class="field-label" for="merchantops-field-4">已注册用户名</label><input id="merchantops-field-4" class="admin-input" v-model="inviteUser" required maxlength="32" placeholder="用户名"/><button type="submit" class="teal-button" :disabled="!canAct||!canOwner">发送邀请</button></form><button class="outline-button small" @click="go('/merchant/roles')">管理角色和权限</button></section></div></template>
  <template v-else-if="route==='/merchant/settings'"><section class="ops-card ops-settings"><h2>门店资料</h2><form @submit.prevent="saveProfile"><label>经营名称<input class="admin-input" v-model="profile.name" required maxlength="100"/></label><label>门店名称<input class="admin-input" v-model="profile.storeName" required maxlength="100"/></label><label>自提位置<input class="admin-input" v-model="profile.location" required maxlength="200"/></label><button class="teal-button" :disabled="!canAct||!canOwner" type="submit">保存设置</button></form></section></template>
  <div v-if="!preview&&['/merchant/orders','/merchant/pickup','/merchant/aftersales','/merchant/inventory'].includes(route)&&pageInfo.total>0" class="sdd-pager"><span>共 {{pageInfo.total}} 条</span><button :disabled="page<=1" @click="page--">上一页</button><span>{{page}}</span><button :disabled="!pageInfo.hasNext" @click="page++">下一页</button></div></BackofficeShell>`,
 };
