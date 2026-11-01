@@ -123,12 +123,11 @@ class RedisSessionCrossInstanceTest {
                         .statusCode()
                 );
             }
-            // 不同账号绕开账号维度限额，两个节点合计触发来源 300/60；context-path 同时回归。
+            // 来源配额在 CSRF 之前执行；非法 CSRF 请求避免密码校验耗时影响 300/60 限流验收，两个节点及 context-path 同时回归。
             String quotaToken = mapper
                 .readTree(get(ua + "/api/v1/auth/csrf").body())
                 .at("/data/token")
                 .asText();
-            long started = System.nanoTime();
             int accepted = 0;
             int rejected = 0;
             var pool = java.util.concurrent.Executors.newFixedThreadPool(12);
@@ -140,8 +139,8 @@ class RedisSessionCrossInstanceTest {
                         pool.submit(() ->
                             post(
                                 (index % 2 == 0 ? ua : ub) + "/api/v1/auth/login",
-                                quotaToken,
-                                mapper.writeValueAsString(Map.of("username", "missing" + index, "password", "invalid-password"))
+                                "invalid-csrf-token",
+                                "{}"
                             )
                         )
                     );
@@ -152,17 +151,17 @@ class RedisSessionCrossInstanceTest {
                         assertLimited(response);
                         rejected++;
                     } else {
-                        assertEquals(200, response.statusCode());
-                        assertEquals("A0002", mapper.readTree(response.body()).path("code").asText());
+                        assertEquals(403, response.statusCode());
                         accepted++;
                     }
                 }
             } finally {
                 pool.shutdownNow();
             }
-            assertTrue(java.time.Duration.ofNanos(System.nanoTime() - started).toSeconds() < 25);
-            assertEquals(298, accepted); // 此前同一来源已有两次登录。
-            assertEquals(3, rejected);
+            // 首次两次真实登录可能在 60 秒窗口内，接受数应为 298～300。
+            assertTrue(accepted >= 298 && accepted <= 300, "来源阈值必须为每分钟 300 次");
+            assertEquals(301, accepted + rejected);
+            assertTrue(rejected >= 1);
             for (int i = 0; i < 31; i++) {
                 // 非法业务输入不创建用户，但仍必须受真实 HTTP 来源限流保护。
                 var response = post((i % 2 == 0 ? ua : ub) + "/api/v1/auth/register", quotaToken, "{}");
