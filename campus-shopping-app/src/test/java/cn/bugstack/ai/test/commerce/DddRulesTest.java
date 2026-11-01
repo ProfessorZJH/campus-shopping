@@ -137,6 +137,21 @@ class DddRulesTest {
     }
 
     @Test
+    void platformReviewIsOnlyAllowedForDisputedRefunds() {
+        for (String state : List.of("REQUESTED", "REJECTED", "APPROVED")) {
+            var a = new AfterSaleAggregate(new cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO("a", "o", "buyer", "m", state, "申请", "", now));
+            code("T0004", a::requirePlatformReview);
+        }
+        var a = new AfterSaleAggregate(AfterSaleAggregate.request(paid(), "buyer", "未提货", null, "r", now));
+        a.requireMerchantReview();
+        assertTrue(a.reject("商户驳回"));
+        assertFalse(a.reject("重复"));
+        a.appeal(paid(), "buyer");
+        a.requirePlatformReview();
+        assertTrue(a.reject("平台驳回"));
+    }
+
+    @Test
     void onlyLatestIndexedKnowledgeVersionCanPublish() {
         code("AI0003", () -> new KnowledgePublicationAggregate(document(2, "PENDING"), 2, "old").publish());
         code("G0002", () -> new KnowledgePublicationAggregate(document(1, "READY"), 2, "old").publish());

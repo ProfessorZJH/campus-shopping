@@ -194,7 +194,9 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         require(a != null, ResponseCode.NOT_FOUND);
         if (a.state() == AfterSaleStatusEnumVO.APPROVED && o.state() == OrderStatusEnumVO.REFUNDED && approved) return;
         require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.REFUND_STATE_INVALID);
-        if (!platform) new AfterSaleAggregate(a).requireMerchantReview();
+        AfterSaleAggregate review = new AfterSaleAggregate(a);
+        if (platform) review.requirePlatformReview();
+        else review.requireMerchantReview();
         if (approved) {
             afterSales.approveAfterSale(id, reason);
             fulfillment.cancel(id);
@@ -202,7 +204,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             trading.recordRefund(o);
             o.refund();
             trading.save(o);
-        } else afterSales.rejectAfterSale(id, reason);
+        } else if (!afterSales.rejectAfterSale(id, reason)) return;
         access.audit(actor, approved ? "REFUND_APPROVED" : "REFUND_REJECTED", id, o.getMerchantId(), text(reason, "审核意见", 500));
     }
 }

@@ -13,6 +13,6 @@ public interface IMerchantService {
     long count(boolean activeOnly, String q);
     List<MerchantVO> list(int page, int size, boolean activeOnly);
     List<MerchantVO> list(int page, int size, boolean activeOnly, String q);
-    void changeStatus(String merchantId, boolean active);
+    boolean changeStatus(String merchantId, boolean active);
     void updateProfile(String id, String name, String storeName, String location);
 }

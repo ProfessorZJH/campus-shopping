@@ -190,6 +190,20 @@ def run(args):
     owner.call('POST',base+'/orders/'+refund+'/refund-decision',{'approved':True,'reason':'同意整单模拟退款'})
     owner.call('POST',base+'/orders/'+refund+'/refund-decision',{'approved':True,'reason':'同意整单模拟退款'})
     check(buyer.call('GET','/orders/'+refund)['status']=='REFUNDED','未提货退款完成')
+
+    disputed=submit_order()['orderId'];buyer.call('POST','/orders/'+disputed+'/pay',{})
+    buyer.call('POST','/orders/'+disputed+'/refunds',{'reason':'平台裁决回归'})
+    for approved in (True,False):
+        admin.call('POST','/admin/orders/'+disputed+'/refund-decision',{'approved':approved,'reason':'不能跳过申诉'},code='T0004')
+    owner.call('POST',base+'/orders/'+disputed+'/refund-decision',{'approved':False,'reason':'商户驳回'})
+    owner.call('POST',base+'/orders/'+disputed+'/refund-decision',{'approved':False,'reason':'商户重复驳回'})
+    admin.call('POST','/admin/orders/'+disputed+'/refund-decision',{'approved':True,'reason':'尚未申诉'},code='T0004')
+    buyer.call('POST','/orders/'+disputed+'/appeal',{})
+    owner.call('POST',base+'/orders/'+disputed+'/refund-decision',{'approved':True,'reason':'争议中商户无权裁决'},code='A0006')
+    for _ in range(2):
+        admin.call('POST','/admin/orders/'+disputed+'/refund-decision',{'approved':True,'reason':'平台裁决同意'})
+    check(buyer.call('GET','/orders/'+disputed)['status']=='REFUNDED','申诉后平台裁决及重复请求完成')
+
     stock=next(x for x in owner.call('GET',base+'/stocks') if x['skuId']==sku)
     check(stock['onHand']==4 and stock['reserved']==0,'重复退款只释放一次预占')
     cancel=submit_order()['orderId'];buyer.call('POST','/orders/'+cancel+'/cancel',{})
