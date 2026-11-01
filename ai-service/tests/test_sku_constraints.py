@@ -30,7 +30,7 @@ def ask(api, question, items=None, history=None, **kwargs):
 
 @pytest.mark.parametrize('question', [
     '考试签字笔要标准装，不要家庭装', '考试签字笔不要家庭装',
-    '不要推荐家庭装，考试签字笔选标准装', '考试签字笔不要家庭装和礼盒装，要标准装',
+    '不要推荐家庭装，考试签字笔选标准装',
     '家庭装不要，考试签字笔要标准装', '不要家庭装要标准装考试签字笔',
     '考试签字笔不喜欢家庭装', '考试签字笔不接受家庭装', '考试签字笔别买家庭装',
 ])
@@ -58,6 +58,12 @@ def test_specs_are_grounded_in_offer_values_not_evaluation_names(api, spec, othe
 ])
 def test_conflicting_or_unverifiable_specs_clarify_without_substitution(api, question):
     data = ask(api, question)
+    assert not data['recommendations']
+    assert '规格' in data['answer'] and '明确' in data['answer']
+
+
+def test_unknown_negative_attribute_clarifies_even_with_known_positive_spec(api):
+    data = ask(api, '考试签字笔要标准装，不要家庭装和礼盒装')
     assert not data['recommendations']
     assert '规格' in data['answer'] and '明确' in data['answer']
 

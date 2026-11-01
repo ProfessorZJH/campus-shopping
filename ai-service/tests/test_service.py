@@ -178,6 +178,7 @@ def test_quantity_parser_does_not_guess_multi_item_quantities():
     assert requested_quantity('买二十瓶矿泉水')==20
     assert requested_quantity('买二十一瓶矿泉水')==21
     assert quantity_intent('买100瓶矿泉水')==(None,'INVALID')
+    assert quantity_intent('买两三瓶矿泉水')==(None,'AMBIGUOUS')
 
 def test_invalid_or_ambiguous_quantity_never_defaults_to_one(app_client):
     _,client=app_client

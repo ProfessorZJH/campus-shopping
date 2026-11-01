@@ -6,13 +6,14 @@
 
 - Java/Python AI 候选协议增加可选结构化 `attributes`；未知属性、否定属性和冲突规格安全澄清，不从商品标题推断糖分、颜色等 SKU 事实。增加“备货/到货”知识意图词，避免知识问题被当作推荐。
 - Java 读取同一 actor/conversation 的最新待确认 Proposal，`换一个` 排除上一轮 SKU，`便宜点` 要求低于上一轮报价，再交给 Python 和 Java 的既有库存、预算、规格复验。
+- 连续改选始终取按 `created_at DESC` 返回的最新待确认 Proposal；未知硬否定属性即使伴随已知正向规格也保持澄清，预算区间和“两三件”数量在 Java/Python 两端统一判为歧义。
 - 语义商品响应保留 `productRanks`；Java 通过 `SemanticProductRankVO` 将 rank 传入 RRF 和 SKU 顺序。旧服务没有 rank 时仅按返回顺序生成并标记迁移兼容 rank。
 - 引用响应增加文档版本、chunk ordinal、内容 hash；Python 输出确定性分块信息，Java 按 UUID5、700/80 分块规则、版本和 hash 复验。旧引用协议保留兼容读取路径，新的完整协议拒绝错版本、错 chunk 和错片段。
 - 评测增加 `evidenceRecall`，将合法引用率、Gold 证据覆盖与人工回答支持率分开；DRAFT、NOT_RUN、PENDING 状态继续独立。
 
 ## 自动验证
 
-- `ai-service`：213 项 pytest 通过，包含新增结构化属性和证据召回回归。
+- `ai-service`：217 项 pytest 通过，包含结构化属性、语义 rank 顺序、预算/数量歧义和无效证据召回回归。
 - Java：`PurchaseConstraintTest`、`AiConversationBoundaryTest`、`DddRulesTest` 共 24 项通过；全模块编译通过。
 - `python scripts/verify-api-contract.py`、`verify-api-schemas.py`、`schema_contract.py --check` 和 OpenSpec strict 校验通过。
 - 未在本机启动隔离 MySQL/Redis，也未调用真实外部模型、Embedding 或 Milvus；这些属于后续正式验收范围。

@@ -107,7 +107,7 @@ def spec_constraints(question, history, offers, followup):
     ambiguous = current.ambiguous
     known_values = {value for offer in offers for value in offer_values(offer)}
     # 有明确可验证的正向规格时，未知的附带排除项不能放宽该规格；只在没有可验证正向目标时要求澄清。
-    ambiguous = ambiguous or (bool(forbidden - known_values) and not required)
+    ambiguous = ambiguous or bool(forbidden - known_values)
     if followup.search(question):
         for previous in reversed([h['content'] for h in history if h['role'] == 'user']):
             inherited = extract(previous, vocabulary, titles)

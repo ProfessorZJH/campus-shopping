@@ -25,7 +25,7 @@ FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|贵一点|
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
     patterns=[r'(?:预算|上限)\s*('+NUMBER+r')\s*(?:元|块)?',r'(?:不超过|最多|不到)\s*('+NUMBER+r')\s*(?:元|块)',r'('+NUMBER+r')\s*(?:元|块)\s*(?:以内|以下|左右)']
-    marker=bool(re.search(r'预算|不超过|最多|不到|上限|(?:元|块)\s*(?:以内|以下|左右)',question))
+    marker=bool(re.search(r'预算|不超过|最多|不到|上限|(?:元|块)\s*(?:以内|以下|左右)|(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*[到至~-]\s*(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*(?:元|块)',question))
     if marker and re.search(r'(?:[零〇一二两三四五六七八九十百千万\d]*[几多来余]|[零〇一二两三四五六七八九十百千万\d]+\s*[到至~-]\s*[零〇一二两三四五六七八九十百千万\d]+)\s*(?:元|块)',question):return None,'AMBIGUOUS'
     amounts=[]
     for pattern in patterns:
@@ -52,7 +52,7 @@ QUANTITY_PATTERN=re.compile(r'(?<![\d.零〇一二两三四五六七八九十百
 def quantity_intent(question: str) -> tuple[int|None,str]:
     """区分未指定、明确有效、歧义和超限数量，不从完整数词中间截取。"""
     question=re.sub(r'换一个|换一款|还有一个选择','',question)
-    if re.search(r'(?:[零〇一二两三四五六七八九十百千万\d]*[几多来余]|[零〇一二两三四五六七八九十百千万\d]+\s*[到至~-]\s*[零〇一二两三四五六七八九十百千万\d]+)\s*[个件份瓶盒包本支杯袋斤]',question):return None,'AMBIGUOUS'
+    if re.search(r'(?:[零〇一二两三四五六七八九十百千万\d]*[几多来余]|[零〇一二两三四五六七八九十百千万\d]+\s*[到至~-]\s*[零〇一二两三四五六七八九十百千万\d]+|[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+)\s*[个件份瓶盒包本支杯袋斤]',question):return None,'AMBIGUOUS'
     matches=QUANTITY_PATTERN.findall(question)
     if not matches:return None,'UNSPECIFIED'
     if len(matches)!=1:return None,'AMBIGUOUS'
@@ -147,12 +147,12 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     quantity=requested or 1
     eligible=[o for o in offers if specs.accepts(o) and o['available']>=quantity and o['priceCent']>0 and (limit is None or o['priceCent']*quantity<=limit)]
     ranked=bm25(query,[o['title']+' '+o['specKey']+' '+o.get('description','') for o in eligible])
-    semantic_set=set(semantic_sku_ids or [])
+    semantic_rank={sku_id: rank for rank, sku_id in enumerate(semantic_sku_ids or [], 1)}
     # RRF: 当前 Java 排列顺序是融合后的商品次序；语义命中且无词面重合的商品仍可被推荐。
     scores={}
     for rank,(i,_) in enumerate(ranked,1):scores[i]=scores.get(i,0)+1/(60+rank)
-    semantic=[i for i,o in enumerate(eligible) if o['skuId'] in semantic_set]
-    for rank,i in enumerate(semantic,1):scores[i]=scores.get(i,0)+1/(60+rank)
+    semantic=[(i, semantic_rank[o['skuId']]) for i,o in enumerate(eligible) if o['skuId'] in semantic_rank]
+    for i, rank in semantic:scores[i]=scores.get(i,0)+1/(60+rank)
     candidates=[eligible[i] for i in sorted(scores,key=lambda i:(-scores[i],i))[:12]]
     if _trace is not None:_trace.update(eligible=[o['skuId'] for o in eligible], candidates=[o['skuId'] for o in candidates])
     recommendations=[];total=0

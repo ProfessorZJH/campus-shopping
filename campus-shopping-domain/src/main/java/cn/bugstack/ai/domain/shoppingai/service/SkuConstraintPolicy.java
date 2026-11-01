@@ -147,6 +147,10 @@ public final class SkuConstraintPolicy {
         required.forEach(v -> axes.add(dimension(v)));
         forbidden.forEach(v -> axes.add(dimension(v)));
         boolean ambiguous = current.ambiguous();
+        ambiguous |= current
+            .forbidden()
+            .stream()
+            .anyMatch(value -> !vocabulary.contains(value));
         if (FOLLOWUP.matcher(question).find()) {
             for (int i = history.size() - 1; i >= 0; i--) {
                 var inherited = extract(history.get(i), vocabulary, sortedTitles);
@@ -165,6 +169,10 @@ public final class SkuConstraintPolicy {
                     .filter(v -> newAxes.contains(dimension(v)))
                     .forEach(forbidden::add);
                 if (!newAxes.isEmpty()) ambiguous |= inherited.ambiguous();
+                ambiguous |= inherited
+                    .forbidden()
+                    .stream()
+                    .anyMatch(value -> !vocabulary.contains(value));
                 axes.addAll(newAxes);
                 if (!FOLLOWUP.matcher(history.get(i)).find()) break;
             }

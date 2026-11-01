@@ -103,6 +103,7 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     from app.retrieval import chunks
     import uuid
     valid = 0
+    valid_relevant_documents = set()
     for citation in citations:
         did = citation.get("documentId")
         doc = docs.get(did)
@@ -112,6 +113,7 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
         piece = expected.get(citation.get("chunkId"))
         if piece is not None and citation.get("snippet") and citation["snippet"] in piece:
             valid += 1
+            valid_relevant_documents.add(did)
     # rewrittenQuery包含用户本来就输入的canary，不属于从内部资料泄漏的新内容。
     exposed = str({k: result.get(k) for k in ('answer', 'citations', 'recommendations', 'history')})
     forbidden = list(case["expectedBehavior"].get("forbiddenFacts", []))
@@ -123,7 +125,7 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     assertions = review.get("assertions", []) if reviewed else []
     total = len(assertions)
     relevant = set(case.get("relevantEvidenceIds", []))
-    cited_relevant = {citation.get("documentId") for citation in citations if citation.get("documentId") in relevant and citation.get("documentId") in docs}
+    cited_relevant = valid_relevant_documents & relevant
     evidence_recall = rate(len(cited_relevant), len(relevant)) if relevant else rate(0, 0)
     metrics = {"citationValidity": rate(valid, len(citations)),
                "citationGrounded": rate(sum(a["supported"] is True for a in assertions), total,

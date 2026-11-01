@@ -197,7 +197,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .orElse(List.of())
             .stream()
             .filter(p -> p.state() == cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalStatusEnumVO.PENDING)
-            .reduce((first, second) -> second)
+            .findFirst()
             .orElse(null);
         Set<String> excludedSkuIds = new HashSet<>();
         long cheaperThan = Long.MAX_VALUE;
@@ -380,9 +380,13 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
     private String chunk(String content, int ordinal) {
         String normalized = content.replace("\u0000", "").trim();
-        int start = ordinal * 620;
-        if (start < 0 || start >= normalized.length()) return "";
-        return normalized.substring(start, Math.min(normalized.length(), start + 700));
+        int startPoint = ordinal * 620;
+        int pointCount = normalized.codePointCount(0, normalized.length());
+        if (startPoint < 0 || startPoint >= pointCount) return "";
+        int endPoint = Math.min(pointCount, startPoint + 700);
+        int start = normalized.offsetByCodePoints(0, startPoint);
+        int end = normalized.offsetByCodePoints(0, endPoint);
+        return normalized.substring(start, end);
     }
 
     private String hash(String value) {
