@@ -2,9 +2,11 @@ package cn.bugstack.ai.config;
 
 import cn.bugstack.ai.infrastructure.redis.RedisClients;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.temporal.ChronoUnit;
 import org.redisson.spring.data.connection.RedissonConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.convert.DurationStyle;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -20,6 +22,14 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 @ConditionalOnProperty(name = "campus.redis.enabled", havingValue = "true", matchIfMissing = true)
 @EnableRedisHttpSession(redisNamespace = "${campus.redis.namespace:cs:dev}:session", maxInactiveIntervalInSeconds = 1800)
 public class RedisSessionConfig {
+
+    @Bean
+    public org.springframework.session.config.SessionRepositoryCustomizer<org.springframework.session.data.redis.RedisSessionRepository> sessionTimeout(
+        org.springframework.core.env.Environment environment
+    ) {
+        var timeout = DurationStyle.detectAndParse(environment.getProperty("server.servlet.session.timeout", "30m"), ChronoUnit.SECONDS);
+        return repository -> repository.setDefaultMaxInactiveInterval(timeout);
+    }
 
     @Bean
     public RedisConnectionFactory redisConnectionFactory(RedisClients clients) {

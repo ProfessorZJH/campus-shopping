@@ -47,3 +47,5 @@
 - [购物车库存、SKU 独立上下架与并发整改](testing/CART-SKU-REMEDIATION-20261101.md)
 
 - [PR #45 审查收尾：确定锁序与服务端增量加购](testing/PR45-LOCK-ADD-REVIEW-20261101.md)
+
+- [Redis 缓存自愈、版本隔离与双实例专项整改](testing/REDIS-REMEDIATION-20261101.md)

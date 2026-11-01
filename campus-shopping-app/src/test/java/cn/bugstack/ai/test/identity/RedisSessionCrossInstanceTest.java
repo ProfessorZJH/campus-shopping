@@ -15,6 +15,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext;
 
 @EnabledIfEnvironmentVariable(named = "REDIS_TEST_ADDRESS", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "REDIS_TEST_CACHE_ADDRESS", matches = ".+")
 class RedisSessionCrossInstanceTest {
 
     private final ObjectMapper mapper = new ObjectMapper();
@@ -27,10 +28,13 @@ class RedisSessionCrossInstanceTest {
         String[] options = {
             "--spring.profiles.active=session-test",
             "--server.port=0",
+            "--server.servlet.context-path=/foo",
+            "--server.servlet.session.timeout=30",
+            "--campus.security.rate-limit-enabled=true",
             "--campus.redis.enabled=true",
             "--campus.redis.namespace=" + namespace,
             "--campus.redis.security-address=" + address,
-            "--campus.redis.cache-address=" + address,
+            "--campus.redis.cache-address=" + System.getenv("REDIS_TEST_CACHE_ADDRESS"),
             "--campus.redis.security-password=" + System.getenv().getOrDefault("REDIS_TEST_PASSWORD", ""),
             "--campus.redis.cache-password=" + System.getenv().getOrDefault("REDIS_TEST_PASSWORD", ""),
         };
@@ -39,8 +43,8 @@ class RedisSessionCrossInstanceTest {
             var b = (ServletWebServerApplicationContext) new SpringApplicationBuilder(Application.class).run(options)
         ) {
             a.getBean(IUserAccountService.class).register("redisuser", "Redis-test-password-123!", "Redis测试");
-            String ua = "http://127.0.0.1:" + a.getWebServer().getPort(),
-                ub = "http://127.0.0.1:" + b.getWebServer().getPort();
+            String ua = "http://127.0.0.1:" + a.getWebServer().getPort() + "/foo",
+                ub = "http://127.0.0.1:" + b.getWebServer().getPort() + "/foo";
             String oldToken = mapper
                 .readTree(get(ua + "/api/v1/auth/csrf").body())
                 .at("/data/token")
@@ -86,10 +90,97 @@ class RedisSessionCrossInstanceTest {
                     )
                     .statusCode()
             );
-            get(ua + "/api/v1/auth/csrf");
+            String freshToken = mapper
+                .readTree(get(ua + "/api/v1/auth/csrf").body())
+                .at("/data/token")
+                .asText();
+            assertEquals(
+                "0000",
+                mapper
+                    .readTree(
+                        post(
+                            ua + "/api/v1/auth/login",
+                            freshToken,
+                            mapper.writeValueAsString(Map.of("username", "redisuser", "password", "Redis-test-password-123!"))
+                        ).body()
+                    )
+                    .path("code")
+                    .asText()
+            );
+            String idleCookie = cookie();
+            Thread.sleep(31200);
+            for (String base : List.of(ua, ub)) {
+                assertEquals(
+                    401,
+                    HttpClient.newHttpClient()
+                        .send(
+                            HttpRequest.newBuilder(URI.create(base + "/api/v1/auth/me"))
+                                .header("Cookie", idleCookie)
+                                .GET()
+                                .build(),
+                            HttpResponse.BodyHandlers.ofString()
+                        )
+                        .statusCode()
+                );
+            }
+            // 来源限流在 CSRF 前执行，两个节点合计触发来源 300/60；context-path 同时回归。
+            String quotaToken = mapper
+                .readTree(get(ua + "/api/v1/auth/csrf").body())
+                .at("/data/token")
+                .asText();
+            int accepted = 0;
+            int rejected = 0;
+            var pool = java.util.concurrent.Executors.newFixedThreadPool(12);
+            try {
+                var requests = new ArrayList<java.util.concurrent.Future<HttpResponse<String>>>();
+                for (int i = 0; i < 301; i++) {
+                    final int index = i;
+                    requests.add(
+                        pool.submit(() ->
+                            post(
+                                (index % 2 == 0 ? ua : ub) + "/api/v1/auth/login",
+                                "invalid-csrf-token",
+                                mapper.writeValueAsString(Map.of("username", "missing" + index, "password", "invalid-password"))
+                            )
+                        )
+                    );
+                }
+                for (var request : requests) {
+                    var response = request.get(30, java.util.concurrent.TimeUnit.SECONDS);
+                    if (response.statusCode() == 429) {
+                        assertLimited(response);
+                        rejected++;
+                    } else {
+                        assertEquals(403, response.statusCode());
+                        accepted++;
+                    }
+                }
+            } finally {
+                pool.shutdownNow();
+            }
+            assertTrue(accepted >= 298 && accepted <= 300);
+            assertEquals(301, accepted + rejected);
+            assertTrue(rejected >= 1);
+            for (int i = 0; i < 31; i++) {
+                // 非法业务输入不创建用户，但仍必须受真实 HTTP 来源限流保护。
+                var response = post((i % 2 == 0 ? ua : ub) + "/api/v1/auth/register", quotaToken, "{}");
+                if (i < 30) {
+                    assertEquals(200, response.statusCode());
+                    assertNotEquals("0000", mapper.readTree(response.body()).path("code").asText());
+                } else assertLimited(response);
+            }
+            a.getBean(RedisClients.class).cache().shutdown();
+            assertEquals(200, get(ua + "/api/v1/auth/csrf").statusCode());
             a.getBean(RedisClients.class).security().shutdown();
             assertEquals(503, get(ua + "/api/v1/auth/csrf").statusCode());
         }
+    }
+
+    private void assertLimited(HttpResponse<String> response) throws Exception {
+        assertNotNull(response);
+        assertEquals(429, response.statusCode());
+        assertEquals("A0007", mapper.readTree(response.body()).path("code").asText());
+        assertTrue(Long.parseLong(response.headers().firstValue("Retry-After").orElseThrow()) > 0);
     }
 
     HttpResponse<String> get(String url) throws Exception {

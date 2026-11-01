@@ -1,0 +1,8 @@
+{
+  "command": "python -m pytest -q",
+  "cwd": "ai-service",
+  "status": "PASS",
+  "passed": 211,
+  "warnings": 1,
+  "seconds": 38.15
+}

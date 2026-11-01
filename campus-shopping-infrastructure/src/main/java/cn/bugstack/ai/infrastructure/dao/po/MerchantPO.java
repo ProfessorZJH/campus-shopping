@@ -16,6 +16,7 @@ public class MerchantPO {
     private String name;
     private String category;
     private String status;
+    private Long version;
     private String storeId;
     private String storeName;
     private String location;

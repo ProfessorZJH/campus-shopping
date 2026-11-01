@@ -9,6 +9,7 @@ import org.apache.ibatis.annotations.*;
 @Mapper
 public interface IMerchantDao {
     List<MerchantPO> findAll(@Param("ids") List<String> ids);
+    MerchantPO displayFacts(@Param("id") String id);
     String status(@Param("id") String id);
     MerchantPO find(@Param("id") String id, @Param("lock") boolean lock);
     int insertMerchant(@Param("po") MerchantPO po);

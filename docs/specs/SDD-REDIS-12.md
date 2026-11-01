@@ -12,12 +12,12 @@ Redis 支撑共享 Session、入口限流、公开展示缓存、AI 请求准入
 
 - 保留 Java17 / Spring Boot3.4.3 / MyBatis3.0.4；Redisson 锁定版本，对接 Spring Data Redis 使用 `redisson-spring-data-34`，禁止混入其他适配模块。
 - 正常启动默认启用 Redis。`REDIS_ENABLED=false` 是显式的单实例开发/隔离测试模式；运行中 Redis 故障不得自动退回内存 Session 或内存限流。
-- 安全 Redis 和缓存 Redis 使用独立连接配置与独立实例。安全实例 AOF everysec / noeviction；缓存实例允许 allkeys-lru。前缀不等于内存隔离。
+- 安全 Redis 和缓存 Redis 使用独立连接配置与独立实例。安全实例 AOF everysec / noeviction；缓存实例允许 allkeys-lru。prod 默认启动校验两个地址的解析 IP 与端口，拒绝相同端点；开发环境允许共用。前缀不等于内存隔离。
 - 地址、随机密码、TLS、超时、namespace 只由服务端配置。测试命名空间随机且不含生产数据，禁止 FLUSHDB/FLUSHALL。
 
 ## 身份与入口契约
 
-- 使用 Spring Session Data Redis，空闲超时 30 分钟，保留 JSESSIONID、HttpOnly、SameSite=Lax、环境要求的 Secure、登录换 ID 和 CSRF 轮换。
+- 使用 Spring Session Data Redis，空闲超时默认 30 分钟，由 server.servlet.session.timeout 配置，保留 JSESSIONID、HttpOnly、SameSite=Lax、环境要求的 Secure、登录换 ID 和 CSRF 轮换。
 - 首次从内存 Session 切换会要求重新登录；Cookie 名相同不代表旧 Session 被迁移。
 - 显式定义 Session 序列化并验证 SecurityContext/CSRF 的真实跨实例读取；滚动发布必须兼容同一格式。权限和账户状态继续 MySQL 实时校验。
 - 登录来源、注册来源、AI 用户/全局、自提操作人/商户使用 OVERALL 共享限额。来源取直接连接地址，未经可信代理配置不信任 X-Forwarded-For。校园 NAT 需要较宽的来源阈值并配合账号维度保护。
@@ -25,10 +25,10 @@ Redis 支撑共享 Session、入口限流、公开展示缓存、AI 请求准入
 
 ## 展示缓存契约
 
-- 仅缓存公开商品元数据、类目和公开商户展示信息；不缓存库存、SKU 报价、权限、商户经营资格、完整页面/AI 回答。
+- 仅缓存公开商品元数据和公开商户展示信息；类目直接查询 MySQL；不缓存库存、SKU 报价、权限、商户经营资格、完整页面/AI 回答。
 - 商品展示路径与交易、召回读取分开。实时商品状态/版本和商户资格仍查 MySQL；缓存只存显式 JSON 投影，不序列化聚合或启用任意类型反序列化。
-- 商品缓存约 30–60 秒、商户约 60–180 秒、类目约 10 分钟，含抖动。商品版本参与 Key，避免旧数据回填覆盖新版本；类目和商户提交后失效，短 TTL 限定失败时的陈旧时间。
-- 事务回滚不得删缓存；提交后删除失败只记录安全诊断和指标，不把已经提交的业务写入报告成回滚。缓存不可用以短超时回退 MySQL，不重试放大数据库流量。
+- 商品缓存约 30–60 秒、商户约 60–180 秒，含抖动。商品和商户数据库版本参与 Key，读取时实时查询版本和状态；商户资料及状态更新在原事务内递增版本，旧请求晚回填仅影响旧版本 Key。类目没有版本且规模小，直接读取 MySQL。
+- 事务回滚不得删缓存；提交后删除失败只记录安全诊断和指标，不把已经提交的业务写入报告成回滚。缓存不可用以短超时回退 MySQL，不重试 Redis。JSON 损坏时仅条件删除读到的原值，回源后以 set-if-absent 和 TTL 回填，不删除或覆盖并发请求的新值；损坏与依赖失败均保留安全失败计数。
 
 ## AI 与任务契约
 

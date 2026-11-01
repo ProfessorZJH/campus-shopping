@@ -16,6 +16,7 @@ import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.transaction.support.*;
 
 @EnabledIfEnvironmentVariable(named = "REDIS_TEST_ADDRESS", matches = ".+")
+@EnabledIfEnvironmentVariable(named = "REDIS_TEST_CACHE_ADDRESS", matches = ".+")
 class RedisInfrastructureIntegrationTest {
 
     @Test
@@ -25,7 +26,7 @@ class RedisInfrastructureIntegrationTest {
         try (
             var clients = new RedisClients(
                 RedisInfrastructureConfig.client(address, "", password),
-                RedisInfrastructureConfig.client(address, "", password),
+                RedisInfrastructureConfig.client(System.getenv("REDIS_TEST_CACHE_ADDRESS"), "", password),
                 "cs:test:" + UUID.randomUUID()
             )
         ) {

@@ -1,6 +1,6 @@
 # SDD-12 Redis 运行与回退
 
-正常启动默认启用 Redis。共享身份和限流使用安全实例，公开展示使用缓存实例；建议分别部署，安全实例 noeviction + AOF everysec，缓存实例 allkeys-lru。Compose 已提供两个不公开端口的实例及健康检查。现有 .env 不自动覆盖，应把 .env.example 新增字段合并到本地私有配置；密码不要提交或打印。
+正常启动默认启用 Redis。共享身份和限流使用安全实例，公开展示使用缓存实例；prod 默认强制校验连接端点隔离，须分别部署，安全实例 noeviction + AOF everysec，缓存实例 allkeys-lru。Compose 已提供两个不公开端口的实例及健康检查。现有 .env 不自动覆盖，应把 .env.example 新增字段合并到本地私有配置；密码不要提交或打印。
 
 ## 本地配置
 
@@ -22,12 +22,12 @@ Python知识索引写入/删除、意图、问答、商品索引写入/搜索/�
 
 MySQL对话租约沿用主线600秒，由 `turn_*` 字段裁决。崩溃后等待到期可重试；过期token不能写消息/提案，也不能释放新token。网络故障释放失败依靠到期恢复。索引任务使用非阻塞锁和watchdog，数据库事实复验、幂等索引和下轮重试始终保留。
 
-展示缓存只有显式JSON投影；商品Key带实时数据库版本，类目10分钟、商品约40秒、商户90秒并带抖动。提交后失效失败不改变业务提交结果，短TTL限制陈旧时间；缓存故障短超时回退数据库并记录计数。AOF everysec不保证故障转移中的零数据丢失，生产HA、注销耐久性和峰值容量需单独验收。
+展示缓存只有显式JSON投影；商品和商户 Key 带实时数据库版本，商品约40秒、商户90秒并带抖动，类目直接查询 MySQL。JSON 损坏以条件删除及仅空值回填修复，并保留 TTL；Redis 读取失败直接回源且不重试。prod 校验会解析 DNS 并比较 IP/端口，不能识别经不同代理端点指向同一后端的拓扑，部署仍须核验物理实例。AOF everysec不保证故障转移中的零数据丢失，生产HA、注销耐久性和峰值容量需单独验收。
 
 ## 验证
 
-真实Redis测试需设置 REDIS_TEST_ADDRESS（及可选 REDIS_TEST_PASSWORD）。每次使用随机cs:test命名空间，不使用FLUSHDB/FLUSHALL，不输出凭据。Spring安全隔离测试显式关闭Redis；RedisSessionCrossInstanceTest启动两个真实HTTP实例，身份测试使用H2，不把它当作MySQL事务证据。交易和租约证据来自全新临时MySQL。
+真实Redis测试需设置 REDIS_TEST_ADDRESS、独立实例 REDIS_TEST_CACHE_ADDRESS（及可选 REDIS_TEST_PASSWORD）。每次使用随机cs:test命名空间，不使用FLUSHDB/FLUSHALL，不输出凭据。Spring安全隔离测试显式关闭Redis；RedisSessionCrossInstanceTest启动两个真实HTTP实例，身份测试使用H2，不把它当作MySQL事务证据。交易和租约证据来自全新临时MySQL。
 
-Windows复现：设置 REDIS_TEST_ADDRESS=redis://127.0.0.1:6379 和 MAVEN_OPTS=-Dpython.executable=python，然后运行 python scripts/verify-mysql-isolated.py --mysql-bin D:/develop/mysql-8.0.31-winx64/bin --maven mvnw.cmd --http-smoke --artifact-dir var/verified-integration --output docs/testing/evidence/redis-main-integration/mysql.json。脚本仅操作全新临时库，结束清理；使用本机已启动 Redis，不启动 Docker Redis、不清空 Redis。它会启动两个临时 Java 实例并运行 scripts/smoke-redis-shared.py，验证共享身份、撤权、展示实时性与共享登录限额。Python执行 cd ai-service && python -m pytest -q。发布还须执行格式、API、边界和schema检查。
+Windows复现：仅在确认两个实例均为测试专用后，设置 REDIS_TEST_ADDRESS=redis://127.0.0.1:16379、REDIS_TEST_CACHE_ADDRESS=redis://127.0.0.1:16380 和 MAVEN_OPTS=-Dpython.executable=python，然后运行 python scripts/verify-mysql-isolated.py --mysql-bin D:/develop/mysql-8.0.31-winx64/bin --maven mvnw.cmd --http-smoke --artifact-dir var/verified-integration --output docs/testing/evidence/redis-main-integration/mysql.json。脚本仅操作全新临时库，结束清理；使用本机已启动 Redis，不启动 Docker Redis、不清空 Redis。它会启动两个临时 Java 实例并运行 scripts/smoke-redis-shared.py，验证共享身份、撤权、展示实时性与共享登录限额。Python执行 cd ai-service && python -m pytest -q。发布还须执行格式、API、边界和schema检查。
 
 Docker Compose与GitHub Actions需分别真实运行后记录证据。CI已加入Redis服务和测试；更新工作流不等于远程CI已经通过。
