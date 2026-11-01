@@ -22,7 +22,8 @@ class PagedBackend(BackendContractDouble):
             page, size = int(params.get('page', ['1'])[0]), int(params.get('size', ['100'])[0])
             self.pages.append((path, page, size))
             rows = [dict(id=f'row-{i}', title=f'历史会话 {i}', merchantId=f'商户 {i}', status='PENDING',
-                         createdAt='2026-10-30T00:00:00Z', expiresAt='2027-01-01T00:00:00Z') for i in range(101)]
+                         createdAt='2026-10-30T00:00:00Z',
+                         expiresAt='2020-01-01T00:00:00Z' if path == '/invitations' and i == 0 else '2027-01-01T00:00:00Z') for i in range(101)]
             return route.fulfill(status=200, json=self.data(rows[(page-1)*size:page*size]))
         return super().handle(route)
 
@@ -43,6 +44,10 @@ def main():
         close_page(page)
         page = render(browser, '/invitations', False, fixture=fixture)
         expect(page.locator('.invitation-line')).to_have_count(20)
+        expired = page.locator('.invitation-line').first
+        expect(expired).to_contain_text('已过期')
+        expect(expired.get_by_role('button', name='接受')).to_be_disabled()
+        checks.append('过期 PENDING 邀请显示已过期且禁止接受')
         for _ in range(5):
             page.get_by_role('button', name='下一页').click()
             expect(page.locator('.sdd-pager span')).to_have_text(str(_+2))

@@ -206,8 +206,11 @@ def main():
         # 切换不同登录主体，后台原有数据不得留在无权账号页面。
         f.platform_admin=True
         f.user={'userId':'u1','username':'student001','displayName':'管理员A','status':'ACTIVE'}
+        f.shops[1]['status']='SUSPENDED'
         page=browser_page(browser,'/admin/merchants',f)
         expect(page.locator('.ops-table tbody tr')).to_have_count(2)
+        expect(page.locator('.ops-table tbody tr').filter(has_text='鲜果小站').get_by_text('暂停营业', exact=True)).to_be_visible()
+        checks.append('平台商户列表正确展示暂停营业状态')
         f.platform_admin=False
         f.user={'userId':'u2','username':'student002','displayName':'普通用户B','status':'ACTIVE'}
         page.locator('.topbar-avatar').click()

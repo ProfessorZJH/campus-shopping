@@ -21,8 +21,7 @@ export const applicationStatusLabel = statusLabel({
 });
 export const merchantStatusLabel = statusLabel({
   ACTIVE: '营业中',
-  DISABLED: '已停用',
-  INACTIVE: '已停用',
+  SUSPENDED: '暂停营业',
 });
 export const productStatusLabel = statusLabel({
   DRAFT: '草稿',
@@ -45,6 +44,13 @@ export const invitationStatusLabel = statusLabel({
   CANCELED: '已取消',
   EXPIRED: '已过期',
 });
+export function invitationIsExpired(invitation, now = Date.now()) {
+  if (!invitation) return false;
+  if (invitation.status === 'EXPIRED') return true;
+  if (invitation.status !== 'PENDING' || !invitation.expiresAt) return false;
+  const expiresAt = Date.parse(invitation.expiresAt);
+  return Number.isFinite(expiresAt) && expiresAt <= now;
+}
 export const knowledgeIndexStatusLabel = statusLabel({
   PENDING: '待索引',
   INDEXING: '索引中',

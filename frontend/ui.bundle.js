@@ -674,8 +674,7 @@
   });
   const merchantStatusLabel = statusLabel({
     ACTIVE: "营业中",
-    DISABLED: "已停用",
-    INACTIVE: "已停用"
+    SUSPENDED: "暂停营业"
   });
   const productStatusLabel = statusLabel({
     DRAFT: "草稿",
@@ -698,6 +697,13 @@
     CANCELED: "已取消",
     EXPIRED: "已过期"
   });
+  function invitationIsExpired(invitation, now = Date.now()) {
+    if (!invitation) return false;
+    if (invitation.status === "EXPIRED") return true;
+    if (invitation.status !== "PENDING" || !invitation.expiresAt) return false;
+    const expiresAt = Date.parse(invitation.expiresAt);
+    return Number.isFinite(expiresAt) && expiresAt <= now;
+  }
   const knowledgeIndexStatusLabel = statusLabel({
     PENDING: "待索引",
     INDEXING: "索引中",
@@ -6239,6 +6245,10 @@
       }
       async function accept(i) {
         if (preview || busy.value) return;
+        if (i.status !== "PENDING" || invitationIsExpired(i)) {
+          notify("邀请已过期或不可接受");
+          return;
+        }
         const current = scope.capture();
         busy.value = true;
         try {
@@ -6271,6 +6281,7 @@
         submit,
         accept,
         applicationStatusLabel,
+        invitationIsExpired,
         invitationStatusLabel,
         load
       };
@@ -6596,14 +6607,14 @@
                         _createElementVNode(
                           "small",
                           null,
-                          _toDisplayString(_ctx.invitationStatusLabel(i.status)),
+                          _toDisplayString(_ctx.invitationIsExpired(i) ? "已过期" : _ctx.invitationStatusLabel(i.status)),
                           1
                           /* TEXT */
                         )
                       ]),
                       _createElementVNode("button", {
                         class: "outline-button",
-                        disabled: _ctx.preview || _ctx.busy || _ctx.loading || i.status !== "PENDING",
+                        disabled: _ctx.preview || _ctx.busy || _ctx.loading || i.status !== "PENDING" || _ctx.invitationIsExpired(i),
                         onClick: ($event) => _ctx.accept(i)
                       }, "接受", 8, ["disabled", "onClick"])
                     ]);
