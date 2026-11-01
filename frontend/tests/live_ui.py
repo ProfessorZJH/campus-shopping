@@ -278,6 +278,26 @@ def main():
             context = browser.new_context(viewport={'width': 1440, 'height': 1000}, locale='zh-CN')
             context.on('page', lambda tab: tab.on('pageerror', lambda exception: errors.append(str(exception))))
             page = context.new_page()
+            # 新会话直接打开后台 URL，登录后留在原目标，不能陷入仅有重试的错误页。
+            for target, heading in [('/admin', '平台总览'), ('/admin/products', '商品监管')]:
+                direct = browser.new_context()
+                try:
+                    tab = direct.new_page()
+                    tab.on('pageerror', lambda exception: errors.append(str(exception)))
+                    tab.goto(args.base_url + '/#' + target, wait_until='domcontentloaded')
+                    expect(tab.get_by_role('heading', name='请先登录', exact=True)).to_be_visible()
+                    expect(tab.locator('.merchant-shell')).to_have_count(0)
+                    tab.get_by_role('button', name='登录', exact=True).click()
+                    dialog = tab.locator('form.login-dialog')
+                    dialog.locator('#login-name').fill(admin)
+                    dialog.locator('#login-password').fill(password)
+                    dialog.locator('button[type=submit]').click()
+                    expect(tab.locator('.merchant-page-heading h1')).to_have_text(heading)
+                    expect(tab.locator('.access-denied')).to_have_count(0)
+                    assert urlsplit(tab.url).fragment == target
+                    checks.append('匿名直达' + target + '可登录并保留原目标路由')
+                finally:
+                    direct.close()
             page.goto(args.base_url + '/#/', wait_until='domcontentloaded')
             expect(page.locator('.header-login')).to_be_visible()
             expect(page.locator('.consumer-shell')).to_be_visible()

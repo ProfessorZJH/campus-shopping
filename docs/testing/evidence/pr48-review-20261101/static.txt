@@ -1,0 +1,38 @@
+{
+  "status": "PASS",
+  "kind": "STATIC_BOUNDARIES_WITH_REJECTION_FIXTURES",
+  "timestamp": "2026-11-01T12:18:54.993923+00:00",
+  "javaSources": 353,
+  "sqlStatements": 155,
+  "rejectedFixtures": [
+    "cross-domain type",
+    "wrong dependency direction",
+    "HTTP SDK in domain",
+    "raw aggregate state",
+    "broad service returns",
+    "catalog controller read composition",
+    "cart controller read composition",
+    "conversation writes proposals",
+    "cross-domain write",
+    "unapproved read",
+    "query write",
+    "query lock",
+    "new projection table"
+  ],
+  "errors": []
+}
+{
+  "timestamp": "2026-11-01T12:18:54.804687+00:00",
+  "type": "STATIC_SOURCE_AND_CONTRACT_ONLY",
+  "status": "PASS",
+  "counts": {
+    "javaSyntaxFiles": 403,
+    "internalInterfaceImplementations": 61,
+    "schemaTables": 37,
+    "mybatisMapperFiles": 11,
+    "mavenPomFiles": 8
+  },
+  "errors": [],
+  "mavenCompiled": false,
+  "springMySqlTested": false
+}

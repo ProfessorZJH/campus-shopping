@@ -986,12 +986,11 @@
           replaceSession(null);
           notify("已退出");
           go("/");
-          loadPublic();
         } catch (err) {
           notify(err.message);
         }
       }
-      return { go, store, preview, loginOpen, logout, loadPublic };
+      return { go, store, preview, loginOpen, logout };
     },
     render: (() => {
       const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, renderSlot: _renderSlot, normalizeClass: _normalizeClass, createBlock: _createBlock } = Vue;
@@ -1105,9 +1104,8 @@
           ]),
           _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
             key: 0,
-            onClose: ($event) => _ctx.loginOpen = false,
-            onSuccess: _ctx.loadPublic
-          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
+            onClose: ($event) => _ctx.loginOpen = false
+          }, null, 8, ["onClose"])) : _createCommentVNode("v-if", true)
         ]);
       };
     })()
@@ -1164,6 +1162,7 @@
     components: { ConsumerShell, ProductImage },
     setup() {
       const scope = requestScope();
+      const initialScope = requestScope();
       const keywords = ["泡面", "牛奶", "水果", "文具", "纸巾", "零食"];
       const search = ref$e("");
       const category = ref$e("");
@@ -1192,7 +1191,7 @@
           arr = [...arr].sort((a, b) => available(b) - available(a));
         return arr;
       });
-      onMounted$d(() => loadPublic({ signal: scope.begin().signal }));
+      onMounted$d(() => loadPublic({ signal: initialScope.begin().signal }));
       const pageInfo = computed$e(() => store.publicPage);
       const chosen = computed$e(
         () => {
@@ -10761,6 +10760,7 @@
   const App = {
     name: "CampusApp",
     components: {
+      AuthDialog,
       NotFound: {
         render: (() => {
           const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock } = Vue;
@@ -10820,12 +10820,16 @@
         if (r === "/ai") return "Guide";
         return r === "/" ? "Home" : "NotFound";
       });
-      const ready = ref(false), contextError = ref("");
+      const ready = ref(false), contextError = ref(""), authRequired = ref(false), loginOpen = ref(false);
+      const backoffice = computed(
+        () => ["Merchant", "MerchantOps", "Platform", "Knowledge", "RoleManager"].includes(current.value)
+      );
       let version = 0, restoredIdentity = -1, sessionPending;
       async function refresh() {
         const stamp = ++version;
         ready.value = false;
         contextError.value = "";
+        authRequired.value = false;
         try {
           if (!preview) {
             const identity = store.identityVersion;
@@ -10837,10 +10841,14 @@
               await sessionPending;
             } catch (e) {
               if (restoredIdentity === identity) restoredIdentity = -1;
-              throw e;
+              if (backoffice.value) throw e;
             }
           }
           if (stamp !== version) return;
+          if (!preview && backoffice.value && !store.user) {
+            authRequired.value = true;
+            return;
+          }
           if (store.route.startsWith("/merchant")) await loadMerchant({ contextOnly: true });
           else if (!preview && store.route.startsWith("/admin")) {
             const workspace = await api("/workspace");
@@ -10848,7 +10856,10 @@
             store.workspace = workspace;
           } else if (preview) await loadPublic();
         } catch (e) {
-          if (stamp === version) contextError.value = e.message;
+          if (stamp === version) {
+            if (e.status === 401 || e.code === "A0004") authRequired.value = true;
+            else contextError.value = e.message;
+          }
         } finally {
           if (stamp === version) ready.value = true;
         }
@@ -10862,11 +10873,12 @@
         window.removeEventListener("hashchange", setRoute);
       });
       watch([() => store.route, () => store.identityVersion], refresh);
-      return { store, current, ready, contextError, refresh };
+      return { store, current, ready, contextError, authRequired, loginOpen, refresh };
     },
     render: (() => {
-      const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, resolveDynamicComponent: _resolveDynamicComponent, createBlock: _createBlock, normalizeClass: _normalizeClass } = Vue;
+      const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, resolveDynamicComponent: _resolveDynamicComponent, createBlock: _createBlock, resolveComponent: _resolveComponent, normalizeClass: _normalizeClass } = Vue;
       return function render(_ctx, _cache) {
+        const _component_AuthDialog = _resolveComponent("AuthDialog");
         return _openBlock(), _createElementBlock(
           "div",
           {
@@ -10877,8 +10889,18 @@
               key: 0,
               class: "inline-loading",
               role: "status"
-            }, "正在恢复身份与权限…")) : _ctx.contextError ? (_openBlock(), _createElementBlock("div", {
+            }, "正在恢复身份与权限…")) : _ctx.authRequired ? (_openBlock(), _createElementBlock("div", {
               key: 1,
+              class: "mobile-empty"
+            }, [
+              _createElementVNode("h1", null, "请先登录"),
+              _createElementVNode("p", null, "登录后继续访问当前后台页面"),
+              _createElementVNode("button", {
+                class: "teal-button",
+                onClick: ($event) => _ctx.loginOpen = true
+              }, "登录", 8, ["onClick"])
+            ])) : _ctx.contextError ? (_openBlock(), _createElementBlock("div", {
+              key: 2,
               class: "inline-error"
             }, [
               _createTextVNode(
@@ -10890,10 +10912,14 @@
             ])) : (_openBlock(), _createBlock(_resolveDynamicComponent(_ctx.current), {
               key: _ctx.store.route + ":" + _ctx.store.identityVersion + ":" + _ctx.store.merchantId
             })),
+            _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+              key: 4,
+              onClose: ($event) => _ctx.loginOpen = false
+            }, null, 8, ["onClose"])) : _createCommentVNode("v-if", true),
             _ctx.store.toast ? (_openBlock(), _createElementBlock(
               "div",
               {
-                key: 3,
+                key: 5,
                 class: "toast",
                 role: "status"
               },

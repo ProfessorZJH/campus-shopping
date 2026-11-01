@@ -1,0 +1,1 @@
+{"status": "FAILED", "kind": "CHROMIUM_WITH_API_DOUBLES", "passed": ["anonymous_backend", "slow_initial_data", "identity_request_counts"], "failed": [{"case": "session_failure", "error": "Locator expected to be visible; .account-pill timeout 5000ms after login; second auth/me uses default 15000ms timeout"}], "browserErrors": []}

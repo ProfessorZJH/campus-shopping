@@ -30,6 +30,7 @@ export default {
   components: { ConsumerShell, ProductImage },
   setup() {
     const scope = requestScope();
+    const initialScope = requestScope();
     const keywords = ['泡面', '牛奶', '水果', '文具', '纸巾', '零食'];
     const search = ref('');
     const category = ref('');
@@ -58,7 +59,7 @@ export default {
         arr = [...arr].sort((a, b) => available(b) - available(a));
       return arr;
     });
-    onMounted(() => loadPublic({ signal: scope.begin().signal }));
+    onMounted(() => loadPublic({ signal: initialScope.begin().signal }));
     const pageInfo = computed(() => store.publicPage);
     const chosen = computed(
       () => selected.value?.skus?.find((s) => s.skuId === chosenSku.value) || skuOf(selected.value),

@@ -13,6 +13,7 @@ import MerchantOps from './pages/MerchantOps.js';
 import Knowledge from './pages/Knowledge.js';
 import Platform from './pages/Platform.js';
 import RoleManager from './pages/RoleManager.js';
+import AuthDialog from './components/AuthDialog.js';
 import {
   store,
   setRoute,
@@ -25,6 +26,7 @@ const { createApp, ref, onMounted, onUnmounted, watch, computed } = Vue;
 const App = {
   name: 'CampusApp',
   components: {
+    AuthDialog,
     NotFound: {
       template: `<main class="mobile-empty"><h1>404</h1><p>页面不存在</p><a href="#/">返回首页</a></main>`,
     },
@@ -80,7 +82,12 @@ const App = {
       return r === '/' ? 'Home' : 'NotFound';
     });
     const ready = ref(false),
-      contextError = ref('');
+      contextError = ref(''),
+      authRequired = ref(false),
+      loginOpen = ref(false);
+    const backoffice = computed(() =>
+      ['Merchant', 'MerchantOps', 'Platform', 'Knowledge', 'RoleManager'].includes(current.value),
+    );
     let version = 0,
       restoredIdentity = -1,
       sessionPending;
@@ -88,6 +95,7 @@ const App = {
       const stamp = ++version;
       ready.value = false;
       contextError.value = '';
+      authRequired.value = false;
       try {
         if (!preview) {
           const identity = store.identityVersion;
@@ -99,10 +107,15 @@ const App = {
             await sessionPending;
           } catch (e) {
             if (restoredIdentity === identity) restoredIdentity = -1;
-            throw e;
+            // 公开页面允许会话服务暂不可用时继续浏览，后台仍须完成身份核验。
+            if (backoffice.value) throw e;
           }
         }
         if (stamp !== version) return;
+        if (!preview && backoffice.value && !store.user) {
+          authRequired.value = true;
+          return;
+        }
         if (store.route.startsWith('/merchant')) await loadMerchant({ contextOnly: true });
         else if (!preview && store.route.startsWith('/admin')) {
           const workspace = await api('/workspace');
@@ -110,7 +123,10 @@ const App = {
           store.workspace = workspace;
         } else if (preview) await loadPublic();
       } catch (e) {
-        if (stamp === version) contextError.value = e.message;
+        if (stamp === version) {
+          if (e.status === 401 || e.code === 'A0004') authRequired.value = true;
+          else contextError.value = e.message;
+        }
       } finally {
         if (stamp === version) ready.value = true;
       }
@@ -124,9 +140,9 @@ const App = {
       window.removeEventListener('hashchange', setRoute);
     });
     watch([() => store.route, () => store.identityVersion], refresh);
-    return { store, current, ready, contextError, refresh };
+    return { store, current, ready, contextError, authRequired, loginOpen, refresh };
   },
-  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
+  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="authRequired" class="mobile-empty"><h1>请先登录</h1><p>登录后继续访问当前后台页面</p><button class="teal-button" @click="loginOpen=true">登录</button></div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><AuthDialog v-if="loginOpen" @close="loginOpen=false"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
 };
 const app = createApp(App);
 app.component('Icon', Icon);
