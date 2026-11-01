@@ -7,7 +7,7 @@ import java.time.*;
 import java.util.*;
 
 /** 按业务能力限定的领域端口。 */
-public interface IAfterSaleService extends IAfterSaleQueryService {
+public interface IAfterSaleService {
     AfterSaleVO afterSaleForUpdate(String order);
     AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason);
     void requirePickupAllowed(String order);

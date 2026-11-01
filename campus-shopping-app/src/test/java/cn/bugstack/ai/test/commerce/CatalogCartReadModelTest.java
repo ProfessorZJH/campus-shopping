@@ -6,7 +6,6 @@ import static org.mockito.Mockito.*;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
-import cn.bugstack.ai.cases.trading.ICartCase;
 import cn.bugstack.ai.cases.trading.impl.CartQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
@@ -15,6 +14,7 @@ import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
+import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
@@ -22,6 +22,7 @@ import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
 import cn.bugstack.ai.domain.trading.model.valobj.CartItemVO;
+import cn.bugstack.ai.domain.trading.service.ICartService;
 import cn.bugstack.ai.trigger.http.ApiViews;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
@@ -33,7 +34,8 @@ import org.junit.jupiter.api.Test;
 
 class CatalogCartReadModelTest {
 
-    private final ICartCase cart = mock(ICartCase.class);
+    private final ICartService cart = mock(ICartService.class);
+    private final IUserAccountService accounts = mock(IUserAccountService.class);
     private final ICatalogService catalog = mock(ICatalogService.class);
     private final IAccessService access = mock(IAccessService.class);
     private final IInventoryService inventory = mock(IInventoryService.class);
@@ -130,7 +132,7 @@ class CatalogCartReadModelTest {
 
     @Test
     void cartUsesBatchFactsAndPreservesUnavailableRows() {
-        when(cart.list("u")).thenReturn(List.of(new CartItemVO("u", "m1", "s1", 2), new CartItemVO("u", "m2", "s2", 1), new CartItemVO("u", "m1", "s3", 1)));
+        when(cart.cart("u")).thenReturn(List.of(new CartItemVO("u", "m1", "s1", 2), new CartItemVO("u", "m2", "s2", 1), new CartItemVO("u", "m1", "s3", 1)));
         when(catalog.offers(List.of("s1", "s2", "s3"))).thenReturn(
             List.of(
                 new SkuOfferVO("s1", "p1", "m1", "store", "商品1", "默认", 100, 2, "PUBLISHED", "ACTIVE", "", ""),
@@ -140,7 +142,7 @@ class CatalogCartReadModelTest {
         );
         when(merchants.findAll(List.of("m1", "m2"))).thenReturn(List.of(merchant("m1", "ACTIVE"), merchant("m2", "SUSPENDED")));
         when(inventory.stocks(List.of("s1", "s2", "s3"))).thenReturn(List.of(new StockVO("m1", "store", "s1", 8, 3, 0)));
-        var query = new CartQueryCaseImpl(cart, catalog, inventory, merchants);
+        var query = new CartQueryCaseImpl(cart, accounts, catalog, inventory, merchants);
         var result = query.list("u").stream().map(ApiViews::cart).toList();
         assertEquals(3, result.size());
         assertEquals(5, result.get(0).getAvailable());
@@ -154,10 +156,14 @@ class CatalogCartReadModelTest {
 
     @Test
     void inactiveAccountAndEmptyCartNeverLoadOtherDomains() {
-        when(cart.list("disabled")).thenThrow(new AppException(ResponseCode.AUTH_FORBIDDEN));
-        var query = new CartQueryCaseImpl(cart, catalog, inventory, merchants);
+        doThrow(new AppException(ResponseCode.AUTH_FORBIDDEN)).when(accounts).requireActive("disabled");
+        var query = new CartQueryCaseImpl(cart, accounts, catalog, inventory, merchants);
         assertThrows(AppException.class, () -> query.list("disabled"));
+        verifyNoInteractions(cart);
         assertTrue(query.list("empty").isEmpty());
+        var order = inOrder(accounts, cart);
+        order.verify(accounts).requireActive("empty");
+        order.verify(cart).cart("empty");
         verifyNoInteractions(catalog, inventory, merchants);
     }
 

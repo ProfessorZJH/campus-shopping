@@ -97,6 +97,9 @@ class CommerceMySqlIntegrationTest {
     @SpyBean
     IOrderService orderStore;
 
+    @Autowired
+    cn.bugstack.ai.domain.trading.service.IOrderQueryService orderReader;
+
     @SpyBean
     cn.bugstack.ai.domain.fulfillment.service.IFulfillmentService refundFulfillment;
 
@@ -500,7 +503,7 @@ class CommerceMySqlIntegrationTest {
     }
 
     private OrderAggregate order(ProductAggregate p) {
-        return orderStore.order(checkout.checkout(buyer, merchant.id(), List.of(item(p)), UUID.randomUUID().toString()).orderId());
+        return orderReader.order(checkout.checkout(buyer, merchant.id(), List.of(item(p)), UUID.randomUUID().toString()).orderId());
     }
 
     private long scalar(String sql, Object... args) {

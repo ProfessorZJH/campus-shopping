@@ -1,18 +1,19 @@
 package cn.bugstack.ai.cases.trading.impl;
 
-import cn.bugstack.ai.cases.trading.ICartCase;
 import cn.bugstack.ai.cases.trading.ICartQueryCase;
 import cn.bugstack.ai.cases.trading.model.CartItemReadModel;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantStatusEnumVO;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.valobj.CartItemVO;
+import cn.bugstack.ai.domain.trading.service.ICartService;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -24,20 +25,29 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CartQueryCaseImpl implements ICartQueryCase {
 
-    private final ICartCase cartCase;
+    private final ICartService cart;
+    private final IUserAccountService accounts;
     private final ICatalogService catalogService;
     private final IInventoryService inventoryService;
     private final IMerchantService merchantService;
 
-    public CartQueryCaseImpl(ICartCase cartCase, ICatalogService catalogService, IInventoryService inventoryService, IMerchantService merchantService) {
-        this.cartCase = cartCase;
+    public CartQueryCaseImpl(
+        ICartService cart,
+        IUserAccountService accounts,
+        ICatalogService catalogService,
+        IInventoryService inventoryService,
+        IMerchantService merchantService
+    ) {
+        this.cart = cart;
+        this.accounts = accounts;
         this.catalogService = catalogService;
         this.inventoryService = inventoryService;
         this.merchantService = merchantService;
     }
 
     public List<CartItemReadModel> list(String actor) {
-        List<CartItemVO> items = cartCase.list(actor);
+        accounts.requireActive(actor);
+        List<CartItemVO> items = cart.cart(actor);
         if (items.isEmpty()) return List.of();
         List<String> skuIds = items.stream().map(CartItemVO::skuId).distinct().toList();
         Map<String, SkuOfferVO> offers = catalogService
