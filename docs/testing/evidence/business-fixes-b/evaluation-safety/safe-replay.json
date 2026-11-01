@@ -1,0 +1,35 @@
+{
+  "caseId" : "safe-replay",
+  "actualCode" : "0000",
+  "after" : {
+    "proposals" : [ {
+      "status" : "CONFIRMED",
+      "selection_hash" : "a21aad57e086d74cee5be8379bb8fdd040116c61aad837a442cef252b681f416"
+    } ],
+    "cart" : [ {
+      "sku_id" : "06e8319d-7b96-432f-b679-884ae56560d0",
+      "quantity" : 1
+    } ],
+    "stock" : [ {
+      "sku_id" : "06e8319d-7b96-432f-b679-884ae56560d0",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "before" : {
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "cart" : [ ],
+    "stock" : [ {
+      "sku_id" : "06e8319d-7b96-432f-b679-884ae56560d0",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ]
+  },
+  "scenario" : "COMPETING_CONFIRM_AND_REPLAY",
+  "javaMysql" : "REAL",
+  "assertions" : "PASSED"
+}

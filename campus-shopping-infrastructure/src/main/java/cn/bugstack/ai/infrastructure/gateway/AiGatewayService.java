@@ -134,6 +134,7 @@ public class AiGatewayService {
                 throw new AppException(ResponseCode.AI_UNAVAILABLE);
             }
             T result = mapper.readValue(response.body(), type);
+            if (result == null) throw new AppException(ResponseCode.AI_UNAVAILABLE);
             success = true;
             return result;
         } catch (InterruptedException e) {
