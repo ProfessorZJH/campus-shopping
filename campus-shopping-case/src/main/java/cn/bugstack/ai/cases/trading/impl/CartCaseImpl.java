@@ -3,6 +3,7 @@ package cn.bugstack.ai.cases.trading.impl;
 import cn.bugstack.ai.cases.trading.ICartCase;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
+import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.valobj.CartItemVO;
 import cn.bugstack.ai.domain.trading.service.ICartService;
@@ -20,12 +21,14 @@ public class CartCaseImpl implements ICartCase {
     private final ICatalogService catalog;
     private final IMerchantService merchants;
     private final IUserAccountService accounts;
+    private final IInventoryService inventory;
 
-    public CartCaseImpl(ICartService trading, ICatalogService catalog, IMerchantService merchants, IUserAccountService accounts) {
+    public CartCaseImpl(ICartService trading, ICatalogService catalog, IMerchantService merchants, IUserAccountService accounts, IInventoryService inventory) {
         this.trading = trading;
         this.catalog = catalog;
         this.merchants = merchants;
         this.accounts = accounts;
+        this.inventory = inventory;
     }
 
     public List<CartItemVO> list(String user) {
@@ -39,9 +42,17 @@ public class CartCaseImpl implements ICartCase {
         String checked = Checks.text(sku, "SKU", 64);
         Checks.require(quantity > 0 && quantity <= 99, ResponseCode.ILLEGAL_PARAMETER);
         trading.lockCart(user);
+        // 当前读复用购物车行锁；缺货、下架和停业后仍允许减少原数量。
+        var old = trading.cartItemForUpdate(user, checked);
+        if (old != null && quantity <= old.quantity()) {
+            trading.setCart(user, old.merchantId(), checked, quantity);
+            return;
+        }
         var hint = catalog.saleOffers(List.of(checked)).get(0);
         merchants.requireActiveForNewTrade(hint.merchantId());
         var offer = catalog.saleOffersForUpdate(List.of(checked)).get(0);
+        var stocks = inventory.stocksForConfirmation(List.of(checked));
+        Checks.require(!stocks.isEmpty() && stocks.get(0).onHand() - stocks.get(0).reserved() >= quantity, ResponseCode.STOCK_NOT_ENOUGH);
         trading.setCart(user, offer.merchantId(), checked, quantity);
     }
 

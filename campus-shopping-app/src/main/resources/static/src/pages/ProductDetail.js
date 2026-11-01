@@ -66,6 +66,7 @@ export default {
         if (!current()) return;
         const old = list.find((i) => i.skuId === real.skuId);
         const quantity = Number(old?.quantity || 0) + requested;
+        if (quantity > Number(real.available)) throw Error('库存不足或商品不可售');
         if (quantity > 99) throw Error('单个规格最多99件');
         await api('/cart', { method: 'PUT', body: { skuId: real.skuId, quantity } });
         if (current()) notify('已加入购物车');

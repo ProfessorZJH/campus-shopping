@@ -121,3 +121,12 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 内部AI返回HTTP成功但JSON为null、提取文本缺失/空白/超过100000字符、空正文或无法反序列化时，网关返回既有AI_UNAVAILABLE（AI0001），不记录响应正文。提取服务明确以400/413/415/422拒绝用户文件时，继续使用UPLOAD_INVALID（AI0004）。
 
 平台入驻列表/分页的state未指定或空白时不过滤；非空值按MerchantApplicationStatusEnumVO统一校验，列表与count均使用同一规则，非法值返回ILLEGAL_PARAMETER（0002）。有效状态仍为SUBMITTED/APPROVED/REJECTED，首尾空白按既有EnumValues规范去除。
+
+
+## 购物车库存与 SKU 状态补充（2026-11-01）
+
+- `sellable` 表示商户 ACTIVE、商品 PUBLISHED、SKU ACTIVE 且可用库存大于零，数量是否足够另比较 available。已上架商品允许售罄。
+- 普通新增/增加和 AI 确认均检查购物车最终累计数量不超过当前可用库存，否则返回 I0001。加购不预占库存；Checkout 继续在 MySQL 短事务内复验与原子预占。
+- 已有行缺货、下架或商户停用时仍展示，可减少、保持原数量或删除，增加必须重新校验。购物车当前数量使用 FOR UPDATE 当前读。
+- `PUT /api/v1/merchants/{merchantId}/products/{productId}/skus/{skuId}/status` 请求必填 active、expectedVersion（商品版本，非 SKU 版本）。实时校验本商户 product.write 与商品归属；启用还需商户 ACTIVE，停业允许停用。
+- 相同 SKU 目标状态重放不增加商品/SKU 版本，即使原请求版本已过期；不同目标需匹配商品版本，否则 G0002。已上架商品不能停用最后一个 ACTIVE SKU（C0001），需先整体下架。未知 SKU 返回 G0001。状态改变增加商品和该 SKU 版本，沿用既有报价失效和缓存失效机制；历史订单快照不改变。

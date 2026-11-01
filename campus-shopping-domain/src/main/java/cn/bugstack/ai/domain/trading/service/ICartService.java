@@ -11,7 +11,8 @@ public interface ICartService {
     void lockCart(String user);
     List<CartItemVO> cart(String user);
     void setCart(String user, String merchant, String sku, int quantity);
-    void addCart(String user, String merchant, String sku, int quantity);
+    CartItemVO cartItemForUpdate(String user, String sku);
+    int addCart(String user, String merchant, String sku, int quantity);
     void deleteCart(String user, String sku);
     void consumeCart(String user, List<OrderItemEntity> items);
 }

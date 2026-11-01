@@ -7,6 +7,7 @@ import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 public interface ICatalogCase {
     ProductReadModel createProduct(String actor, String merchant, ProductCreateCommandEntity command);
     ProductReadModel addSkuToProduct(String actor, String merchant, String product, String spec, long price);
+    void changeSkuStatus(String actor, String merchant, String product, String sku, boolean active, long version);
     void changeSkuPrice(String actor, String merchant, String product, String sku, long price, long version);
     void editProduct(String actor, String merchant, String product, String title, String description, String category, String image, long version);
     void setProductPublished(String actor, String merchant, String product, boolean published);

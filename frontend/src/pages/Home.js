@@ -133,6 +133,7 @@ export default {
         if (!valid()) return;
         const old = (cart || []).find((i) => i.skuId === real.skuId);
         const n = Number(old?.quantity || 0) + requested;
+        if (n > Number(real.available)) throw new Error('库存不足或商品不可售');
         if (n > 99) throw new Error('单个规格最多购买99件');
         await api('/cart', { method: 'PUT', body: { skuId: real.skuId, quantity: n } });
         if (!valid()) return;

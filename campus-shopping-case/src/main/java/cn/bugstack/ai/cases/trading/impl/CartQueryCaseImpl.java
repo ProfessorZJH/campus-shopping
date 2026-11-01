@@ -71,11 +71,13 @@ public class CartQueryCaseImpl implements ICartQueryCase {
                     throw new IllegalStateException("购物车商品或商户关联不一致");
                 }
                 StockVO stock = stocks.get(item.skuId());
+                long available = stock == null ? 0L : stock.onHand() - stock.reserved();
                 boolean sellable =
                     merchant.state() == MerchantStatusEnumVO.ACTIVE &&
                     offer.productStatusEnum() == ProductStatusEnumVO.PUBLISHED &&
-                    offer.skuStatusEnum() == SkuStatusEnumVO.ACTIVE;
-                return new CartItemReadModel(item, offer, merchant.name(), stock == null ? 0L : stock.onHand() - stock.reserved(), sellable);
+                    offer.skuStatusEnum() == SkuStatusEnumVO.ACTIVE &&
+                    available > 0;
+                return new CartItemReadModel(item, offer, merchant.name(), available, sellable);
             })
             .toList();
     }

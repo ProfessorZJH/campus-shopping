@@ -1,0 +1,8 @@
+{
+  "mysqlVersion": "8.0.31",
+  "diagnostics": [
+    "force-unpublish checkout plan=[s:PRIMARY, p:PRIMARY]",
+    "force-unpublish checkout: races=10, newDeadlocks=0, historicalDeadlockPresent=false"
+  ],
+  "rawTransactionSqlSaved": false
+}

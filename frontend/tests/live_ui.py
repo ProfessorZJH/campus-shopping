@@ -41,6 +41,68 @@ def login(page, username, password):
     expect(page.locator('.account-pill')).to_be_visible()
 
 
+def verify_cart_sku(page, browser, base, admin, password, checks):
+    """合成商户与商品通过真实 HTTP 建立；页面操作不拦截 API。"""
+    def call(client, method, route, body=None, code='0000'):
+        csrf = client.get(base + '/api/v1/auth/csrf').json()['data']
+        response = client.fetch(base + '/api/v1' + route, method=method, data=body,
+                                headers={csrf['headerName']: csrf['token'], 'Idempotency-Key': uuid.uuid4().hex})
+        data = response.json()
+        assert response.status == 200 and data['code'] == code, (method, route, response.status, data.get('code'))
+        return data.get('data')
+    admin_context = browser.new_context()
+    try:
+        call(admin_context.request, 'POST', '/auth/login', {'username': admin, 'password': password})
+        application = call(page.request, 'POST', '/merchant-applications', {
+            'merchantName': '浏览器库存验收', 'category': 'stationery', 'contactName': '测试',
+            'contactPhone': '10000000000', 'storeName': '验收门店', 'location': '校园'})
+        merchant = call(admin_context.request, 'POST', '/admin/merchant-applications/' + application['applicationId'] + '/review', {'approved': True, 'reason': '隔离验收'})
+        prefix = '/merchants/' + merchant['merchantId']
+        product = call(page.request, 'POST', prefix + '/products', {
+            'title': '库存验收专用笔', 'categoryCode': 'stationery', 'skus': [
+                {'specKey': '黑色验收规格', 'priceCent': 100}, {'specKey': '蓝色验收规格', 'priceCent': 200}]})
+        product_path = prefix + '/products/' + product['productId']
+        black = next(sku for sku in product['skus'] if sku['specKey'] == '黑色验收规格')['skuId']
+        blue = next(sku for sku in product['skus'] if sku['specKey'] == '蓝色验收规格')['skuId']
+        call(page.request, 'POST', prefix + '/stocks/' + black + '/replenish', {'quantity': 3})
+        call(page.request, 'POST', product_path + '/publish', {'published': True})
+        call(page.request, 'PUT', '/cart', {'skuId': blue, 'quantity': 1}, code='I0001')
+        call(page.request, 'PUT', '/cart', {'skuId': black, 'quantity': 2})
+        call(page.request, 'PUT', '/cart', {'skuId': black, 'quantity': 4}, code='I0001')
+        checks.append('真实 HTTP 拒绝零库存和超库存加购，原购物车数量保留')
+        page.goto(base + '/#/merchant/products', wait_until='domcontentloaded')
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        expect(page.get_by_role('button', name='规格售价', exact=True)).to_be_visible()
+        page.get_by_role('button', name='规格售价', exact=True).click()
+        page.get_by_role('button', name='停用蓝色验收规格', exact=True).click()
+        expect(page.get_by_role('button', name='启用蓝色验收规格', exact=True)).to_be_visible()
+        page.get_by_role('button', name='停用黑色验收规格', exact=True).click()
+        expect(page.get_by_role('button', name='停用黑色验收规格', exact=True)).to_be_enabled()
+        current = call(page.request, 'GET', '/products/' + product['productId'])
+        assert next(sku for sku in current['skus'] if sku['skuId'] == black)['status'] == 'ACTIVE'
+        page.get_by_role('button', name='启用蓝色验收规格', exact=True).click()
+        expect(page.get_by_role('button', name='停用蓝色验收规格', exact=True)).to_be_visible()
+        checks.append('真实商户页面独立停用/启用 SKU，最后一个有效 SKU 不可停用')
+        page.goto(base + '/#/', wait_until='domcontentloaded')
+        page.get_by_role('button', name='库存验收专用笔', exact=True).click()
+        page.get_by_role('button', name='黑色验收规格', exact=True).click()
+        page.get_by_role('button', name='增加数量', exact=True).click()
+        page.get_by_role('button', name='加入购物车', exact=True).click()
+        expect(page.get_by_role('dialog', name='库存验收专用笔')).to_be_visible()
+        assert next(row for row in call(page.request, 'GET', '/cart') if row['skuId'] == black)['quantity'] == 2
+        checks.append('首页按累计数量拒绝加购，库存 3 已有 2 再加 2 保持原数量')
+        call(admin_context.request, 'POST', '/admin/products/' + product['productId'] + '/unpublish', {})
+        page.goto(base + '/#/cart', wait_until='domcontentloaded')
+        expect(page.get_by_role('button', name='增加库存验收专用笔', exact=True)).to_be_disabled()
+        page.get_by_role('button', name='减少库存验收专用笔', exact=True).click()
+        expect(page.locator('.mini-qty span')).to_have_text('1')
+        page.get_by_role('button', name='移除库存验收专用笔', exact=True).click()
+        expect(page.get_by_text('购物车空空的', exact=True)).to_be_visible()
+        checks.append('真实购物车失效商品禁止增加，仍可减少和直接移除')
+    finally:
+        admin_context.close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--base-url', default='http://127.0.0.1:8091')
@@ -124,6 +186,7 @@ def main():
             assert page.evaluate('document.documentElement.scrollWidth <= 391'), '移动端出现横向溢出'
             page.screenshot(path=str(directory / 'consumer-real-mobile.png'), full_page=True)
             checks.append('移动端真实前端无横向溢出')
+            verify_cart_sku(page, browser, args.base_url, admin, password, checks)
             assert not errors, errors
             checks.append('浏览器无未捕获 JS 异常')
             browser.close()

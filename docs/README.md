@@ -17,7 +17,7 @@
 | 原始产品需求 | [PRD](requirements/PRD.md) |
 | 决策如何收敛 | [决策清单](requirements/open-questions.md)、[ADR](architecture/decisions.md) |
 | 领域边界 | [业务架构](architecture/business-architecture.md)、[上下文映射](architecture/context-map.md) |
-| **当前权威 HTTP 契约** | [93 条路由与字段](api/http-api.md)、[OpenAPI JSON](api/openapi.json)、[行为约定](api/behavior-v1.1.md)、[错误码](api/error-codes.md) |
+| **当前权威 HTTP 契约** | [94 条路由与字段](api/http-api.md)、[OpenAPI JSON](api/openapi.json)、[行为约定](api/behavior-v1.1.md)、[错误码](api/error-codes.md) |
 | **SDD-03 代码契约修复** | [实施规格](specs/SDD-API-CONTRACT-03.md)、[验证记录](testing/SDD-API-CONTRACT-03-VERIFICATION.md) |
 | **SDD-04 本批缺陷修复（F01–F10）** | [修复规格](specs/SDD-REPAIR-04.md)、[验证记录](testing/SDD-REPAIR-04-VERIFICATION.md) |
 | **SDD-05 商户自定义 RBAC + 全局排序** | [设计/权限矩阵](specs/SDD-RBAC-05.md)、[验证记录](testing/SDD-RBAC-05-VERIFICATION.md) |
@@ -43,3 +43,5 @@
 
 - [PR-C：查询职责收敛](testing/QUERY-C-20261101.md)
 - [PR-D：角色批量查询与只读适配器](testing/QUERY-D-20261101.md)
+
+- [购物车库存、SKU 独立上下架与并发整改](testing/CART-SKU-REMEDIATION-20261101.md)

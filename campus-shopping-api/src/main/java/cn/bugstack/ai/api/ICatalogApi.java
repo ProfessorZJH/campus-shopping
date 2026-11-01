@@ -33,6 +33,7 @@ public interface ICatalogApi {
     /** 新增规格并初始化库存。 */
     Response<ProductResponseDTO> addSku(String merchantId, String productId, SkuRequestDTO request, Principal principal);
     /** 按确认版本修改 SKU 售价。 */
+    Response<Void> skuStatus(String merchantId, String productId, String skuId, SkuStatusRequestDTO request, Principal principal);
     Response<Void> price(String merchantId, String productId, String skuId, PriceRequestDTO request, Principal principal);
     /** 上架或下架商品。 */
     Response<Void> publish(String merchantId, String productId, PublishRequestDTO request, Principal principal);

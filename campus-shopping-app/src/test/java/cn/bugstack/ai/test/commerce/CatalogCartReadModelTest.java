@@ -154,6 +154,19 @@ class CatalogCartReadModelTest {
         verify(merchants, never()).find(anyString());
     }
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({ "0,0", "3,3", "2,3" })
+    void zeroOrNegativeAvailableStockIsNotSellable(long onHand, long reserved) {
+        when(cart.cart("u")).thenReturn(List.of(new CartItemVO("u", "m", "s", 4)));
+        when(catalog.offers(List.of("s"))).thenReturn(List.of(new SkuOfferVO("s", "p", "m", "store", "商品", "默认", 100, 0, "PUBLISHED", "ACTIVE", "", "")));
+        when(merchants.findAll(List.of("m"))).thenReturn(List.of(merchant("m", "ACTIVE")));
+        when(inventory.stocks(List.of("s"))).thenReturn(List.of(new StockVO("m", "store", "s", onHand, reserved, 0)));
+        var row = new CartQueryCaseImpl(cart, accounts, catalog, inventory, merchants).list("u").get(0);
+        assertFalse(row.sellable());
+        assertEquals(4, row.item().quantity());
+        assertEquals(onHand - reserved, row.available());
+    }
+
     @Test
     void inactiveAccountAndEmptyCartNeverLoadOtherDomains() {
         doThrow(new AppException(ResponseCode.AUTH_FORBIDDEN)).when(accounts).requireActive("disabled");

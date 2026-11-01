@@ -15,6 +15,7 @@ import cn.bugstack.ai.api.dto.ProductRequestDTO;
 import cn.bugstack.ai.api.dto.ProductResponseDTO;
 import cn.bugstack.ai.api.dto.PublishRequestDTO;
 import cn.bugstack.ai.api.dto.SkuRequestDTO;
+import cn.bugstack.ai.api.dto.SkuStatusRequestDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
@@ -217,6 +218,23 @@ public class CatalogController implements ICatalogApi {
                 required(request.getPriceCent()),
                 required(request.getExpectedVersion())
             );
+            return null;
+        });
+    }
+
+    /** 独立上下架规格，仍通过商品聚合维护状态和版本。 */
+    @Override
+    @PutMapping("/merchants/{merchantId}/products/{productId}/skus/{skuId}/status")
+    public Response<Void> skuStatus(
+        @PathVariable("merchantId") String merchantId,
+        @PathVariable("productId") String productId,
+        @PathVariable("skuId") String skuId,
+        @RequestBody SkuStatusRequestDTO request,
+        Principal principal
+    ) {
+        return execute(() -> {
+            required(request);
+            catalogCase.changeSkuStatus(actor(principal), merchantId, productId, skuId, required(request.getActive()), required(request.getExpectedVersion()));
             return null;
         });
     }

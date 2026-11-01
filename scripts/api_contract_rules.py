@@ -50,6 +50,7 @@ REQUEST_RULES = {
         'imageUrl': optional_text(255, pattern=r'^$|^/media/[a-f0-9-]+\.png$'),
         'skus': {'minItems': 1, 'maxItems': 20}, 'expectedVersion': VERSION}, CATALOG),
     'SkuRequestDTO': rule('specKey priceCent', {'specKey': text(100), 'priceCent': PRICE}, CATALOG),
+    'SkuStatusRequestDTO': rule('active expectedVersion', {'active': {}, 'expectedVersion': VERSION}, CATALOG),
     'PriceRequestDTO': rule('priceCent expectedVersion', {'priceCent': PRICE, 'expectedVersion': VERSION}, CATALOG),
     'PublishRequestDTO': rule('published', {'published': {}}, 'trigger/http/CatalogController.java'),
     'ReplenishRequestDTO': rule('quantity', {'quantity': {'minimum': 1, 'maximum': 1_000_000}},
