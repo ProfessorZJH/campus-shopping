@@ -56,9 +56,8 @@ public class AccessRepository implements IAccessRepository {
         accsessDao.grantClerk(merchantId, userId);
     }
 
-    public void revoke(String merchantId, String userId) {
-        accsessDao.cancelInvitations(merchantId, userId);
-        accsessDao.revoke(merchantId, userId);
+    public boolean revoke(String merchantId, String userId) {
+        return accsessDao.revoke(merchantId, userId) > 0;
     }
 
     public void invite(InvitationVO i, String inviter) {
@@ -80,8 +79,8 @@ public class AccessRepository implements IAccessRepository {
         accsessDao.accept(id);
     }
 
-    public void cancelPendingInvitations(String merchantId, String userId) {
-        accsessDao.cancelInvitations(merchantId, userId);
+    public int cancelPendingInvitations(String merchantId, String userId) {
+        return accsessDao.cancelInvitations(merchantId, userId);
     }
 
     public void audit(String actor, String action, String target, String merchantId, String detail) {

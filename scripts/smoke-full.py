@@ -255,6 +255,24 @@ def run(args):
         secret='内部采购口令_'+uuid.uuid4().hex
         private=document('MERCHANT_INTERNAL','内部采购资料',secret)
         buyer.call('GET','/knowledge/documents/'+private['id'],code='A0006')
+        # 平台身份不能代替两个商户的知识经营授权，所有入口均经真实HTTP验证。
+        second_base=other.call('POST','/knowledge/bases',{'merchantId':merchants[1]['merchantId'],'name':'第二商户内部库','visibility':'MERCHANT_INTERNAL'})
+        second_doc=other.call('POST','/knowledge/bases/'+second_base['id']+'/documents',{'title':'第二商户资料','filename':'rules.md','contentType':'text/markdown','base64':base64.b64encode('第二商户内部规则'.encode()).decode()})
+        platform_base=admin.call('POST','/knowledge/bases',{'name':'平台自有库','visibility':'PLATFORM_INTERNAL'})
+        platform_doc=admin.call('POST','/knowledge/bases/'+platform_base['id']+'/documents',{'title':'平台规则','filename':'rules.md','contentType':'text/markdown','base64':base64.b64encode('平台自有规则'.encode()).decode()})
+        admin.call('POST','/knowledge/documents/'+platform_doc['id']+'/publish',{})
+        admin.call('POST','/knowledge/documents/'+platform_doc['id']+'/withdraw',{})
+        managed=admin.call('GET','/knowledge/bases')
+        check(any(b['id']==platform_base['id'] for b in managed) and all(b['merchantId'] is None for b in managed),'平台管理列表仅含平台自有库')
+        for doc,foreign in ((private,other),(second_doc,owner)):
+            for denied in (admin,foreign):
+                denied.call('GET','/knowledge/bases/'+doc['baseId']+'/documents/page',code='A0006')
+                denied.call('GET','/knowledge/documents/'+doc['id'],code='A0006')
+                denied.call('POST','/knowledge/bases/'+doc['baseId']+'/documents',{'title':'拒绝写入','filename':'rules.md','contentType':'text/markdown','base64':base64.b64encode(b'denied').decode()},code='A0006')
+                for action in ('index','publish','withdraw'):
+                    denied.call('POST','/knowledge/documents/'+doc['id']+'/'+action,{},code='A0006')
+        owner.call('GET','/knowledge/documents/'+private['id'])
+        other.call('GET','/knowledge/documents/'+second_doc['id'])
         refund_doc=document('PUBLIC','考试黑色签字笔退款说明','考试黑色签字笔退款请打开订单详情，选择申请售后并填写原因。')
         spec_reply=buyer.call('POST','/ai/chat',{'question':'考试黑色签字笔要单支黑色大杯'})
         check(not spec_reply['proposal'] and '规格' in spec_reply['answer'],'真实Java/Python组合规格不能忽略未知大杯')
@@ -278,6 +296,10 @@ def run(args):
         RESULTS.append({'check':'Java/Python知识与导购联调','status':'SKIPPED','reason':'显式 --skip-ai'})
 
     owner.call('DELETE',base+'/members/'+users['clerk']['id'])
+    owner.call('DELETE',base+'/members/'+users['clerk']['id'])
+    pending=owner.call('POST',base+'/invitations',{'username':users['clerk']['username']})
+    owner.call('DELETE',base+'/members/'+users['clerk']['id'])
+    check(next(i for i in clerk.call('GET','/invitations') if i['id']==pending['id'])['status']=='CANCELED','重复撤权仍可取消新邀请')
     clerk.call('GET',base+'/stocks',code='A0006')
     check(any(x['productId']==product for x in admin.call('GET','/admin/products?size=100')),'平台监管列表可查看商品')
     admin.call('POST','/admin/products/'+product+'/unpublish',{})

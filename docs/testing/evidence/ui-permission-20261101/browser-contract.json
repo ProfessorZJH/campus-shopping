@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "kind": "CHROMIUM_WITH_API_DOUBLES",
+  "checks": [
+    "disputes query DISPUTED; mixed history has one decision entry",
+    "merchant only reviews REQUESTED and preserves history",
+    "all four inventory movement meanings",
+    "revoked member history has no revoke operation",
+    "platform minimum price excludes inactive SKUs",
+    "21 SKU rows cannot submit an order",
+    "upload rejects over 2,000,000 bytes and 120 character filename",
+    "last active SKU cannot be disabled; price above server maximum rejected",
+    "product without active SKU cannot publish and explains why",
+    "registration format and UTF-8 password limit are checked before API"
+  ]
+}

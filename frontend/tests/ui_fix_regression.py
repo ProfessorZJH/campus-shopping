@@ -46,7 +46,7 @@ class TwoMerchantBackend(BackendContractDouble):
             route.fulfill(status=200,json=self.data({'platformAdmin':self.platform_admin,'memberships':mine,'merchantPermissions':{m['merchantId']:role_grants.get(m['role'],[]) for m in mine},'merchants':[shop for shop in self.shops if shop['merchantId'] in mids]}))
             return
         if path in ('/merchants/m1/aftersales/page','/admin/aftersales/page'):
-            items=[{'id':'sale-1','orderId':'order-1','status':'REQUESTED','reason':'无法自提'}]
+            items=[{'id':'sale-1','orderId':'order-1','status':'DISPUTED' if path.startswith('/admin/') else 'REQUESTED','reason':'无法自提'}]
             route.fulfill(status=200,json=self.data({'items':items,'page':1,'size':10,'total':1,'hasNext':False}))
             return
         return super().handle(route)
@@ -206,8 +206,11 @@ def main():
         # 切换不同登录主体，后台原有数据不得留在无权账号页面。
         f.platform_admin=True
         f.user={'userId':'u1','username':'student001','displayName':'管理员A','status':'ACTIVE'}
+        f.shops[1]['status']='SUSPENDED'
         page=browser_page(browser,'/admin/merchants',f)
         expect(page.locator('.ops-table tbody tr')).to_have_count(2)
+        expect(page.locator('.ops-table tbody tr').filter(has_text='鲜果小站').get_by_text('暂停营业', exact=True)).to_be_visible()
+        checks.append('平台商户列表正确展示暂停营业状态')
         f.platform_admin=False
         f.user={'userId':'u2','username':'student002','displayName':'普通用户B','status':'ACTIVE'}
         page.locator('.topbar-avatar').click()

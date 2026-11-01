@@ -51,6 +51,46 @@ class MySqlIdentityIntegrationTest {
         registry.add("spring.sql.init.data-locations", () -> "classpath:data.sql");
     }
 
+    @Autowired
+    cn.bugstack.ai.domain.identity.service.IAccessService access;
+
+    @Test
+    @org.springframework.transaction.annotation.Transactional
+    void repeatedRevocationOnlyAuditsActualChanges() {
+        var owner = service.register(username, PASSWORD, "撤权测试");
+        var target = service.register(username + "x", PASSWORD, "成员测试");
+        String merchant = UUID.randomUUID().toString();
+        jdbc.update(
+            "INSERT INTO iam_merchant_membership(merchant_id,user_id,role,status) VALUES(?,?,'OWNER','ACTIVE'),(?,?,'CLERK','ACTIVE')",
+            merchant,
+            owner.getUserId(),
+            merchant,
+            target.getUserId()
+        );
+        access.revoke(owner.getUserId(), merchant, target.getUserId());
+        Long version = jdbc.queryForObject(
+            "SELECT version FROM iam_merchant_membership WHERE merchant_id=? AND user_id=?",
+            Long.class,
+            merchant,
+            target.getUserId()
+        );
+        access.revoke(owner.getUserId(), merchant, target.getUserId());
+        assertEquals(
+            version,
+            jdbc.queryForObject("SELECT version FROM iam_merchant_membership WHERE merchant_id=? AND user_id=?", Long.class, merchant, target.getUserId())
+        );
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_audit WHERE merchant_id=? AND action='MEMBER_REVOKED'", Integer.class, merchant));
+        access.invite(owner.getUserId(), merchant, username + "x");
+        access.revoke(owner.getUserId(), merchant, target.getUserId());
+        access.revoke(owner.getUserId(), merchant, target.getUserId());
+        assertEquals(
+            version,
+            jdbc.queryForObject("SELECT version FROM iam_merchant_membership WHERE merchant_id=? AND user_id=?", Long.class, merchant, target.getUserId())
+        );
+        assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM sys_audit WHERE merchant_id=? AND action='INVITATIONS_CANCELED'", Integer.class, merchant));
+        assertEquals(0, jdbc.queryForObject("SELECT COUNT(*) FROM iam_invitation WHERE merchant_id=? AND status='PENDING'", Integer.class, merchant));
+    }
+
     @AfterEach
     void removeOwnFixtureOnly() {
         jdbc.update("DELETE FROM iam_user WHERE username=?", username);

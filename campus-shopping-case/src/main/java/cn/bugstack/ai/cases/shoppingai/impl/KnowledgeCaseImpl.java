@@ -57,9 +57,12 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     private KnowledgeBaseVO manage(String actor, String id, String permission) {
         accounts.requireActive(actor);
         KnowledgeBaseVO b = state.base(id);
-        if (access.isAdmin(actor)) return b;
-        require(b.merchantId() != null, ResponseCode.AUTH_FORBIDDEN);
-        access.requirePermission(actor, b.merchantId(), permission);
+        // 平台身份只授权平台自有库；商户经营权限始终来自有效成员授权。
+        if (b.merchantId() == null) {
+            access.requireAdmin(actor);
+        } else {
+            access.requirePermission(actor, b.merchantId(), permission);
+        }
         return b;
     }
 
@@ -75,7 +78,7 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         return state
             .bases()
             .stream()
-            .filter(b -> admin || managed.contains(b.merchantId()))
+            .filter(b -> b.merchantId() == null ? admin : managed.contains(b.merchantId()))
             .toList();
     }
 

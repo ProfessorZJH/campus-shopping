@@ -84,6 +84,10 @@ export default {
     }
     async function checkout() {
       if (preview || busy.value || !selected.value.length) return;
+      if (selected.value.length > 20) {
+        notify('每笔订单最多支持20个SKU行，请减少商品规格后结算');
+        return;
+      }
       if (selected.value.some((i) => !i.sellable || i.available < i.quantity)) {
         notify('请先调整失效或库存不足的商品');
         return;
