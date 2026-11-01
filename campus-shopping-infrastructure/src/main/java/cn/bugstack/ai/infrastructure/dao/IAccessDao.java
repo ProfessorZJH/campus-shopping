@@ -24,6 +24,7 @@ public interface IAccessDao {
     int cancelInvitations(@Param("merchantId") String merchantId, @Param("targetUserId") String targetUserId);
     List<MerchantRolePO> roles(@Param("merchantId") String merchantId);
     MerchantRolePO role(@Param("merchantId") String merchantId, @Param("code") String code, @Param("lock") boolean lock);
+    List<RolePermissionPO> rolePermissionRows(@Param("merchantId") String merchantId);
     Set<String> rolePermissions(@Param("merchantId") String merchantId, @Param("code") String code);
     int createRole(@Param("merchantId") String merchantId, @Param("code") String code, @Param("name") String name);
     int updateRole(@Param("merchantId") String merchantId, @Param("code") String code, @Param("name") String name);

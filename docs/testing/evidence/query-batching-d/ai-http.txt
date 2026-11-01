@@ -1,0 +1,28 @@
+INFO:     Started server process [21996]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:65198 (Press CTRL+C to quit)
+INFO:     127.0.0.1:65203 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/extract HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=embedding request_id=75f6f5cc-5769-4bb0-8d15-47d3803958eb duration_ms=1
+INFO:     dependency_finished operation=knowledge.index request_id=75f6f5cc-5769-4bb0-8d15-47d3803958eb duration_ms=10
+INFO:     127.0.0.1:53971 - "POST /v1/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/extract HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=knowledge.index request_id=de36bf5c-c853-42d8-9fc0-c5e653bc478d duration_ms=2
+INFO:     127.0.0.1:53971 - "POST /v1/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/extract HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=embedding request_id=6f19219c-bebf-439b-8ddb-b7156984f28f duration_ms=0
+INFO:     dependency_finished operation=knowledge.index request_id=6f19219c-bebf-439b-8ddb-b7156984f28f duration_ms=1
+INFO:     127.0.0.1:53971 - "POST /v1/index HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/recall HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/products/search HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=knowledge.search request_id=1f40e8f3-7859-4db2-8523-608de35bbbdd duration_ms=0
+INFO:     127.0.0.1:53971 - "POST /v1/query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/recall HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/products/search HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=knowledge.search request_id=344bed70-29c8-4477-a1fa-72599905d025 duration_ms=0
+INFO:     127.0.0.1:53971 - "POST /v1/query HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/recall HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53971 - "POST /v1/products/search HTTP/1.1" 200 OK
+INFO:     dependency_finished operation=knowledge.search request_id=8cb79213-4316-4ec2-9b68-5fb4c3072a43 duration_ms=0
+INFO:     127.0.0.1:53971 - "POST /v1/query HTTP/1.1" 200 OK
