@@ -72,5 +72,12 @@
     },
     "reason": "The two-tab browser test attempted to open another tab in the implicit browser.new_page context; fixed to use an explicit shared context. No product assertion was weakened.",
     "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41268392045",
+    "head": "4526d17",
+    "job": "Chromium contract / current",
+    "reason": "Original log ui_r1_correctness.py:79 expected cart quantity 2; shared contract double ignored POST /cart. Updated the double to accumulate POST and retain absolute PUT, and explicitly asserted the UI submits POST. All nine contract scripts passed locally.",
+    "status": "FAIL_THEN_FIXED_IN_NEXT_HEAD"
   }
 ]

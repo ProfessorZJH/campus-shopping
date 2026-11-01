@@ -198,7 +198,7 @@ def main():
                 screenshot(buyer,'order-completed')
                 # 第二笔订单通过页面申请并批准退款，验证真实售后。
                 goto(buyer,'/product/'+pid)
-                response_for(buyer,'/cart','PUT',lambda:buyer.get_by_role('button',name='加入购物车',exact=True).click())
+                response_for(buyer,'/cart','POST',lambda:buyer.get_by_role('button',name='加入购物车',exact=True).click())
                 response_for(buyer,'/api/v1/cart','GET',lambda:goto(buyer,'/cart'))
                 refund=response_for(buyer,'/api/v1/orders','POST',lambda:buyer.get_by_role('button',name='提交订单',exact=True).click())
                 refund_id=refund['orderId'];state['browserRefundOrderId']=refund_id

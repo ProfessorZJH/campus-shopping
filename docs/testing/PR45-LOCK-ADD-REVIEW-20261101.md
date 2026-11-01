@@ -41,6 +41,8 @@ MySQL 提醒事务/锁表与 PROCESSLIST 的数据可能并不同步，诊断不
 | Chromium 真实后端 | [13 项通过](evidence/pr45-review-20261101/browser.json)，无 API mock，双标签页分别 POST 后 1→3；真正同时请求由 MySQL JUnit 覆盖 |
 | 格式、UI --check、API/schema、源码边界、领域、供应链、HTTP 正文 | [通过](evidence/pr45-review-20261101/static-checks.json)，95 路由、58 schema、56 领域规则、7 Node 测试 |
 
+首轮新代码 CI（4526d17 / 41268392045）在 current Chromium 契约失败。已读取原始日志，ui_r1_correctness.py:79 的数量断言失败，定位为共享替身未处理 POST。补齐替身的 POST 累计/PUT 目标量，新增页面 POST 断言，同步完整交易浏览器脚本的响应等待方法；[九个契约脚本本地通过](evidence/pr45-review-20261101/browser-contracts.json)。补充只修改浏览器测试及报告，上表实际生产/Java 构建摘要保持一致；不把替身通过当作真实后端通过。
+
 新 HEAD 的完整 CI 结果登记在 PR #45 的“实际测试”表，必须核对该提交，6013a28 的历史绿灯不验证本轮改动。真实外部 AI 验收为 NOT_RUN；未合并或部署。
 
 锁定报价改为按商品/规格逐个主键当前读，数据库往返次数随请求的商品/SKU 数量增长；本轮验证交易正确性，尚未进行性能基准。
