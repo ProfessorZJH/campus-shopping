@@ -2,23 +2,23 @@
   "schemaVersion": 2,
   "name": "campus-shopping",
   "version": "1.0-SNAPSHOT",
-  "generatedAt": "2026-11-01T03:12:44.810257+00:00",
+  "generatedAt": "2026-11-01T03:32:06.283175+00:00",
   "source": {
     "gitCommit": null,
     "workingTreeDirty": null,
-    "sha256": "b7aa7c2888086c7db57f66a7d4a1d6f49d8ff717b7a709cc9ce74381b23015ec",
+    "sha256": "1d36f75ae21bd9a97ffa6b9b6a98a762dc11556628370037db6dcb8ee13975d9",
     "files": 643
   },
   "buildSource": {
-    "sha256": "b7aa7c2888086c7db57f66a7d4a1d6f49d8ff717b7a709cc9ce74381b23015ec",
+    "sha256": "1d36f75ae21bd9a97ffa6b9b6a98a762dc11556628370037db6dcb8ee13975d9",
     "files": 643,
-    "recordedAt": "2026-11-01T03:10:28.214965+00:00"
+    "recordedAt": "2026-11-01T03:29:01.004260+00:00"
   },
   "sourceMatchesBuild": true,
   "artifacts": [
     {
       "path": "campus-shopping-app/target/campus-shopping-app.jar",
-      "sha256": "ac8481c8dffc98f4a38eabf712e5f18ee160e48cd9fa6d8042117f7ab7047fe3",
+      "sha256": "776dbd6580853dac669b90380059115d24daaa6fd4f0923032580120f7caefb4",
       "bytes": 57860146
     }
   ],

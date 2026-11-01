@@ -42,13 +42,13 @@
   ],
   "testData": {
     "userIds": {
-      "owner": "87a3cacf-af3b-4727-81cb-1cb7b6b22800",
-      "clerk": "2f382beb-0993-445d-a1c7-2658a7deaddf",
-      "buyer": "232943ab-88c0-403b-8b3e-5c7718e48d35"
+      "owner": "898f3bce-02e3-4627-aff0-5f2a056675f5",
+      "clerk": "ffd6f55c-f4aa-48f4-a878-1fe2434e8478",
+      "buyer": "292be70a-f9d1-4e74-b2ba-bf7a2e175aec"
     },
-    "merchantId": "f76b1614-10c5-4d8c-b727-f7b197e2645f",
-    "productId": "a09dd15f-273e-4485-b58c-c8427b4d8f04",
-    "skuId": "0cc79e2c-69fa-444b-a5a8-c90903ebec81"
+    "merchantId": "d17d00c4-9886-4770-8bd6-3acfbb2b9b48",
+    "productId": "2736fff4-8193-40ae-a1a6-e28f1862ae79",
+    "skuId": "f44e2a78-354a-4018-9a4f-d8d8a7331855"
   },
   "quotaAttempts": [
     {

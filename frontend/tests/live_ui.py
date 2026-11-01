@@ -87,7 +87,10 @@ def verify_cart_sku(page, browser, base, admin, password, checks):
         page.get_by_role('button', name='库存验收专用笔', exact=True).click()
         page.get_by_role('button', name='黑色验收规格', exact=True).click()
         page.get_by_role('button', name='增加数量', exact=True).click()
-        page.get_by_role('button', name='加入购物车', exact=True).click()
+        with page.expect_response(lambda r: r.url.endswith('/api/v1/cart') and r.request.method == 'POST') as rejected_add:
+            page.get_by_role('button', name='加入购物车', exact=True).click()
+        assert rejected_add.value.json()['code'] == 'I0001'
+        expect(page.get_by_role('button', name='加入购物车', exact=True)).to_be_enabled()
         expect(page.get_by_role('dialog', name='库存验收专用笔')).to_be_visible()
         assert next(row for row in call(page.request, 'GET', '/cart') if row['skuId'] == black)['quantity'] == 2
         checks.append('首页按累计数量拒绝加购，库存 3 已有 2 再加 2 保持原数量')

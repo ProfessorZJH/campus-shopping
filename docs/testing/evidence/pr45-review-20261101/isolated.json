@@ -359,7 +359,7 @@
     "errors": 0,
     "skipped": 0
   },
-  "deliveryArtifacts": "var\\remediation\\pr45-review-final-pass\\verified-build (isolated tested JAR and generated manifest)",
+  "deliveryArtifacts": "var\\remediation\\pr45-browser-sequence-final\\verified-build (isolated tested JAR and generated manifest)",
   "http": {
     "status": "PASS",
     "checks": 223,
