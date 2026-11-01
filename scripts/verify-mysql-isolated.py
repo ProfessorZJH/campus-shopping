@@ -245,7 +245,7 @@ def http_smoke(args, workspace, build_root, connection, env, report):
                CAMPUS_JOBS_ENABLED='false', CAMPUS_SECURITY_RATE_LIMIT_ENABLED='false',
                UPLOAD_DIR=str(workspace/'uploads'))
     if env.get('REDIS_TEST_ADDRESS'):
-        env.update(REDIS_ENABLED='true',REDIS_SECURITY_ADDRESS=env['REDIS_TEST_ADDRESS'],REDIS_CACHE_ADDRESS=env['REDIS_TEST_ADDRESS'],
+        env.update(REDIS_ENABLED='true',REDIS_SECURITY_ADDRESS=env['REDIS_TEST_ADDRESS'],REDIS_CACHE_ADDRESS=env['REDIS_TEST_CACHE_ADDRESS'],
                    REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD',''),REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD',''),
                    REDIS_NAMESPACE='cs:test:http:'+secrets.token_hex(12), CAMPUS_SECURITY_RATE_LIMIT_ENABLED='true')
     with connection.cursor() as cur:

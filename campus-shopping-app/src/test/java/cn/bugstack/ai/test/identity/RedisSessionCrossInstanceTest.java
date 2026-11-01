@@ -29,7 +29,7 @@ class RedisSessionCrossInstanceTest {
             "--spring.profiles.active=session-test",
             "--server.port=0",
             "--server.servlet.context-path=/foo",
-            "--server.servlet.session.timeout=30s",
+            "--server.servlet.session.timeout=30",
             "--campus.security.rate-limit-enabled=true",
             "--campus.redis.enabled=true",
             "--campus.redis.namespace=" + namespace,
