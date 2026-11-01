@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "files": 504,
+  "byteDifferences": [],
+  "pageUtilsAstEqual": true,
+  "javaSourcesMatch": true,
+  "runtimeBundleBytesMatch": true,
+  "explanation": "All 504 recorded source files, including Java sources and the executable UI bundle, match the current workspace byte for byte."
+}

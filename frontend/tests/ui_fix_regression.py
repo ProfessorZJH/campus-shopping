@@ -46,7 +46,7 @@ class TwoMerchantBackend(BackendContractDouble):
             route.fulfill(status=200,json=self.data({'platformAdmin':self.platform_admin,'memberships':mine,'merchantPermissions':{m['merchantId']:role_grants.get(m['role'],[]) for m in mine},'merchants':[shop for shop in self.shops if shop['merchantId'] in mids]}))
             return
         if path in ('/merchants/m1/aftersales/page','/admin/aftersales/page'):
-            items=[{'id':'sale-1','orderId':'order-1','status':'REQUESTED','reason':'无法自提'}]
+            items=[{'id':'sale-1','orderId':'order-1','status':'DISPUTED' if path.startswith('/admin/') else 'REQUESTED','reason':'无法自提'}]
             route.fulfill(status=200,json=self.data({'items':items,'page':1,'size':10,'total':1,'hasNext':False}))
             return
         return super().handle(route)

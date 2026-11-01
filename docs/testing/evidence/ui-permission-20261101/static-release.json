@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-11-01T09:04:14.131293+00:00",
+  "type": "STATIC_SOURCE_AND_CONTRACT_ONLY",
+  "status": "FAIL",
+  "counts": {
+    "javaSyntaxFiles": 403,
+    "internalInterfaceImplementations": 61,
+    "schemaTables": 37,
+    "mybatisMapperFiles": 11,
+    "mavenPomFiles": 8
+  },
+  "errors": [
+    "G:\\develop\\campus-shopping\\docs\\README.md 文档链接缺失 testing/UI-PERMISSION-CORRECTIONS-20261101.md"
+  ],
+  "mavenCompiled": false,
+  "springMySqlTested": false
+}

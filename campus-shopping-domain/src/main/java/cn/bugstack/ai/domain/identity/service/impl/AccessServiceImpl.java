@@ -110,8 +110,14 @@ public class AccessServiceImpl implements IAccessService {
         requireMember(actor, merchantId, true);
         MembershipVO m = repository.member(targetUserId, merchantId, false);
         require(m != null && !"OWNER".equals(m.role()), ResponseCode.AUTH_FORBIDDEN);
-        repository.revoke(merchantId, targetUserId);
-        audit(actor, "MEMBER_REVOKED", targetUserId, merchantId, "撤销店员权限与未接受邀请");
+        // 沿用邀请 → 成员的写锁顺序，与接受邀请一致；条件更新结果决定审计。
+        int canceled = repository.cancelPendingInvitations(merchantId, targetUserId);
+        if (repository.revoke(merchantId, targetUserId)) {
+            audit(actor, "MEMBER_REVOKED", targetUserId, merchantId, "撤销店员权限");
+        }
+        if (canceled > 0) {
+            audit(actor, "INVITATIONS_CANCELED", targetUserId, merchantId, "取消待接受邀请：" + canceled + " 条");
+        }
     }
 
     public void audit(String actor, String action, String target, String merchantId, String detail) {

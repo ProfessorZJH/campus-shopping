@@ -89,3 +89,9 @@
 - 库存、订单、售后状态仍受原领域业务不变量约束；角色授权不是订单归属检查的替代。
 - `PRICE_ASC`、`STOCK_DESC` 实现为数据库全局排序再分页，页 2 承接第 21 个商品而非本页重排；MySQL 专用 `catalogGlobalSortOrdersEntireResultBeforePaging` 测试已提交，尚未在本地执行。
 - 本地可运行 Chromium 接口替身与静态规则检查；**必须在 JDK17 + Maven + MySQL8 + Spring Boot 环境实际运行新增的 `MerchantRbacMySqlIntegrationTest` 和全套 E2E**，才能标记生产验收通过。
+
+## 2026-11-01 知识经营授权与成员撤销补充
+
+本次已确认边界：平台管理员仅凭平台身份管理平台自有知识库（merchantId 为空）。商户知识库的管理列表、文档读取/上传、索引、发布和撤回均要求有效商户成员具有 knowledge.read / knowledge.manage；管理员兼任商户成员时同样按商户授权判断。公开检索仍按知识可见性规则执行。平台对违规商户知识的监管操作不在本轮新增范围，不能复用完整经营权限。
+
+重复撤销已撤权成员不更新成员版本、不新增 MEMBER_REVOKED 审计；若实际取消了新的待接受邀请，单独记录 INVITATIONS_CANCELED 及取消数量。HTTP 路径、响应结构和枚举编码不变。

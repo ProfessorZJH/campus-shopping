@@ -76,9 +76,13 @@ def verify_cart_sku(page, browser, base, admin, password, checks):
         page.get_by_role('button', name='规格售价', exact=True).click()
         page.get_by_role('button', name='停用蓝色验收规格', exact=True).click()
         expect(page.get_by_role('button', name='启用蓝色验收规格', exact=True)).to_be_visible()
-        page.get_by_role('button', name='停用黑色验收规格', exact=True).click()
-        expect(page.get_by_role('button', name='停用黑色验收规格', exact=True)).to_be_enabled()
+        last_active = page.get_by_role('button', name='停用黑色验收规格', exact=True)
+        expect(last_active).to_be_disabled()
+        expect(last_active).to_have_attribute('title', '已上架商品须保留至少一个有效规格')
         current = call(page.request, 'GET', '/products/' + product['productId'])
+        call(page.request, 'PUT', product_path + '/skus/' + black + '/status',
+             {'active': False, 'expectedVersion': current['version']}, code='C0001')
+        assert call(page.request, 'GET', '/products/' + product['productId'])['version'] == current['version']
         assert next(sku for sku in current['skus'] if sku['skuId'] == black)['status'] == 'ACTIVE'
         page.get_by_role('button', name='启用蓝色验收规格', exact=True).click()
         expect(page.get_by_role('button', name='停用蓝色验收规格', exact=True)).to_be_visible()

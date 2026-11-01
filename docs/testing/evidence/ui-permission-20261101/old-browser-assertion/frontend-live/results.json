@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-11-01T09:11:10.153399+00:00",
+  "testType": "REAL_BROWSER_REAL_JAVA_HTTP",
+  "status": "FAILED",
+  "error": "Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for get_by_role(\"button\", name=\"停用黑色验收规格\", exact=True)\n    - locator resolved to <button disabled aria-label=\"停用黑色验收规格\" title=\"已上架商品须保留至少一个有效规格\">停用</button>\n  - attempting click action\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n    - waiting 20ms\n    2 × waiting for element to be visible, enabled and stable\n      - element is not enabled\n    - retrying click action\n      - waiting 100ms\n    58 × waiting for element to be visible, enabled and stable\n       - element is not enabled\n     - retrying click action\n       - waiting 500ms\n",
+  "checks": [
+    "新版 Vue 匿名消费者首页加载",
+    "匿名商户列表与详情放行；平台私有数据拒绝匿名访问",
+    "新版管理员 Session 登录并访问入驻审核",
+    "管理员退出后 Session 与私有数据失效",
+    "注册真实数据库账号且注册后不自动登录",
+    "普通用户登录后仍无法访问管理员页面",
+    "移动端真实前端无横向溢出",
+    "真实 HTTP 拒绝零库存和超库存加购，原购物车数量保留"
+  ],
+  "browserErrors": [],
+  "apiMockUsed": false
+}
