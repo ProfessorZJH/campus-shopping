@@ -25,13 +25,15 @@ public class MerchantRepository implements IMerchantRepository {
     public record PublicDisplay(String name, String category, String storeId, String storeName, String location) {}
 
     public MerchantVO publicDisplay(String id) {
-        String status = dao.status(id);
-        if (status == null) return null;
-        var data = cache.read("merchant:" + id, 90, new com.fasterxml.jackson.core.type.TypeReference<PublicDisplay>() {}, () -> {
+        MerchantPO facts = dao.displayFacts(id);
+        if (facts == null) return null;
+        var data = cache.read("merchant:" + id + ":" + facts.getVersion(), 90, new com.fasterxml.jackson.core.type.TypeReference<PublicDisplay>() {}, () -> {
             var p = dao.find(id, false);
             return p == null ? null : new PublicDisplay(p.getName(), p.getCategory(), p.getStoreId(), p.getStoreName(), p.getLocation());
         });
-        return data == null ? null : new MerchantVO(id, null, data.name(), data.category(), status, data.storeId(), data.storeName(), data.location());
+        return data == null
+            ? null
+            : new MerchantVO(id, null, data.name(), data.category(), facts.getStatus(), data.storeId(), data.storeName(), data.location());
     }
 
     public MerchantVO find(String id, boolean lock) {
@@ -71,7 +73,6 @@ public class MerchantRepository implements IMerchantRepository {
 
     public void setStatus(String id, String status) {
         dao.setStatus(id, status);
-        cache.evictAfterCommit("merchant:" + id);
     }
 
     private MerchantVO fromPO(MerchantPO p) {
@@ -83,6 +84,5 @@ public class MerchantRepository implements IMerchantRepository {
     public void updateProfile(String id, String name, String storeName, String location) {
         dao.updateProfile(id, name);
         dao.updateStore(id, storeName, location);
-        cache.evictAfterCommit("merchant:" + id);
     }
 }

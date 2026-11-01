@@ -30,16 +30,31 @@ public class DisplayCache {
         RedisClients redis = clients.getIfAvailable();
         if (redis == null) return loader.get();
         var bucket = redis.cache().<String>getBucket(redis.namespace() + ":display:v1:" + key, StringCodec.INSTANCE);
+        String data;
         try {
-            String data = bucket.get();
-            if (data != null) return mapper.readValue(data, type);
-        } catch (Exception error) {
+            data = bucket.get();
+        } catch (RuntimeException error) {
             diagnostic();
             return loader.get();
         }
+        if (data != null) {
+            try {
+                T cached = mapper.readValue(data, type);
+                if (cached != null) return cached;
+            } catch (com.fasterxml.jackson.core.JsonProcessingException error) {
+                // 损坏内容可自愈；只删除本次读到的值，保留其他请求已修复的内容。
+            }
+            diagnostic();
+            try {
+                bucket.compareAndSet(data, null);
+            } catch (RuntimeException error) {
+                diagnostic();
+                return loader.get();
+            }
+        }
         T value = loader.get();
         if (value != null) try {
-            bucket.set(mapper.writeValueAsString(value), Duration.ofSeconds(seconds + ThreadLocalRandom.current().nextInt(Math.max(1, seconds / 5))));
+            bucket.setIfAbsent(mapper.writeValueAsString(value), Duration.ofSeconds(seconds + ThreadLocalRandom.current().nextInt(Math.max(1, seconds / 5))));
         } catch (Exception error) {
             diagnostic();
         }

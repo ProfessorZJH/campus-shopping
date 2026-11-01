@@ -21,15 +21,31 @@ public class RedisInfrastructureConfig {
         @Value("${campus.redis.cache-password:}") String cachePassword,
         @Value("${campus.redis.security-username:}") String securityUsername,
         @Value("${campus.redis.cache-username:}") String cacheUsername,
+        @Value("${campus.redis.require-separate-instances:false}") boolean requireSeparateInstances,
         @Value("${campus.redis.namespace:cs:dev}") String namespace
     ) {
         if (!namespace.matches("[a-zA-Z0-9:_-]{3,80}")) throw new IllegalArgumentException("Redis namespace 无效");
+        if (requireSeparateInstances) validateSeparateInstances(securityAddress, cacheAddress);
         RedissonClient security = client(securityAddress, securityUsername, securityPassword);
         try {
             return new RedisClients(security, client(cacheAddress, cacheUsername, cachePassword), namespace);
         } catch (RuntimeException error) {
             security.shutdown();
             throw error;
+        }
+    }
+
+    public static void validateSeparateInstances(String securityAddress, String cacheAddress) {
+        var security = java.net.URI.create(securityAddress);
+        var cache = java.net.URI.create(cacheAddress);
+        int securityPort = security.getPort() < 0 ? 6379 : security.getPort();
+        int cachePort = cache.getPort() < 0 ? 6379 : cache.getPort();
+        try {
+            var securityHosts = java.util.Set.of(java.net.InetAddress.getAllByName(security.getHost()));
+            boolean sameHost = java.util.Arrays.stream(java.net.InetAddress.getAllByName(cache.getHost())).anyMatch(securityHosts::contains);
+            if (securityPort == cachePort && sameHost) throw new IllegalArgumentException("安全 Redis 与缓存 Redis 必须使用独立实例");
+        } catch (java.net.UnknownHostException error) {
+            throw new IllegalArgumentException("无法核验 Redis 实例隔离，请检查主机配置");
         }
     }
 

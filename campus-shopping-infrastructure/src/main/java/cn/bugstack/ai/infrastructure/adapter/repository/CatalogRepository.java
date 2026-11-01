@@ -45,7 +45,8 @@ public class CatalogRepository implements ICatalogRepository {
     }
 
     public List<CategoryVO> displayCategories() {
-        return cache.read("categories", 600, new com.fasterxml.jackson.core.type.TypeReference<List<CategoryVO>>() {}, this::categories);
+        // 类目表规模小且没有版本号，直接读取事实源避免旧值晚回填。
+        return categories();
     }
 
     public ProductAggregate find(String id, boolean lock) {
@@ -138,7 +139,6 @@ public class CatalogRepository implements ICatalogRepository {
 
     public void category(String c, String n, boolean a) {
         dao.category(c, n, a);
-        cache.evictAfterCommit("categories");
     }
 
     private ProductAggregate aggregate(ProductPO p, List<SkuPO> ss) {

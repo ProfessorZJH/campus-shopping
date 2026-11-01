@@ -22,6 +22,14 @@ import org.springframework.session.web.http.DefaultCookieSerializer;
 public class RedisSessionConfig {
 
     @Bean
+    public org.springframework.session.config.SessionRepositoryCustomizer<org.springframework.session.data.redis.RedisSessionRepository> sessionTimeout(
+        org.springframework.core.env.Environment environment
+    ) {
+        var timeout = org.springframework.boot.convert.DurationStyle.detectAndParse(environment.getProperty("server.servlet.session.timeout", "30m"));
+        return repository -> repository.setDefaultMaxInactiveInterval(timeout);
+    }
+
+    @Bean
     public RedisConnectionFactory redisConnectionFactory(RedisClients clients) {
         return new RedissonConnectionFactory(clients.security());
     }

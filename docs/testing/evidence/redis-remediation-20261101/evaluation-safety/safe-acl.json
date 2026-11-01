@@ -1,0 +1,14 @@
+{
+  "assertions" : "PASSED",
+  "javaMysql" : "REAL",
+  "scenario" : "KNOWLEDGE_READ_REVOKED_DURING_GENERATION_AND_PLATFORM_SCOPE",
+  "before" : { },
+  "llm" : "STUB_OR_NOT_USED",
+  "after" : {
+    "cart" : [ ],
+    "proposals" : [ ],
+    "stock" : [ ]
+  },
+  "actualCode" : "0000",
+  "caseId" : "safe-acl"
+}

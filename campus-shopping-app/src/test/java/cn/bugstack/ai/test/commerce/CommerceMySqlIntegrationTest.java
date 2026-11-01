@@ -220,6 +220,56 @@ class CommerceMySqlIntegrationTest {
         merchant = open(owner, "测试文具商户");
     }
 
+    @Autowired
+    cn.bugstack.ai.infrastructure.adapter.repository.MerchantRepository displayMerchants;
+
+    @SpyBean
+    cn.bugstack.ai.infrastructure.dao.IMerchantDao merchantDao;
+
+    @Autowired
+    org.mybatis.spring.SqlSessionTemplate sqlSession;
+
+    @Test
+    @EnabledIfEnvironmentVariable(named = "REDIS_TEST_CACHE_ADDRESS", matches = ".+")
+    void merchantCacheLateFillUsesDatabaseVersionAndRollbackPreservesDisplay() throws Exception {
+        String id = merchant.id();
+        var read = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var realDao = sqlSession.getMapper(cn.bugstack.ai.infrastructure.dao.IMerchantDao.class);
+        doAnswer(invocation -> {
+            Object snapshot = realDao.find(id, false);
+            if (Thread.currentThread().getName().equals("merchant-old-reader")) {
+                read.countDown();
+                assertTrue(release.await(10, TimeUnit.SECONDS));
+            }
+            return snapshot;
+        })
+            .when(merchantDao)
+            .find(id, false);
+        var executor = Executors.newSingleThreadExecutor(r -> new Thread(r, "merchant-old-reader"));
+        try {
+            var old = executor.submit(() -> displayMerchants.publicDisplay(id));
+            assertTrue(read.await(10, TimeUnit.SECONDS));
+            long before = merchantDao.displayFacts(id).getVersion();
+            admission.updateProfile(owner, id, "新商户资料", "新门店", "新地点");
+            assertEquals(before + 1, merchantDao.displayFacts(id).getVersion());
+            assertEquals("新商户资料", displayMerchants.publicDisplay(id).name());
+            release.countDown();
+            assertEquals(merchant.name(), old.get(10, TimeUnit.SECONDS).name());
+            assertEquals("新商户资料", displayMerchants.publicDisplay(id).name());
+            var tx = new TransactionTemplate(transactionManager);
+            tx.executeWithoutResult(status -> {
+                admission.updateProfile(owner, id, "回滚资料", "回滚门店", "回滚地点");
+                status.setRollbackOnly();
+            });
+            assertEquals(before + 1, merchantDao.displayFacts(id).getVersion());
+            assertEquals("新商户资料", displayMerchants.publicDisplay(id).name());
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+        }
+    }
+
     private MerchantVO open(String applicant, String name) {
         var a = applications.submitDetailed(
             applicant,

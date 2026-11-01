@@ -1,0 +1,32 @@
+{
+  "assertions" : "PASSED",
+  "javaMysql" : "REAL",
+  "scenario" : "SUSPEND",
+  "before" : {
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "stock" : [ {
+      "sku_id" : "0843efc5-64f2-46d5-be20-6ae69325d378",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "after" : {
+    "cart" : [ ],
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "stock" : [ {
+      "sku_id" : "0843efc5-64f2-46d5-be20-6ae69325d378",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ]
+  },
+  "actualCode" : "M0004",
+  "caseId" : "safe-suspend"
+}

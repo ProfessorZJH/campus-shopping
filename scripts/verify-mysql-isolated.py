@@ -397,12 +397,19 @@ def run(args, report):
                 env.pop(name, None)
             env['REDIS_ENABLED'] = 'false'
             if redis_test_address:
+                cache_test_address = env.get('REDIS_TEST_CACHE_ADDRESS', '').strip()
+                if not cache_test_address or cache_test_address == redis_test_address:
+                    raise ValueError('Redis 验收必须显式配置独立测试实例 REDIS_TEST_CACHE_ADDRESS')
+                cache_parsed = urlsplit(cache_test_address)
+                if (cache_parsed.scheme not in ('redis', 'rediss') or cache_parsed.hostname not in ('127.0.0.1', 'localhost', '::1')
+                        or cache_parsed.username or cache_parsed.password):
+                    raise ValueError('REDIS_TEST_CACHE_ADDRESS 必须为本机测试专用 Redis，URI 不得内嵌凭据')
                 parsed = urlsplit(redis_test_address)
                 if (parsed.scheme not in ('redis', 'rediss') or parsed.hostname not in ('127.0.0.1', 'localhost', '::1')
                         or parsed.username or parsed.password):
                     raise ValueError('REDIS_TEST_ADDRESS 仅允许显式配置本机测试专用 Redis，URI 不得内嵌凭据')
                 env.update(REDIS_ENABLED='true', REDIS_SECURITY_ADDRESS=redis_test_address,
-                           REDIS_CACHE_ADDRESS=redis_test_address,
+                           REDIS_CACHE_ADDRESS=cache_test_address,
                            REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
                            REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD', ''),
                            REDIS_NAMESPACE='cs:test:maven:'+secrets.token_hex(12))

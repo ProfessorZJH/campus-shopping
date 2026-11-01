@@ -153,17 +153,20 @@ jobs:
       - name: Start isolated Redis for shared-session and resource tests
         run: |
           docker run -d --name campus-redis-it -p 127.0.0.1:16379:6379 redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952
+          docker run -d --name campus-redis-cache-it -p 127.0.0.1:16380:6379 redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952
           READY=0
           for attempt in $(seq 1 30); do
-            if [ "$(docker exec campus-redis-it redis-cli ping 2>/dev/null)" = PONG ]; then READY=1; break; fi
+            if [ "$(docker exec campus-redis-cache-it redis-cli ping 2>/dev/null)" = PONG ] && [ "$(docker exec campus-redis-it redis-cli ping 2>/dev/null)" = PONG ]; then READY=1; break; fi
             sleep 1
           done
           test "$READY" = 1 || { echo 'Redis IT did not become ready'; exit 1; }
           {
             echo 'REDIS_TEST_ADDRESS=redis://127.0.0.1:16379'
+            echo 'REDIS_TEST_CACHE_ADDRESS=redis://127.0.0.1:16380'
+            echo 'REDIS_TEST_SERVER_COMMAND=["docker","run","--rm","--network","host","redis:7.4.2-alpine@sha256:02419de7eddf55aa5bcf49efb74e88fa8d931b4d77c07eff8a6b2144472b6952","redis-server"]'
             echo 'REDIS_ENABLED=true'
             echo 'REDIS_SECURITY_ADDRESS=redis://127.0.0.1:16379'
-            echo 'REDIS_CACHE_ADDRESS=redis://127.0.0.1:16379'
+            echo 'REDIS_CACHE_ADDRESS=redis://127.0.0.1:16380'
             echo "REDIS_NAMESPACE=cs:ci:${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}"
           } >> "$GITHUB_ENV"
       - name: Real Maven build + MySQL tests
@@ -277,7 +280,7 @@ jobs:
           for file in var/ci/app-secondary.pid var/ci/app.pid var/ci/ai.pid; do
             if [ -f "$file" ]; then kill "$(cat "$file")" || true; fi
           done
-          docker rm -f campus-mysql-it campus-mysql-e2e campus-redis-it || true
+          docker rm -f campus-mysql-it campus-mysql-e2e campus-redis-it campus-redis-cache-it || true
 
   browser-contract:
     if: github.event_name != 'pull_request'
