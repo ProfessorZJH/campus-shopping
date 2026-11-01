@@ -136,13 +136,7 @@ class RedisSessionCrossInstanceTest {
                 for (int i = 0; i < 301; i++) {
                     final int index = i;
                     requests.add(
-                        pool.submit(() ->
-                            post(
-                                (index % 2 == 0 ? ua : ub) + "/api/v1/auth/login",
-                                "invalid-csrf-token",
-                                "{}"
-                            )
-                        )
+                        pool.submit(() -> post((index % 2 == 0 ? ua : ub) + "/api/v1/auth/login", "invalid-csrf-token", "{}"))
                     );
                 }
                 for (var request : requests) {
