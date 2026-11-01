@@ -123,7 +123,7 @@ class RedisSessionCrossInstanceTest {
                         .statusCode()
                 );
             }
-            // 来源配额在 CSRF 之前执行；非法 CSRF 请求避免密码校验耗时影响 300/60 限流验收，两个节点及 context-path 同时回归。
+            // 来源限流在 CSRF 前执行，两个节点合计触发来源 300/60；context-path 同时回归。
             String quotaToken = mapper
                 .readTree(get(ua + "/api/v1/auth/csrf").body())
                 .at("/data/token")
@@ -136,7 +136,13 @@ class RedisSessionCrossInstanceTest {
                 for (int i = 0; i < 301; i++) {
                     final int index = i;
                     requests.add(
-                        pool.submit(() -> post((index % 2 == 0 ? ua : ub) + "/api/v1/auth/login", "invalid-csrf-token", "{}"))
+                        pool.submit(() ->
+                            post(
+                                (index % 2 == 0 ? ua : ub) + "/api/v1/auth/login",
+                                "invalid-csrf-token",
+                                mapper.writeValueAsString(Map.of("username", "missing" + index, "password", "invalid-password"))
+                            )
+                        )
                     );
                 }
                 for (var request : requests) {
@@ -152,8 +158,7 @@ class RedisSessionCrossInstanceTest {
             } finally {
                 pool.shutdownNow();
             }
-            // 首次两次真实登录可能在 60 秒窗口内，接受数应为 298～300。
-            assertTrue(accepted >= 298 && accepted <= 300, "来源阈值必须为每分钟 300 次");
+            assertTrue(accepted >= 298 && accepted <= 300);
             assertEquals(301, accepted + rejected);
             assertTrue(rejected >= 1);
             for (int i = 0; i < 31; i++) {
