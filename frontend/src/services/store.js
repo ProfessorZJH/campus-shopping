@@ -86,6 +86,9 @@ export function switchMerchantContext(id) {
   store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
   store.error = '';
 }
+export function invalidateMerchantSearch() {
+  ++merchantEpoch;
+}
 export function beginPublicSearch() {
   return ++publicEpoch;
 }
@@ -111,7 +114,7 @@ export function setRoute() {
   store.route = next;
   window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
 }
-export async function loadPublic() {
+export async function loadPublic({ signal } = {}) {
   const stamp = ++publicEpoch,
     baseStamp = ++baseEpoch;
   store.error = '';
@@ -126,15 +129,15 @@ export async function loadPublic() {
   }
   try {
     const [merchants, categories, products] = await Promise.all([
-      api('/merchants/public/page' + query({ page: 1, size: 50 })).then((result) => {
+      api('/merchants/public/page' + query({ page: 1, size: 50 }), { signal }).then((result) => {
         if (baseStamp === baseEpoch) store.merchants = result?.items || [];
         return result;
       }),
-      api('/categories').then((result) => {
+      api('/categories', { signal }).then((result) => {
         if (baseStamp === baseEpoch) store.categories = result || [];
         return result;
       }),
-      api('/products/page' + query({ page: 1, size: 20 })),
+      api('/products/page' + query({ page: 1, size: 20 }), { signal }),
     ]);
     if (!publicSearchCurrent(stamp)) return;
     store.merchants = merchants?.items || [];
@@ -162,6 +165,8 @@ export async function loadMerchant({
   category = '',
   status = '',
   sort = 'NEWEST',
+  contextOnly = false,
+  signal,
 } = {}) {
   // 同一页面可以有并发请求；只允许最近一次、当前登录主体与当前商户提交结果。
   const stamp = ++merchantEpoch,
@@ -194,11 +199,14 @@ export async function loadMerchant({
     return;
   }
   try {
-    const [user, workspace, categories] = await Promise.all([
-      api('/auth/me'),
-      api('/workspace'),
-      api('/categories'),
-    ]);
+    const [user, workspace, categories] =
+      store.workspace && store.user && !contextOnly
+        ? [store.user, store.workspace, store.categories]
+        : await Promise.all([
+            store.user ? Promise.resolve(store.user) : api('/auth/me'),
+            api('/workspace'),
+            api('/categories'),
+          ]);
     if (!current()) return;
     // 访问权限由服务端 workspace 决定，客户端只确定展示哪一个已授权商户。
     const options = workspace?.merchants || [];
@@ -216,14 +224,16 @@ export async function loadMerchant({
       store.error = '当前账号没有商户权限';
       return;
     }
+    if (contextOnly) return;
     const id = encodeURIComponent(next),
       permissions = workspace?.merchantPermissions?.[next] || [];
+    const read = (path) => api(path, { signal });
     const [products, stocks] = await Promise.all([
       permissions.includes('product.read')
-        ? api(`/merchants/${id}/products/page` + query({ page, size, q, category, status, sort }))
+        ? read(`/merchants/${id}/products/page` + query({ page, size, q, category, status, sort }))
         : Promise.resolve({ items: [], page: 1, size, total: 0, hasNext: false }),
-      permissions.includes('stock.read')
-        ? api(`/merchants/${id}/stocks/page` + query({ page: 1, size: 100 }))
+      permissions.includes('stock.read') && !contextOnly
+        ? read(`/merchants/${id}/stocks/page` + query({ page: 1, size: 100 }))
         : Promise.resolve({ items: [] }),
     ]);
     if (
@@ -265,6 +275,7 @@ export async function loadSession() {
     const user = await api('/auth/me');
     if (stamp === sessionEpoch && actorId(store.user) === original) store.user = user;
   } catch (err) {
+    if (err.status !== 401 && err.code !== 'A0004') throw err;
     if (
       stamp === sessionEpoch &&
       actorId(store.user) === original &&

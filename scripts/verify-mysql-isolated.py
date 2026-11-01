@@ -248,6 +248,7 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         env.update(REDIS_ENABLED='true',REDIS_SECURITY_ADDRESS=env['REDIS_TEST_ADDRESS'],REDIS_CACHE_ADDRESS=env['REDIS_TEST_CACHE_ADDRESS'],
                    REDIS_SECURITY_PASSWORD=env.get('REDIS_TEST_PASSWORD',''),REDIS_CACHE_PASSWORD=env.get('REDIS_TEST_PASSWORD',''),
                    REDIS_NAMESPACE='cs:test:http:'+secrets.token_hex(12), CAMPUS_SECURITY_RATE_LIMIT_ENABLED='true')
+        report['redisNamespace'] = env['REDIS_NAMESPACE']
     with connection.cursor() as cur:
         cur.execute('CREATE DATABASE campus_shopping_http_it CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
     processes, logs = [], []

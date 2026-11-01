@@ -123,8 +123,136 @@ def verify_cart_sku(page, browser, base, admin, password, checks):
         page.get_by_role('button', name='移除库存验收专用笔', exact=True).click()
         expect(page.get_by_text('购物车空空的', exact=True)).to_be_visible()
         checks.append('真实购物车失效商品禁止增加，仍可减少和直接移除')
+        verify_frontend_remediation(page, browser, admin_context, base, prefix, merchant, call, checks)
     finally:
         admin_context.close()
+
+
+def verify_frontend_remediation(page, browser, admin_context, base, prefix, merchant, call, checks):
+    """仅使用真实 API 和浏览器事件，验证本次整改，不替换响应或访问数据库。"""
+    requests = []
+    record = lambda req: requests.append((req.method, urlsplit(req.url).path))
+    page.on('request', record)
+    try:
+        page.goto(base + '/#/merchant/settings', wait_until='domcontentloaded')
+        name = '联调门店' + uuid.uuid4().hex[:8]
+        field = page.locator('.ops-settings input').first
+        expect(field).to_be_visible()
+        requests.clear()
+        field.fill(name)
+        with page.expect_response(lambda r: r.url.endswith(prefix + '/profile') and r.request.method == 'PUT') as saved:
+            page.get_by_role('button', name='保存设置', exact=True).click()
+        assert saved.value.json()['code'] == '0000'
+        expect(page.locator('.toast')).to_contain_text('门店资料已保存')
+        expect(field).to_have_value(name)
+        assert not any(method == 'GET' and '/merchants/' in path for method, path in requests)
+        assert call(page.request, 'GET', '/workspace')['merchants'][0]['name'] == name
+        checks.append('真实资料 PUT 后表单及 MySQL 回显一致，无额外商户 GET')
+
+        product = call(page.request, 'POST', prefix + '/products', {
+            'title': '联调多规格' + uuid.uuid4().hex[:8], 'categoryCode': 'stationery',
+            'skus': [{'specKey': '联调规格A', 'priceCent': 1500}, {'specKey': '联调规格B', 'priceCent': 800}]})
+        for sku in product['skus']:
+            quantity = 5 if sku['specKey'] == '联调规格A' else 2
+            call(page.request, 'POST', prefix + '/stocks/' + sku['skuId'] + '/replenish', {'quantity': quantity})
+        call(page.request, 'POST', prefix + '/products/' + product['productId'] + '/publish', {'published': True})
+        page.goto(base + '/#/', wait_until='domcontentloaded')
+        card = page.locator('.home-product').filter(has_text=product['title'])
+        expect(card).to_contain_text('¥8 起')
+        expect(card).to_contain_text('联调规格B')
+        card.click()
+        page.get_by_role('button', name='联调规格A', exact=True).click()
+        for _ in range(4):
+            page.get_by_role('button', name='增加数量', exact=True).click()
+        expect(page.locator('.quantity-picker b')).to_have_text('5')
+        page.get_by_role('button', name='联调规格B', exact=True).click()
+        expect(page.locator('.quantity-picker b')).to_have_text('1')
+        with page.expect_response(lambda r: r.url.endswith('/api/v1/cart') and r.request.method == 'POST') as added:
+            page.get_by_role('button', name='加入购物车', exact=True).click()
+        assert added.value.json()['code'] == '0000'
+        cart = call(page.request, 'GET', '/cart')
+        assert any(row['skuId'] == next(s['skuId'] for s in product['skus'] if s['specKey'] == '联调规格B') and row['quantity'] == 1 for row in cart)
+        checks.append('真实多规格最低价与标签一致，数量5切低库存归1并按选定SKU加购')
+
+        member_context = browser.new_context()
+        try:
+            username, password = 'member_' + uuid.uuid4().hex[:12], secrets.token_urlsafe(24)
+            member = call(member_context.request, 'POST', '/auth/register', {'username': username, 'password': password, 'displayName': '联调店员'})
+            call(member_context.request, 'POST', '/auth/login', {'username': username, 'password': password})
+            invite = call(page.request, 'POST', prefix + '/invitations', {'username': username})
+            call(member_context.request, 'POST', '/invitations/' + invite['id'] + '/accept', {})
+            role = call(page.request, 'POST', prefix + '/rbac/roles', {'name': '联调待删除角色', 'permissions': ['product.read']})
+            page.goto(base + '/#/merchant/team', wait_until='domcontentloaded')
+            select = page.locator('.ops-list-line').filter(has_text=member['userId']).locator('select')
+            expect(select).to_have_value('CLERK')
+            call(page.request, 'DELETE', prefix + '/rbac/roles/' + role['code'])
+            with page.expect_response(lambda r: '/rbac/members/' in r.url and r.request.method == 'PUT') as rejected:
+                select.select_option(role['code'])
+            assert rejected.value.json()['code'] != '0000'
+            expect(select).to_have_value('CLERK')
+            members = call(page.request, 'GET', prefix + '/members')
+            assert next(m for m in members if m['userId'] == member['userId'])['role'] == 'CLERK'
+            checks.append('真实角色删除竞态被服务端拒绝，下拉与持久化成员角色均保持原值')
+        finally:
+            member_context.close()
+
+        page.goto(base + '/#/merchant/products', wait_until='domcontentloaded')
+        expect(page.locator('.product-table tbody tr').first).to_be_visible()
+        requests.clear()
+        # 同一事件中输入后离页，确保发生在搜索防抖计时器之前。
+        page.locator('input[placeholder]').first.evaluate("el => { el.value='离页搜索'; el.dispatchEvent(new Event('input',{bubbles:true})); location.hash='/cart'; }")
+        expect(page.locator('.mobile-page-top b')).to_have_text('购物车')
+        page.wait_for_timeout(400)
+        assert not any(path.endswith('/products/page') for _, path in requests)
+        checks.append('真实页面搜索后立即离开，无延迟商品列表请求，购物车不附带公共商品请求')
+
+        admin_page = admin_context.new_page()
+        try:
+            errors = []
+            admin_page.on('pageerror', lambda e: errors.append(str(e)))
+            admin_page.goto(base + '/#/admin/products', wait_until='domcontentloaded')
+            admin_page.get_by_placeholder('搜索商品 / 商户').fill(product['title'])
+            row = admin_page.locator('tr').filter(has_text=product['title'])
+            expect(row).to_have_count(1)
+            dialogs = []
+            def cancel(dialog):
+                dialogs.append((dialog.type, dialog.message)); dialog.dismiss()
+            admin_page.on('dialog', cancel)
+            row.get_by_role('button', name='强制下架', exact=True).click()
+            assert product['title'] in dialogs[-1][1]
+            assert call(page.request, 'GET', '/products/' + product['productId'])['status'] == 'PUBLISHED'
+            admin_page.remove_listener('dialog', cancel)
+            def confirm(dialog): dialog.accept()
+            admin_page.on('dialog', confirm)
+            row.get_by_role('button', name='强制下架', exact=True).click()
+            expect(row.get_by_role('button', name='强制下架', exact=True)).to_be_disabled()
+            expect(row).to_contain_text('已下架')
+            assert next(p for p in call(admin_context.request, 'GET', '/admin/products/page?q=' + product['title'])['items'] if p['productId'] == product['productId'])['status'] == 'UNPUBLISHED'
+            checks.append('真实平台强制下架包含商品名称，取消不改状态，确认后持久化下架')
+
+            admin_page.goto(base + '/#/admin/merchants', wait_until='domcontentloaded')
+            admin_page.get_by_placeholder('搜索经营名称').fill(name)
+            row = admin_page.locator('tr').filter(has_text=name)
+            expect(row).to_have_count(1)
+            admin_page.remove_listener('dialog', confirm)
+            admin_page.on('dialog', cancel)
+            row.get_by_role('button', name='停用', exact=True).click()
+            assert dialogs[-1][0] == 'prompt' and name in dialogs[-1][1]
+            assert call(page.request, 'GET', '/merchants/public/' + merchant['merchantId'])['status'] == 'ACTIVE'
+            admin_page.remove_listener('dialog', cancel)
+            def approve(dialog):
+                dialogs.append((dialog.type, dialog.message))
+                dialog.accept('联调停用原因' if dialog.type == 'prompt' else None)
+            admin_page.on('dialog', approve)
+            row.get_by_role('button', name='停用', exact=True).click()
+            expect(row.get_by_role('button', name='恢复', exact=True)).to_be_visible()
+            assert [entry[0] for entry in dialogs[-2:]] == ['prompt', 'confirm']
+            checks.append('真实平台停用先填写原因再确认商户名，取消无变化，确认后显示暂停状态')
+            assert not errors, errors
+        finally:
+            admin_page.close()
+    finally:
+        page.remove_listener('request', record)
 
 
 def main():
@@ -150,6 +278,26 @@ def main():
             context = browser.new_context(viewport={'width': 1440, 'height': 1000}, locale='zh-CN')
             context.on('page', lambda tab: tab.on('pageerror', lambda exception: errors.append(str(exception))))
             page = context.new_page()
+            # 新会话直接打开后台 URL，登录后留在原目标，不能陷入仅有重试的错误页。
+            for target, heading in [('/admin', '平台总览'), ('/admin/products', '商品监管')]:
+                direct = browser.new_context()
+                try:
+                    tab = direct.new_page()
+                    tab.on('pageerror', lambda exception: errors.append(str(exception)))
+                    tab.goto(args.base_url + '/#' + target, wait_until='domcontentloaded')
+                    expect(tab.get_by_role('heading', name='请先登录', exact=True)).to_be_visible()
+                    expect(tab.locator('.merchant-shell')).to_have_count(0)
+                    tab.get_by_role('button', name='登录', exact=True).click()
+                    dialog = tab.locator('form.login-dialog')
+                    dialog.locator('#login-name').fill(admin)
+                    dialog.locator('#login-password').fill(password)
+                    dialog.locator('button[type=submit]').click()
+                    expect(tab.locator('.merchant-page-heading h1')).to_have_text(heading)
+                    expect(tab.locator('.access-denied')).to_have_count(0)
+                    assert urlsplit(tab.url).fragment == target
+                    checks.append('匿名直达' + target + '可登录并保留原目标路由')
+                finally:
+                    direct.close()
             page.goto(args.base_url + '/#/', wait_until='domcontentloaded')
             expect(page.locator('.header-login')).to_be_visible()
             expect(page.locator('.consumer-shell')).to_be_visible()

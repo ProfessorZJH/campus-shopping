@@ -1,3 +1,4 @@
+import { requestScope } from '../services/request-scope.js';
 import { priceSku } from '../services/page-utils.js';
 import { api, idempotency } from '../services/api.js';
 import AuthDialog from '../components/AuthDialog.js';
@@ -13,6 +14,7 @@ import {
   previewGuard,
   notify,
   loadMerchant,
+  invalidateMerchantSearch,
   hasPermission,
   switchMerchantContext,
 } from '../services/store.js';
@@ -33,6 +35,7 @@ export default {
   name: 'Merchant',
   components: { AuthDialog, ProductImage, ProductImageField },
   setup() {
+    const scope = requestScope();
     const search = ref('');
     const category = ref('');
     const status = ref('');
@@ -179,6 +182,7 @@ export default {
     function refreshPage() {
       if (preview) return;
       loadMerchant({
+        signal: scope.begin().signal,
         page: page.value,
         size: 9,
         q: search.value,
@@ -187,16 +191,29 @@ export default {
         sort: sort.value,
       });
     }
-    watch([category, status, sort], () => {
-      page.value = 1;
-      refreshPage();
-    });
-    watch(search, () => {
-      page.value = 1;
-      clearTimeout(searchDelay);
-      searchDelay = setTimeout(refreshPage, 280);
-    });
-    watch(page, refreshPage);
+    onMounted(refreshPage);
+    onUnmounted(() => clearTimeout(searchDelay));
+    let resettingPage = false;
+    watch(
+      [page, search, category, status, sort],
+      (next, previous) => {
+        if (resettingPage) return;
+        clearTimeout(searchDelay);
+        if (!preview) {
+          invalidateMerchantSearch();
+          scope.begin();
+          store.loading = true;
+        }
+        const changed = next.slice(1).some((v, i) => v !== previous[i + 1]);
+        if (changed) {
+          resettingPage = true;
+          page.value = 1;
+          resettingPage = false;
+        }
+        searchDelay = setTimeout(refreshPage, next[1] !== previous[1] ? 280 : 0);
+      },
+      { flush: 'sync' },
+    );
     function openCreate() {
       createImageUploading.value = false;
       createImageInvalid.value = false;
@@ -491,7 +508,6 @@ export default {
       }
       switchMerchantContext(e.target.value);
       selectedId.value = '';
-      await loadMerchant();
     }
     return {
       mobileNav,
@@ -514,6 +530,7 @@ export default {
       previewGuard,
       notify,
       loadMerchant,
+      invalidateMerchantSearch,
       owned,
       merchant,
       visibleMenu,

@@ -1,0 +1,1 @@
+PASSED 4 GLOBAL SORT UI CONTRACT CHECKS ["首页价格排序发出 PRICE_ASC 且第一页是全局最便宜商品", "全局价格排序在 SQL 分页之后不是本页再排序，第二页连续接第 21 项", "全局库存排序发出 STOCK_DESC 并重置分页", "商户商品页与购物端使用同一套排序枚举"]

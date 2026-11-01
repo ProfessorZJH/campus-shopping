@@ -1,0 +1,114 @@
+[
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_review_regression.py"
+    ],
+    "exitCode": 0,
+    "log": "01.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_remediation.py"
+    ],
+    "exitCode": 0,
+    "log": "02.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_fix_regression.py"
+    ],
+    "exitCode": 0,
+    "log": "03.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_rbac_regression.py"
+    ],
+    "exitCode": 0,
+    "log": "04.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_global_sort.py"
+    ],
+    "exitCode": 0,
+    "log": "05.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_list_pagination.py"
+    ],
+    "exitCode": 0,
+    "log": "06.txt"
+  },
+  {
+    "command": [
+      "node",
+      "--test",
+      "frontend/tests/api-timeout.test.mjs",
+      "frontend/tests/identity-races.test.mjs",
+      "frontend/tests/build-reproducibility.test.mjs"
+    ],
+    "exitCode": 0,
+    "log": "07.txt"
+  },
+  {
+    "command": [
+      "npm.cmd",
+      "run",
+      "format:check",
+      "--prefix",
+      "frontend"
+    ],
+    "exitCode": 0,
+    "log": "08.txt"
+  },
+  {
+    "command": [
+      "python",
+      "scripts/build-ui-bundle.py",
+      "--check"
+    ],
+    "exitCode": 0,
+    "log": "09.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "scripts/verify-release.py"
+    ],
+    "exitCode": 0,
+    "log": "static.txt"
+  },
+  {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "frontend/tests/ui_review_regression.py"
+    ],
+    "exitCode": 0,
+    "log": "10.txt",
+    "note": "Includes completed login during session service failure; second session timeout retains default 15 seconds."
+  }
+]

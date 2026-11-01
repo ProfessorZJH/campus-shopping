@@ -2,7 +2,7 @@ import { requestScope } from '../services/request-scope.js';
 import ConsumerShell from '../components/ConsumerShell.js';
 import AuthDialog from '../components/AuthDialog.js';
 import { api, idempotency, query } from '../services/api.js';
-import { store, go, preview, notify, loadSession } from '../services/store.js';
+import { store, go, preview, notify } from '../services/store.js';
 import { DEMO_APPLICATIONS } from '../services/pages-demo.js';
 import {
   applicationStatusLabel,
@@ -54,7 +54,6 @@ export default {
       }
       loading.value = true;
       try {
-        await loadSession();
         if (stamp !== loadEpoch) return;
         const actor = store.user?.userId;
         if (!store.user) {
@@ -63,8 +62,12 @@ export default {
           return;
         }
         const [a, i] = await Promise.all([
-          api('/merchant-applications/mine/page' + query({ page: page.value, size: 10 })),
-          api('/invitations' + query({ page: invitePage.value, size: 20 })),
+          !isApply.value && !isInvite.value
+            ? api('/merchant-applications/mine/page' + query({ page: page.value, size: 10 }))
+            : Promise.resolve({ items: [], total: 0 }),
+          !isApply.value
+            ? api('/invitations' + query({ page: invitePage.value, size: 20 }))
+            : Promise.resolve([]),
         ]);
         if (stamp !== loadEpoch || actor !== store.user?.userId) return;
         apps.value = a.items || [];
@@ -77,7 +80,6 @@ export default {
       }
     }
     onMounted(load);
-    watch(() => store.route, load);
     watch(page, load);
     watch(invitePage, load);
     onUnmounted(() => ++loadEpoch);

@@ -1,4 +1,4 @@
-import { go, store, preview, notify, replaceSession, loadPublic } from '../services/store.js';
+import { go, store, preview, notify, replaceSession } from '../services/store.js';
 import { api, resetCsrf } from '../services/api.js';
 import AuthDialog from './AuthDialog.js';
 const { ref } = Vue;
@@ -15,12 +15,11 @@ export default {
         replaceSession(null);
         notify('已退出');
         go('/');
-        loadPublic();
       } catch (err) {
         notify(err.message);
       }
     }
-    return { go, store, preview, loginOpen, logout, loadPublic };
+    return { go, store, preview, loginOpen, logout };
   },
   template: `
     <div class="consumer-shell">
@@ -43,6 +42,6 @@ export default {
           <button :class="{selected:active==='account'}" @click="go('/account')"><Icon name="user" :size="23"/><span>我的</span></button>
         </div>
       </nav>
-      <AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="loadPublic" />
+      <AuthDialog v-if="loginOpen" @close="loginOpen=false" />
     </div>`,
 };

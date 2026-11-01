@@ -74,7 +74,6 @@ export default {
         return;
       }
       switchMerchantContext(e.target.value);
-      await loadMerchant();
     }
     return {
       store,

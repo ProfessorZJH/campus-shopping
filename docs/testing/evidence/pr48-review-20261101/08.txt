@@ -1,0 +1,6 @@
+
+> campus-shopping-ui@0.2.0 format:check
+> prettier --config .prettierrc.json --check "src/**/*.js" "scripts/*.mjs" "../campus-shopping-*/src/{main,test}/java/**/*.java"
+
+Checking formatting...
+All matched files use Prettier code style!
