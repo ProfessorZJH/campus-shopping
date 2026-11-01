@@ -10,10 +10,11 @@
 - 语义商品响应保留 `productRanks`；Java 通过 `SemanticProductRankVO` 将 rank 传入 RRF 和 SKU 顺序。旧服务没有 rank 时仅按返回顺序生成并标记迁移兼容 rank。
 - 引用响应增加文档版本、chunk ordinal、内容 hash；Python 输出确定性分块信息，Java 按 UUID5、700/80 分块规则、版本和 hash 复验。旧引用协议保留兼容读取路径，新的完整协议拒绝错版本、错 chunk 和错片段。
 - 评测增加 `evidenceRecall`，将合法引用率、Gold 证据覆盖与人工回答支持率分开；DRAFT、NOT_RUN、PENDING 状态继续独立。
+- 评测新协议严格核对 `documentVersion`、`ordinal`、chunk hash，并单独记录 `strictCitationValidity` 与旧协议兼容计数；多轮继承后的未知否定属性继续保持澄清。
 
 ## 自动验证
 
-- `ai-service`：217 项 pytest 通过，包含结构化属性、语义 rank 顺序、预算/数量歧义和无效证据召回回归。
+- `ai-service`：219 项 pytest 通过，包含结构化属性、语义 rank 顺序、预算/数量歧义、跨语言规格继承和新引用协议回归。
 - Java：`PurchaseConstraintTest`、`AiConversationBoundaryTest`、`DddRulesTest` 共 24 项通过；全模块编译通过。
 - `python scripts/verify-api-contract.py`、`verify-api-schemas.py`、`schema_contract.py --check` 和 OpenSpec strict 校验通过。
 - 未在本机启动隔离 MySQL/Redis，也未调用真实外部模型、Embedding 或 Milvus；这些属于后续正式验收范围。

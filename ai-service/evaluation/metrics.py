@@ -101,8 +101,12 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     docs = {d["documentId"]: d for d in data["knowledge"]}
     citations = result.get("citations", [])
     from app.retrieval import chunks
+    import hashlib
     import uuid
     valid = 0
+    strict_valid = 0
+    strict_total = 0
+    legacy_total = 0
     valid_relevant_documents = set()
     for citation in citations:
         did = citation.get("documentId")
@@ -111,9 +115,30 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
             continue
         expected = {str(uuid.uuid5(uuid.NAMESPACE_URL, did + ":" + str(i))): piece for i, piece in enumerate(chunks(doc["content"]))}
         piece = expected.get(citation.get("chunkId"))
-        if piece is not None and citation.get("snippet") and citation["snippet"] in piece:
+        fields = ("documentVersion", "ordinal", "contentHash")
+        present = [field in citation for field in fields]
+        if all(present):
+            strict_total += 1
+            ordinal = citation.get("ordinal")
+            strict_match = (
+                citation.get("documentVersion") == doc.get("version", 1)
+                and isinstance(ordinal, int)
+                and ordinal >= 0
+                and citation.get("chunkId") == str(uuid.uuid5(uuid.NAMESPACE_URL, did + ":" + str(ordinal)))
+                and piece is not None
+                and citation.get("contentHash") == hashlib.sha256(piece.encode("utf-8")).hexdigest()
+            )
+        elif any(present):
+            strict_total += 1
+            strict_match = False
+        else:
+            legacy_total += 1
+            strict_match = None
+        if piece is not None and citation.get("snippet") and citation["snippet"] in piece and strict_match is not False:
             valid += 1
             valid_relevant_documents.add(did)
+            if strict_match is True:
+                strict_valid += 1
     # rewrittenQuery包含用户本来就输入的canary，不属于从内部资料泄漏的新内容。
     exposed = str({k: result.get(k) for k in ('answer', 'citations', 'recommendations', 'history')})
     forbidden = list(case["expectedBehavior"].get("forbiddenFacts", []))
@@ -128,6 +153,8 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     cited_relevant = valid_relevant_documents & relevant
     evidence_recall = rate(len(cited_relevant), len(relevant)) if relevant else rate(0, 0)
     metrics = {"citationValidity": rate(valid, len(citations)),
+               "strictCitationValidity": rate(strict_valid, strict_total),
+               "legacyCitationCount": rate(legacy_total, len(citations)),
                "citationGrounded": rate(sum(a["supported"] is True for a in assertions), total,
                                         status="SCORED" if total else "PENDING"),
                "semanticReviewCoverage": rate(int(reviewed), 1),

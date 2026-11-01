@@ -381,5 +381,19 @@
       "家庭装"
     ],
     "accepted": []
+  },
+  {
+    "question": "要标准装，不要含糖饮料",
+    "history": [],
+    "titles": ["考试签字笔"],
+    "specs": ["标准装"],
+    "accepted": []
+  },
+  {
+    "question": "换一个",
+    "history": ["要标准装，不要礼盒装"],
+    "titles": ["考试签字笔"],
+    "specs": ["标准装"],
+    "accepted": []
   }
 ]

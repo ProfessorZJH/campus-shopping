@@ -97,7 +97,7 @@ public final class SkuConstraintPolicy {
                 !productName &&
                 (explicit.group().startsWith("规格为") ||
                     explicit.group().startsWith("规格是") ||
-                    (explicit.group().matches("^(?:只要|要|换成|改成|改为).*") && remainder.length() <= 8))
+                    (explicit.group().matches("^(?:" + NEGATIVE + "|只要|要|换成|改成|改为).*") && remainder.length() <= 12))
             ) terms.add(remainder);
         }
         Set<String> required = new HashSet<>(),

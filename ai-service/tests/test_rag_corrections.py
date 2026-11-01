@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import uuid
 
 from app.engine import FOLLOWUP
@@ -46,6 +47,21 @@ def test_invalid_relevant_chunk_does_not_count_as_evidence_recall():
     assert metrics['evidenceRecall']['value'] == 0
 
 
+def test_new_citation_protocol_checks_version_and_chunk_hash():
+    data = load()
+    case = copy.deepcopy(data['cases'][0])
+    doc = data['knowledge'][0]
+    piece = doc['content']
+    chunk_id = str(uuid.uuid5(uuid.NAMESPACE_URL, doc['documentId'] + ':0'))
+    result = {'answer': '回答', 'citations': [{'documentId': doc['documentId'], 'chunkId': chunk_id,
+                                                'snippet': piece[:50], 'documentVersion': 99,
+                                                'ordinal': 0, 'contentHash': hashlib.sha256(piece.encode()).hexdigest()}]}
+    metrics = evidence_metrics(data, case, result)
+    assert metrics['citationValidity']['value'] == 0
+    assert metrics['strictCitationValidity']['value'] == 0
+    assert metrics['legacyCitationCount']['value'] == 0
+
+
 def test_indexed_citations_keep_document_version(tmp_path):
     store = KnowledgeStore(Settings('test-only-service-key-123456', str(tmp_path / 'knowledge.db')))
     try:
@@ -54,6 +70,15 @@ def test_indexed_citations_keep_document_version(tmp_path):
         assert citations and all(item['documentVersion'] == 3 for item in citations)
     finally:
         store.close()
+
+
+def test_non_bmp_chunk_hash_uses_code_points():
+    from app.retrieval import chunks
+
+    text = '😀' * 700 + '尾'
+    piece = chunks(text)[0]
+    assert len(piece) == 700
+    assert hashlib.sha256(piece.encode('utf-8')).hexdigest() == hashlib.sha256(('😀' * 700).encode('utf-8')).hexdigest()
 
 
 def test_semantic_rank_uses_trusted_input_order():
