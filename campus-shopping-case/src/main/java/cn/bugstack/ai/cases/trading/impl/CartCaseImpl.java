@@ -57,6 +57,21 @@ public class CartCaseImpl implements ICartCase {
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public void add(String user, String sku, int quantity) {
+        accounts.requireActive(user);
+        String checked = Checks.text(sku, "SKU", 64);
+        Checks.require(quantity > 0 && quantity <= 99, ResponseCode.ILLEGAL_PARAMETER);
+        trading.lockCart(user);
+        var hint = catalog.saleOffers(List.of(checked)).get(0);
+        merchants.requireActiveForNewTrade(hint.merchantId());
+        var offer = catalog.saleOffersForUpdate(List.of(checked)).get(0);
+        var stocks = inventory.stocksForConfirmation(List.of(checked));
+        // 与 AI 确认共用锁内累计能力；并发标签页不能用旧快照覆盖其他请求的增量。
+        int total = trading.addCart(user, offer.merchantId(), checked, quantity);
+        Checks.require(!stocks.isEmpty() && stocks.get(0).onHand() - stocks.get(0).reserved() >= total, ResponseCode.STOCK_NOT_ENOUGH);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public void delete(String user, String sku) {
         accounts.requireActive(user);
         trading.lockCart(user);

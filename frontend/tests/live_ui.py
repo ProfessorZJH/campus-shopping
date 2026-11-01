@@ -91,11 +91,28 @@ def verify_cart_sku(page, browser, base, admin, password, checks):
         expect(page.get_by_role('dialog', name='库存验收专用笔')).to_be_visible()
         assert next(row for row in call(page.request, 'GET', '/cart') if row['skuId'] == black)['quantity'] == 2
         checks.append('首页按累计数量拒绝加购，库存 3 已有 2 再加 2 保持原数量')
+        # 同一会话的两个真实标签页分别走首页与详情页；加购均提交增量，无 GET+PUT 累计。
+        call(page.request, 'PUT', '/cart', {'skuId': black, 'quantity': 1})
+        page.get_by_role('button', name='减少数量', exact=True).click()
+        second = page.context.new_page()
+        try:
+            second.goto(base + '/#/product/' + product['productId'], wait_until='domcontentloaded')
+            second.get_by_role('button', name='黑色验收规格', exact=True).click()
+            with page.expect_response(lambda r: r.url.endswith('/api/v1/cart') and r.request.method == 'POST') as first_add:
+                page.get_by_role('button', name='加入购物车', exact=True).click()
+            assert first_add.value.json()['code'] == '0000'
+            with second.expect_response(lambda r: r.url.endswith('/api/v1/cart') and r.request.method == 'POST') as second_add:
+                second.get_by_role('button', name='加入购物车', exact=True).click()
+            assert second_add.value.json()['code'] == '0000'
+            assert next(row for row in call(page.request, 'GET', '/cart') if row['skuId'] == black)['quantity'] == 3
+            checks.append('同会话首页和详情两个标签页提交 POST 增量，已有 1 各加 1 最终为 3')
+        finally:
+            second.close()
         call(admin_context.request, 'POST', '/admin/products/' + product['productId'] + '/unpublish', {})
         page.goto(base + '/#/cart', wait_until='domcontentloaded')
         expect(page.get_by_role('button', name='增加库存验收专用笔', exact=True)).to_be_disabled()
         page.get_by_role('button', name='减少库存验收专用笔', exact=True).click()
-        expect(page.locator('.mini-qty span')).to_have_text('1')
+        expect(page.locator('.mini-qty span')).to_have_text('2')
         page.get_by_role('button', name='移除库存验收专用笔', exact=True).click()
         expect(page.get_by_text('购物车空空的', exact=True)).to_be_visible()
         checks.append('真实购物车失效商品禁止增加，仍可减少和直接移除')
@@ -123,8 +140,9 @@ def main():
             if browser_path:
                 launch['executable_path'] = browser_path
             browser = p.chromium.launch(**launch)
-            page = browser.new_page(viewport={'width': 1440, 'height': 1000}, locale='zh-CN')
-            page.on('pageerror', lambda exception: errors.append(str(exception)))
+            context = browser.new_context(viewport={'width': 1440, 'height': 1000}, locale='zh-CN')
+            context.on('page', lambda tab: tab.on('pageerror', lambda exception: errors.append(str(exception))))
+            page = context.new_page()
             page.goto(args.base_url + '/#/', wait_until='domcontentloaded')
             expect(page.locator('.header-login')).to_be_visible()
             expect(page.locator('.consumer-shell')).to_be_visible()
@@ -189,6 +207,7 @@ def main():
             verify_cart_sku(page, browser, args.base_url, admin, password, checks)
             assert not errors, errors
             checks.append('浏览器无未捕获 JS 异常')
+            context.close()
             browser.close()
     except Exception as exc:
         failure = str(exc)

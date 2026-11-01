@@ -11,12 +11,13 @@ public interface ICatalogDao {
     ProductPO productFacts(@Param("id") String id);
     ProductPO product(@Param("id") String id, @Param("lock") boolean lock);
     List<SkuPO> skus(@Param("productIds") List<String> productIds);
+    SkuPO skuForUpdate(@Param("id") String id);
     List<SkuPO> skusForUpdate(@Param("productId") String productId);
     int insertProduct(@Param("p") ProductPO p);
     int insertSku(@Param("s") SkuPO s);
     int saveProduct(@Param("p") ProductPO p);
     int saveSku(@Param("s") SkuPO s);
-    List<OfferPO> offers(@Param("skuIds") List<String> skuIds, @Param("lock") boolean lock);
+    List<OfferPO> offers(@Param("skuIds") List<String> skuIds);
     List<CategoryPO> categories();
     int category(@Param("code") String code, @Param("name") String name, @Param("active") boolean active);
 }

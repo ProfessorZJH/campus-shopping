@@ -55,6 +55,7 @@ REQUEST_RULES = {
     'PublishRequestDTO': rule('published', {'published': {}}, 'trigger/http/CatalogController.java'),
     'ReplenishRequestDTO': rule('quantity', {'quantity': {'minimum': 1, 'maximum': 1_000_000}},
         'domain/inventory/model/aggregate/StockBalanceAggregate.java'),
+    'CartAddRequestDTO': rule('skuId quantity', {'skuId': text(64), 'quantity': {'minimum': 1, 'maximum': 99, 'description': '本次增加数量，服务端锁内累计，最终总量最多 99 且不超过当前可用库存。'}}, 'cases/trading/impl/CartCaseImpl.java'),
     'CartSetRequestDTO': rule('skuId quantity', {'skuId': text(64), 'quantity': {'minimum': 1, 'maximum': 99}},
         'cases/trading/impl/CartCaseImpl.java'),
     'CheckoutRequestDTO': rule('merchantId items', {'merchantId': text(36),

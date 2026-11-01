@@ -6,6 +6,7 @@ import java.util.*;
 /** 购物车写入需要商品可售状态与商户资格校验。 */
 public interface ICartCase {
     List<CartItemVO> list(String user);
+    void add(String user, String sku, int quantity);
     void set(String user, String sku, int quantity);
     void delete(String user, String sku);
 }

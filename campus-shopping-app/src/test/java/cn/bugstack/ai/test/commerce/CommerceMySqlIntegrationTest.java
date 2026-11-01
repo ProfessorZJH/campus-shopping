@@ -748,19 +748,12 @@ class CommerceMySqlIntegrationTest {
         long before = scalar("SELECT COUNT FROM information_schema.INNODB_METRICS WHERE NAME='lock_deadlocks'");
         for (int i = 0; i < 10; i++) {
             var p = product(2);
-            // 只记录执行计划中的表与索引，不输出事务 SQL、账号或业务正文。
-            var plan = jdbc.queryForList(
-                "EXPLAIN SELECT s.id,p.id FROM cat_sku s JOIN cat_product p ON s.product_id=p.id WHERE s.id=? ORDER BY s.id FOR UPDATE",
-                item(p).skuId()
-            );
-            assertEquals(2, plan.size());
-            if (i == 0) System.out.println(
-                "force-unpublish checkout plan=" +
-                    plan
-                        .stream()
-                        .map(row -> row.get("table") + ":" + row.get("key"))
-                        .toList()
-            );
+            // 生产锁定报价现为两个按主键执行的当前读，诊断也分别核对，不再执行联表锁计划。
+            var productPlan = jdbc.queryForList("EXPLAIN SELECT * FROM cat_product WHERE id=? FOR UPDATE", p.getId());
+            var skuPlan = jdbc.queryForList("EXPLAIN SELECT * FROM cat_sku WHERE id=? FOR UPDATE", item(p).skuId());
+            assertEquals("PRIMARY", productPlan.get(0).get("key"));
+            assertEquals("PRIMARY", skuPlan.get(0).get("key"));
+            if (i == 0) System.out.println("force-unpublish checkout plan=Product:PRIMARY -> SKU:PRIMARY");
             var results = race(() -> catalog.forceUnpublishProduct(admin, p.getId()), () -> order(p));
             assertEquals("0000", results.get(0));
             assertTrue(Set.of("0000", "C0001").contains(results.get(1)), results.toString());
@@ -776,6 +769,157 @@ class CommerceMySqlIntegrationTest {
                 ", historicalDeadlockPresent=" +
                 innodb.contains("LATEST DETECTED DEADLOCK")
         );
+    }
+
+    @Autowired
+    org.mybatis.spring.SqlSessionTemplate catalogLockSqlSession;
+
+    @SpyBean
+    cn.bugstack.ai.infrastructure.dao.ICatalogDao catalogLockDao;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({ "3,2,0", "2,1,1" })
+    void concurrentCartIncrementsAreAccumulatedAndStockBounded(int stock, int successes, int failures) throws Exception {
+        var p = product(stock);
+        String sku = item(p).skuId();
+        cart.set(buyer, sku, 1);
+        var results = race(() -> cart.add(buyer, sku, 1), () -> cart.add(buyer, sku, 1));
+        assertEquals(successes, results.stream().filter("0000"::equals).count());
+        assertEquals(failures, results.stream().filter("I0001"::equals).count());
+        assertEquals(1 + successes, cart.list(buyer).get(0).quantity());
+        assertEquals(0, scalar("SELECT SUM(reserved) FROM inv_stock_balance"));
+    }
+
+    @Test
+    void cartIncrementLimitAndUnavailableStateDoNotMutateCart() {
+        var p = product(120);
+        String sku = item(p).skuId();
+        cart.set(buyer, sku, 98);
+        cart.add(buyer, sku, 1);
+        assertEquals("T0005", code(() -> cart.add(buyer, sku, 1)));
+        assertEquals("0002", code(() -> cart.add(buyer, sku, 0)));
+        assertEquals(99, cart.list(buyer).get(0).quantity());
+        catalog.forceUnpublishProduct(admin, p.getId());
+        assertEquals("C0001", code(() -> cart.add(buyer, sku, 1)));
+        assertEquals(99, cart.list(buyer).get(0).quantity());
+    }
+
+    @Test
+    void lockedOffersIgnoreEarlierRepeatableReadQuoteSnapshot() throws Exception {
+        var p = product(5);
+        String sku = item(p).skuId();
+        var pool = Executors.newSingleThreadExecutor();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+                assertEquals(1200, catalogSearch.offers(List.of(sku)).get(0).priceCent());
+                try {
+                    pool.submit(() -> catalog.changeSkuPrice(owner, merchant.id(), p.getId(), sku, 1600, p.getVersion())).get(10, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+                var locked = catalogSearch.saleOffersForUpdate(List.of(sku)).get(0);
+                assertEquals(1600, locked.priceCent());
+                assertEquals(p.getVersion() + 1, locked.version());
+            });
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @SpyBean
+    cn.bugstack.ai.infrastructure.adapter.repository.CatalogRepository catalogLockRepository;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({ "unpublish,checkout", "sku,checkout", "unpublish,cart", "sku,cart" })
+    void productLockWaitDoesNotPrelockSku(String writerKind, String consumerKind) throws Exception {
+        var original = product(5);
+        var p = catalog.addSkuToProduct(owner, merchant.id(), original.getId(), "备用规格", 1500).product();
+        String sku = item(original).skuId();
+        var held = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var consumerStarted = new CountDownLatch(1);
+        var connection = new java.util.concurrent.atomic.AtomicLong();
+        doAnswer(invocation -> {
+            if (Thread.currentThread().getName().equals("catalog-lock-writer")) {
+                held.countDown();
+                if (!release.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("商品锁测试等待超时");
+            }
+            // 继续执行同一个真实 MyBatis 映射；只暂停时序，不替换 SQL 或返回值。
+            return catalogLockSqlSession.selectList("cn.bugstack.ai.infrastructure.dao.ICatalogDao.skusForUpdate", Map.of("productId", p.getId()));
+        })
+            .when(catalogLockDao)
+            .skusForUpdate(p.getId());
+        doAnswer(invocation -> {
+            connection.set(scalar("SELECT CONNECTION_ID()"));
+            consumerStarted.countDown();
+            return invocation.callRealMethod();
+        })
+            .when(catalogLockRepository)
+            .offers(anyList(), eq(true));
+        var pool = Executors.newFixedThreadPool(2);
+        Future<String> writer = null;
+        Future<String> consumer = null;
+        try {
+            writer = pool.submit(() -> {
+                Thread.currentThread().setName("catalog-lock-writer");
+                return code(() -> {
+                    if (writerKind.equals("unpublish")) catalog.forceUnpublishProduct(admin, p.getId());
+                    else catalog.changeSkuStatus(owner, merchant.id(), p.getId(), sku, false, p.getVersion());
+                });
+            });
+            assertTrue(held.await(10, TimeUnit.SECONDS), "写操作必须已持有 Product 并暂停在 SKU 读取前");
+            consumer = pool.submit(() ->
+                code(() -> {
+                    if (consumerKind.equals("checkout")) checkout.checkout(
+                        buyer,
+                        merchant.id(),
+                        List.of(new CheckoutItemEntity(sku, 1, 1200, p.getVersion())),
+                        UUID.randomUUID().toString()
+                    );
+                    else cart.add(buyer, sku, 1);
+                })
+            );
+            assertTrue(consumerStarted.await(10, TimeUnit.SECONDS));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (
+                System.nanoTime() < deadline &&
+                scalar("SELECT COUNT(*) FROM information_schema.INNODB_TRX WHERE trx_mysql_thread_id=? AND trx_state='LOCK WAIT'", connection.get()) == 0
+            ) {
+                // INNODB_TRX 快照需有超过 100ms 的读取间隔，频繁轮询会一直看到旧状态。
+                Thread.sleep(200);
+            }
+            assertEquals(
+                1,
+                scalar("SELECT COUNT(*) FROM information_schema.INNODB_TRX WHERE trx_mysql_thread_id=? AND trx_state='LOCK WAIT'", connection.get()),
+                "consumerConnection=" +
+                    connection.get() +
+                    ", done=" +
+                    consumer.isDone() +
+                    ", transactions=" +
+                    jdbc.queryForList("SELECT trx_mysql_thread_id,trx_state FROM information_schema.INNODB_TRX") +
+                    ", process=" +
+                    jdbc.queryForList("SELECT ID,STATE FROM information_schema.PROCESSLIST WHERE ID=?", connection.get())
+            );
+            // 第三个真实事务探测 SKU：等待 Product 的消费者不能抢先持有 SKU，避免与写操作形成环。
+            assertDoesNotThrow(
+                () ->
+                    new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
+                        assertEquals(sku, jdbc.queryForObject("SELECT id FROM cat_sku WHERE id=? FOR UPDATE NOWAIT", String.class, sku))
+                    ),
+                "等待 Product 时已经持有 SKU，存在反向锁序"
+            );
+        } finally {
+            release.countDown();
+            try {
+                if (writer != null) assertEquals("0000", writer.get(30, TimeUnit.SECONDS));
+                if (consumer != null) assertEquals("C0001", consumer.get(30, TimeUnit.SECONDS));
+            } finally {
+                pool.shutdownNow();
+            }
+        }
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_order"));
+        assertTrue(cart.list(buyer).isEmpty());
+        assertEquals(0, scalar("SELECT SUM(reserved) FROM inv_stock_balance"));
     }
 
     private List<String> race(Runnable... workItems) throws Exception {

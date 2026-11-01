@@ -1,0 +1,76 @@
+[
+  {
+    "run": "pr45-lock-green",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 1,
+    "junit": {
+      "tests": 264,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "20ms polling kept an old INNODB_TRX observation; no new production deadlock",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-review-final",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 1,
+    "junit": {
+      "tests": 264,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "20ms polling kept an old INNODB_TRX observation; no new production deadlock",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-lock-diagnostic",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 1,
+    "junit": {
+      "tests": 4,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "20ms polling kept an old INNODB_TRX observation; no new production deadlock",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-lock-diagnostic2",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 0,
+    "junit": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "Four targeted cases passed after polling at 200ms; full-suite guard intentionally rejects a targeted run",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-review-pass",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 0,
+    "junit": {
+      "tests": 264,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "http": {
+      "checks": 223,
+      "responseSchemas": 158,
+      "status": "PASS"
+    },
+    "redisSharedHttp": {
+      "checks": 9,
+      "status": "PASS"
+    },
+    "reason": "The two-tab browser test attempted to open another tab in the implicit browser.new_page context; fixed to use an explicit shared context. No product assertion was weakened.",
+    "temporaryDatabaseCleaned": true
+  }
+]

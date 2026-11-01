@@ -1,0 +1,49 @@
+{
+  "status": "PASS",
+  "checks": [
+    {
+      "command": "npm.cmd run format:check --prefix frontend",
+      "exitCode": 0
+    },
+    {
+      "command": "python scripts/build-ui-bundle.py --check",
+      "exitCode": 0
+    },
+    {
+      "command": "node --test frontend\\tests\\build-reproducibility.test.mjs frontend\\tests\\identity-races.test.mjs",
+      "exitCode": 0
+    },
+    {
+      "command": "python scripts/schema_contract.py --check",
+      "exitCode": 0
+    },
+    {
+      "command": "python scripts/verify-api-contract.py",
+      "exitCode": 0
+    },
+    {
+      "command": "python scripts/verify-api-schemas.py",
+      "exitCode": 0
+    },
+    {
+      "command": "python scripts/verify-java-readability.py",
+      "exitCode": 0
+    },
+    {
+      "command": "python scripts/verify-release.py",
+      "exitCode": 0
+    },
+    {
+      "command": "python -X utf8 scripts/verify-domain.py",
+      "exitCode": 0
+    },
+    {
+      "command": "python -X utf8 scripts/verify-http-body.py",
+      "exitCode": 0
+    },
+    {
+      "command": "python -X utf8 scripts/verify-supply-chain.py",
+      "exitCode": 0
+    }
+  ]
+}

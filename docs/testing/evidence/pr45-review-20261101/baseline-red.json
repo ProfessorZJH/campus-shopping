@@ -1,0 +1,23 @@
+{
+  "baseCommit": "6013a28f423cff87e64f7fcc69e6dcf60289be29",
+  "mysqlVersion": "8.0.31",
+  "status": "EXPECTED_FAILURE_REPRODUCED",
+  "tests": 4,
+  "deadlockErrors": 4,
+  "variants": [
+    "unpublish/checkout",
+    "sku-status/checkout",
+    "unpublish/cart.set",
+    "sku-status/cart.set"
+  ],
+  "productionLockSourcesMatchBase": {
+    "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/CatalogRepository.java": true,
+    "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/dao/ICatalogDao.java": true,
+    "campus-shopping-app/src/main/resources/mybatis/mapper/icatalogdao_mapper.xml": true
+  },
+  "onlyInjectedControlledTest": true,
+  "testSha256": "57148931e0a9d4d835f2c01614d8c5d38dafb3c1e1ea8b2064a9af213c76c0ea",
+  "exceptionType": "org.springframework.dao.DeadlockLoserDataAccessException",
+  "temporaryDatabaseCleaned": true,
+  "rawTransactionSqlSaved": false
+}

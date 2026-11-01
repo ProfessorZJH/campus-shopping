@@ -70,8 +70,7 @@ public class CatalogRepository implements ICatalogRepository {
 
     public List<SkuOfferVO> offers(List<String> ids, boolean lock) {
         if (ids.isEmpty()) return List.of();
-        return dao
-            .offers(ids, lock)
+        return (lock ? lockedOffers(ids) : dao.offers(ids))
             .stream()
             .map(p ->
                 new SkuOfferVO(
@@ -90,6 +89,43 @@ public class CatalogRepository implements ICatalogRepository {
                 )
             )
             .toList();
+    }
+
+    private List<OfferPO> lockedOffers(List<String> ids) {
+        // SKU 归属创建后不变且不物理删除，普通投影只用于解析归属；交易事实必须来自下面的当前读。
+        List<OfferPO> hints = dao.offers(ids);
+        if (hints.size() != ids.stream().distinct().count()) throw new AppException(ResponseCode.PRODUCT_UNAVAILABLE);
+        Map<String, ProductPO> products = new HashMap<>();
+        for (String productId : hints.stream().map(OfferPO::getProductId).distinct().sorted().toList()) {
+            ProductPO product = dao.product(productId, true);
+            if (product == null) throw new AppException(ResponseCode.PRODUCT_UNAVAILABLE);
+            products.put(productId, product);
+        }
+        // 所有 Product 已按序锁定，再逐个按 SKU ID 加锁；不依赖 JOIN 优化器或 ORDER BY 决定拿锁顺序。
+        List<OfferPO> offers = new ArrayList<>();
+        for (String id : ids.stream().distinct().sorted().toList()) {
+            SkuPO sku = dao.skuForUpdate(id);
+            if (sku == null) continue;
+            ProductPO product = products.get(sku.getProductId());
+            if (product == null) throw new AppException(ResponseCode.PRODUCT_UNAVAILABLE);
+            offers.add(
+                OfferPO.builder()
+                    .skuId(sku.getId())
+                    .productId(product.getId())
+                    .merchantId(product.getMerchantId())
+                    .storeId(product.getStoreId())
+                    .title(product.getTitle())
+                    .specKey(sku.getSpecKey())
+                    .priceCent(sku.getPriceCent())
+                    .version(product.getVersion())
+                    .productStatus(product.getStatus())
+                    .skuStatus(sku.getStatus())
+                    .imageUrl(product.getImageUrl())
+                    .description(product.getDescription())
+                    .build()
+            );
+        }
+        return offers;
     }
 
     public List<CategoryVO> categories() {

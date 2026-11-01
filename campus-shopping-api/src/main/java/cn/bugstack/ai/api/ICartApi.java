@@ -9,6 +9,8 @@ import java.util.*;
 public interface ICartApi {
     /** 本人购物车，展示实时价格与可售状态。 */
     Response<List<CartResponseDTO>> cart(Principal principal);
+    /** 在购物车锁内增加本人购物车数量。 */
+    Response<Void> add(CartAddRequestDTO request, Principal principal);
     /** 设置本人购物车数量。 */
     Response<Void> set(CartSetRequestDTO request, Principal principal);
     /** 移除本人购物车商品。 */
