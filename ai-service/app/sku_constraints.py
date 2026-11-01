@@ -14,6 +14,14 @@ def values(spec):
     # 兼容单值和“颜色:黑色;包装:标准装”；描述/标题不是SKU规格证据。
     return {part.rsplit(':', 1)[-1] for part in re.split(r'[,，;；/|、]', normalize(spec)) if part}
 
+def offer_values(offer):
+    actual = values(offer.get('specKey', ''))
+    for key, value in (offer.get('attributes') or {}).items():
+        if value:
+            actual.add(normalize(str(value)))
+            actual.add(normalize(str(key) + ':' + str(value)))
+    return actual
+
 
 def dimension(value):
     if value.endswith('装'): return 'pack'
@@ -40,7 +48,7 @@ class SpecConstraints:
         return bool(self.required or self.forbidden or self.ambiguous)
 
     def accepts(self, offer):
-        actual = values(offer['specKey'])
+        actual = offer_values(offer)
         return (not self.ambiguous and self.required <= actual and not self.forbidden & actual
                 and all(any(dimension(v) == dimension(term) for v in actual) for term in self.forbidden))
 
@@ -70,7 +78,7 @@ def extract(question, vocabulary, titles=()):
             cursor = attribute.end()
         remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
         product_name = any(remainder and remainder in normalize(title) for title in titles)
-        if remainder and not product_name and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 8)):
+        if remainder and not product_name and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为', '不要', '不含', '排除', '不考虑', '不喜欢', '不接受')) and len(remainder) <= 12)):
             terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))
@@ -91,12 +99,15 @@ def extract(question, vocabulary, titles=()):
 
 
 def spec_constraints(question, history, offers, followup):
-    vocabulary = {v for offer in offers for v in values(offer['specKey']) if len(v) >= 2}
+    vocabulary = {v for offer in offers for v in offer_values(offer) if len(v) >= 2}
     titles = [offer['title'] for offer in offers]
     current = extract(question, vocabulary, titles)
     required, forbidden = set(current.required), set(current.forbidden)
     axes = {dimension(v) for v in required | forbidden}
     ambiguous = current.ambiguous
+    known_values = {value for offer in offers for value in offer_values(offer)}
+    # 有明确可验证的正向规格时，未知的附带排除项不能放宽该规格；只在没有可验证正向目标时要求澄清。
+    ambiguous = ambiguous or (bool(forbidden - known_values) and not required)
     if followup.search(question):
         for previous in reversed([h['content'] for h in history if h['role'] == 'user']):
             inherited = extract(previous, vocabulary, titles)

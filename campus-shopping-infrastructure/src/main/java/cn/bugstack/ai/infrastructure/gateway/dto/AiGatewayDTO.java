@@ -7,7 +7,20 @@ public final class AiGatewayDTO {
 
     private AiGatewayDTO() {}
 
-    public record Offer(String skuId, String merchantId, String title, String specKey, String description, long priceCent, long available) {}
+    public record Offer(
+        String skuId,
+        String merchantId,
+        String title,
+        String specKey,
+        String description,
+        java.util.Map<String, String> attributes,
+        long priceCent,
+        long available
+    ) {
+        public Offer(String skuId, String merchantId, String title, String specKey, String description, long priceCent, long available) {
+            this(skuId, merchantId, title, specKey, description, java.util.Map.of(), priceCent, available);
+        }
+    }
 
     public record History(String role, String content) {}
 
@@ -33,9 +46,26 @@ public final class AiGatewayDTO {
 
     public record ProductSearch(String query, int limit) {}
 
-    public record ProductSearchResult(List<String> productIds, String mode) {}
+    public record ProductSearchResult(List<String> productIds, String mode, java.util.Map<String, Integer> productRanks) {
+        public ProductSearchResult(List<String> productIds, String mode) {
+            this(productIds, mode, java.util.Map.of());
+        }
+    }
 
-    public record Citation(String documentId, String chunkId, String title, String snippet, double score) {}
+    public record Citation(
+        String documentId,
+        String chunkId,
+        String title,
+        String snippet,
+        double score,
+        int documentVersion,
+        int ordinal,
+        String contentHash
+    ) {
+        public Citation(String documentId, String chunkId, String title, String snippet, double score) {
+            this(documentId, chunkId, title, snippet, score, 1, -1, "");
+        }
+    }
 
     public record Recommendation(String skuId, int quantity, String reason) {}
 
@@ -50,9 +80,13 @@ public final class AiGatewayDTO {
         long latencyMs
     ) {}
 
-    public record Index(String documentId, String title, String content, boolean externalAllowed) {
+    public record Index(String documentId, String title, String content, int documentVersion, boolean externalAllowed) {
+        public Index(String documentId, String title, String content, boolean externalAllowed) {
+            this(documentId, title, content, 1, externalAllowed);
+        }
+
         public Index(String documentId, String title, String content) {
-            this(documentId, title, content, false);
+            this(documentId, title, content, 1, false);
         }
     }
 

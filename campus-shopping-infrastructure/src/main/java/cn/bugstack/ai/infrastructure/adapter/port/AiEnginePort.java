@@ -56,7 +56,9 @@ public class AiEnginePort implements IAiEnginePort {
                 query
                     .offers()
                     .stream()
-                    .map(o -> new AiGatewayDTO.Offer(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.description(), o.priceCent(), o.available()))
+                    .map(o ->
+                        new AiGatewayDTO.Offer(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.description(), o.attributes(), o.priceCent(), o.available())
+                    )
                     .toList(),
                 query
                     .history()
@@ -96,6 +98,8 @@ public class AiEnginePort implements IAiEnginePort {
                         text(c.chunkId(), 100) &&
                         text(c.title(), 120) &&
                         text(c.snippet(), 500) &&
+                        ((c.ordinal() < 0 && c.documentVersion() == 1 && c.contentHash().isEmpty()) ||
+                            (c.documentVersion() >= 1 && c.ordinal() >= 0 && text(c.contentHash(), 64))) &&
                         Double.isFinite(c.score())
                 ),
             ResponseCode.AI_UNAVAILABLE
@@ -116,7 +120,7 @@ public class AiEnginePort implements IAiEnginePort {
             response
                 .citations()
                 .stream()
-                .map(c -> new AiCitationVO(c.documentId(), c.chunkId(), c.title(), c.snippet(), c.score()))
+                .map(c -> new AiCitationVO(c.documentId(), c.chunkId(), c.title(), c.snippet(), c.score(), c.documentVersion(), c.ordinal(), c.contentHash()))
                 .toList(),
             response
                 .recommendations()
@@ -128,6 +132,11 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public List<String> semanticProducts(String query, int limit) {
+        return semanticProductRanks(query, limit).stream().map(cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::productId).toList();
+    }
+
+    @Override
+    public List<cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO> semanticProductRanks(String query, int limit) {
         require(query != null && !query.isBlank() && query.length() <= 2000 && limit >= 1 && limit <= 100, ResponseCode.ILLEGAL_PARAMETER);
         var result = gateway.semanticProducts(new AiGatewayDTO.ProductSearch(query, limit));
         require(result != null && result.productIds() != null && result.productIds().size() <= limit, ResponseCode.AI_UNAVAILABLE);
@@ -138,7 +147,20 @@ public class AiEnginePort implements IAiEnginePort {
                 .allMatch(id -> text(id, 64)),
             ResponseCode.AI_UNAVAILABLE
         );
-        return List.copyOf(result.productIds());
+        var ranks = result.productRanks() == null ? java.util.Map.<String, Integer>of() : result.productRanks();
+        var output = new java.util.ArrayList<cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO>();
+        for (int i = 0; i < result.productIds().size(); i++) {
+            String id = result.productIds().get(i);
+            Integer rank = ranks.getOrDefault(id, i + 1);
+            require(rank != null && rank >= 1 && rank <= limit, ResponseCode.AI_UNAVAILABLE);
+            output.add(new cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO(id, rank, !ranks.containsKey(id)));
+        }
+        output.sort(
+            java.util.Comparator.comparingInt(cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::rank).thenComparing(
+                cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::productId
+            )
+        );
+        return List.copyOf(output);
     }
 
     public void indexProducts(List<ProductIndexVO> products) {
@@ -166,7 +188,13 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public void index(String id, String title, String content, boolean externalAllowed) {
-        gateway.index(new AiGatewayDTO.Index(id, title, content, externalAllowed));
+        index(id, title, content, 1, externalAllowed);
+    }
+
+    @Override
+    public void index(String id, String title, String content, int documentVersion, boolean externalAllowed) {
+        require(documentVersion >= 1, ResponseCode.ILLEGAL_PARAMETER);
+        gateway.index(new AiGatewayDTO.Index(id, title, content, documentVersion, externalAllowed));
     }
 
     public String extract(String filename, String type, byte[] bytes) {

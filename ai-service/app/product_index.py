@@ -68,7 +68,8 @@ class ProductIndex:
         hits=client.search(collection_name=collection,data=[vector],filter='model == '+json.dumps(self.provider.model_tag),
                            limit=limit,output_fields=[],consistency_level='Strong')
         ids=[str(hit['id']) for hit in hits[0] if hit.get('id')]
-        return {'productIds':list(dict.fromkeys(ids))[:limit],'mode':'MILVUS'}
+        ids=list(dict.fromkeys(ids))[:limit]
+        return {'productIds':ids,'productRanks':{value:index+1 for index,value in enumerate(ids)},'mode':'MILVUS'}
 
     def delete(self,product_ids: list[str]) -> dict:
         """删除 Java 从实时目录中确认不再公开的 ID，不接受客户端商品事实。"""

@@ -126,7 +126,7 @@ def recall_terms(store: KnowledgeStore, question: str, history: list[dict]) -> d
 
 def knowledge_question(question: str) -> bool:
     """明确服务/操作问答走知识路径；报价命中不是购买意图证据。"""
-    return bool(re.search(r'退款|退货|售后|自提|取货|营业|配送|支付|付款|发票|保修|使用', question)
+    return bool(re.search(r'退款|退货|售后|自提|取货|营业|配送|支付|付款|发票|保修|使用|备货|到货', question)
                 and re.search(r'怎么|如何|怎样|流程|规则|政策|说明|须知|多久|什么时候|哪里|能否|是否|能不能', question))
 
 

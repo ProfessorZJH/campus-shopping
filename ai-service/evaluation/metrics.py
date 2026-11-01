@@ -122,12 +122,16 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     reviewed = bool(review and review.get("reviewer") and review.get("reviewedAt"))
     assertions = review.get("assertions", []) if reviewed else []
     total = len(assertions)
+    relevant = set(case.get("relevantEvidenceIds", []))
+    cited_relevant = {citation.get("documentId") for citation in citations if citation.get("documentId") in relevant and citation.get("documentId") in docs}
+    evidence_recall = rate(len(cited_relevant), len(relevant)) if relevant else rate(0, 0)
     metrics = {"citationValidity": rate(valid, len(citations)),
                "citationGrounded": rate(sum(a["supported"] is True for a in assertions), total,
                                         status="SCORED" if total else "PENDING"),
                "semanticReviewCoverage": rate(int(reviewed), 1),
-               "evidenceCoverage": rate(int(bool(citations) and valid == len(citations)), 1)
-               if case["relevantEvidenceIds"] else rate(0, 0),
+               "evidenceRecall": evidence_recall,
+               "evidenceCoverage": rate(int(valid == len(citations) and cited_relevant == relevant), 1)
+               if relevant else rate(0, 0),
                "unauthorizedDisclosure": rate(int(leak or bool(reviewed and review.get("semanticLeak"))), 1)
                if attempted else rate(0, 0)}
     return metrics

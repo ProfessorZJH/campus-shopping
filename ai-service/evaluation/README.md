@@ -1,6 +1,6 @@
 # 智能导购评测工具
 
-范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 为准。复用生产 KnowledgeStore、engine、ProductIndex 和 Java RecommendationPolicy，不提供交易写接口。数据目前为 **DRAFT，120例均待人工复核**；执行成功不等于正式业务效果通过。
+范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 为准。 本轮 evidence recall 与引用完整性增量见 [ShoppingAI / RAG 批次 A+B 实施记录](../../docs/testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)。复用生产 KnowledgeStore、engine、ProductIndex 和 Java RecommendationPolicy，不提供交易写接口。数据目前为 **DRAFT，120例均待人工复核**；执行成功不等于正式业务效果通过。
 
 当前评分器为v2，修复异常案例漏出分母和硬约束门禁。门禁曾检出case-041～044规格违规，原始FAILED证据保留在[审查收口](../../docs/testing/AI-EVALUATION-REVIEW-20261031.md)。经补充授权，生产规格/否定过滤已按[SDD-07第7节](../../docs/specs/SDD-AI-RECALL-07.md)修复；同一冻结120例的本地/受控执行退出0，报告仍PARTIAL。最新测试/CI与未验证事项见[Issue #14修复报告](../../docs/testing/AI-SKU-CONSTRAINTS-20261031.md)，不能以历史CI或DRAFT执行成功替代正式业务效果验收。
 
