@@ -129,12 +129,7 @@ export default {
         if (!real || real.status !== 'ACTIVE' || Number(real.available) < requested)
           throw new Error('库存不足或商品不可售');
         if (!valid()) return;
-        const cart = await api('/cart');
-        if (!valid()) return;
-        const old = (cart || []).find((i) => i.skuId === real.skuId);
-        const n = Number(old?.quantity || 0) + requested;
-        if (n > 99) throw new Error('单个规格最多购买99件');
-        await api('/cart', { method: 'PUT', body: { skuId: real.skuId, quantity: n } });
+        await api('/cart', { method: 'POST', body: { skuId: real.skuId, quantity: requested } });
         if (!valid()) return;
         selected.value = null;
         notify('已加入购物车');

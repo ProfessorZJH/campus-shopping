@@ -23,3 +23,11 @@ Dependabot按周为Maven、npm、pip、Docker和Actions提交更新建议，不�
 以下事项仍需独立的正式环境和授权，当前NOT_RUN：生产CA/TLS及反向代理、公网网络策略、真实LLM/Embedding/Milvus、持续生产负载、灾备恢复演练、已有业务库升级和部署。真实AI只能由受保护main当前HEAD及external-ai Environment执行；旧仓库secret迁移与轮换仍由维护者完成。
 
 审批数依单人维护决定为0；合并前要求Quick quality gates，发布前核对同一HEAD的完整MySQL/Redis/HTTP/浏览器/镜像验收。堆叠PR须先解决依赖并重新核对main差异，本轮不自动合并或部署。各批实际结果见[整改记录](../testing/R1-REMEDIATION-20261031.md)。
+
+
+## 外部 AI 验收配置（2026-11-01）
+
+`full-release.yml` 的 `external-ai` job 使用受保护的 `external-ai` Environment。
+优先在该 Environment 配置 Secrets：`LIVE_NVIDIA_API_KEY`、`LIVE_XFYUN_API_KEY`、`LIVE_MILVUS_URI`、`LIVE_MILVUS_TOKEN`；配置 Variable `XFYUN_MODEL` 为已授权模型 ID。名称严格匹配工作流引用，值只保存在私有设置中。按需要设置审批人与部署分支保护。
+
+[Issue #2](https://github.com/ProfessorZJH/campus-shopping/issues/2) 跟踪独立验收。修正文档不代表 NVIDIA、讯飞或 Milvus 真实连通成功；未运行记为 NOT_RUN。配置就绪后手动触发完整工作流的 `external_ai=true`，以对应提交的实际 job 和评测证据为准。

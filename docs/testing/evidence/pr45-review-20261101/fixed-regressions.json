@@ -1,0 +1,71 @@
+{
+  "environment": "isolated MySQL 8.0.31; new random-port Redis 3.2.100",
+  "status": "PASS",
+  "cases": [
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CatalogOfferLockOrderTest",
+      "case": "allProductsAreLockedBeforeSortedSkusAndProjectionCannotSupplyTradeFacts",
+      "seconds": "0.046",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "forceUnpublishAndCheckoutRespectSerializedSaleState",
+      "seconds": "1.175",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "concurrentCartIncrementsAreAccumulatedAndStockBounded(int, int, int)[1]",
+      "seconds": "0.917",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "concurrentCartIncrementsAreAccumulatedAndStockBounded(int, int, int)[2]",
+      "seconds": "0.922",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "lockedOffersIgnoreEarlierRepeatableReadQuoteSnapshot",
+      "seconds": "0.902",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "cartIncrementLimitAndUnavailableStateDoNotMutateCart",
+      "seconds": "0.908",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "productLockWaitDoesNotPrelockSku(String, String)[1]",
+      "seconds": "1.123",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "productLockWaitDoesNotPrelockSku(String, String)[2]",
+      "seconds": "1.118",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "productLockWaitDoesNotPrelockSku(String, String)[3]",
+      "seconds": "1.105",
+      "status": "PASS"
+    },
+    {
+      "suite": "cn.bugstack.ai.test.commerce.CommerceMySqlIntegrationTest",
+      "case": "productLockWaitDoesNotPrelockSku(String, String)[4]",
+      "seconds": "0.904",
+      "status": "PASS"
+    }
+  ],
+  "additionalRandomRace": {
+    "rounds": 10,
+    "newDeadlocks": 0
+  },
+  "browserScriptSha256": "9aaf24a431a267b3d876657700985e73a89d6f7cf49ee8d12b0967d303835fe3"
+}

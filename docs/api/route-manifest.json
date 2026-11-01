@@ -638,6 +638,23 @@
       "csrf": false
     },
     {
+      "method": "POST",
+      "path": "/api/v1/cart",
+      "controller": "CartController.java",
+      "handler": "add",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "CartAddRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
       "method": "PUT",
       "path": "/api/v1/cart",
       "controller": "CartController.java",
@@ -1616,6 +1633,41 @@
           "in": "body",
           "name": "request",
           "type": "PriceRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/merchants/{merchantId}/products/{productId}/skus/{skuId}/status",
+      "controller": "CatalogController.java",
+      "handler": "skuStatus",
+      "responseType": "Void",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "skuId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "SkuStatusRequestDTO",
           "required": true
         }
       ],

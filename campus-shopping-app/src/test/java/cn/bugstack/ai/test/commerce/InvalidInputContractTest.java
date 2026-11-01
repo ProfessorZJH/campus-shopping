@@ -26,7 +26,13 @@ class InvalidInputContractTest {
     void missingSkuIsBusinessValidationBeforeCartMutation() {
         var trading = mock(ICartService.class);
         var catalog = mock(ICatalogService.class);
-        var cart = new CartCaseImpl(trading, catalog, mock(IMerchantService.class), mock(IUserAccountService.class));
+        var cart = new CartCaseImpl(
+            trading,
+            catalog,
+            mock(IMerchantService.class),
+            mock(IUserAccountService.class),
+            mock(cn.bugstack.ai.domain.inventory.service.IInventoryService.class)
+        );
         assertEquals("0002", assertThrows(AppException.class, () -> cart.set("u", null, 1)).getCode());
         assertEquals("0002", assertThrows(AppException.class, () -> cart.set("u", "sku", 0)).getCode());
         verifyNoInteractions(trading, catalog);

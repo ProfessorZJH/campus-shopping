@@ -312,6 +312,31 @@ export default {
         saving.value = false;
       }
     }
+    async function changeSkuStatus(sku) {
+      if (previewGuard() || saving.value || !owned.value || !selected.value) return;
+      saving.value = true;
+      try {
+        await api(
+          '/merchants/' +
+            encodeURIComponent(store.merchantId) +
+            '/products/' +
+            encodeURIComponent(selected.value.productId) +
+            '/skus/' +
+            encodeURIComponent(sku.skuId) +
+            '/status',
+          {
+            method: 'PUT',
+            body: { active: sku.status !== 'ACTIVE', expectedVersion: selected.value.version },
+          },
+        );
+        await loadMerchant();
+        notify('规格状态已更新');
+      } catch (e) {
+        notify(e.message);
+      } finally {
+        saving.value = false;
+      }
+    }
     async function publish(p) {
       if (previewGuard() || saving.value || !owned.value) return;
       saving.value = true;
@@ -511,6 +536,7 @@ export default {
       openPrice,
       create,
       publish,
+      changeSkuStatus,
       replenish,
       saveInfo,
       savePrice,
@@ -571,7 +597,7 @@ export default {
               <button class="teal-button inspector-submit" @click="replenish" :disabled="preview||saving||!canReplenish||!selectedSku?.skuId">确认补货</button>
             </div>
             <div class="inspector-body" v-else-if="drawerTab==='info'"><label class="field-label" for="merchant-field-2">商品名称</label><input id="merchant-field-2" class="admin-input" v-model="info.title" :disabled="!owned"/><label class="field-label" for="merchant-field-3">商品分类</label><select id="merchant-field-3" class="admin-input" v-model="info.categoryCode" :disabled="!owned"><option v-for="c in store.categories" :key="c.code" :value="c.code">{{c.name}}</option></select><label class="field-label" for="merchant-field-4">商品描述</label><textarea id="merchant-field-4" class="admin-input" rows="4" v-model="info.description" :disabled="!owned"></textarea><label class="field-label">商品主图</label><ProductImageField :key="'edit-'+selected.productId" :context-key="selected.productId" v-model="info.imageUrl" :merchant-id="store.merchantId" :demo="preview" :disabled="!owned||saving" @busy="editImageUploading=$event" @invalid="editImageInvalid=$event"/><button class="teal-button inspector-submit" @click="saveInfo" :disabled="preview||saving||editImageUploading||editImageInvalid||!owned">保存修改</button><button class="inspector-link" @click="publish(selected)" :disabled="preview||saving||!owned">{{selected.status==='PUBLISHED'?'下架商品':'上架商品'}} <Icon name="chevronRight" :size="16"/></button></div>
-            <div class="inspector-body" v-else><div class="sku-item" v-for="sku in selected.skus" :key="sku.skuId"><div><strong>{{sku.specKey}}</strong><small>{{sku.skuId}}</small></div><strong>{{money(sku.priceCent)}}</strong><button :disabled="!owned||preview" @click="openPrice(sku)" title="修改售价"><Icon name="edit" :size="17"/></button></div><button class="outline-button small" :disabled="!owned||preview||selected.skus.length>=20" @click="openAddSku"><Icon name="plus" :size="16"/>新增规格</button></div>
+            <div class="inspector-body" v-else><div class="sku-item" v-for="sku in selected.skus" :key="sku.skuId"><div><strong>{{sku.specKey}}</strong><small>{{sku.skuId}} · {{sku.status==='ACTIVE'?'在售':'已停用'}}</small></div><strong>{{money(sku.priceCent)}}</strong><button :disabled="!owned||preview||saving" @click="changeSkuStatus(sku)" :aria-label="(sku.status==='ACTIVE'?'停用':'启用')+sku.specKey">{{sku.status==='ACTIVE'?'停用':'启用'}}</button><button :disabled="!owned||preview||saving" @click="openPrice(sku)" title="修改售价"><Icon name="edit" :size="17"/></button></div><button class="outline-button small" :disabled="!owned||preview||selected.skus.length>=20" @click="openAddSku"><Icon name="plus" :size="16"/>新增规格</button></div>
           </aside>
           <div v-else class="product-inspector empty-inspector"><Icon name="package" :size="28"/>选择商品以查看详情</div>
         </section>

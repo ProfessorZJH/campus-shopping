@@ -77,6 +77,7 @@ def main():
         expect(page.locator('.sku-picker button')).to_be_disabled()
         finish(page,f.products[0]);expect(page.locator('.toast')).to_contain_text('已加入购物车')
         assert f.cart[0]['quantity']==2
+        assert any(w['path']=='/cart' and w['method']=='POST' for w in f.writes)
         checks.append('add captures requested SKU/quantity and disables mutation during IO')
         close_page(page)
 

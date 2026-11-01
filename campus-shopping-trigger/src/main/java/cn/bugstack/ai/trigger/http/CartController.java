@@ -4,6 +4,7 @@ import static cn.bugstack.ai.trigger.http.RequestInputs.actor;
 import static cn.bugstack.ai.trigger.http.RequestInputs.required;
 
 import cn.bugstack.ai.api.ICartApi;
+import cn.bugstack.ai.api.dto.CartAddRequestDTO;
 import cn.bugstack.ai.api.dto.CartResponseDTO;
 import cn.bugstack.ai.api.dto.CartSetRequestDTO;
 import cn.bugstack.ai.api.response.Response;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +42,17 @@ public class CartController implements ICartApi {
     @GetMapping("/cart")
     public Response<List<CartResponseDTO>> cart(Principal principal) {
         return execute(() -> cartQuery.list(actor(principal)).stream().map(ApiViews::cart).toList());
+    }
+
+    /** 增量加购，数量在服务端购物车锁内累计。 */
+    @Override
+    @PostMapping("/cart")
+    public Response<Void> add(@RequestBody CartAddRequestDTO request, Principal principal) {
+        return execute(() -> {
+            required(request);
+            cartCase.add(actor(principal), request.getSkuId(), required(request.getQuantity()));
+            return null;
+        });
     }
 
     /** 设置本人购物车数量。 */

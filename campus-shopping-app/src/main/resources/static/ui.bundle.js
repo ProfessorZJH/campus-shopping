@@ -1163,12 +1163,7 @@
           if (!real || real.status !== "ACTIVE" || Number(real.available) < requested)
             throw new Error("库存不足或商品不可售");
           if (!valid()) return;
-          const cart = await api("/cart");
-          if (!valid()) return;
-          const old = (cart || []).find((i) => i.skuId === real.skuId);
-          const n = Number((old == null ? void 0 : old.quantity) || 0) + requested;
-          if (n > 99) throw new Error("单个规格最多购买99件");
-          await api("/cart", { method: "PUT", body: { skuId: real.skuId, quantity: n } });
+          await api("/cart", { method: "POST", body: { skuId: real.skuId, quantity: requested } });
           if (!valid()) return;
           selected.value = null;
           notify("已加入购物车");
@@ -2888,6 +2883,25 @@
           saving.value = false;
         }
       }
+      async function changeSkuStatus(sku2) {
+        if (previewGuard() || saving.value || !owned.value || !selected.value) return;
+        saving.value = true;
+        try {
+          await api(
+            "/merchants/" + encodeURIComponent(store.merchantId) + "/products/" + encodeURIComponent(selected.value.productId) + "/skus/" + encodeURIComponent(sku2.skuId) + "/status",
+            {
+              method: "PUT",
+              body: { active: sku2.status !== "ACTIVE", expectedVersion: selected.value.version }
+            }
+          );
+          await loadMerchant();
+          notify("规格状态已更新");
+        } catch (e) {
+          notify(e.message);
+        } finally {
+          saving.value = false;
+        }
+      }
       async function publish(p) {
         if (previewGuard() || saving.value || !owned.value) return;
         saving.value = true;
@@ -3059,6 +3073,7 @@
         openPrice,
         create,
         publish,
+        changeSkuStatus,
         replenish,
         saveInfo,
         savePrice,
@@ -4003,7 +4018,7 @@
                                 _createElementVNode(
                                   "small",
                                   null,
-                                  _toDisplayString(sku2.skuId),
+                                  _toDisplayString(sku2.skuId) + " · " + _toDisplayString(sku2.status === "ACTIVE" ? "在售" : "已停用"),
                                   1
                                   /* TEXT */
                                 )
@@ -4016,7 +4031,12 @@
                                 /* TEXT */
                               ),
                               _createElementVNode("button", {
-                                disabled: !_ctx.owned || _ctx.preview,
+                                disabled: !_ctx.owned || _ctx.preview || _ctx.saving,
+                                onClick: ($event) => _ctx.changeSkuStatus(sku2),
+                                "aria-label": (sku2.status === "ACTIVE" ? "停用" : "启用") + sku2.specKey
+                              }, _toDisplayString(sku2.status === "ACTIVE" ? "停用" : "启用"), 9, ["disabled", "onClick", "aria-label"]),
+                              _createElementVNode("button", {
+                                disabled: !_ctx.owned || _ctx.preview || _ctx.saving,
                                 onClick: ($event) => _ctx.openPrice(sku2),
                                 title: "修改售价"
                               }, [
@@ -4388,12 +4408,7 @@
           if (actual.status !== "PUBLISHED" || !real || real.status !== "ACTIVE" || Number(real.available) < requested)
             throw Error("商品库存或状态已变化");
           if (!current()) return;
-          const list = await api("/cart");
-          if (!current()) return;
-          const old = list.find((i) => i.skuId === real.skuId);
-          const quantity = Number((old == null ? void 0 : old.quantity) || 0) + requested;
-          if (quantity > 99) throw Error("单个规格最多99件");
-          await api("/cart", { method: "PUT", body: { skuId: real.skuId, quantity } });
+          await api("/cart", { method: "POST", body: { skuId: real.skuId, quantity: requested } });
           if (current()) notify("已加入购物车");
         } catch (e) {
           if (current()) notify(e.message);
@@ -5100,7 +5115,7 @@
         if (preview || busy.value || loading.value) return;
         const current = scope.capture();
         const n = Number(i.quantity) + d;
-        if (n > 99 || n < 0) return;
+        if (n > 99 || n < 0 || d > 0 && (!i.sellable || n > i.available)) return;
         busy.value = true;
         try {
           if (n) await api("/cart", { method: "PUT", body: { skuId: i.skuId, quantity: n } });
@@ -5164,6 +5179,7 @@
         money,
         merchantName,
         quantity,
+        remove: (i) => quantity(i, -Number(i.quantity)),
         checkout,
         load
       };
@@ -5288,6 +5304,11 @@
                               1
                               /* TEXT */
                             ),
+                            _createElementVNode("button", {
+                              disabled: _ctx.busy || _ctx.preview,
+                              "aria-label": "移除" + i.title,
+                              onClick: ($event) => _ctx.remove(i)
+                            }, "移除", 8, ["disabled", "aria-label", "onClick"]),
                             _createElementVNode("small", null, [
                               _createTextVNode(
                                 _toDisplayString(i.specKey) + " ",
@@ -5326,7 +5347,7 @@
                                   /* TEXT */
                                 ),
                                 _createElementVNode("button", {
-                                  disabled: _ctx.busy || _ctx.preview || i.quantity >= 99 || i.quantity >= i.available,
+                                  disabled: _ctx.busy || _ctx.preview || !i.sellable || i.quantity >= 99 || i.quantity >= i.available,
                                   "aria-label": "增加" + i.title,
                                   onClick: ($event) => _ctx.quantity(i, 1)
                                 }, [

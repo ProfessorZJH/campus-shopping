@@ -102,11 +102,13 @@ class BackendContractDouble:
             data=[p for p in self.products if p['status']=='PUBLISHED' and (not q.get('q') or q['q'][0] in p['title']) and (not q.get('category') or q['category'][0]==p['categoryCode'])]
         elif re.fullmatch('/products/[^/]+',path):data=next(p for p in self.products if p['productId']==path.split('/')[-1])
         elif path=='/cart':
-            if method=='PUT':
+            if method in ('POST','PUT'):
                 sku=body['skuId'];p=next(p for p in self.products if p['skus'][0]['skuId']==sku);s=p['skus'][0]
-                item={'merchantId':p['merchantId'],'skuId':sku,'title':p['title'],'specKey':s['specKey'],'priceCent':s['priceCent'],'quoteVersion':s['quoteVersion'],'quantity':body['quantity'],'available':30,'sellable':True}
+                old=next((x['quantity'] for x in self.cart if x['skuId']==sku),0)
+                quantity=body['quantity']+(old if method=='POST' else 0)
+                item={'merchantId':p['merchantId'],'skuId':sku,'title':p['title'],'specKey':s['specKey'],'priceCent':s['priceCent'],'quoteVersion':s['quoteVersion'],'quantity':quantity,'available':30,'sellable':True}
                 self.cart=[x for x in self.cart if x['skuId']!=sku]+[item]
-            data=self.cart
+            data=self.cart if method=='GET' else None
         elif path.startswith('/cart/'):
             self.cart=[x for x in self.cart if x['skuId']!=path.split('/')[-1]]
         elif path=='/orders':

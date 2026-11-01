@@ -79,8 +79,9 @@ public class ProposalConfirmationCaseImpl implements IProposalConfirmationCase {
                 ResponseCode.PRICE_CHANGED
             );
             var stock = stocks.get(sku);
-            require(stock != null && stock.onHand() - stock.reserved() >= item.quantity(), ResponseCode.STOCK_NOT_ENOUGH);
-            trading.addCart(actor, o.merchantId(), sku, item.quantity());
+            // 领域服务在购物车锁内累计；库存不足时连同提案确认和前面各行一起回滚。
+            int total = trading.addCart(actor, o.merchantId(), sku, item.quantity());
+            require(stock != null && stock.onHand() - stock.reserved() >= total, ResponseCode.STOCK_NOT_ENOUGH);
         }
         return proposals.proposal(actor, id);
     }

@@ -1,0 +1,90 @@
+[
+  {
+    "run": "pr45-lock-green",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 1,
+    "junit": {
+      "tests": 264,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "20ms polling kept an old INNODB_TRX observation; no new production deadlock",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-review-final",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 1,
+    "junit": {
+      "tests": 264,
+      "failures": 2,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "20ms polling kept an old INNODB_TRX observation; no new production deadlock",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-lock-diagnostic",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 1,
+    "junit": {
+      "tests": 4,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "20ms polling kept an old INNODB_TRX observation; no new production deadlock",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-lock-diagnostic2",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 0,
+    "junit": {
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "reason": "Four targeted cases passed after polling at 200ms; full-suite guard intentionally rejects a targeted run",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "pr45-review-pass",
+    "scriptStatus": "FAIL",
+    "mavenExitCode": 0,
+    "junit": {
+      "tests": 264,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "http": {
+      "checks": 223,
+      "responseSchemas": 158,
+      "status": "PASS"
+    },
+    "redisSharedHttp": {
+      "checks": 9,
+      "status": "PASS"
+    },
+    "reason": "The two-tab browser test attempted to open another tab in the implicit browser.new_page context; fixed to use an explicit shared context. No product assertion was weakened.",
+    "temporaryDatabaseCleaned": true
+  },
+  {
+    "run": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41268392045",
+    "head": "4526d17",
+    "job": "Chromium contract / current",
+    "reason": "Original log ui_r1_correctness.py:79 expected cart quantity 2; shared contract double ignored POST /cart. Updated the double to accumulate POST and retain absolute PUT, and explicitly asserted the UI submits POST. All nine contract scripts passed locally.",
+    "status": "FAIL_THEN_FIXED_IN_NEXT_HEAD"
+  },
+  {
+    "run": "https://github.com/ProfessorZJH/campus-shopping/actions/runs/41268680108",
+    "head": "9e2d1ed",
+    "job": "Real Spring frontend browser E2E",
+    "reason": "Original Playwright log: decrement button initially disabled then detached. Test checked unchanged cart before the earlier POST completed and reset cart to 1, allowing the pending POST to succeed and close the dialog. Test now waits for POST response I0001 and enabled UI before changing fixture state.",
+    "status": "FAIL_THEN_FIXED_IN_NEXT_HEAD"
+  }
+]

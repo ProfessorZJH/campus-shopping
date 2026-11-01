@@ -101,6 +101,11 @@ public class CatalogServiceImpl implements ICatalogService {
         return repository.find(id, false);
     }
 
+    public void changeSkuStatus(String merchant, String id, String sku, boolean active, long expectedVersion) {
+        ProductAggregate p = owned(merchant, id);
+        if (p.changeSkuStatus(sku, active, expectedVersion)) repository.save(p);
+    }
+
     public void changePrice(String merchant, String id, String sku, long price, long expected) {
         ProductAggregate p = owned(merchant, id);
         p.changePrice(sku, price, expected);

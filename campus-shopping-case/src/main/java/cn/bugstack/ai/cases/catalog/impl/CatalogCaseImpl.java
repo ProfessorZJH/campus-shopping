@@ -69,6 +69,14 @@ public class CatalogCaseImpl implements ICatalogCase {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
+    public void changeSkuStatus(String actor, String merchant, String product, String sku, boolean active, long version) {
+        access.requirePermission(actor, merchant, "product.write");
+        if (active) merchants.requireActiveForNewTrade(merchant);
+        catalog.changeSkuStatus(merchant, product, sku, active, version);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    @Override
     public void changeSkuPrice(String actor, String merchant, String product, String sku, long price, long version) {
         access.requirePermission(actor, merchant, "product.write");
         merchants.requireActiveForNewTrade(merchant);

@@ -26,6 +26,11 @@ public class CartServiceImpl implements ICartService {
         repository.lockCart(user);
     }
 
+    @Transactional(propagation = Propagation.MANDATORY)
+    public CartItemVO cartItemForUpdate(String user, String sku) {
+        return repository.cartItem(user, sku);
+    }
+
     public List<CartItemVO> cart(String user) {
         return repository.cart(user);
     }
@@ -40,7 +45,7 @@ public class CartServiceImpl implements ICartService {
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void addCart(String user, String merchant, String sku, int quantity) {
+    public int addCart(String user, String merchant, String sku, int quantity) {
         repository.lockCart(user);
         require(quantity > 0 && quantity <= 99, ResponseCode.ILLEGAL_PARAMETER);
         CartItemVO old = repository.cartItem(user, sku);
@@ -48,6 +53,7 @@ public class CartServiceImpl implements ICartService {
         require(total <= 99, ResponseCode.CART_QUANTITY_LIMIT);
         require(old != null || repository.cartSizeForUpdate(user) < 100, ResponseCode.CART_LINE_LIMIT);
         repository.setCart(user, merchant, sku, total);
+        return total;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

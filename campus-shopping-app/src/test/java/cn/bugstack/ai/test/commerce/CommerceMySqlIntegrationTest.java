@@ -591,6 +591,337 @@ class CommerceMySqlIntegrationTest {
         assertEquals(0L, scalar("SELECT COUNT(*) FROM ful_pickup_task"));
     }
 
+    @Autowired
+    ICartQueryCase cartQuery;
+
+    @Test
+    void cartStockAndUnavailableRowsRemainEditable() {
+        var p = product(0);
+        String sku = item(p).skuId();
+        assertEquals("I0001", code(() -> cart.set(buyer, sku, 1)));
+        assertTrue(cart.list(buyer).isEmpty());
+        catalog.replenishStock(owner, merchant.id(), sku, 4, "cart-stock");
+        cart.set(buyer, sku, 2);
+        assertEquals("I0001", code(() -> cart.set(buyer, sku, 5)));
+        assertEquals(2, cart.list(buyer).get(0).quantity());
+        cart.set(buyer, sku, 4);
+        // 模拟库存已被其他订单预占；购物车不持有库存保证。
+        for (int i = 0; i < 4; i++) checkout.checkout(other, merchant.id(), List.of(item(p)), UUID.randomUUID().toString());
+        assertFalse(cartQuery.list(buyer).get(0).sellable());
+        assertEquals("I0001", code(() -> order(p)));
+        assertEquals(4, cartQuery.list(buyer).get(0).item().quantity());
+        assertEquals("I0001", code(() -> cart.set(buyer, sku, 5)));
+        cart.set(buyer, sku, 3);
+        catalog.forceUnpublishProduct(admin, p.getId());
+        cart.set(buyer, sku, 2);
+        assertEquals("C0001", code(() -> cart.set(buyer, sku, 3)));
+        admission.setActive(admin, merchant.id(), false, "测试停业");
+        cart.set(buyer, sku, 1);
+        cart.delete(buyer, sku);
+        assertTrue(cart.list(buyer).isEmpty());
+    }
+
+    @Test
+    void proposalChecksAccumulatedCartAndRollsBackConfirmation() {
+        var p = product(2);
+        var proposal = proposal(p);
+        String sku = item(p).skuId();
+        cart.set(buyer, sku, 2);
+        assertEquals("I0001", code(() -> ai.confirm(buyer, proposal.id(), List.of(sku))));
+        assertEquals(2, cart.list(buyer).get(0).quantity());
+        assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM ai_proposal WHERE id=?", String.class, proposal.id()));
+        assertNull(jdbc.queryForObject("SELECT selection_hash FROM ai_proposal WHERE id=?", String.class, proposal.id()));
+        cart.set(buyer, sku, 1);
+        ai.confirm(buyer, proposal.id(), List.of(sku));
+        assertEquals(2, cart.list(buyer).get(0).quantity());
+    }
+
+    @Test
+    void multiItemProposalFailureRollsBackEarlierCartWrites() {
+        var products = java.util.stream.Stream.of(product(2), product(2))
+            .sorted(Comparator.comparing(p -> item(p).skuId()))
+            .toList();
+        var full = products.get(1);
+        cart.set(buyer, item(full).skuId(), 2);
+        var conversation = conversations.conversation(buyer, null, "两种笔");
+        var turn = conversations.beginTurn(buyer, conversation.id(), "两种笔");
+        var items = products
+            .stream()
+            .map(p -> new ProposalItemVO(item(p).skuId(), merchant.id(), p.getTitle(), "一盒", 1200, p.getVersion(), 1))
+            .toList();
+        var proposal = conversationTurns.complete(turn, "两种笔", "测试提案", items, clock.instant().plusSeconds(600), "scope");
+        assertEquals("I0001", code(() -> ai.confirm(buyer, proposal.id(), items.stream().map(ProposalItemVO::skuId).toList())));
+        assertEquals(1, cart.list(buyer).size());
+        assertEquals(2, cart.list(buyer).get(0).quantity());
+        assertEquals(item(full).skuId(), cart.list(buyer).get(0).skuId());
+        assertEquals("PENDING", jdbc.queryForObject("SELECT status FROM ai_proposal WHERE id=?", String.class, proposal.id()));
+    }
+
+    @Test
+    void doublePayCreatesOnePaymentAndPickup() throws Exception {
+        var o = order(product(2));
+        assertEquals(List.of("0000", "0000"), race(() -> life.pay(buyer, o.getId()), () -> life.pay(buyer, o.getId())));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_payment"));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM ful_pickup_task"));
+        assertEquals("PAID", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
+    }
+
+    @Test
+    void doubleCancelReleasesReservationOnce() throws Exception {
+        var o = order(product(2));
+        assertEquals(List.of("0000", "0000"), race(() -> life.cancel(buyer, o.getId()), () -> life.cancel(buyer, o.getId())));
+        assertEquals(0, scalar("SELECT SUM(reserved) FROM inv_stock_balance"));
+        assertEquals(2, scalar("SELECT SUM(on_hand) FROM inv_stock_balance"));
+        assertEquals("CANCELED", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM inv_stock_movement WHERE type='RELEASE'"));
+    }
+
+    @Test
+    void doubleRefundRequestCreatesOneRequestedAfterSale() throws Exception {
+        var o = order(product(2));
+        life.pay(buyer, o.getId());
+        assertEquals(List.of("0000", "0000"), race(() -> life.requestRefund(buyer, o.getId(), "退款"), () -> life.requestRefund(buyer, o.getId(), "退款")));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_after_sale WHERE status='REQUESTED'"));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_refund"));
+    }
+
+    @Test
+    void doubleProposalConfirmAddsToCartOnce() throws Exception {
+        var p = product(3);
+        var proposal = proposal(p);
+        String sku = item(p).skuId();
+        assertEquals(List.of("0000", "0000"), race(() -> ai.confirm(buyer, proposal.id(), List.of(sku)), () -> ai.confirm(buyer, proposal.id(), List.of(sku))));
+        assertEquals(1, cart.list(buyer).get(0).quantity());
+        assertEquals("CONFIRMED", jdbc.queryForObject("SELECT status FROM ai_proposal WHERE id=?", String.class, proposal.id()));
+    }
+
+    @Test
+    void skuStatusIsOwnedVersionedIdempotentAndPreservesOrders() throws Exception {
+        var p = product(5);
+        String first = item(p).skuId();
+        var o = order(p);
+        var added = catalog.addSkuToProduct(owner, merchant.id(), p.getId(), "另一规格", 1800).product();
+        String second = added
+            .getSkus()
+            .stream()
+            .filter(sku -> !sku.id().equals(first))
+            .findFirst()
+            .orElseThrow()
+            .id();
+        long version = added.getVersion();
+        assertEquals("A0006", code(() -> catalog.changeSkuStatus(other, merchant.id(), p.getId(), first, false, version)));
+        var foreign = open(other, "另一个商户");
+        assertEquals("A0006", code(() -> catalog.changeSkuStatus(other, foreign.id(), p.getId(), first, false, version)));
+        var results = race(
+            () -> catalog.changeSkuStatus(owner, merchant.id(), p.getId(), first, false, version),
+            () -> catalog.changeSkuStatus(owner, merchant.id(), p.getId(), second, false, version)
+        );
+        assertEquals(1, results.stream().filter("0000"::equals).count());
+        assertEquals(1, results.stream().filter("G0002"::equals).count());
+        var current = catalogSearch.find(p.getId());
+        var inactive = current
+            .getSkus()
+            .stream()
+            .filter(sku -> sku.status().equals("INACTIVE"))
+            .findFirst()
+            .orElseThrow();
+        var active = current
+            .getSkus()
+            .stream()
+            .filter(sku -> sku.status().equals("ACTIVE"))
+            .findFirst()
+            .orElseThrow();
+        catalog.changeSkuStatus(owner, merchant.id(), p.getId(), inactive.id(), false, version);
+        assertEquals(current.getVersion(), catalogSearch.find(p.getId()).getVersion());
+        long lastVersion = current.getVersion();
+        assertEquals("C0001", code(() -> catalog.changeSkuStatus(owner, merchant.id(), p.getId(), active.id(), false, lastVersion)));
+        catalog.setProductPublished(owner, merchant.id(), p.getId(), false);
+        current = catalogSearch.find(p.getId());
+        catalog.changeSkuStatus(owner, merchant.id(), p.getId(), active.id(), false, current.getVersion());
+        assertEquals("C0001", code(() -> catalog.setProductPublished(owner, merchant.id(), p.getId(), true)));
+        assertEquals(1200, scalar("SELECT unit_price_cent FROM trd_order_item WHERE order_id=?", o.getId()));
+        assertEquals("考试中性笔", jdbc.queryForObject("SELECT title FROM trd_order_item WHERE order_id=?", String.class, o.getId()));
+    }
+
+    @Test
+    void forceUnpublishAndCheckoutRespectSerializedSaleState() throws Exception {
+        long before = scalar("SELECT COUNT FROM information_schema.INNODB_METRICS WHERE NAME='lock_deadlocks'");
+        for (int i = 0; i < 10; i++) {
+            var p = product(2);
+            // 生产锁定报价现为两个按主键执行的当前读，诊断也分别核对，不再执行联表锁计划。
+            var productPlan = jdbc.queryForList("EXPLAIN SELECT * FROM cat_product WHERE id=? FOR UPDATE", p.getId());
+            var skuPlan = jdbc.queryForList("EXPLAIN SELECT * FROM cat_sku WHERE id=? FOR UPDATE", item(p).skuId());
+            assertEquals("PRIMARY", productPlan.get(0).get("key"));
+            assertEquals("PRIMARY", skuPlan.get(0).get("key"));
+            if (i == 0) System.out.println("force-unpublish checkout plan=Product:PRIMARY -> SKU:PRIMARY");
+            var results = race(() -> catalog.forceUnpublishProduct(admin, p.getId()), () -> order(p));
+            assertEquals("0000", results.get(0));
+            assertTrue(Set.of("0000", "C0001").contains(results.get(1)), results.toString());
+            assertEquals("UNPUBLISHED", catalogSearch.find(p.getId()).getStatus());
+            assertEquals("C0001", code(() -> order(p)));
+        }
+        long after = scalar("SELECT COUNT FROM information_schema.INNODB_METRICS WHERE NAME='lock_deadlocks'");
+        assertEquals(before, after, "专项竞争不得新增 InnoDB 死锁记录");
+        String innodb = jdbc.queryForMap("SHOW ENGINE INNODB STATUS").get("Status").toString();
+        System.out.println(
+            "force-unpublish checkout: races=10, newDeadlocks=" +
+                (after - before) +
+                ", historicalDeadlockPresent=" +
+                innodb.contains("LATEST DETECTED DEADLOCK")
+        );
+    }
+
+    @Autowired
+    org.mybatis.spring.SqlSessionTemplate catalogLockSqlSession;
+
+    @SpyBean
+    cn.bugstack.ai.infrastructure.dao.ICatalogDao catalogLockDao;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({ "3,2,0", "2,1,1" })
+    void concurrentCartIncrementsAreAccumulatedAndStockBounded(int stock, int successes, int failures) throws Exception {
+        var p = product(stock);
+        String sku = item(p).skuId();
+        cart.set(buyer, sku, 1);
+        var results = race(() -> cart.add(buyer, sku, 1), () -> cart.add(buyer, sku, 1));
+        assertEquals(successes, results.stream().filter("0000"::equals).count());
+        assertEquals(failures, results.stream().filter("I0001"::equals).count());
+        assertEquals(1 + successes, cart.list(buyer).get(0).quantity());
+        assertEquals(0, scalar("SELECT SUM(reserved) FROM inv_stock_balance"));
+    }
+
+    @Test
+    void cartIncrementLimitAndUnavailableStateDoNotMutateCart() {
+        var p = product(120);
+        String sku = item(p).skuId();
+        cart.set(buyer, sku, 98);
+        cart.add(buyer, sku, 1);
+        assertEquals("T0005", code(() -> cart.add(buyer, sku, 1)));
+        assertEquals("0002", code(() -> cart.add(buyer, sku, 0)));
+        assertEquals(99, cart.list(buyer).get(0).quantity());
+        catalog.forceUnpublishProduct(admin, p.getId());
+        assertEquals("C0001", code(() -> cart.add(buyer, sku, 1)));
+        assertEquals(99, cart.list(buyer).get(0).quantity());
+    }
+
+    @Test
+    void lockedOffersIgnoreEarlierRepeatableReadQuoteSnapshot() throws Exception {
+        var p = product(5);
+        String sku = item(p).skuId();
+        var pool = Executors.newSingleThreadExecutor();
+        try {
+            new TransactionTemplate(transactionManager).executeWithoutResult(tx -> {
+                assertEquals(1200, catalogSearch.offers(List.of(sku)).get(0).priceCent());
+                try {
+                    pool.submit(() -> catalog.changeSkuPrice(owner, merchant.id(), p.getId(), sku, 1600, p.getVersion())).get(10, TimeUnit.SECONDS);
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+                var locked = catalogSearch.saleOffersForUpdate(List.of(sku)).get(0);
+                assertEquals(1600, locked.priceCent());
+                assertEquals(p.getVersion() + 1, locked.version());
+            });
+        } finally {
+            pool.shutdownNow();
+        }
+    }
+
+    @SpyBean
+    cn.bugstack.ai.infrastructure.adapter.repository.CatalogRepository catalogLockRepository;
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({ "unpublish,checkout", "sku,checkout", "unpublish,cart", "sku,cart" })
+    void productLockWaitDoesNotPrelockSku(String writerKind, String consumerKind) throws Exception {
+        var original = product(5);
+        var p = catalog.addSkuToProduct(owner, merchant.id(), original.getId(), "备用规格", 1500).product();
+        String sku = item(original).skuId();
+        var held = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var consumerStarted = new CountDownLatch(1);
+        var connection = new java.util.concurrent.atomic.AtomicLong();
+        doAnswer(invocation -> {
+            if (Thread.currentThread().getName().equals("catalog-lock-writer")) {
+                held.countDown();
+                if (!release.await(30, TimeUnit.SECONDS)) throw new IllegalStateException("商品锁测试等待超时");
+            }
+            // 继续执行同一个真实 MyBatis 映射；只暂停时序，不替换 SQL 或返回值。
+            return catalogLockSqlSession.selectList("cn.bugstack.ai.infrastructure.dao.ICatalogDao.skusForUpdate", Map.of("productId", p.getId()));
+        })
+            .when(catalogLockDao)
+            .skusForUpdate(p.getId());
+        doAnswer(invocation -> {
+            connection.set(scalar("SELECT CONNECTION_ID()"));
+            consumerStarted.countDown();
+            return invocation.callRealMethod();
+        })
+            .when(catalogLockRepository)
+            .offers(anyList(), eq(true));
+        var pool = Executors.newFixedThreadPool(2);
+        Future<String> writer = null;
+        Future<String> consumer = null;
+        try {
+            writer = pool.submit(() -> {
+                Thread.currentThread().setName("catalog-lock-writer");
+                return code(() -> {
+                    if (writerKind.equals("unpublish")) catalog.forceUnpublishProduct(admin, p.getId());
+                    else catalog.changeSkuStatus(owner, merchant.id(), p.getId(), sku, false, p.getVersion());
+                });
+            });
+            assertTrue(held.await(10, TimeUnit.SECONDS), "写操作必须已持有 Product 并暂停在 SKU 读取前");
+            consumer = pool.submit(() ->
+                code(() -> {
+                    if (consumerKind.equals("checkout")) checkout.checkout(
+                        buyer,
+                        merchant.id(),
+                        List.of(new CheckoutItemEntity(sku, 1, 1200, p.getVersion())),
+                        UUID.randomUUID().toString()
+                    );
+                    else cart.add(buyer, sku, 1);
+                })
+            );
+            assertTrue(consumerStarted.await(10, TimeUnit.SECONDS));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+            while (
+                System.nanoTime() < deadline &&
+                scalar("SELECT COUNT(*) FROM information_schema.INNODB_TRX WHERE trx_mysql_thread_id=? AND trx_state='LOCK WAIT'", connection.get()) == 0
+            ) {
+                // INNODB_TRX 快照需有超过 100ms 的读取间隔，频繁轮询会一直看到旧状态。
+                Thread.sleep(200);
+            }
+            assertEquals(
+                1,
+                scalar("SELECT COUNT(*) FROM information_schema.INNODB_TRX WHERE trx_mysql_thread_id=? AND trx_state='LOCK WAIT'", connection.get()),
+                "consumerConnection=" +
+                    connection.get() +
+                    ", done=" +
+                    consumer.isDone() +
+                    ", transactions=" +
+                    jdbc.queryForList("SELECT trx_mysql_thread_id,trx_state FROM information_schema.INNODB_TRX") +
+                    ", process=" +
+                    jdbc.queryForList("SELECT ID,STATE FROM information_schema.PROCESSLIST WHERE ID=?", connection.get())
+            );
+            // 第三个真实事务探测 SKU：等待 Product 的消费者不能抢先持有 SKU，避免与写操作形成环。
+            assertDoesNotThrow(
+                () ->
+                    new TransactionTemplate(transactionManager).executeWithoutResult(tx ->
+                        assertEquals(sku, jdbc.queryForObject("SELECT id FROM cat_sku WHERE id=? FOR UPDATE NOWAIT", String.class, sku))
+                    ),
+                "等待 Product 时已经持有 SKU，存在反向锁序"
+            );
+        } finally {
+            release.countDown();
+            try {
+                if (writer != null) assertEquals("0000", writer.get(30, TimeUnit.SECONDS));
+                if (consumer != null) assertEquals("C0001", consumer.get(30, TimeUnit.SECONDS));
+            } finally {
+                pool.shutdownNow();
+            }
+        }
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_order"));
+        assertTrue(cart.list(buyer).isEmpty());
+        assertEquals(0, scalar("SELECT SUM(reserved) FROM inv_stock_balance"));
+    }
+
     private List<String> race(Runnable... workItems) throws Exception {
         var pool = Executors.newFixedThreadPool(workItems.length);
         var ready = new CountDownLatch(workItems.length);

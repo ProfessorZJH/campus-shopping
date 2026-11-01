@@ -72,6 +72,30 @@ public final class ProductAggregate {
         throw new cn.bugstack.ai.types.exception.AppException(ResponseCode.NOT_FOUND);
     }
 
+    public boolean changeSkuStatus(String skuId, boolean active, long expectedVersion) {
+        require(expectedVersion >= 0, ResponseCode.ILLEGAL_PARAMETER);
+        SkuStatusEnumVO target = active ? SkuStatusEnumVO.ACTIVE : SkuStatusEnumVO.INACTIVE;
+        for (int i = 0; i < skus.size(); i++) {
+            ProductSkuEntity sku = skus.get(i);
+            if (!sku.id().equals(skuId)) continue;
+            // 同目标重放不更新商品或 SKU 版本；不同目标必须匹配当前聚合版本。
+            if (sku.state() == target) return false;
+            require(version == expectedVersion, ResponseCode.STATE_CONFLICT);
+            require(
+                active ||
+                    status != ProductStatusEnumVO.PUBLISHED ||
+                    skus
+                        .stream()
+                        .filter(s -> s.state() == SkuStatusEnumVO.ACTIVE)
+                        .count() > 1,
+                ResponseCode.PRODUCT_UNAVAILABLE
+            );
+            skus.set(i, new ProductSkuEntity(sku.id(), sku.specKey(), sku.priceCent(), target.getCode(), sku.version() + 1));
+            return true;
+        }
+        throw new cn.bugstack.ai.types.exception.AppException(ResponseCode.NOT_FOUND);
+    }
+
     public void changeInfo(String title, String desc, String category, String image, long expected) {
         require(expected == version, ResponseCode.STATE_CONFLICT);
         String checkedTitle = text(title, "商品名称", 100);
