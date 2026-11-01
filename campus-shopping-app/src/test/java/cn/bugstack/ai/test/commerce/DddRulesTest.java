@@ -93,6 +93,9 @@ class DddRulesTest {
     void validProtocolStillAcceptsLocalFallback() {
         when(gateway.query(any())).thenReturn(new AiGatewayDTO.Answer("回答", "LOCAL_FALLBACK", "BM25_DEGRADED", "买笔", "模型超时", List.of(), List.of(), 12));
         assertEquals("LOCAL_FALLBACK", port().query(query()).mode());
+        String emojiSnippet = "😀".repeat(500);
+        when(gateway.query(any())).thenReturn(answer(List.of(new AiGatewayDTO.Citation("d", "c", "标题", emojiSnippet, 1)), List.of()));
+        assertDoesNotThrow(() -> port().query(query()));
         when(gateway.semanticProducts(any())).thenReturn(new AiGatewayDTO.ProductSearchResult(List.of(" "), "MILVUS"));
         code("AI0001", () -> port().semanticProducts("买笔", 80));
     }

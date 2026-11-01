@@ -109,16 +109,24 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     legacy_total = 0
     valid_relevant_documents = set()
     for citation in citations:
+        fields = ("documentVersion", "ordinal", "contentHash")
+        present = [field in citation for field in fields]
+        if all(present):
+            strict_total += 1
+            protocol = "strict"
+        elif any(present):
+            strict_total += 1
+            protocol = "invalid-strict"
+        else:
+            legacy_total += 1
+            protocol = "legacy"
         did = citation.get("documentId")
         doc = docs.get(did)
         if not doc or did not in case["allowedDocumentIds"] or doc["status"] != "PUBLISHED":
             continue
         expected = {str(uuid.uuid5(uuid.NAMESPACE_URL, did + ":" + str(i))): piece for i, piece in enumerate(chunks(doc["content"]))}
         piece = expected.get(citation.get("chunkId"))
-        fields = ("documentVersion", "ordinal", "contentHash")
-        present = [field in citation for field in fields]
-        if all(present):
-            strict_total += 1
+        if protocol == "strict":
             ordinal = citation.get("ordinal")
             strict_match = (
                 citation.get("documentVersion") == doc.get("version", 1)
@@ -128,8 +136,7 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
                 and piece is not None
                 and citation.get("contentHash") == hashlib.sha256(piece.encode("utf-8")).hexdigest()
             )
-        elif any(present):
-            strict_total += 1
+        elif protocol == "invalid-strict":
             strict_match = False
         else:
             legacy_total += 1

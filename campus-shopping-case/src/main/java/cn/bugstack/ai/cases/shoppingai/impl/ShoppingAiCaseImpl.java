@@ -336,7 +336,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                 document != null &&
                     citation.documentVersion() == document.version() &&
                     citation.snippet() != null &&
-                    citation.snippet().length() <= 500 &&
+                    citation.snippet().codePointCount(0, citation.snippet().length()) <= 500 &&
                     (citation.ordinal() < 0
                         ? document.content().contains(citation.snippet())
                         : citation.chunkId().equals(chunkId(document.id(), citation.ordinal())) &&

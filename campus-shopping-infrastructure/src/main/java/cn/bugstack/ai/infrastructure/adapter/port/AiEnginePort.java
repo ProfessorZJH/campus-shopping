@@ -202,7 +202,7 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     private static boolean text(String value, int max) {
-        return value != null && !value.isBlank() && value.length() <= max;
+        return value != null && !value.isBlank() && value.codePointCount(0, value.length()) <= max;
     }
 
     private static boolean optional(String value, int max) {

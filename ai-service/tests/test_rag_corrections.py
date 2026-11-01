@@ -62,6 +62,26 @@ def test_new_citation_protocol_checks_version_and_chunk_hash():
     assert metrics['legacyCitationCount']['value'] == 0
 
 
+def test_strict_citation_denominator_includes_unauthorized_new_protocol():
+    data = load()
+    case = copy.deepcopy(data['cases'][0])
+    allowed = data['knowledge'][0]
+    unauthorized = next(doc for doc in data['knowledge'] if doc['documentId'] not in case['allowedDocumentIds'])
+    allowed_piece = allowed['content']
+    unauthorized_piece = unauthorized['content']
+    result = {'answer': '回答', 'citations': [
+        {'documentId': allowed['documentId'], 'chunkId': str(uuid.uuid5(uuid.NAMESPACE_URL, allowed['documentId'] + ':0')),
+         'snippet': allowed_piece[:20], 'documentVersion': allowed['version'], 'ordinal': 0,
+         'contentHash': hashlib.sha256(allowed_piece.encode()).hexdigest()},
+        {'documentId': unauthorized['documentId'], 'chunkId': str(uuid.uuid5(uuid.NAMESPACE_URL, unauthorized['documentId'] + ':0')),
+         'snippet': unauthorized_piece[:20], 'documentVersion': unauthorized['version'], 'ordinal': 0,
+         'contentHash': hashlib.sha256(unauthorized_piece.encode()).hexdigest()},
+    ]}
+    metrics = evidence_metrics(data, case, result)
+    assert metrics['strictCitationValidity']['numerator'] == 1
+    assert metrics['strictCitationValidity']['denominator'] == 2
+
+
 def test_indexed_citations_keep_document_version(tmp_path):
     store = KnowledgeStore(Settings('test-only-service-key-123456', str(tmp_path / 'knowledge.db')))
     try:
