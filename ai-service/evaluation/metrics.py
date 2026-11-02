@@ -139,7 +139,6 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
         elif protocol == "invalid-strict":
             strict_match = False
         else:
-            legacy_total += 1
             strict_match = None
         if piece is not None and citation.get("snippet") and citation["snippet"] in piece and strict_match is not False:
             valid += 1

@@ -82,6 +82,29 @@ def test_strict_citation_denominator_includes_unauthorized_new_protocol():
     assert metrics['strictCitationValidity']['denominator'] == 2
 
 
+def test_legacy_citation_count_once_with_mixed_authorization_and_protocols():
+    data = load()
+    case = copy.deepcopy(data['cases'][0])
+    allowed = data['knowledge'][0]
+    unauthorized = next(doc for doc in data['knowledge'] if doc['documentId'] not in case['allowedDocumentIds'])
+
+    def legacy(doc):
+        return {'documentId': doc['documentId'],
+                'chunkId': str(uuid.uuid5(uuid.NAMESPACE_URL, doc['documentId'] + ':0')),
+                'snippet': doc['content'][:20]}
+
+    strict = {**legacy(allowed), 'documentVersion': allowed['version'], 'ordinal': 0,
+              'contentHash': hashlib.sha256(allowed['content'].encode()).hexdigest()}
+    result = {'answer': '回答', 'citations': [legacy(allowed), legacy(unauthorized), strict]}
+    metrics = evidence_metrics(data, case, result)
+    assert metrics['legacyCitationCount']['numerator'] == 2
+    assert metrics['legacyCitationCount']['denominator'] == 3
+    assert metrics['strictCitationValidity']['numerator'] == 1
+    assert metrics['strictCitationValidity']['denominator'] == 1
+    assert metrics['citationValidity']['numerator'] == 2
+    assert metrics['citationValidity']['denominator'] == 3
+
+
 def test_indexed_citations_keep_document_version(tmp_path):
     store = KnowledgeStore(Settings('test-only-service-key-123456', str(tmp_path / 'knowledge.db')))
     try:
