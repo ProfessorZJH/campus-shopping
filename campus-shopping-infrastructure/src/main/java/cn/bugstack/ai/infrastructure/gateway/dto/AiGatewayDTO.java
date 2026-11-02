@@ -76,8 +76,16 @@ public final class AiGatewayDTO {
             @JsonProperty("ordinal") Integer ordinal,
             @JsonProperty("contentHash") String contentHash
         ) {
-            this(documentId, chunkId, title, snippet, score, documentVersion == null ? 1 : documentVersion,
-                ordinal == null ? -1 : ordinal, contentHash == null ? "" : contentHash);
+            this(
+                documentId,
+                chunkId,
+                title,
+                snippet,
+                score,
+                documentVersion == null ? 1 : documentVersion,
+                ordinal == null ? -1 : ordinal,
+                contentHash == null ? "" : contentHash
+            );
         }
 
         public Citation(String documentId, String chunkId, String title, String snippet, double score) {

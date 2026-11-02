@@ -22,9 +22,9 @@ import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.common.FailureDiagnostics;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;
 import java.util.*;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
