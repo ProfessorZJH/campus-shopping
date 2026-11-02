@@ -1,5 +1,5 @@
 -- BEGIN GENERATED SCHEMA PREFLIGHT
-SET @campus_new_schema := (SELECT COUNT(*)=0 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='iam_user');
+SET @campus_new_schema := (SELECT COUNT(*)=0 FROM information_schema.tables WHERE table_schema=DATABASE());
 -- END GENERATED SCHEMA PREFLIGHT
 -- R1 完整表结构。不得通过删除数据库覆盖用户旧数据。
 CREATE TABLE IF NOT EXISTS iam_user (
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS cat_category (
 CREATE TABLE IF NOT EXISTS cat_product (
  id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL,
  description TEXT NOT NULL, image_url VARCHAR(255) NOT NULL, category_code VARCHAR(32) NOT NULL, status VARCHAR(20) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_product_merchant(merchant_id,status), KEY ix_product_category(category_code,status)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_product_merchant(merchant_id,status), KEY ix_product_merchant_newest(merchant_id,status,created_at DESC,id), KEY ix_product_public_newest(status,created_at DESC,id,merchant_id), KEY ix_product_category(category_code,status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_sku (
@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS cat_sku (
 
 CREATE TABLE IF NOT EXISTS inv_stock_balance (
  merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL, sku_id VARCHAR(36) NOT NULL, on_hand BIGINT NOT NULL DEFAULT 0,
- reserved BIGINT NOT NULL DEFAULT 0, version BIGINT NOT NULL DEFAULT 0, PRIMARY KEY(store_id,sku_id), KEY ix_stock_merchant(merchant_id), KEY ix_stock_sku(sku_id),
+ reserved BIGINT NOT NULL DEFAULT 0, version BIGINT NOT NULL DEFAULT 0, PRIMARY KEY(store_id,sku_id), UNIQUE KEY uk_stock_sku(sku_id), KEY ix_stock_merchant(merchant_id), KEY ix_stock_sku(sku_id), KEY ix_stock_merchant_sku(merchant_id,sku_id),
  CONSTRAINT ck_stock_balance CHECK (on_hand >= reserved AND reserved >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -90,7 +90,7 @@ CREATE TABLE IF NOT EXISTS trd_checkout_request (
 CREATE TABLE IF NOT EXISTS trd_order (
  id VARCHAR(36) PRIMARY KEY, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
  total_cent BIGINT NOT NULL, status VARCHAR(24) NOT NULL, deadline DATETIME(3) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_merchant(merchant_id,status), KEY ix_order_expiry(status,deadline), CONSTRAINT ck_order_total CHECK(total_cent>0)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_buyer_page(buyer_id,status,created_at DESC,id), KEY ix_order_merchant(merchant_id,status), KEY ix_order_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_order_expiry(status,deadline), CONSTRAINT ck_order_total CHECK(total_cent>0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_order_item (
@@ -105,7 +105,7 @@ CREATE TABLE IF NOT EXISTS trd_payment (
 
 CREATE TABLE IF NOT EXISTS trd_after_sale (
  id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL,
- status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id)
+ status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id), KEY ix_after_sale_merchant_page(merchant_id,status,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_refund (
@@ -122,14 +122,14 @@ CREATE TABLE IF NOT EXISTS ful_pickup_verification (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_base (
- id VARCHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL, merchant_id VARCHAR(36), visibility VARCHAR(32) NOT NULL, created_by VARCHAR(36) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+ id VARCHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL, merchant_id VARCHAR(36), visibility VARCHAR(32) NOT NULL, created_by VARCHAR(36) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_knowledge_base_created(created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_quota (id VARCHAR(16) PRIMARY KEY, used_count INT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 INSERT IGNORE INTO ai_knowledge_quota(id,used_count) SELECT 'global',COUNT(*) FROM ai_knowledge_base;
 
 CREATE TABLE IF NOT EXISTS ai_document_root (
- id VARCHAR(36) PRIMARY KEY, base_id VARCHAR(36) NOT NULL, active_document_id VARCHAR(36), version_counter INT NOT NULL DEFAULT 0
+ id VARCHAR(36) PRIMARY KEY, base_id VARCHAR(36) NOT NULL, active_document_id VARCHAR(36), version_counter INT NOT NULL DEFAULT 0, KEY ix_document_root_active(active_document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_usage (
@@ -195,3 +195,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261030_01','436372
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_01','8302633d94615ff84f1a4803e94131b26cb0be3bfccb2d93882446faebd2fc07' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a063f6ffd06d3b115175258fb59dd2f2ba3ce72e49cbea2a87a3371b8ca' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','a97b56a94cea076eeb84461322f10e1af5b5011708b917a59a94b65fec26d6c2' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

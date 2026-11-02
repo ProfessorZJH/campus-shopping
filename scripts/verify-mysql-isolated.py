@@ -51,6 +51,11 @@ INDEXES = {
     'inv_stock_balance': 'ix_stock_sku', 'inv_stock_movement': 'ix_movement_merchant',
     'ai_document': 'ix_document_base', 'ai_message': 'ix_message_sequence',
     'ai_proposal': 'ix_proposal_conversation',
+    'inv_stock_unique': 'uk_stock_sku', 'cat_product_merchant_page': 'ix_product_merchant_newest',
+    'cat_product_public_page': 'ix_product_public_newest', 'trd_order_buyer_page': 'ix_order_buyer_page',
+    'trd_order_merchant_page': 'ix_order_merchant_page', 'trd_after_sale_merchant_page': 'ix_after_sale_merchant_page',
+    'inv_stock_merchant_sku': 'ix_stock_merchant_sku', 'ai_knowledge_base_created': 'ix_knowledge_base_created',
+    'ai_document_root_active': 'ix_document_root_active',
 }
 CHECKS = {'trd_order_item': 'ck_order_item_values', 'trd_payment': 'ck_payment_amount',
           'trd_refund': 'ck_refund_amount'}
@@ -92,7 +97,7 @@ def migration_checks(connection, report):
     if HEADER in old:
         old = old.split('-- END GENERATED SCHEMA PREFLIGHT\n', 1)[1]
     for index in INDEXES.values():
-        old, count = re.subn(r', KEY ' + index + r'\([^)]*\)', '', old)
+        old, count = re.subn(r', (?:UNIQUE )?KEY ' + index + r'\([^)]*\)', '', old)
         assert count == 1, index
     for constraint in CHECKS.values():
         old, count = re.subn(r',\s*CONSTRAINT ' + constraint + r' CHECK\([^)]*\)', '', old)
