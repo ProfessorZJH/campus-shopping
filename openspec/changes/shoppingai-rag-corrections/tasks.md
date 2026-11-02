@@ -14,5 +14,5 @@
 ## 评测与验证
 
 - [x] 6. 修正 evidence recall/coverage 与回答支持率评分口径，保持 DRAFT/NOT_RUN/PENDING 分离并新增指标测试。
-- [ ] 7. 执行格式、API/Schema/迁移契约、Python/Java 回归和隔离 MySQL/HTTP 测试，记录未运行的真实模型/Milvus 验收范围。
+- [x] 7. 执行格式、API/Schema/迁移契约、Python/Java 回归和隔离 MySQL/HTTP 测试，记录未运行的真实模型/Milvus 验收范围。
 - [x] 8. 更新 SDD/评测入口引用与本次报告，复核 diff、凭据扫描和 PR 交付状态；不合并、不部署。

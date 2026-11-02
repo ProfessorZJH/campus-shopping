@@ -17,11 +17,11 @@
 
 ## 自动验证
 
-- `ai-service`：220 项 pytest 通过，包含结构化属性、语义 rank 顺序、预算/数量歧义、跨语言规格继承和新引用协议回归。
-- Java：`PurchaseConstraintTest`、`AiConversationBoundaryTest`、`DddRulesTest` 共 24 项通过；全模块编译通过。
+- `ai-service`：223 项 pytest 通过，包含结构化属性、语义 rank 顺序、预算/数量歧义、跨语言规格继承、旧引用兼容、SQLite 迁移和 chunk 级证据召回回归。
+- Java：`DddRulesTest`、`SkuConstraintPolicyTest` 共 17 项定向回归通过；最近一次 `mvnw clean verify` 全模块构建成功，267 项测试中 179 项执行通过、88 项按环境跳过。
 - `python scripts/verify-api-contract.py`、`verify-api-schemas.py`、`schema_contract.py --check` 和 OpenSpec strict 校验通过。
 - 未在本机启动隔离 MySQL/Redis，也未调用真实外部模型、Embedding 或 Milvus；这些属于后续正式验收范围。
 
 ## 限制与后续
 
-当前 Catalog 数据模型仍只有 `specKey`，未把糖分、乳糖、颜色等属性写入 MySQL；因此没有可信属性时系统会澄清，这比错误声称满足禁选条件更安全。AI 服务本地索引会携带 Java 传入的文档版本，旧索引按版本 1 兼容读取。若要支持这些属性的可售筛选，需要单独设计不可变迁移、录入契约和数据回填，不在本批次静默扩张。
+当前 Catalog 数据模型仍只有 `specKey`，未把糖分、乳糖、颜色等属性写入 MySQL；因此没有可信属性时系统会澄清，这比错误声称满足禁选条件更安全。AI 服务本地索引会携带 Java 传入的文档版本；历史 SQLite 索引没有可信版本时会被排除，必须重新索引后才参与引用复验。若要支持这些属性的可售筛选，需要单独设计不可变迁移、录入契约和数据回填，不在本批次静默扩张。
