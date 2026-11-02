@@ -11,6 +11,8 @@
 - 引用响应增加文档版本、chunk ordinal、内容 hash；Python 输出确定性分块信息，Java 按 UUID5、700/80 分块规则、版本和 hash 复验。旧引用协议保留兼容读取路径，新的完整协议拒绝错版本、错 chunk 和错片段。
 - 评测增加 `evidenceRecall`，将合法引用率、Gold 证据覆盖与人工回答支持率分开；DRAFT、NOT_RUN、PENDING 状态继续独立。
 - 评测新协议严格核对 `documentVersion`、`ordinal`、chunk hash，并单独记录 `strictCitationValidity` 与旧协议兼容计数；多轮继承后的未知否定属性继续保持澄清。
+- 旧 Python 引用缺少新字段时由 Java 网关显式归一化为旧协议；SQLite 历史索引没有可信文档版本时不再默认声称为版本 1，必须重新索引后才参与检索。
+- 有 chunk 级 Gold 的案例按 `(documentId, ordinal, chunkHash)` 计算 `evidenceRecall`，没有该标注的旧案例保留文档级兼容口径。
 - Java 网关和引用复验统一按 Unicode code point 计数，避免包含 Emoji 的 500 字符片段被 UTF-16 长度误拒；严格引用分母在授权判断前统计，未授权新协议引用记为失败。
 
 ## 自动验证

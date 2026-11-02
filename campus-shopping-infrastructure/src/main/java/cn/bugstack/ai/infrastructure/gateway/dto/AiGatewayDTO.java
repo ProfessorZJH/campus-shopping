@@ -1,5 +1,7 @@
 package cn.bugstack.ai.infrastructure.gateway.dto;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 /** Java 与 Python 的明确 JSON 协议，不包含凭证或数据库连接信息。 */
@@ -62,6 +64,22 @@ public final class AiGatewayDTO {
         int ordinal,
         String contentHash
     ) {
+        /** 旧 Python 响应缺少新字段时，明确回落到旧协议值。 */
+        @JsonCreator
+        public Citation(
+            @JsonProperty("documentId") String documentId,
+            @JsonProperty("chunkId") String chunkId,
+            @JsonProperty("title") String title,
+            @JsonProperty("snippet") String snippet,
+            @JsonProperty("score") double score,
+            @JsonProperty("documentVersion") Integer documentVersion,
+            @JsonProperty("ordinal") Integer ordinal,
+            @JsonProperty("contentHash") String contentHash
+        ) {
+            this(documentId, chunkId, title, snippet, score, documentVersion == null ? 1 : documentVersion,
+                ordinal == null ? -1 : ordinal, contentHash == null ? "" : contentHash);
+        }
+
         public Citation(String documentId, String chunkId, String title, String snippet, double score) {
             this(documentId, chunkId, title, snippet, score, 1, -1, "");
         }

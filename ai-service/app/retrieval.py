@@ -101,8 +101,10 @@ class KnowledgeStore:
         self.db=sqlite3.connect(settings.db_path,check_same_thread=False,isolation_level=None)
         self.db.row_factory=sqlite3.Row
         self.db.execute('PRAGMA journal_mode=WAL')
-        self.db.execute('CREATE TABLE IF NOT EXISTS docs(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,model TEXT NOT NULL,updated REAL NOT NULL,version INTEGER NOT NULL DEFAULT 1)')
-        if 'version' not in {row['name'] for row in self.db.execute('PRAGMA table_info(docs)')}: self.db.execute('ALTER TABLE docs ADD COLUMN version INTEGER NOT NULL DEFAULT 1')
+        self.db.execute('CREATE TABLE IF NOT EXISTS docs(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,model TEXT NOT NULL,updated REAL NOT NULL,version INTEGER NOT NULL,version_known INTEGER NOT NULL DEFAULT 1)')
+        columns={row['name'] for row in self.db.execute('PRAGMA table_info(docs)')}
+        if 'version' not in columns: self.db.execute('ALTER TABLE docs ADD COLUMN version INTEGER')
+        if 'version_known' not in columns: self.db.execute('ALTER TABLE docs ADD COLUMN version_known INTEGER NOT NULL DEFAULT 0')
         self.db.execute('CREATE TABLE IF NOT EXISTS chunks(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,ordinal INTEGER NOT NULL,embedding TEXT NOT NULL,model TEXT NOT NULL)')
         self.db.execute('CREATE INDEX IF NOT EXISTS chunks_doc ON chunks(doc_id)')
     def close(self):self.db.close()
@@ -141,7 +143,7 @@ class KnowledgeStore:
             try:
                 self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,))
                 self.db.executemany('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)',rows)
-                self.db.execute('INSERT INTO docs VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated,version=excluded.version',(doc_id,fingerprint,model,time.time(),version))
+                self.db.execute('INSERT INTO docs VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated,version=excluded.version,version_known=1',(doc_id,fingerprint,model,time.time(),version,1))
                 self.db.execute('COMMIT')
             except Exception:self.db.execute('ROLLBACK');raise
         return len(rows)
@@ -163,7 +165,7 @@ class KnowledgeStore:
             rows=[]
             for start in range(0,len(allowed),500):
                 batch=allowed[start:start+500]
-                rows.extend(dict(r) for r in self.db.execute('SELECT c.*,d.version AS document_version FROM chunks c JOIN docs d ON d.id=c.doc_id WHERE c.doc_id IN ('+','.join('?' for _ in batch)+') ORDER BY c.doc_id,c.ordinal',batch))
+                rows.extend(dict(r) for r in self.db.execute('SELECT c.*,d.version AS document_version FROM chunks c JOIN docs d ON d.id=c.doc_id WHERE d.version_known=1 AND d.version IS NOT NULL AND c.doc_id IN ('+','.join('?' for _ in batch)+') ORDER BY c.doc_id,c.ordinal',batch))
             rows.sort(key=lambda r:(r['doc_id'],r['ordinal']))
         if not rows:return [],self.provider.vector_mode
         sparse=bm25(query,[r['title']+' '+r['body'] for r in rows])[:30]

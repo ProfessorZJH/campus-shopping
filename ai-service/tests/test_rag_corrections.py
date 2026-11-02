@@ -1,5 +1,7 @@
 import copy
 import hashlib
+import json
+import sqlite3
 import uuid
 
 from app.engine import FOLLOWUP
@@ -113,6 +115,44 @@ def test_indexed_citations_keep_document_version(tmp_path):
         assert citations and all(item['documentVersion'] == 3 for item in citations)
     finally:
         store.close()
+
+
+def test_legacy_sqlite_rows_are_not_claimed_as_version_one(tmp_path):
+    path = tmp_path / 'legacy.db'
+    db = sqlite3.connect(path)
+    db.execute('CREATE TABLE docs(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,model TEXT NOT NULL,updated REAL NOT NULL,version INTEGER NOT NULL DEFAULT 1)')
+    db.execute('CREATE TABLE chunks(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,ordinal INTEGER NOT NULL,embedding TEXT NOT NULL,model TEXT NOT NULL)')
+    body = '旧版本知识'
+    db.execute('INSERT INTO docs VALUES(?,?,?,?,?)', ('legacy', hashlib.sha256(('标题\0' + body).encode()).hexdigest(), 'local-char-ngram-v1', 0, 1))
+    db.execute('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)', ('chunk', 'legacy', '标题', body, 0, json.dumps([1.0]), 'local-char-ngram-v1'))
+    db.commit(); db.close()
+    store = KnowledgeStore(Settings('test-only-service-key-123456', str(path)))
+    try:
+        citations, _ = store.search('旧版本', ['legacy'])
+        assert citations == []
+        store.index('legacy', '标题', body, version=7)
+        citations, _ = store.search('旧版本', ['legacy'])
+        assert citations and citations[0]['documentVersion'] == 7
+    finally:
+        store.close()
+
+
+def test_evidence_recall_uses_gold_chunks_when_available():
+    data = load()
+    case = copy.deepcopy(next(c for c in data['cases'] if c['caseId'] == 'case-073'))
+    doc = next(d for d in data['knowledge'] if d['documentId'] == 'd02-v1')
+    pieces = __import__('app.retrieval', fromlist=['chunks']).chunks(doc['content'])
+    case['relevantEvidenceIds'] = [doc['documentId']]
+    qrel = next(q for q in data['qrels'] if q['caseId'] == case['caseId'])
+    qrel['evidence'] = [{'documentId': doc['documentId'], 'ordinal': 1,
+                         'chunkHash': hashlib.sha256(pieces[1].encode()).hexdigest(), 'grade': 2}]
+    chunk_id = str(uuid.uuid5(uuid.NAMESPACE_URL, doc['documentId'] + ':0'))
+    result = {'answer': '回答', 'citations': [{'documentId': doc['documentId'], 'chunkId': chunk_id,
+                                                'snippet': pieces[0][:20], 'documentVersion': doc['version'],
+                                                'ordinal': 0, 'contentHash': hashlib.sha256(pieces[0].encode()).hexdigest()}]}
+    metrics = evidence_metrics(data, case, result)
+    assert metrics['evidenceRecall']['value'] == 0
+    assert metrics['evidenceRecall']['denominator'] == 1
 
 
 def test_non_bmp_chunk_hash_uses_code_points():

@@ -24,6 +24,7 @@ import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import java.time.*;
 import java.util.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -98,6 +99,19 @@ class DddRulesTest {
         assertDoesNotThrow(() -> port().query(query()));
         when(gateway.semanticProducts(any())).thenReturn(new AiGatewayDTO.ProductSearchResult(List.of(" "), "MILVUS"));
         code("AI0001", () -> port().semanticProducts("买笔", 80));
+    }
+
+    @Test
+    void oldCitationJsonDefaultsToTheLegacyProtocol() throws Exception {
+        var citation = new ObjectMapper().readValue(
+            "{\"documentId\":\"d\",\"chunkId\":\"c\",\"title\":\"标题\",\"snippet\":\"片段\",\"score\":1}",
+            AiGatewayDTO.Citation.class
+        );
+        assertEquals(1, citation.documentVersion());
+        assertEquals(-1, citation.ordinal());
+        assertEquals("", citation.contentHash());
+        when(gateway.query(any())).thenReturn(answer(List.of(citation), List.of()));
+        assertDoesNotThrow(() -> port().query(query()));
     }
 
     @Test

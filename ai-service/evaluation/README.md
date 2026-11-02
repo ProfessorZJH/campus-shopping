@@ -78,7 +78,7 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split test --profil
 
 适用阶段由任务与适配器确定，FAILED且stages={}仍生成有gold阶段的0分；配对比较保留这些0分。缺gold仍N/A，NOT_RUN不计作执行失败，Python未跑Java召回不生成该阶段的伪分数。
 
-知识chunk和document@1/3/5分开，文档按chunk首次出现去重。chunk标签只从qrels.evidence明确ordinal/hash映射UUID5，不把文档相关性传给所有块。商品product.fused@20/50；SKU pool仅报round-robin集合Recall@300；最终推荐按SKU@1/3。池内分母不替代全语料gold。
+知识chunk和document@1/3/5分开，文档按chunk首次出现去重。chunk标签只从qrels.evidence明确ordinal/hash映射UUID5，不把文档相关性传给所有块。`evidenceRecall` 在存在 `qrels.evidence` 时按 chunk 的 ordinal/hash 计算；旧数据没有 chunk Gold 时才保留文档级兼容口径。商品product.fused@20/50；SKU pool仅报round-robin集合Recall@300；最终推荐按SKU@1/3。池内分母不替代全语料gold。
 
 ConstraintPass按推荐项计算数量/库存/发布/商户/属性及否定约束；整组ΣpriceCent×quantity超预算使整组预算项失败。没有推荐则分母0=N/A，同时可行gold例的Coverage=0、RequestSuccess=0。Coverage还要求至少一项grade2且整组安全。请求成功还要求所需有效证据。拒绝/澄清用数据集语义要点进行自动初筛，完整语义仍待人工。
 
