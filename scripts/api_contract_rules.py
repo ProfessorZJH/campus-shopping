@@ -48,6 +48,7 @@ REQUEST_RULES = {
     'ProductRequestDTO': rule('title categoryCode', {
         'title': text(100), 'description': optional_text(5000), 'categoryCode': text(32),
         'imageUrl': optional_text(255, pattern=r'^$|^/media/[a-f0-9-]+\.png$'),
+        'imageUrls': {'type': ['array', 'null'], 'maxItems': 8, 'uniqueItems': True, 'items': {'type': 'string', 'pattern': r'^/media/[a-f0-9-]+\.png$'}},
         'skus': {'minItems': 1, 'maxItems': 20}, 'expectedVersion': VERSION}, CATALOG),
     'SkuRequestDTO': rule('specKey priceCent', {'specKey': text(100), 'priceCent': PRICE}, CATALOG),
     'SkuStatusRequestDTO': rule('active expectedVersion', {'active': {}, 'expectedVersion': VERSION}, CATALOG),

@@ -9,7 +9,17 @@ public interface ICatalogCase {
     ProductReadModel addSkuToProduct(String actor, String merchant, String product, String spec, long price);
     void changeSkuStatus(String actor, String merchant, String product, String sku, boolean active, long version);
     void changeSkuPrice(String actor, String merchant, String product, String sku, long price, long version);
-    void editProduct(String actor, String merchant, String product, String title, String description, String category, String image, long version);
+    void editProduct(
+        String actor,
+        String merchant,
+        String product,
+        String title,
+        String description,
+        String category,
+        String image,
+        java.util.List<String> images,
+        long version
+    );
     void setProductPublished(String actor, String merchant, String product, boolean published);
     void forceUnpublishProduct(String actor, String product);
     void replenishStock(String actor, String merchant, String sku, int quantity, String key);

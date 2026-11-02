@@ -42,6 +42,23 @@
     "empty order items are rejected",
     "HTTP 200 business failure accepts null data",
     "failure cannot carry a success-shaped business object",
-    "unknown response code is rejected"
+    "unknown response code is rejected",
+    "AdmissionResponseDTO accepts declared status SUBMITTED",
+    "AdmissionResponseDTO accepts declared status APPROVED",
+    "AdmissionResponseDTO accepts declared status REJECTED",
+    "AdmissionResponseDTO rejects an unknown status",
+    "AdmissionResponseDTO rejects a null status",
+    "AdmissionResponseDTO requires status",
+    "CurrentUserResponseDTO accepts declared status ACTIVE",
+    "CurrentUserResponseDTO accepts declared status DISABLED",
+    "CurrentUserResponseDTO rejects an unknown status",
+    "CurrentUserResponseDTO rejects a null status",
+    "CurrentUserResponseDTO requires status",
+    "SubmitMerchantApplicationResponseDTO accepts declared status SUBMITTED",
+    "SubmitMerchantApplicationResponseDTO accepts declared status APPROVED",
+    "SubmitMerchantApplicationResponseDTO accepts declared status REJECTED",
+    "SubmitMerchantApplicationResponseDTO rejects an unknown status",
+    "SubmitMerchantApplicationResponseDTO rejects a null status",
+    "SubmitMerchantApplicationResponseDTO requires status"
   ]
 }

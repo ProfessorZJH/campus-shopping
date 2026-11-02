@@ -150,7 +150,14 @@ public class CatalogController implements ICatalogApi {
             var product = catalogCase.createProduct(
                 actor(principal),
                 merchantId,
-                new ProductCreateCommandEntity(request.getTitle(), request.getDescription(), request.getCategoryCode(), request.getImageUrl(), skus)
+                new ProductCreateCommandEntity(
+                    request.getTitle(),
+                    request.getDescription(),
+                    request.getCategoryCode(),
+                    request.getImageUrl(),
+                    skus,
+                    request.getImageUrls()
+                )
             );
             return ApiViews.product(product);
         });
@@ -175,6 +182,7 @@ public class CatalogController implements ICatalogApi {
                 request.getDescription(),
                 request.getCategoryCode(),
                 request.getImageUrl(),
+                request.getImageUrls(),
                 required(request.getExpectedVersion())
             );
             return null;

@@ -56,3 +56,5 @@ python -X utf8 scripts/verify-mysql-isolated.py --mysql-bin D:\develop\mysql-8.0
 路径按本机调整；需要 JDK17、Maven、Python `pymysql`。`--http-smoke` 还需要 AI Python 运行依赖、Playwright 和本机 Chromium，可通过 `CHROMIUM_PATH` 指定。缺少依赖不得记为通过。脚本创建专属临时数据目录、随机回环端口和临时构建副本，执行历史数据保留、脏数据拒绝、所有迁移重复执行及新旧库元数据比对，再执行完整 Maven 和可选真实 HTTP/浏览器验收，最后关闭并清理自己创建的实例。
 
 实际证据见 [专项审查报告](../../testing/CONTRACT-DATABASE-API-AUDIT-09.md)。
+
+V20261102_01__product_images.sql 新增商品图片对象引用表并回填历史主图。迁移可重放，不删除商品或订单数据；部署前按同一 SchemaVersionGuard 流程备份并登记校验和。

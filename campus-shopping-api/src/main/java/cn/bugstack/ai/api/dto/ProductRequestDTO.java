@@ -15,6 +15,7 @@ public class ProductRequestDTO {
     private String description;
     private String categoryCode;
     private String imageUrl;
+    private List<String> imageUrls;
     private List<SkuRequestDTO> skus;
     private Long expectedVersion;
 }

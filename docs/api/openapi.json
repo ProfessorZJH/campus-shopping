@@ -18127,11 +18127,24 @@
         "properties": {
           "url": {
             "type": "string"
+          },
+          "imageId": {
+            "type": "string"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ImageResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
         "required": [
-          "url"
+          "url",
+          "imageId",
+          "provider",
+          "sortOrder"
         ],
         "x-nullable-fields": []
       },
@@ -18765,6 +18778,18 @@
             "maxLength": 255,
             "pattern": "^$|^/media/[a-f0-9-]+\\.png$"
           },
+          "imageUrls": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string",
+              "pattern": "^/media/[a-f0-9-]+\\.png$"
+            },
+            "maxItems": 8,
+            "uniqueItems": true
+          },
           "skus": {
             "type": "array",
             "items": {
@@ -18814,6 +18839,12 @@
           "imageUrl": {
             "type": "string"
           },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImageResponseDTO"
+            }
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -18845,6 +18876,7 @@
           "description",
           "categoryCode",
           "imageUrl",
+          "images",
           "status",
           "version",
           "skus"

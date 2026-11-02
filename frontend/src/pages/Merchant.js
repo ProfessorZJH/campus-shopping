@@ -4,6 +4,7 @@ import { api, idempotency } from '../services/api.js';
 import AuthDialog from '../components/AuthDialog.js';
 import ProductImage from '../components/ProductImage.js';
 import ProductImageField from '../components/ProductImageField.js';
+import ProductImageListField from '../components/ProductImageListField.js';
 import {
   store,
   go,
@@ -33,7 +34,7 @@ const MENU = [
 ];
 export default {
   name: 'Merchant',
-  components: { AuthDialog, ProductImage, ProductImageField },
+  components: { AuthDialog, ProductImage, ProductImageField, ProductImageListField },
   setup() {
     const scope = requestScope();
     const search = ref('');
@@ -57,10 +58,17 @@ export default {
       description: '',
       categoryCode: 'food',
       imageUrl: '',
+      imageUrls: [],
       skus: [{ specKey: '默认规格', price: '4.50' }],
     });
     const skuForm = ref({ specKey: '', price: '' });
-    const info = ref({ title: '', description: '', categoryCode: 'food', imageUrl: '' });
+    const info = ref({
+      title: '',
+      description: '',
+      categoryCode: 'food',
+      imageUrl: '',
+      imageUrls: [],
+    });
     const createImageUploading = ref(false),
       editImageUploading = ref(false);
     const createImageInvalid = ref(false),
@@ -173,6 +181,7 @@ export default {
             description: p.description || '',
             categoryCode: p.categoryCode,
             imageUrl: p.imageUrl || '',
+            imageUrls: (p.images || []).map((i) => i.url),
           };
         }
       },
@@ -222,6 +231,7 @@ export default {
         description: '',
         categoryCode: store.categories.find((c) => c.active)?.code || 'food',
         imageUrl: '',
+        imageUrls: [],
         skus: [{ specKey: '默认规格', price: '' }],
       };
       modal.value = 'create';
@@ -274,6 +284,7 @@ export default {
             description: f.description.trim(),
             categoryCode: f.categoryCode,
             imageUrl: f.imageUrl || '',
+            imageUrls: f.imageUrls,
             skus,
           },
         });
@@ -452,6 +463,7 @@ export default {
               description: info.value.description.trim(),
               categoryCode: info.value.categoryCode,
               imageUrl: info.value.imageUrl || '',
+              imageUrls: info.value.imageUrls,
               expectedVersion: selected.value.version,
             },
           },
@@ -628,7 +640,7 @@ export default {
               <div class="inspector-divider"></div><h3 class="field-heading">库存补货</h3><label class="field-label" for="restock-n">增加数量</label><div class="number-input"><button @click="adjustment=Math.max(1,Number(adjustment)-1)" aria-label="减少补货数量"><Icon name="minus" :size="17" /></button><input id="restock-n" v-model.number="adjustment" type="number" min="1" max="1000000"/><button @click="adjustment=Math.min(1000000,Number(adjustment)+1)" aria-label="增加补货数量"><Icon name="plus" :size="17" /></button></div>
               <button class="teal-button inspector-submit" @click="replenish" :disabled="preview||saving||!canReplenish||!selectedSku?.skuId">确认补货</button>
             </div>
-            <div class="inspector-body" v-else-if="drawerTab==='info'"><label class="field-label" for="merchant-field-2">商品名称</label><input id="merchant-field-2" class="admin-input" v-model="info.title" :disabled="!owned"/><label class="field-label" for="merchant-field-3">商品分类</label><select id="merchant-field-3" class="admin-input" v-model="info.categoryCode" :disabled="!owned"><option v-for="c in store.categories" :key="c.code" :value="c.code">{{c.name}}</option></select><label class="field-label" for="merchant-field-4">商品描述</label><textarea id="merchant-field-4" class="admin-input" rows="4" v-model="info.description" :disabled="!owned"></textarea><label class="field-label">商品主图</label><ProductImageField :key="'edit-'+selected.productId" :context-key="selected.productId" v-model="info.imageUrl" :merchant-id="store.merchantId" :demo="preview" :disabled="!owned||saving" @busy="editImageUploading=$event" @invalid="editImageInvalid=$event"/><button class="teal-button inspector-submit" @click="saveInfo" :disabled="preview||saving||editImageUploading||editImageInvalid||!owned">保存修改</button><button class="inspector-link" @click="publish(selected)" :disabled="preview||saving||!owned||!!publishReason(selected)" :title="publishReason(selected)">{{selected.status==='PUBLISHED'?'下架商品':'上架商品'}} <Icon name="chevronRight" :size="16"/></button><p v-if="publishReason(selected)" class="mobile-hint">{{publishReason(selected)}}</p></div>
+            <div class="inspector-body" v-else-if="drawerTab==='info'"><label class="field-label" for="merchant-field-2">商品名称</label><input id="merchant-field-2" class="admin-input" v-model="info.title" :disabled="!owned"/><label class="field-label" for="merchant-field-3">商品分类</label><select id="merchant-field-3" class="admin-input" v-model="info.categoryCode" :disabled="!owned"><option v-for="c in store.categories" :key="c.code" :value="c.code">{{c.name}}</option></select><label class="field-label" for="merchant-field-4">商品描述</label><textarea id="merchant-field-4" class="admin-input" rows="4" v-model="info.description" :disabled="!owned"></textarea><label class="field-label">商品主图</label><ProductImageListField v-model="info.imageUrls" :merchant-id="store.merchantId" :demo="preview" :disabled="!owned||saving" @busy="editImageUploading=$event" @invalid="editImageInvalid=$event"/><button class="teal-button inspector-submit" @click="saveInfo" :disabled="preview||saving||editImageUploading||editImageInvalid||!owned">保存修改</button><button class="inspector-link" @click="publish(selected)" :disabled="preview||saving||!owned||!!publishReason(selected)" :title="publishReason(selected)">{{selected.status==='PUBLISHED'?'下架商品':'上架商品'}} <Icon name="chevronRight" :size="16"/></button><p v-if="publishReason(selected)" class="mobile-hint">{{publishReason(selected)}}</p></div>
             <div class="inspector-body" v-else><div class="sku-item" v-for="sku in selected.skus" :key="sku.skuId"><div><strong>{{sku.specKey}}</strong><small>{{sku.skuId}} · {{sku.status==='ACTIVE'?'在售':'已停用'}}</small></div><strong>{{money(sku.priceCent)}}</strong><button :disabled="!owned||preview||saving||!!skuStatusReason(selected,sku)" :title="skuStatusReason(selected,sku)" @click="changeSkuStatus(sku)" :aria-label="(sku.status==='ACTIVE'?'停用':'启用')+sku.specKey">{{sku.status==='ACTIVE'?'停用':'启用'}}</button><button :disabled="!owned||preview||saving" @click="openPrice(sku)" title="修改售价"><Icon name="edit" :size="17"/></button></div><p v-if="selected.status==='PUBLISHED'" class="mobile-hint">已上架商品须保留至少一个有效规格。</p><button class="outline-button small" :disabled="!owned||preview||selected.skus.length>=20" @click="openAddSku"><Icon name="plus" :size="16"/>新增规格</button></div>
           </aside>
           <div v-else class="product-inspector empty-inspector"><Icon name="package" :size="28"/>选择商品以查看详情</div>
@@ -637,7 +649,7 @@ export default {
     </div>
     <AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="loadMerchant" />
     <div v-if="modal" v-modal="() => modal=''" class="ui-overlay" @click.self="modal=''">
-      <form class="merchant-modal" v-if="modal==='create'" @submit.prevent="create"><div class="merchant-modal-header"><div><h2>新增商品</h2></div><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="20"/></button></div><label class="field-label" for="merchant-field-5">商品名称</label><input id="merchant-field-5" class="admin-input" maxlength="100" v-model="form.title" placeholder="商品名称" required/><label class="field-label" for="merchant-field-6">分类</label><select id="merchant-field-6" v-model="form.categoryCode" class="admin-input"><option v-for="c in store.categories.filter(c=>c.active)" :value="c.code">{{c.name}}</option></select><label class="field-label">规格 / 售价（元）</label><div v-for="(item,index) in form.skus" :key="index" class="sku-create-row"><input class="admin-input" maxlength="100" v-model="item.specKey" required placeholder="例如 250ml"/><input class="admin-input" v-model="item.price" inputmode="decimal" placeholder="0.00" required/><button type="button" class="outline-button small" :disabled="form.skus.length===1" @click="removeCreateSku(index)" :aria-label="'移除规格'+(index+1)"><Icon name="x" :size="15"/></button></div><button type="button" class="outline-button small" :disabled="form.skus.length>=20" @click="addCreateSku"><Icon name="plus" :size="15"/>添加规格</button><label class="field-label" for="merchant-field-7">描述</label><textarea id="merchant-field-7" class="admin-input" rows="3" v-model="form.description" placeholder="选填"></textarea><label class="field-label">商品主图</label><ProductImageField v-model="form.imageUrl" :merchant-id="store.merchantId" :demo="preview" :disabled="saving||!owned" @busy="createImageUploading=$event" @invalid="createImageInvalid=$event"/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving||createImageUploading||createImageInvalid||!owned">保存商品</button></div></form>
+      <form class="merchant-modal" v-if="modal==='create'" @submit.prevent="create"><div class="merchant-modal-header"><div><h2>新增商品</h2></div><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="20"/></button></div><label class="field-label" for="merchant-field-5">商品名称</label><input id="merchant-field-5" class="admin-input" maxlength="100" v-model="form.title" placeholder="商品名称" required/><label class="field-label" for="merchant-field-6">分类</label><select id="merchant-field-6" v-model="form.categoryCode" class="admin-input"><option v-for="c in store.categories.filter(c=>c.active)" :value="c.code">{{c.name}}</option></select><label class="field-label">规格 / 售价（元）</label><div v-for="(item,index) in form.skus" :key="index" class="sku-create-row"><input class="admin-input" maxlength="100" v-model="item.specKey" required placeholder="例如 250ml"/><input class="admin-input" v-model="item.price" inputmode="decimal" placeholder="0.00" required/><button type="button" class="outline-button small" :disabled="form.skus.length===1" @click="removeCreateSku(index)" :aria-label="'移除规格'+(index+1)"><Icon name="x" :size="15"/></button></div><button type="button" class="outline-button small" :disabled="form.skus.length>=20" @click="addCreateSku"><Icon name="plus" :size="15"/>添加规格</button><label class="field-label" for="merchant-field-7">描述</label><textarea id="merchant-field-7" class="admin-input" rows="3" v-model="form.description" placeholder="选填"></textarea><label class="field-label">商品主图</label><ProductImageListField v-model="form.imageUrls" :merchant-id="store.merchantId" :demo="preview" :disabled="saving||!owned" @busy="createImageUploading=$event" @invalid="createImageInvalid=$event"/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving||createImageUploading||createImageInvalid||!owned">保存商品</button></div></form>
       <form class="merchant-modal narrow" v-else-if="modal==='addSku'" @submit.prevent="addSku"><div class="merchant-modal-header"><h2>新增规格</h2><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="18"/></button></div><label class="field-label" for="merchant-field-8">规格名称</label><input id="merchant-field-8" class="admin-input" maxlength="100" v-model="skuForm.specKey" required placeholder="例如：500ml"/><label class="field-label" for="merchant-field-9">售价（元）</label><input id="merchant-field-9" class="admin-input" v-model="skuForm.price" inputmode="decimal" required placeholder="0.00"/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving">保存规格</button></div></form><form class="merchant-modal narrow" v-else-if="modal==='price'" @submit.prevent="savePrice"><div class="merchant-modal-header"><div><h2>修改售价</h2></div><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="20"/></button></div><div class="field-muted">{{selected?.title}} · {{activePriceSku?.specKey}}</div><label class="field-label" for="merchant-field-10">售价（元）</label><input id="merchant-field-10" class="admin-input" v-model="newPrice" inputmode="decimal" required/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving">保存售价</button></div></form>
     </div>
   </div>`,

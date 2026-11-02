@@ -59,6 +59,7 @@ public class CatalogServiceImpl implements ICatalogService {
             .stream()
             .map(s -> new ProductSkuEntity(UUID.randomUUID().toString(), s.specKey(), s.priceCent(), SkuStatusEnumVO.ACTIVE.getCode(), 0))
             .toList();
+        List<String> imageUrls = checkedImages(c.imageUrls(), c.imageUrl());
         ProductAggregate p = new ProductAggregate(
             UUID.randomUUID().toString(),
             merchant,
@@ -66,12 +67,13 @@ public class CatalogServiceImpl implements ICatalogService {
             c.title(),
             c.description(),
             c.categoryCode(),
-            c.imageUrl(),
+            imageUrls.isEmpty() ? "" : imageUrls.get(0),
             ProductStatusEnumVO.DRAFT.getCode(),
             0,
             skus
         );
         repository.insert(p);
+        images.replace(p.getId(), imageUrls);
         return p;
     }
 
@@ -112,11 +114,13 @@ public class CatalogServiceImpl implements ICatalogService {
         repository.save(p);
     }
 
-    public void edit(String merchant, String id, String title, String desc, String category, String image, long expected) {
+    public void edit(String merchant, String id, String title, String desc, String category, String image, List<String> imageUrls, long expected) {
         validCategory(category);
         ProductAggregate p = owned(merchant, id);
-        p.changeInfo(title, desc, category, image, expected);
+        List<String> checked = checkedImages(imageUrls, image);
+        p.changeInfo(title, desc, category, checked.isEmpty() ? "" : checked.get(0), expected);
         repository.save(p);
+        images.replace(id, checked);
     }
 
     public void publish(String merchant, String id, boolean onShelf) {
@@ -240,5 +244,13 @@ public class CatalogServiceImpl implements ICatalogService {
 
     public String storeImage(byte[] data) {
         return images.storeImage(data);
+    }
+
+    private List<String> checkedImages(List<String> values, String legacy) {
+        List<String> images = values == null ? (legacy == null || legacy.isBlank() ? List.of() : List.of(legacy)) : values;
+        require(images.size() <= 8, ResponseCode.ILLEGAL_PARAMETER);
+        require(images.stream().allMatch(v -> v != null && v.matches("/media/[a-f0-9-]+\\.png")), ResponseCode.ILLEGAL_PARAMETER);
+        require(images.stream().distinct().count() == images.size(), ResponseCode.ILLEGAL_PARAMETER);
+        return List.copyOf(images);
     }
 }

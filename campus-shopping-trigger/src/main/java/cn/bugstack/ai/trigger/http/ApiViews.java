@@ -3,6 +3,7 @@ package cn.bugstack.ai.trigger.http;
 import cn.bugstack.ai.api.dto.AdmissionResponseDTO;
 import cn.bugstack.ai.api.dto.AfterSaleResponseDTO;
 import cn.bugstack.ai.api.dto.CartResponseDTO;
+import cn.bugstack.ai.api.dto.ImageResponseDTO;
 import cn.bugstack.ai.api.dto.InvitationResponseDTO;
 import cn.bugstack.ai.api.dto.MembershipResponseDTO;
 import cn.bugstack.ai.api.dto.MerchantResponseDTO;
@@ -17,6 +18,7 @@ import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.cases.trading.model.CartItemReadModel;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.fulfillment.model.valobj.PickupVO;
 import cn.bugstack.ai.domain.identity.model.valobj.InvitationVO;
 import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
@@ -84,6 +86,7 @@ public final class ApiViews {
             .description(p.getDescription())
             .categoryCode(p.getCategoryCode())
             .imageUrl(p.getImageUrl())
+            .images(model.images().stream().map(ApiViews::image).toList())
             .status(p.getStatus())
             .version(p.getVersion())
             .skus(
@@ -103,6 +106,10 @@ public final class ApiViews {
                     .toList()
             )
             .build();
+    }
+
+    private static ImageResponseDTO image(ProductImageVO image) {
+        return ImageResponseDTO.builder().imageId(image.imageId()).provider(image.provider()).url(image.url()).sortOrder(image.sortOrder()).build();
     }
 
     public static StockResponseDTO stock(StockVO s) {

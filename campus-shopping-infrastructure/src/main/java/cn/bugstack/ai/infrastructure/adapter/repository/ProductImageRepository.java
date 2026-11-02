@@ -1,14 +1,21 @@
 package cn.bugstack.ai.infrastructure.adapter.repository;
 
 import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
+import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
+import cn.bugstack.ai.infrastructure.dao.po.ProductImagePO;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
+import jakarta.annotation.Resource;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -21,6 +28,9 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public class ProductImageRepository implements IProductImageRepository {
+
+    @Resource
+    private ICatalogDao dao;
 
     @Value("${campus.uploads}")
     private String uploadDir;
@@ -56,5 +66,41 @@ public class ProductImageRepository implements IProductImageRepository {
         } catch (IOException e) {
             throw new IllegalStateException("商品图片存储失败", e);
         }
+    }
+
+    @Override
+    public List<ProductImageVO> findAll(String productId) {
+        return dao.productImages(productId).stream().map(this::vo).toList();
+    }
+
+    @Override
+    public Map<String, List<ProductImageVO>> findAll(List<String> productIds) {
+        return productIds
+            .stream()
+            .distinct()
+            .collect(Collectors.toMap(id -> id, this::findAll));
+    }
+
+    @Override
+    public void replace(String productId, List<String> urls) {
+        dao.deleteProductImages(productId);
+        for (int i = 0; i < urls.size(); i++) {
+            String url = urls.get(i);
+            String key = url.substring("/media/".length());
+            dao.insertProductImage(
+                ProductImagePO.builder()
+                    .imageId(UUID.randomUUID().toString())
+                    .productId(productId)
+                    .provider("LOCAL")
+                    .objectKey(key)
+                    .url(url)
+                    .sortOrder(i)
+                    .build()
+            );
+        }
+    }
+
+    private ProductImageVO vo(ProductImagePO p) {
+        return new ProductImageVO(p.getImageId(), p.getProvider(), p.getObjectKey(), p.getUrl(), p.getSortOrder());
     }
 }

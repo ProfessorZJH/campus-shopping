@@ -14,7 +14,16 @@ public interface ICatalogService {
     ProductAggregate addSku(String merchant, String product, String spec, long price);
     void changeSkuStatus(String merchant, String product, String sku, boolean active, long expectedVersion);
     void changePrice(String merchant, String product, String sku, long price, long expectedVersion);
-    void edit(String merchant, String product, String title, String desc, String category, String image, long expectedVersion);
+    void edit(
+        String merchant,
+        String product,
+        String title,
+        String desc,
+        String category,
+        String image,
+        java.util.List<String> imageUrls,
+        long expectedVersion
+    );
     void publish(String merchant, String product, boolean onShelf);
     void forceUnpublish(String product);
     List<ProductAggregate> search(String merchant, String query, String category, boolean publicOnly, int page, int size);

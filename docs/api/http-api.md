@@ -195,7 +195,7 @@
 
 ### `ImageResponseDTO`
 
-`url`
+`url`、`imageId`、`provider`、`sortOrder`
 
 ### `InvitationRequestDTO`
 
@@ -263,11 +263,11 @@
 
 ### `ProductRequestDTO`
 
-`title`、`description`、`categoryCode`、`imageUrl`、`skus`、`expectedVersion`
+`title`、`description`、`categoryCode`、`imageUrl`、`imageUrls`、`skus`、`expectedVersion`
 
 ### `ProductResponseDTO`
 
-`productId`、`merchantId`、`merchantName`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`status`、`version`、`skus`
+`productId`、`merchantId`、`merchantName`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`images`、`status`、`version`、`skus`
 
 ### `ProposalItemResponseDTO`
 
@@ -370,3 +370,5 @@ python scripts/verify-api-contract.py
 
 前端当前请求层是 `frontend/src/services/api.js`，旧版 `static/assets/app.js` 仅供 legacy 参考。
 完整真实浏览器与后端联调命令见 `frontend/tests/live_ui.py` 和 `scripts/smoke-full.py`。
+
+商品图片扩展：ProductRequestDTO 新增 imageUrls（最多 8 个本系统 /media/ 地址，存在时优先于旧 imageUrl，第一项为主图；省略时兼容旧单图字段）。ProductResponseDTO 新增有序 images，包含 imageId、provider、url、sortOrder；列表仍可只使用 imageUrl。
