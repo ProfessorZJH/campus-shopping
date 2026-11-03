@@ -7,6 +7,7 @@ import uuid
 from app.engine import FOLLOWUP
 from app.config import Settings
 from app.retrieval import KnowledgeStore
+from app.sqlite_migration import migrate
 from app.sku_constraints import spec_constraints
 from evaluation.dataset import load
 from evaluation.metrics import evidence_metrics
@@ -117,6 +118,11 @@ def test_indexed_citations_keep_document_version(tmp_path):
         store.close()
 
 
+def test_chunks_strip_unicode_space_and_preserve_emoji():
+    pieces = __import__('app.retrieval', fromlist=['chunks']).chunks('\u3000\u00a0😀 退款规则\u00a0\u3000')
+    assert pieces == ['😀 退款规则']
+
+
 def test_legacy_sqlite_rows_are_not_claimed_as_version_one(tmp_path):
     path = tmp_path / 'legacy.db'
     db = sqlite3.connect(path)
@@ -126,6 +132,7 @@ def test_legacy_sqlite_rows_are_not_claimed_as_version_one(tmp_path):
     db.execute('INSERT INTO docs VALUES(?,?,?,?,?)', ('legacy', hashlib.sha256(('标题\0' + body).encode()).hexdigest(), 'local-char-ngram-v1', 0, 1))
     db.execute('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)', ('chunk', 'legacy', '标题', body, 0, json.dumps([1.0]), 'local-char-ngram-v1'))
     db.commit(); db.close()
+    migrate(str(path))
     store = KnowledgeStore(Settings('test-only-service-key-123456', str(path)))
     try:
         citations, _ = store.search('旧版本', ['legacy'])

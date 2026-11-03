@@ -38,6 +38,7 @@ import java.time.Clock;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -196,7 +197,6 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         var prior = java.util.Optional.ofNullable(proposals.proposals(actor, conversation))
             .orElse(List.of())
             .stream()
-            .filter(p -> p.state() == cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalStatusEnumVO.PENDING)
             .findFirst()
             .orElse(null);
         Set<String> excludedSkuIds = new HashSet<>();
@@ -217,22 +217,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .stream()
             .filter(o -> candidateIds.contains(o.skuId()))
             .toList();
-        final var semanticRankSnapshot = semanticRanks;
-        List<String> semanticSkuIds = offers
-            .stream()
-            .sorted(
-                java.util.Comparator.<SkuOfferVO>comparingInt(o ->
-                    semanticRankSnapshot
-                        .stream()
-                        .filter(r -> r.productId().equals(o.productId()))
-                        .mapToInt(r -> r.rank())
-                        .findFirst()
-                        .orElse(Integer.MAX_VALUE)
-                ).thenComparing(SkuOfferVO::skuId)
-            )
-            .filter(o -> semanticProductIds.contains(o.productId()))
-            .map(SkuOfferVO::skuId)
-            .toList();
+        List<String> semanticSkuIds = semanticSkuOrder(offers, semanticRanks, semanticProductIds);
         AiAnswerVO answer = engine.query(
             new AiQueryEntity(
                 question,
@@ -288,9 +273,10 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             quotes.stream().map(ProposalItemVO::title).toList()
         );
         String safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
-        if (!knowledgeOnly && (!items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
+        boolean replacementRequest = question.matches(".*(?:换一个|换一款|还有别的|类似的|便宜点|便宜一些|更便宜).*");
+        if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
             safeText = items.isEmpty()
-                ? "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
+                ? (replacementRequest ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。" : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。")
                 : "可查看以下商品：" +
                   items
                       .stream()
@@ -318,6 +304,38 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             fingerprint
         );
         return new ChatResult(conversation, safe, proposal);
+    }
+
+    /** 语义候选按商品轮询，避免单个商品的多个 SKU 挤占前 12 个候选。 */
+    private List<String> semanticSkuOrder(
+        List<SkuOfferVO> offers,
+        List<cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO> ranks,
+        Set<String> semanticProductIds
+    ) {
+        Map<String, Integer> rankByProduct = ranks.stream().collect(Collectors.toMap(
+            cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::productId,
+            cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::rank,
+            Math::min
+        ));
+        Map<String, List<SkuOfferVO>> byProduct = offers.stream()
+            .filter(o -> semanticProductIds.contains(o.productId()))
+            .sorted(java.util.Comparator.comparing(SkuOfferVO::skuId))
+            .collect(Collectors.groupingBy(SkuOfferVO::productId, LinkedHashMap::new, Collectors.toList()));
+        List<String> productOrder = byProduct.keySet().stream()
+            .sorted(java.util.Comparator.comparingInt((String id) -> rankByProduct.getOrDefault(id, Integer.MAX_VALUE)).thenComparing(id -> id))
+            .toList();
+        List<String> result = new ArrayList<>();
+        for (int offset = 0; ; offset++) {
+            boolean added = false;
+            for (String productId : productOrder) {
+                List<SkuOfferVO> productOffers = byProduct.get(productId);
+                if (offset < productOffers.size()) {
+                    result.add(productOffers.get(offset).skuId());
+                    added = true;
+                }
+            }
+            if (!added) return List.copyOf(result);
+        }
     }
 
     /** 只返回当前授权知识范围中的可核实引用，内部文档始终隐藏原文。 */
@@ -379,7 +397,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     }
 
     private String chunk(String content, int ordinal) {
-        String normalized = content.replace("\u0000", "").trim();
+        String normalized = stripUnicode(content.replace("\u0000", ""));
         int startPoint = ordinal * 620;
         int pointCount = normalized.codePointCount(0, normalized.length());
         if (startPoint < 0 || startPoint >= pointCount) return "";
@@ -387,6 +405,23 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         int start = normalized.offsetByCodePoints(0, startPoint);
         int end = normalized.offsetByCodePoints(0, endPoint);
         return normalized.substring(start, end);
+    }
+
+    /** 与 Python str.strip 对齐，同时覆盖 Java isWhitespace 未包含的 NBSP。 */
+    private String stripUnicode(String value) {
+        int start = 0;
+        int end = value.length();
+        while (start < end) {
+            int codePoint = value.codePointAt(start);
+            if (!Character.isWhitespace(codePoint) && !Character.isSpaceChar(codePoint)) break;
+            start += Character.charCount(codePoint);
+        }
+        while (end > start) {
+            int codePoint = value.codePointBefore(end);
+            if (!Character.isWhitespace(codePoint) && !Character.isSpaceChar(codePoint)) break;
+            end -= Character.charCount(codePoint);
+        }
+        return value.substring(start, end);
     }
 
     private String hash(String value) {

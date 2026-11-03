@@ -115,6 +115,14 @@ class DddRulesTest {
     }
 
     @Test
+    void protocol422RetriesLegacyQueryPayload() {
+        when(gateway.query(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        when(gateway.queryLegacy(any())).thenReturn(answer(List.of(), List.of()));
+        assertDoesNotThrow(() -> port().query(query()));
+        verify(gateway).queryLegacy(any());
+    }
+
+    @Test
     void errorClassificationRetainsSafeInfoAndCausePositions() {
         var cause = new IllegalStateException("SECRET response body and key");
         var failure = new AppException("AI0001", cause);

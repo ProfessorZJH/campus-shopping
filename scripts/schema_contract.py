@@ -97,7 +97,7 @@ def validate_structure(cursor):
             raise ValueError(f"数据库索引定义不匹配：{table}.{index}")
     for (table, name), wanted in CHECK_CONTRACTS.items():
         cursor.execute(
-            "SELECT cc.CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS cc "
+            "SELECT cc.CHECK_CLAUSE,tc.ENFORCED FROM information_schema.CHECK_CONSTRAINTS cc "
             "JOIN information_schema.TABLE_CONSTRAINTS tc ON tc.CONSTRAINT_SCHEMA=cc.CONSTRAINT_SCHEMA "
             "AND tc.CONSTRAINT_NAME=cc.CONSTRAINT_NAME "
             "WHERE cc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME=%s AND cc.CONSTRAINT_NAME=%s",
@@ -106,7 +106,7 @@ def validate_structure(cursor):
         row = cursor.fetchone()
         normalize = lambda value: re.sub(r"[\s()`]", "", str(value)).lower()
         actual = normalize(row[0]) if row else ""
-        if actual != normalize(wanted):
+        if actual != normalize(wanted) or not row or str(row[1]).upper() != "YES":
             raise ValueError(f"数据库 CHECK 定义不匹配：{table}.{name}")
 
 
@@ -123,7 +123,7 @@ def validate_existing_structures(cursor):
             raise ValueError(f"数据库索引定义不匹配：{table}.{index}")
     for (table, name), wanted in CHECK_CONTRACTS.items():
         cursor.execute(
-            "SELECT cc.CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS cc "
+            "SELECT cc.CHECK_CLAUSE,tc.ENFORCED FROM information_schema.CHECK_CONSTRAINTS cc "
             "JOIN information_schema.TABLE_CONSTRAINTS tc ON tc.CONSTRAINT_SCHEMA=cc.CONSTRAINT_SCHEMA "
             "AND tc.CONSTRAINT_NAME=cc.CONSTRAINT_NAME "
             "WHERE cc.CONSTRAINT_SCHEMA=DATABASE() AND tc.TABLE_NAME=%s AND cc.CONSTRAINT_NAME=%s",
@@ -132,7 +132,7 @@ def validate_existing_structures(cursor):
         row = cursor.fetchone()
         if row:
             normalize = lambda value: re.sub(r"[\s()`]", "", str(value)).lower()
-            if normalize(row[0]) != normalize(wanted):
+            if normalize(row[0]) != normalize(wanted) or str(row[1]).upper() != "YES":
                 raise ValueError(f"数据库 CHECK 定义不匹配：{table}.{name}")
 
 

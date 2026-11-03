@@ -49,8 +49,7 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public AiAnswerVO query(AiQueryEntity query) {
-        var response = gateway.query(
-            new AiGatewayDTO.Query(
+        var request = new AiGatewayDTO.Query(
                 query.question(),
                 query.allowedDocumentIds(),
                 query
@@ -68,8 +67,14 @@ public class AiEnginePort implements IAiEnginePort {
                 query.retrievalQuery(),
                 query.semanticSkuIds(),
                 query.externalDocumentIds()
-            )
-        );
+            );
+        AiGatewayDTO.Answer response;
+        try {
+            response = gateway.query(request);
+        } catch (AiGatewayService.RemoteStatusException rejected) {
+            if (rejected.status() != 422) throw rejected;
+            response = gateway.queryLegacy(request);
+        }
         require(
             response != null &&
                 text(response.answer(), 10000) &&
@@ -194,7 +199,13 @@ public class AiEnginePort implements IAiEnginePort {
     @Override
     public void index(String id, String title, String content, int documentVersion, boolean externalAllowed) {
         require(documentVersion >= 1, ResponseCode.ILLEGAL_PARAMETER);
-        gateway.index(new AiGatewayDTO.Index(id, title, content, documentVersion, externalAllowed));
+        var request = new AiGatewayDTO.Index(id, title, content, documentVersion, externalAllowed);
+        try {
+            gateway.index(request);
+        } catch (AiGatewayService.RemoteStatusException rejected) {
+            if (rejected.status() != 422) throw rejected;
+            gateway.indexLegacy(request);
+        }
     }
 
     public String extract(String filename, String type, byte[] bytes) {

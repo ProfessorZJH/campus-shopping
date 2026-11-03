@@ -59,6 +59,20 @@ public class AiGatewayService {
         return post("/v1/query", request, AiGatewayDTO.Answer.class);
     }
 
+    /** 允许 Java 先升级时与仍在运行的旧 Python 实例短暂共存；仅 422 协议拒绝触发降级载荷。 */
+    public AiGatewayDTO.Answer queryLegacy(AiGatewayDTO.Query request) {
+        var offers = request.offers().stream().map(o -> java.util.Map.of(
+            "skuId", o.skuId(), "merchantId", o.merchantId(), "title", o.title(),
+            "specKey", o.specKey(), "description", o.description(), "priceCent", o.priceCent(), "available", o.available()
+        )).toList();
+        var payload = java.util.Map.of(
+            "question", request.question(), "allowedDocumentIds", request.allowedDocumentIds(),
+            "offers", offers, "history", request.history(), "retrievalQuery", request.retrievalQuery(),
+            "semanticSkuIds", request.semanticSkuIds()
+        );
+        return post("/v1/query", payload, AiGatewayDTO.Answer.class);
+    }
+
     public AiGatewayDTO.ProductSearchResult semanticProducts(AiGatewayDTO.ProductSearch request) {
         return post("/v1/products/search", request, AiGatewayDTO.ProductSearchResult.class);
     }
@@ -99,6 +113,18 @@ public class AiGatewayService {
         ) throw new AppException(ResponseCode.AI_UNAVAILABLE);
     }
 
+    public void indexLegacy(AiGatewayDTO.Index request) {
+        var payload = java.util.Map.of(
+            "documentId", request.documentId(), "title", request.title(), "content", request.content(),
+            "externalAllowed", request.externalAllowed()
+        );
+        var result = post("/v1/index", payload, AiGatewayDTO.KnowledgeIndexResult.class);
+        if (
+            result == null || result.chunks() == null || result.chunks() < 1 || result.chunks() > 162 ||
+            !java.util.Set.of("REMOTE_EMBEDDING", "LOCAL_CHAR_NGRAM_DEMO").contains(java.util.Objects.toString(result.mode(), ""))
+        ) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+    }
+
     public String extract(AiGatewayDTO.Extract request) {
         String text = post("/v1/extract", request, AiGatewayDTO.Extracted.class).text();
         if (text == null || text.isBlank() || text.length() > 100000) throw new AppException(ResponseCode.AI_UNAVAILABLE);
@@ -131,6 +157,7 @@ public class AiGatewayService {
                 if (path.equals("/v1/extract") && java.util.Set.of(400, 413, 415, 422).contains(response.statusCode())) throw new AppException(
                     ResponseCode.UPLOAD_INVALID
                 );
+                if (response.statusCode() == 422 && (path.equals("/v1/query") || path.equals("/v1/index"))) throw new RemoteStatusException(422);
                 throw new AppException(ResponseCode.AI_UNAVAILABLE);
             }
             T result = mapper.readValue(response.body(), type);
@@ -159,5 +186,13 @@ public class AiGatewayService {
 
     private AppException unavailable(Exception cause) {
         return new AppException(ResponseCode.AI_UNAVAILABLE.getCode(), ResponseCode.AI_UNAVAILABLE.getInfo(), cause);
+    }
+
+    public static final class RemoteStatusException extends RuntimeException {
+        private final int status;
+
+        public RemoteStatusException(int status) { this.status = status; }
+
+        public int status() { return status; }
     }
 }

@@ -3,12 +3,14 @@ from __future__ import annotations
 import hashlib,json,math,re,sqlite3,threading,time,uuid
 from collections import Counter
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 import httpx
 from .config import Settings
 from .http_limits import bounded_json
 from .egress import minimized, audit
 from .observability import observed, failure
+from .sqlite_migration import create_schema, DOC_COLUMNS, CHUNK_COLUMNS
 
 def tokens(text: str) -> list[str]:
     text=text.lower()
@@ -98,15 +100,19 @@ class Provider:
 class KnowledgeStore:
     def __init__(self,settings: Settings):
         self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock()
+        db_path = Path(settings.db_path)
+        fresh = not db_path.exists()
         self.db=sqlite3.connect(settings.db_path,check_same_thread=False,isolation_level=None)
         self.db.row_factory=sqlite3.Row
         self.db.execute('PRAGMA journal_mode=WAL')
-        self.db.execute('CREATE TABLE IF NOT EXISTS docs(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,model TEXT NOT NULL,updated REAL NOT NULL,version INTEGER NOT NULL,version_known INTEGER NOT NULL DEFAULT 1)')
-        columns={row['name'] for row in self.db.execute('PRAGMA table_info(docs)')}
-        if 'version' not in columns: self.db.execute('ALTER TABLE docs ADD COLUMN version INTEGER')
-        if 'version_known' not in columns: self.db.execute('ALTER TABLE docs ADD COLUMN version_known INTEGER NOT NULL DEFAULT 0')
-        self.db.execute('CREATE TABLE IF NOT EXISTS chunks(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,ordinal INTEGER NOT NULL,embedding TEXT NOT NULL,model TEXT NOT NULL)')
-        self.db.execute('CREATE INDEX IF NOT EXISTS chunks_doc ON chunks(doc_id)')
+        if fresh:
+            create_schema(self.db)
+        else:
+            tables={row['name'] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            docs={row['name'] for row in self.db.execute('PRAGMA table_info(docs)')} if 'docs' in tables else set()
+            chunks={row['name'] for row in self.db.execute('PRAGMA table_info(chunks)')} if 'chunks' in tables else set()
+            if DOC_COLUMNS - docs or CHUNK_COLUMNS - chunks:
+                raise RuntimeError('SQLite 索引结构需要先执行显式迁移')
     def close(self):self.db.close()
     @observed('qdrant')
     def _qdrant(self,method: str,path: str,body: dict|None=None):
