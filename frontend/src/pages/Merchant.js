@@ -181,7 +181,11 @@ export default {
             description: p.description || '',
             categoryCode: p.categoryCode,
             imageUrl: p.imageUrl || '',
-            imageUrls: (p.images || []).map((i) => i.url),
+            imageUrls: p.images?.length
+              ? p.images.map((i) => i.url)
+              : p.imageUrl
+                ? [p.imageUrl]
+                : [],
           };
         }
       },

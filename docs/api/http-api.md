@@ -72,7 +72,7 @@
 | `GET` | `/api/v1/merchants/public/{merchantId}` | merchantId:String | `MerchantResponseDTO` | anonymous | `MerchantApplicationController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/aftersales` | merchantId:String、state?:String、page?:int、size?:int | `List<AfterSaleResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/aftersales/page` | merchantId:String、state?:String、page?:int、size?:int | `PageResponseDTO<AfterSaleResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
-| `POST` | `/api/v1/merchants/{merchantId}/images` | merchantId:String、body:FileUploadRequestDTO | `ImageResponseDTO` | authenticated + domain ACL | `CatalogController.java` |
+| `POST` | `/api/v1/merchants/{merchantId}/images` | merchantId:String、body:FileUploadRequestDTO | `ProductImageUploadDTO` | authenticated + domain ACL | `CatalogController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/invitations` | merchantId:String、body:InvitationRequestDTO | `InvitationResponseDTO` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/members` | merchantId:String | `List<MembershipResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
 | `DELETE` | `/api/v1/merchants/{merchantId}/members/{userId}` | merchantId:String、userId:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
@@ -261,6 +261,10 @@
 
 `priceCent`、`expectedVersion`
 
+### `ProductImageUploadDTO`
+
+`url`
+
 ### `ProductRequestDTO`
 
 `title`、`description`、`categoryCode`、`imageUrl`、`imageUrls`、`skus`、`expectedVersion`
@@ -370,5 +374,3 @@ python scripts/verify-api-contract.py
 
 前端当前请求层是 `frontend/src/services/api.js`，旧版 `static/assets/app.js` 仅供 legacy 参考。
 完整真实浏览器与后端联调命令见 `frontend/tests/live_ui.py` 和 `scripts/smoke-full.py`。
-
-商品图片扩展：ProductRequestDTO 新增 imageUrls（最多 8 个本系统 /media/ 地址，存在时优先于旧 imageUrl，第一项为主图；省略时兼容旧单图字段）。ProductResponseDTO 新增有序 images，包含 imageId、provider、url、sortOrder；列表仍可只使用 imageUrl。

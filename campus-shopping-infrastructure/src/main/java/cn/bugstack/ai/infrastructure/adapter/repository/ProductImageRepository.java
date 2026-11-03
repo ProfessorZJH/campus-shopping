@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -75,10 +76,15 @@ public class ProductImageRepository implements IProductImageRepository {
 
     @Override
     public Map<String, List<ProductImageVO>> findAll(List<String> productIds) {
-        return productIds
+        List<String> ids = productIds == null ? List.of() : productIds.stream().distinct().toList();
+        if (ids.isEmpty()) return Map.of();
+        Map<String, List<ProductImageVO>> grouped = dao
+            .productImagesByProducts(ids)
             .stream()
-            .distinct()
-            .collect(Collectors.toMap(id -> id, this::findAll));
+            .collect(Collectors.groupingBy(ProductImagePO::getProductId, LinkedHashMap::new, Collectors.mapping(this::vo, Collectors.toList())));
+        Map<String, List<ProductImageVO>> result = new LinkedHashMap<>();
+        ids.forEach(id -> result.put(id, grouped.getOrDefault(id, List.of())));
+        return result;
     }
 
     @Override

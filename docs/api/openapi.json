@@ -9305,7 +9305,7 @@
                           "type": "string"
                         },
                         "data": {
-                          "$ref": "#/components/schemas/ImageResponseDTO"
+                          "$ref": "#/components/schemas/ProductImageUploadDTO"
                         }
                       }
                     },
@@ -18747,6 +18747,15 @@
         ],
         "x-constraint-source": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/model/aggregate/ProductAggregate.java",
         "additionalProperties": true
+      },
+      "ProductImageUploadDTO": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ProductImageUploadDTO.java（字段类型来自源码；必填以领域规则为准）"
       },
       "ProductRequestDTO": {
         "type": "object",

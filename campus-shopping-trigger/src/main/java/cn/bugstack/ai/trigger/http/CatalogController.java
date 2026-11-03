@@ -8,9 +8,9 @@ import cn.bugstack.ai.api.ICatalogApi;
 import cn.bugstack.ai.api.dto.CategoryRequestDTO;
 import cn.bugstack.ai.api.dto.CategoryResponseDTO;
 import cn.bugstack.ai.api.dto.FileUploadRequestDTO;
-import cn.bugstack.ai.api.dto.ImageResponseDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
 import cn.bugstack.ai.api.dto.PriceRequestDTO;
+import cn.bugstack.ai.api.dto.ProductImageUploadDTO;
 import cn.bugstack.ai.api.dto.ProductRequestDTO;
 import cn.bugstack.ai.api.dto.ProductResponseDTO;
 import cn.bugstack.ai.api.dto.PublishRequestDTO;
@@ -265,9 +265,13 @@ public class CatalogController implements ICatalogApi {
     /** 验证图片像素并重编码为 PNG，拒绝 SVG。 */
     @Override
     @PostMapping("/merchants/{merchantId}/images")
-    public Response<ImageResponseDTO> image(@PathVariable("merchantId") String merchantId, @RequestBody FileUploadRequestDTO request, Principal principal) {
+    public Response<ProductImageUploadDTO> image(
+        @PathVariable("merchantId") String merchantId,
+        @RequestBody FileUploadRequestDTO request,
+        Principal principal
+    ) {
         return execute(() -> {
-            return ImageResponseDTO.builder()
+            return ProductImageUploadDTO.builder()
                 .url(catalogCase.uploadProductImage(actor(principal), merchantId, file(required(request).getBase64())))
                 .build();
         });

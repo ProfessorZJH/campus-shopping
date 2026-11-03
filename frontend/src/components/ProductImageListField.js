@@ -25,6 +25,8 @@ export default {
     function remove(i) {
       const a = values.value.slice();
       a.splice(i, 1);
+      error.value = '';
+      emit('invalid', false);
       emit('update:modelValue', a);
     }
     async function choose(e) {
@@ -59,6 +61,7 @@ export default {
           urls.push(result.url);
         }
         emit('update:modelValue', values.value.concat(urls));
+        emit('invalid', false);
       } catch (e) {
         error.value = e.message || '图片上传失败';
         emit('invalid', true);

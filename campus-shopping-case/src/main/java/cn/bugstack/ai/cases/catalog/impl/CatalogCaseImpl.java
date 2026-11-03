@@ -51,7 +51,11 @@ public class CatalogCaseImpl implements ICatalogCase {
         ProductAggregate product = catalog.create(merchant, owner.storeId(), command);
         for (var sku : product.getSkus()) inventory.initialize(merchant, owner.storeId(), sku.id());
         // 新建库存已知为零；复用事务内取得的商户，提交后不再为响应额外查库。
-        return ProductReadModel.from(product, owner.name(), Map.of(), images.findAll(product.getId()));
+        Map<String, StockVO> stocks = product
+            .getSkus()
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(sku -> sku.id(), sku -> new StockVO(merchant, owner.storeId(), sku.id(), 0, 0, 0)));
+        return ProductReadModel.from(product, owner.name(), stocks, images.findAll(product.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
