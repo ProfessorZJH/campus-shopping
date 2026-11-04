@@ -65,8 +65,9 @@ CREATE TABLE IF NOT EXISTS cat_product_image (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_product_image_upload (
- object_key VARCHAR(512) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, product_id VARCHAR(36),
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id)
+ object_key VARCHAR(512) NOT NULL, merchant_id VARCHAR(36) NOT NULL, product_id VARCHAR(36),
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), PRIMARY KEY (object_key,merchant_id),
+ KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id)
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_sku (

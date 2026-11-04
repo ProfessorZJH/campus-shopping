@@ -118,7 +118,8 @@ public class ProductImageRepository implements IProductImageRepository {
         if (checked.size() > 8 || checked.stream().anyMatch(url -> !isLocalUrl(url)) || checked.stream().distinct().count() != checked.size()) {
             throw new AppException(ResponseCode.ILLEGAL_PARAMETER);
         }
-        for (String url : checked) {
+        // 认领按对象键稳定排序，避免两个并发编辑以不同相册顺序互相等待。
+        for (String url : checked.stream().sorted().toList()) {
             String key = objectKey(url);
             if (!Files.isRegularFile(objectPath(url))) {
                 throw new AppException(ResponseCode.NOT_FOUND);
