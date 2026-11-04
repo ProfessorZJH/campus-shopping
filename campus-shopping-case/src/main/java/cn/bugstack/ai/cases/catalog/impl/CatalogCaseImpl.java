@@ -27,12 +27,20 @@ public class CatalogCaseImpl implements ICatalogCase {
     private final IInventoryService inventory;
     private final IMerchantService merchants;
     private final IAccessService access;
+    private final cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository images;
 
-    public CatalogCaseImpl(ICatalogService catalog, IInventoryService inventory, IMerchantService merchants, IAccessService access) {
+    public CatalogCaseImpl(
+        ICatalogService catalog,
+        IInventoryService inventory,
+        IMerchantService merchants,
+        IAccessService access,
+        cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository images
+    ) {
         this.catalog = catalog;
         this.inventory = inventory;
         this.merchants = merchants;
         this.access = access;
+        this.images = images;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -43,7 +51,11 @@ public class CatalogCaseImpl implements ICatalogCase {
         ProductAggregate product = catalog.create(merchant, owner.storeId(), command);
         for (var sku : product.getSkus()) inventory.initialize(merchant, owner.storeId(), sku.id());
         // 新建库存已知为零；复用事务内取得的商户，提交后不再为响应额外查库。
-        return ProductReadModel.from(product, owner.name(), Map.of());
+        Map<String, StockVO> stocks = product
+            .getSkus()
+            .stream()
+            .collect(java.util.stream.Collectors.toMap(sku -> sku.id(), sku -> new StockVO(merchant, owner.storeId(), sku.id(), 0, 0, 0)));
+        return ProductReadModel.from(product, owner.name(), stocks, images.findAll(product.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -54,7 +66,7 @@ public class CatalogCaseImpl implements ICatalogCase {
         ProductAggregate product = catalog.addSku(merchant, productId, spec, price);
         for (var sku : product.getSkus()) inventory.initialize(merchant, owner.storeId(), sku.id());
         Map<String, StockVO> stocks = inventory
-            .stocks(
+            .stocksForProductWrite(
                 product
                     .getSkus()
                     .stream()
@@ -63,8 +75,8 @@ public class CatalogCaseImpl implements ICatalogCase {
             )
             .stream()
             .collect(java.util.stream.Collectors.toMap(StockVO::skuId, stock -> stock));
-        // 旧规格的库存也属于写操作响应；读取失败会使整个新增规格事务回滚。
-        return ProductReadModel.from(product, owner.name(), stocks);
+        // 商品行已锁定；图片需当前读，不能将旧事务快照混入写操作响应。
+        return ProductReadModel.from(product, owner.name(), stocks, images.findAllForUpdate(product.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -85,10 +97,20 @@ public class CatalogCaseImpl implements ICatalogCase {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void editProduct(String actor, String merchant, String product, String title, String desc, String category, String image, long version) {
+    public void editProduct(
+        String actor,
+        String merchant,
+        String product,
+        String title,
+        String desc,
+        String category,
+        String image,
+        java.util.List<String> imageUrls,
+        long version
+    ) {
         access.requirePermission(actor, merchant, "product.write");
         merchants.requireActiveForNewTrade(merchant);
-        catalog.edit(merchant, product, title, desc, category, image, version);
+        catalog.edit(merchant, product, title, desc, category, image, imageUrls, version);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -121,7 +143,7 @@ public class CatalogCaseImpl implements ICatalogCase {
     public String uploadProductImage(String actor, String merchant, byte[] bytes) {
         access.requirePermission(actor, merchant, "product.write");
         require("ACTIVE".equals(merchants.find(merchant).status()), ResponseCode.MERCHANT_SUSPENDED);
-        return catalog.storeImage(bytes);
+        return catalog.storeImage(merchant, bytes);
     }
 
     @Transactional(rollbackFor = Exception.class)

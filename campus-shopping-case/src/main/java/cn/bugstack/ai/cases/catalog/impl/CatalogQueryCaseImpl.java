@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,12 +35,21 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     private final IInventoryService inventoryService;
     private final IMerchantService merchantService;
     private final IAccessService access;
+    private final cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository images;
 
-    public CatalogQueryCaseImpl(ICatalogService catalogService, IInventoryService inventoryService, IMerchantService merchantService, IAccessService access) {
+    @Autowired
+    public CatalogQueryCaseImpl(
+        ICatalogService catalogService,
+        IInventoryService inventoryService,
+        IMerchantService merchantService,
+        IAccessService access,
+        cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository images
+    ) {
         this.catalogService = catalogService;
         this.inventoryService = inventoryService;
         this.merchantService = merchantService;
         this.access = access;
+        this.images = java.util.Objects.requireNonNull(images);
     }
 
     @Override
@@ -147,12 +157,15 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
             .findAll(products.stream().map(ProductAggregate::getMerchantId).distinct().toList())
             .stream()
             .collect(Collectors.toMap(MerchantVO::id, MerchantVO::name));
+        Map<String, java.util.List<cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO>> imageMap = images.findAll(
+            products.stream().map(ProductAggregate::getId).toList()
+        );
         return products
             .stream()
             .map(product -> {
                 String name = names.get(product.getMerchantId());
                 if (name == null) throw new IllegalStateException("商品所属商户丢失");
-                return ProductReadModel.from(product, name, stocks);
+                return ProductReadModel.from(product, name, stocks, imageMap.getOrDefault(product.getId(), java.util.List.of()));
             })
             .toList();
     }

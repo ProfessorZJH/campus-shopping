@@ -19,6 +19,7 @@ public class ProductResponseDTO {
     private String description;
     private String categoryCode;
     private String imageUrl;
+    private List<ImageResponseDTO> images;
     private String status;
     private Long version;
     private List<SkuResponseDTO> skus;

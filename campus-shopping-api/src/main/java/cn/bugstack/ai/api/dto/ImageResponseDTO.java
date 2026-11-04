@@ -12,4 +12,7 @@ import lombok.*;
 public class ImageResponseDTO {
 
     private String url;
+    private String imageId;
+    private String provider;
+    private Integer sortOrder;
 }

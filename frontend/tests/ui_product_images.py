@@ -2,33 +2,72 @@
 """图片上传、预览、创建/修改商品及统一缺图：真实 Chromium + API 契约替身。
 不代表已经执行 Java/MySQL 联调。
 """
-import io
 import re
-from PIL import Image
+import shutil
+import struct
+import zlib
 from playwright.sync_api import sync_playwright,expect
 from ui_three_pages import render,BackendContractDouble,ERRORS
 
 def png_bytes():
-    out=io.BytesIO();Image.new('RGB',(30,25),'#4acab8').save(out,format='PNG');return out.getvalue()
+    def chunk(kind, payload):
+        return (struct.pack('>I', len(payload)) + kind + payload
+                + struct.pack('>I', zlib.crc32(kind + payload) & 0xffffffff))
+    header = struct.pack('>IIBBBBB', 30, 25, 8, 2, 0, 0, 0)
+    pixels = (b'\x00' + b'\x4a\xca\xb8' * 30) * 25
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header)
+            + chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b''))
 
 def set_file(page,buffer,filename='cover.png',mime='image/png'):
     page.locator('.merchant-modal input[type=file]').set_input_files({'name':filename,'mimeType':mime,'buffer':buffer})
 
 checks=[]
 with sync_playwright() as x:
-    browser=x.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+    browser=x.chromium.launch(headless=True,executable_path=shutil.which('chromium'),args=['--no-sandbox'])
     # demo preview permits selection but cannot upload/save to backend
     demo=render(browser,'/merchant/products',True,(1448,1050))
+    demo.evaluate("() => { window.__imageRequests=0; window.fetch=()=>{window.__imageRequests++; return Promise.reject(new Error('unexpected request'));}; }")
     demo.get_by_role('button',name='新增商品').click()
     set_file(demo,png_bytes())
     expect(demo.locator('.merchant-modal .image-field-notice')).to_contain_text('仅本地预览')
+    expect(demo.locator('.merchant-modal .product-image-tile img')).to_have_attribute('src',re.compile(r'^blob:'))
+    demo.locator('.merchant-modal input[type=file]').set_input_files([
+        {'name':f'{i}.png','mimeType':'image/png','buffer':png_bytes()} for i in range(7)
+    ])
+    expect(demo.locator('.merchant-modal .product-image-tile')).to_have_count(8)
+    expect(demo.locator('.merchant-modal input[type=file]')).to_be_disabled()
     expect(demo.get_by_role('button',name='保存商品')).to_be_disabled()
-    checks.append('design preview never uploads or saves')
+    assert demo.evaluate('window.__imageRequests')==0
+    checks.append('design preview uses local images, enforces eight-image limit and never uploads or saves')
     demo.locator('.merchant-modal-header').get_by_role('button',name='关闭').click()
     demo.close()
 
+    empty_fixture=BackendContractDouble();empty_fixture.logged=True
+    empty_page=render(browser,'/merchant/products',False,(1448,1050),empty_fixture)
+    empty_page.get_by_role('button',name='新增商品').click()
+    empty_page.locator('.merchant-modal input.admin-input').nth(0).fill('无图商品')
+    empty_page.locator('.merchant-modal input.admin-input').nth(1).fill('标准款')
+    empty_page.locator('.merchant-modal input.admin-input').nth(2).fill('3.00')
+    set_file(empty_page,b'<svg/>','unsafe.svg','image/svg+xml')
+    expect(empty_page.get_by_role('button',name='保存商品')).to_be_disabled()
+    empty_page.get_by_role('button',name='放弃本次图片选择').click()
+    expect(empty_page.locator('.merchant-modal input.admin-input').nth(0)).to_have_value('无图商品')
+    expect(empty_page.get_by_role('button',name='保存商品')).to_be_enabled()
+    empty_page.get_by_role('button',name='保存商品').click()
+    expect(empty_page.locator('.product-table')).to_contain_text('无图商品')
+    empty_created=next(p for p in empty_fixture.products if p['productId']=='p-created')
+    assert empty_created['imageUrl']=='' and empty_created['images']==[] and not empty_fixture.uploaded_images
+    assert not empty_fixture.unhandled
+    checks.append('invalid image can be explicitly abandoned without losing the product form')
+    empty_page.close()
+
     fixture=BackendContractDouble();fixture.logged=True
     page=render(browser,'/merchant/products',False,(1448,1050),fixture)
+    page.evaluate('''() => {const send=window.fetch;window.__productSaves=0;window.fetch=async (url,options={})=>{
+        const reply=await send(url,options);
+        if(options.method==='PUT'&&String(url).endsWith('/products/p-created'))window.__productSaves++;
+        return reply;
+    };}''')
     page.get_by_role('button',name='新增商品').click()
     # client rejects unsupported format and file >2MB without uploading
     set_file(page,b'<svg/>','unsafe.svg','image/svg+xml')
@@ -55,24 +94,39 @@ with sync_playwright() as x:
     page.get_by_role('button',name='保存商品').click()
     expect(page.locator('.product-table')).to_contain_text('原创笔袋')
     created=next(p for p in fixture.products if p['productId']=='p-created')
-    assert created['imageUrl']=='/media/550e8400-e29b-41d4-a716-446655440000.png',created
-    checks.append('product create persists uploaded imageUrl')
+    first=created['imageUrl'];assert first=='/media/550e8400-e29b-41d4-a716-446655440000.png',created
+    assert [image['url'] for image in created['images']]==[first]
+    checks.append('product create persists uploaded imageUrl and image list')
     # select created product and update hero image + title without losing original image reference
     page.locator('.product-table tbody tr').filter(has_text='原创笔袋').click()
     page.locator('.inspector-tabs').get_by_role('button',name='基本信息').click()
-    expect(page.locator('.product-image-field')).to_have_count(1)
+    expect(page.locator('.product-image-list-field')).to_have_count(1)
     page.locator('.inspector-body input[type=file]').set_input_files({'name':'edit.png','mimeType':'image/png','buffer':data})
     expect(page.locator('.inspector-body .image-field-notice')).to_contain_text('上传成功')
     page.locator('.inspector-body input.admin-input').first.fill('原创笔袋（新）')
     page.get_by_role('button',name='保存修改').click()
     expect(page.locator('.inspector-product')).to_contain_text('原创笔袋（新）')
-    assert fixture.products[-1]['imageUrl']==created['imageUrl'] and fixture.products[-1]['version']==1
-    checks.append('product edit stores imageUrl and uses expectedVersion')
+    second='/media/550e8400-e29b-41d4-a716-446655440001.png'
+    assert fixture.products[-1]['imageUrl']==first and fixture.products[-1]['version']==1
+    assert [image['url'] for image in fixture.products[-1]['images']]==[first,second]
+    checks.append('product edit appends the second image and uses expectedVersion')
+    page.locator('.inspector-body').get_by_role('button',name='右移商品图片1').click()
+    page.get_by_role('button',name='保存修改').click()
+    page.wait_for_function('window.__productSaves>=2')
+    expect(page.get_by_role('button',name='保存修改')).to_be_enabled()
+    assert fixture.products[-1]['imageUrl']==second
+    assert [image['url'] for image in fixture.products[-1]['images']]==[second,first]
+    checks.append('reordering images updates the saved primary image')
     # Remove product image and persist empty URL
     page.locator('.inspector-tabs').get_by_role('button',name='基本信息').click()
-    page.locator('.inspector-body').get_by_role('button',name='移除').click()
+    page.locator('.inspector-body').get_by_role('button',name='移除商品图片1').click()
+    page.locator('.inspector-body').get_by_role('button',name='移除商品图片1').click()
+    expect(page.locator('.inspector-body .product-image-tile')).to_have_count(0)
     page.get_by_role('button',name='保存修改').click()
-    assert fixture.products[-1]['imageUrl']==''
+    page.wait_for_function('window.__productSaves>=3')
+    expect(page.get_by_role('button',name='保存修改')).to_be_enabled()
+    expect(page.locator('.inspector-product img')).to_have_attribute('src','./images/product-placeholder.svg')
+    assert fixture.products[-1]['imageUrl']=='' and fixture.products[-1]['images']==[]
     checks.append('remove image persists empty imageUrl')
     page.close()
 
@@ -89,16 +143,21 @@ with sync_playwright() as x:
     checks.append('AI recommendation uses same product placeholder')
     page.close()
     # 验证同源 /media URL 实际能被 img 渲染，损坏链接转到本地占位。
-    import io as _io
     from pathlib import Path
-    photo=render(browser,'/',True,(430,932))
+    fixture.products[0]['imageUrl']=''
+    photo=render(browser,'/',False,(430,932),fixture)
     photo.route('**/media/**',lambda route: route.fulfill(status=200,body=data,content_type='image/png') if route.request.url.endswith('550e8400-e29b-41d4-a716-446655440000.png') else route.fulfill(status=404,body=''))
     placeholder=Path(__file__).resolve().parents[1]/'public/images/product-placeholder.svg'
     photo.route('**/images/product-placeholder.svg',lambda route: route.fulfill(status=200,body=placeholder.read_bytes(),content_type='image/svg+xml'))
-    photo.evaluate('''() => {const base=document.createElement('base');base.href='https://assets.fake/';document.head.prepend(base);M_services_store_js.store.products[0].imageUrl='/media/550e8400-e29b-41d4-a716-446655440000.png';}''')
+    photo.evaluate("() => {const base=document.createElement('base');base.href='https://assets.fake/';document.head.prepend(base);}")
+    fixture.products[0]['imageUrl']=first
+    photo.get_by_role('textbox',name='搜索校园商品').fill('书写顺滑中性笔')
+    photo.get_by_role('textbox',name='搜索校园商品').press('Enter')
     photo.wait_for_function("document.querySelector('.home-product img').naturalWidth===30")
     checks.append('published /media image loads as actual image in browser')
-    photo.evaluate("M_services_store_js.store.products[0].imageUrl='/media/00000000-0000-0000-0000-000000000000.png'")
+    fixture.products[0]['imageUrl']='/media/00000000-0000-0000-0000-000000000000.png'
+    photo.get_by_role('textbox',name='搜索校园商品').fill('书写顺滑')
+    photo.get_by_role('textbox',name='搜索校园商品').press('Enter')
     photo.wait_for_function("document.querySelector('.home-product img').naturalWidth===320")
     expect(photo.locator('.home-product img').first).to_have_attribute('src','./images/product-placeholder.svg')
     checks.append('missing /media file falls back to placeholder')

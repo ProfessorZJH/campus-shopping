@@ -13,7 +13,7 @@ FIELDS = {
     'ConversationResponseDTO': ('id title createdAt', ''),
     'CsrfTokenResponseDTO': ('headerName token', ''),
     'CurrentUserResponseDTO': ('userId username displayName status', ''),
-    'ImageResponseDTO': ('url', ''),
+    'ImageResponseDTO': ('url imageId provider sortOrder', ''),
     'InvitationResponseDTO': ('id merchantId targetUserId status expiresAt', ''),
     'KnowledgeBaseResponseDTO': ('id name visibility', 'merchantId'),
     'KnowledgeDocumentResponseDTO': ('id rootId baseId title version status indexStatus createdAt', 'error content'),
@@ -25,7 +25,8 @@ FIELDS = {
     'PageResponseDTO': ('items page size total hasNext', ''),
     'PermissionResponseDTO': ('code label grantable', ''),
     'PickupResponseDTO': ('status', 'expiresAt'),
-    'ProductResponseDTO': ('productId merchantId merchantName storeId title description categoryCode imageUrl status version skus', ''),
+    'ProductImageUploadDTO': ('url', ''),
+    'ProductResponseDTO': ('productId merchantId merchantName storeId title description categoryCode imageUrl status version skus images', ''),
     'ProposalItemResponseDTO': ('skuId merchantId title specKey imageUrl priceCent quoteVersion quantity', ''),
     'ProposalResponseDTO': ('id status items expiresAt', ''),
     'RegisterResponseDTO': ('userId', ''),
@@ -68,7 +69,8 @@ def enum_codes(root, source):
 
 
 def merge_response_rules(schemas, root):
-    assert {n for n in schemas if n.endswith('ResponseDTO')} == set(FIELDS), '响应 DTO 约束表缺项/遗留'
+    response_names = {n for n in schemas if n.endswith('ResponseDTO')} | {'ProductImageUploadDTO'}
+    assert response_names == set(FIELDS), '响应 DTO 约束表缺项/遗留'
     for name, (non_null, nullable) in FIELDS.items():
         properties = schemas[name]['properties']
         assert set(properties) == set((non_null+' '+nullable).split()), name+' 响应字段漂移'

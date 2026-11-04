@@ -8,9 +8,9 @@ import cn.bugstack.ai.api.ICatalogApi;
 import cn.bugstack.ai.api.dto.CategoryRequestDTO;
 import cn.bugstack.ai.api.dto.CategoryResponseDTO;
 import cn.bugstack.ai.api.dto.FileUploadRequestDTO;
-import cn.bugstack.ai.api.dto.ImageResponseDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
 import cn.bugstack.ai.api.dto.PriceRequestDTO;
+import cn.bugstack.ai.api.dto.ProductImageUploadDTO;
 import cn.bugstack.ai.api.dto.ProductRequestDTO;
 import cn.bugstack.ai.api.dto.ProductResponseDTO;
 import cn.bugstack.ai.api.dto.PublishRequestDTO;
@@ -150,7 +150,14 @@ public class CatalogController implements ICatalogApi {
             var product = catalogCase.createProduct(
                 actor(principal),
                 merchantId,
-                new ProductCreateCommandEntity(request.getTitle(), request.getDescription(), request.getCategoryCode(), request.getImageUrl(), skus)
+                new ProductCreateCommandEntity(
+                    request.getTitle(),
+                    request.getDescription(),
+                    request.getCategoryCode(),
+                    request.getImageUrl(),
+                    skus,
+                    request.getImageUrls()
+                )
             );
             return ApiViews.product(product);
         });
@@ -175,6 +182,7 @@ public class CatalogController implements ICatalogApi {
                 request.getDescription(),
                 request.getCategoryCode(),
                 request.getImageUrl(),
+                request.getImageUrls(),
                 required(request.getExpectedVersion())
             );
             return null;
@@ -257,9 +265,13 @@ public class CatalogController implements ICatalogApi {
     /** 验证图片像素并重编码为 PNG，拒绝 SVG。 */
     @Override
     @PostMapping("/merchants/{merchantId}/images")
-    public Response<ImageResponseDTO> image(@PathVariable("merchantId") String merchantId, @RequestBody FileUploadRequestDTO request, Principal principal) {
+    public Response<ProductImageUploadDTO> image(
+        @PathVariable("merchantId") String merchantId,
+        @RequestBody FileUploadRequestDTO request,
+        Principal principal
+    ) {
         return execute(() -> {
-            return ImageResponseDTO.builder()
+            return ProductImageUploadDTO.builder()
                 .url(catalogCase.uploadProductImage(actor(principal), merchantId, file(required(request).getBase64())))
                 .build();
         });

@@ -104,11 +104,55 @@ def migration_checks(connection, report):
     old = re.sub(r'CREATE TABLE IF NOT EXISTS ai_knowledge_quota \(.*?;\n', '', old, flags=re.S)
     old = re.sub(r'INSERT IGNORE INTO ai_knowledge_quota[^;]*;\n', '', old)
     old = re.sub(r'CREATE TABLE IF NOT EXISTS iam_merchant_role(?:_permission)? \(.*?;\n', '', old, flags=re.S)
+    old_image, removed = re.subn(r'CREATE TABLE IF NOT EXISTS cat_product_image \(.*?;\n', '', old, count=1, flags=re.S)
+    assert removed == 1, '旧库夹具应缺少商品多图表'
+    old_image, removed = re.subn(r'CREATE TABLE IF NOT EXISTS cat_product_image_upload \(.*?;\n', '', old_image, count=1, flags=re.S)
+    assert removed == 1, '旧库夹具应缺少图片对象归属表'
     with connection.cursor() as cur:
-        for database, contents in [('campus_shopping_it', schema), ('campus_shopping_migration_it', old)]:
+        for database, contents in [('campus_shopping_it', schema), ('campus_shopping_migration_it', old),
+                                   ('campus_shopping_image_upgrade_it', old_image)]:
             cur.execute(f'CREATE DATABASE IF NOT EXISTS {database} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
             cur.execute(f'USE {database}')
             execute_script(cur, contents)
+        # 真正缺少多图表的旧库先执行完整版本迁移，再确认主图回填、重放与历史不变。
+        cur.execute(
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() "
+            "AND table_name IN ('cat_product_image','cat_product_image_upload')"
+        )
+        assert cur.fetchone()[0] == 0, '旧库夹具不得预先包含图片表'
+        first = '/media/11111111-1111-1111-1111-111111111111.png'
+        cur.execute("INSERT INTO cat_product(id,merchant_id,store_id,title,description,image_url,category_code,status,version) "
+                    "VALUES('historic-image-product','historic-merchant','historic-store','历史商品','',%s,'stationery','PUBLISHED',0)", (first,))
+        cur.execute("INSERT INTO cat_product(id,merchant_id,store_id,title,description,image_url,category_code,status,version) "
+                    "VALUES('historic-empty-product','historic-merchant','historic-store','无图商品','','','stationery','PUBLISHED',0)")
+        apply_migrations(connection)
+        cur.execute("SELECT product_id,url,object_key,sort_order FROM cat_product_image ORDER BY product_id,sort_order")
+        assert cur.fetchall() == (('historic-image-product', first, first[len('/media/'):], 0),), '历史主图回填不正确'
+        # 归属表必须由本次迁移真实创建，且历史主图有可认领的商户归属行。
+        cur.execute(
+            "SELECT COLUMN_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=DATABASE() "
+            "AND TABLE_NAME='cat_product_image_upload' AND INDEX_NAME='PRIMARY' ORDER BY SEQ_IN_INDEX"
+        )
+        assert cur.fetchall() == (('object_key',), ('merchant_id',)), '图片归属表主键应为（对象,商户）'
+        cur.execute(
+            "SELECT COUNT(*) FROM cat_product_image_upload WHERE object_key=%s AND merchant_id='historic-merchant'",
+            (first[len('/media/'):],),
+        )
+        assert cur.fetchone()[0] == 1, '历史主图应回填商户归属行'
+        cur.execute('SELECT version,checksum,installed_at FROM sys_schema_migration ORDER BY version')
+        history = cur.fetchall()
+        apply_migrations(connection)
+        cur.execute('SELECT version,checksum,installed_at FROM sys_schema_migration ORDER BY version')
+        assert cur.fetchall() == history, '重复升级不得修改迁移历史'
+        image_migrations = list((ROOT/'docs/database/migrations').glob('V*__product_images.sql'))
+        assert len(image_migrations) == 1, '商品多图迁移必须唯一'
+        for _ in range(2):
+            execute_script(cur, image_migrations[0].read_text('utf-8'))
+        cur.execute('SELECT COUNT(*) FROM cat_product_image')
+        assert cur.fetchone()[0] == 1, '重复执行迁移不得重复回填图片'
+        assert fingerprint(cur, 'campus_shopping_it') == fingerprint(cur, 'campus_shopping_image_upgrade_it'), '多图升级库应与新库结构一致'
+        report['checks'].append('old database without image table upgrades, backfills once, and preserves migration history')
+        cur.execute('USE campus_shopping_migration_it')
         # 在旧库误跑新 schema 也不能把缺失的 ALTER 标记成已完成。
         execute_script(cur, schema)
         cur.execute('SELECT COUNT(*) FROM sys_schema_migration')

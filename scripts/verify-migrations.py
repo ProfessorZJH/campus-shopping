@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""仅在 CI 专用 MySQL 实例创建两个固定 _it 库，复验旧库升级/重跑/脏数据与校验和。"""
+"""仅在 CI 专用 MySQL 实例创建三个固定 _it 库，复验旧库升级/重跑/脏数据与校验和。"""
 import argparse
 import importlib.util
 import json
@@ -24,7 +24,8 @@ def main():
     try:
         # 此入口只允许空的隔离实例；不覆盖已有 _it 库。
         with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN ('campus_shopping_it','campus_shopping_migration_it')")
+            cursor.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema IN "
+                           "('campus_shopping_it','campus_shopping_migration_it','campus_shopping_image_upgrade_it')")
             if cursor.fetchone()[0]:
                 raise ValueError('迁移验证实例必须为空，拒绝覆盖已有表')
         module.migration_checks(connection, report)

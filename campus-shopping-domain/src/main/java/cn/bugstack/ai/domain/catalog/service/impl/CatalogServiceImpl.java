@@ -59,6 +59,7 @@ public class CatalogServiceImpl implements ICatalogService {
             .stream()
             .map(s -> new ProductSkuEntity(UUID.randomUUID().toString(), s.specKey(), s.priceCent(), SkuStatusEnumVO.ACTIVE.getCode(), 0))
             .toList();
+        List<String> imageUrls = checkedImages(c.imageUrls(), c.imageUrl());
         ProductAggregate p = new ProductAggregate(
             UUID.randomUUID().toString(),
             merchant,
@@ -66,12 +67,13 @@ public class CatalogServiceImpl implements ICatalogService {
             c.title(),
             c.description(),
             c.categoryCode(),
-            c.imageUrl(),
+            imageUrls.isEmpty() ? "" : imageUrls.get(0),
             ProductStatusEnumVO.DRAFT.getCode(),
             0,
             skus
         );
         repository.insert(p);
+        images.insertInitial(p.getId(), merchant, imageUrls);
         return p;
     }
 
@@ -98,7 +100,8 @@ public class CatalogServiceImpl implements ICatalogService {
         ProductAggregate p = owned(merchant, id);
         p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(), spec, price, SkuStatusEnumVO.ACTIVE.getCode(), 0));
         repository.save(p);
-        return repository.find(id, false);
+        // 已持有商品及规格锁；写响应必须取得当前聚合和递增后的版本。
+        return repository.find(id, true);
     }
 
     public void changeSkuStatus(String merchant, String id, String sku, boolean active, long expectedVersion) {
@@ -112,11 +115,16 @@ public class CatalogServiceImpl implements ICatalogService {
         repository.save(p);
     }
 
-    public void edit(String merchant, String id, String title, String desc, String category, String image, long expected) {
+    public void edit(String merchant, String id, String title, String desc, String category, String image, List<String> imageUrls, long expected) {
         validCategory(category);
         ProductAggregate p = owned(merchant, id);
-        p.changeInfo(title, desc, category, image, expected);
+        boolean hadImages = !p.getImageUrl().isEmpty();
+        List<String> checked = checkedImages(imageUrls, image);
+        p.changeInfo(title, desc, category, checked.isEmpty() ? "" : checked.get(0), expected);
         repository.save(p);
+        // 商品行已锁定；原本无图时不做空范围删除，避免不同商品的间隙锁互相阻塞。
+        if (hadImages) images.replace(id, merchant, checked);
+        else if (!checked.isEmpty()) images.insertInitial(id, merchant, checked);
     }
 
     public void publish(String merchant, String id, boolean onShelf) {
@@ -238,7 +246,17 @@ public class CatalogServiceImpl implements ICatalogService {
         repository.category(c, Checks.text(name, "类目名称", 50), active);
     }
 
-    public String storeImage(byte[] data) {
-        return images.storeImage(data);
+    public String storeImage(String merchantId, byte[] data) {
+        require(merchantId != null && !merchantId.isBlank(), ResponseCode.ILLEGAL_PARAMETER);
+        return images.storeImage(data, merchantId);
+    }
+
+    private List<String> checkedImages(List<String> values, String legacy) {
+        List<String> requested = values == null ? (legacy == null || legacy.isBlank() ? List.of() : List.of(legacy)) : values;
+        require(requested.size() <= 8, ResponseCode.ILLEGAL_PARAMETER);
+        require(requested.stream().allMatch(v -> v != null && v.matches("/media/[a-f0-9-]+\\.png")), ResponseCode.ILLEGAL_PARAMETER);
+        require(requested.stream().distinct().count() == requested.size(), ResponseCode.ILLEGAL_PARAMETER);
+        // URL 只作为客户端引用；适配器还要核验对象存在，不能伪造 /media 地址写入图片表。
+        return List.copyOf(requested);
     }
 }

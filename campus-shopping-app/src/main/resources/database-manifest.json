@@ -35,6 +35,16 @@
       "version": "V20261031_03",
       "file": "V20261031_03__ai_sync_checkpoint.sql",
       "sha256": "90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d"
+    },
+    {
+      "version": "V20261102_01",
+      "file": "V20261102_01__product_images.sql",
+      "sha256": "c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d"
+    },
+    {
+      "version": "V20261104_01",
+      "file": "V20261104_01__product_image_upload_ownership.sql",
+      "sha256": "1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165"
     }
   ]
 }

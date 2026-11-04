@@ -1140,7 +1140,7 @@
       "path": "/api/v1/merchants/{merchantId}/images",
       "controller": "CatalogController.java",
       "handler": "image",
-      "responseType": "ImageResponseDTO",
+      "responseType": "ProductImageUploadDTO",
       "inputs": [
         {
           "in": "path",

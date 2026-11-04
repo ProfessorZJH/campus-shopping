@@ -14,6 +14,8 @@ public interface IInventoryService {
     void release(String order);
     void consume(String order);
     List<StockVO> stocks(List<String> skus);
+    /** 商品写入响应使用锁定后的最新库存，不读取旧事务快照。 */
+    List<StockVO> stocksForProductWrite(List<String> skus);
     List<StockVO> stocksForConfirmation(List<String> skus);
     List<StockVO> list(String merchant, int page, int size);
     List<StockVO> list(String merchant, int page, int size, String q);

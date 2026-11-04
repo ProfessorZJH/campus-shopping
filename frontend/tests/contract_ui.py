@@ -30,6 +30,14 @@ class StaticHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'")
         super().end_headers()
 
+def image_fields(body):
+    values=body.get('imageUrls')
+    if values is None:values=[body['imageUrl']] if body.get('imageUrl') else []
+    assert isinstance(values,list) and len(values)<=8 and len(set(values))==len(values)
+    assert all(isinstance(url,str) and re.fullmatch(r'/media/[a-f0-9-]+\.png',url) for url in values)
+    return {'imageUrl':values[0] if values else '',
+            'images':[{'imageId':f'image-{i}','url':url,'provider':'LOCAL','sortOrder':i} for i,url in enumerate(values)]}
+
 class BackendContractDouble:
     def __init__(self):
         self.logged=False; self.csrf='fixture-token-0';self.writes=[];self.unhandled=[];self.uploaded_images=[]
@@ -145,13 +153,13 @@ class BackendContractDouble:
         elif re.fullmatch('/merchants/[^/]+/members/[^/]+',path):self.members=[m for m in self.members if m['userId']!=path.split('/')[-1]]
         elif re.fullmatch('/merchants/[^/]+/images',path) and method=='POST':
             self.uploaded_images.append({'filename':body.get('filename'),'contentType':body.get('contentType'),'data':base64.b64decode(body.get('base64',''))})
-            data={'url':'/media/550e8400-e29b-41d4-a716-446655440000.png'}
+            data={'url':f'/media/550e8400-e29b-41d4-a716-{0x446655440000+len(self.uploaded_images)-1:012x}.png'}
         elif re.fullmatch('/merchants/[^/]+/products/[^/]+',path) and method=='PUT':
             product=next(p for p in self.products if p['productId']==path.split('/')[-1]);assert body.get('expectedVersion')==product['version']
-            product.update({k:body[k] for k in ('title','description','categoryCode','imageUrl')});product['version']+=1
+            product.update({k:body[k] for k in ('title','description','categoryCode')});product.update(image_fields(body));product['version']+=1
         elif re.fullmatch('/merchants/[^/]+/products',path):
             if method=='POST':
-                p={'productId':'p-created','merchantId':'m1','storeId':'s1','title':body['title'],'description':body['description'],'categoryCode':body['categoryCode'],'imageUrl':body.get('imageUrl',''),'status':'DRAFT','version':0,'skus':[{'skuId':'sku-created','specKey':x['specKey'],'priceCent':x['priceCent'],'status':'ACTIVE','quoteVersion':0,'available':0} for x in body['skus']]};self.products.append(p);data=p
+                p={'productId':'p-created','merchantId':'m1','storeId':'s1','title':body['title'],'description':body['description'],'categoryCode':body['categoryCode'],**image_fields(body),'status':'DRAFT','version':0,'skus':[{'skuId':'sku-created','specKey':x['specKey'],'priceCent':x['priceCent'],'status':'ACTIVE','quoteVersion':0,'available':0} for x in body['skus']]};self.products.append(p);data=p
             else:data=[p for p in self.products if p['merchantId']==path.split('/')[2]]
         elif path.endswith('/publish') and '/products/' in path:
             p=next(p for p in self.products if p['productId']==path.split('/')[4]);p['status']='PUBLISHED' if body['published'] else 'UNPUBLISHED'

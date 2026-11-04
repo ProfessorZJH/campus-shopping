@@ -1,46 +1,51 @@
-# SDD · 商品主图上传与展示（IMG-01）
+# SDD · 商品图片上传与多图展示（IMG-01）
 
-日期：2026-10-28。范围：现有商户商品管理与消费者图片展示；本批不新增数据库表或 Java API。
+首版日期：2026-10-28；多图增量：2026-11-03；上传对象归属补充：2026-11-04。延续原有商户权限、上传安全和订单快照规则，以本文件维护单图兼容与多图规则，不另行维护重复规格。多图新增图片引用表 `cat_product_image` 与上传对象归属表 `cat_product_image_upload` 及响应字段；旧库升级须显式执行经确认的迁移，本文不表示迁移已部署。
 
 ## 已确认规格
 
 | 编号 | 规则 | 前后端实现 |
 |---|---|---|
-| IMG-01 | 商户拥有权限时可在新建商品上传一张主图；图片可选 | `Merchant.js / ProductImageField.js`；Java `CatalogCaseImpl.image` 复验成员/商户状态 |
-| IMG-02 | 编辑商品支持换图、移除主图；未点“保存修改”不改变产品记录 | `PUT /api/v1/merchants/{merchantId}/products/{productId}`，传 `imageUrl` 和 `expectedVersion` |
+| IMG-01 | 有商品写权限的商户可为商品保存 0–8 张不重复的图片，按顺序展示，第一张为主图 | `Merchant.js / ProductImageListField.js`；Java 独立复验商户权限、状态和图片地址 |
+| IMG-02 | 编辑支持添加、排序和移除；未点“保存修改”不改变商品记录 | 商品创建/编辑接受有序 `imageUrls`；编辑仍要求 `expectedVersion` |
 | IMG-03 | 支持 JPG、PNG、GIF，不接受 SVG；文件大小最多 **2,000,000 字节** | 浏览器前置检查；后端字节、图片解码和 1200 万像素上限二次检查 |
-| IMG-04 | 上传先由 Java 重新编码为 PNG，返回 `/media/{uuid}.png`，只保存图片 URL 不保存 base64 | `POST /api/v1/merchants/{merchantId}/images`，会话及 CSRF 校验，JSON DTO `{filename,contentType,base64}` |
-| IMG-05 | 用户端商品、AI 推荐、购物车、订单及商户/平台列表显示真实 `imageUrl` | 复用 `ProductImage`；空地址或加载失败时展示统一“暂无图片”占位图 |
-| IMG-06 | `?demo=1` 为设计预览，可选择文件查看本地预览，但禁止网络上传和写入 | `ProductImageField.js` 与现有 `preview` 开关 |
+| IMG-04 | 上传先由 Java 重新编码为 PNG，返回 `/media/{uuid}.png`，并登记该对象属于当前商户；只保存图片 URL 不保存 base64 | `POST /api/v1/merchants/{merchantId}/images`，会话及 CSRF 校验，JSON DTO `{filename,contentType,base64}`；写入 `cat_product_image_upload` |
+| IMG-05 | 商品响应返回有序 `images` 和兼容字段 `imageUrl`；`imageUrl` 为首图或空串。购物车、提案使用当前主图，订单保留下单时主图快照 | `ProductImage`；空地址或加载失败使用统一占位图 |
+| IMG-06 | `?demo=1` 仅允许本地 Blob 预览，不发上传或其他写请求；预览对象在移除、上下文切换及卸载时释放 | `ProductImageListField.js` 与现有 `preview` 开关 |
+| IMG-07 | 上传失败或图片无效时不得误提交；切换详情标签不能清除错误，用户可重试或明确放弃本次选择。图片引用只能来自服务生成的本地对象 URL | 表单保留错误状态；旧商户、商品、身份或已卸载组件的迟到结果不得写入新表单；`ProductImageRepository` 校验文件存在与安全路径，并通过 `cat_product_image_upload` 认领对象（同一对象仅能归属一个商品） |
 
 ## 完整业务路径
 
 ```text
 商户选择 JPG/PNG/GIF
  → 前端校验类型与字节数
- → 使用 Blob URL 在本地预览
+ → 演示模式只用 Blob URL 本地预览并结束；真实模式继续上传
  → FileReader 转 base64
  → POST /api/v1/merchants/{merchantId}/images (Session + CSRF)
- → Java 校验当前成员、商户状态、真实图像与像素尺寸，重编码 PNG 存 ./var/uploads
+ → Java 校验当前成员、商户状态、真实图像与像素尺寸，重编码 PNG 存 ./var/uploads，并登记对象归属当前商户
  → 响应 {url:"/media/{uuid}.png"}
- → 前端保存待提交的 imageUrl
+ → 前端暂存有序 imageUrls（旧客户端可只传 imageUrl）
  → 新建 POST /products 或编辑 PUT /products/{id} (含 expectedVersion)
- → Repository 写入商品 image_url
- → 公开 GET /products / GET /products/{id} 返回 imageUrl
+ → CatalogServiceImpl 校验数量/格式/去重；图片适配器复验对象存在并认领归属，写入 cat_product_image
+ → 商品记录与 cat_product_image 图片引用在同库事务中更新；主图为第一张或空串
+ → 公开 GET /products / GET /products/{id} 返回 imageUrl 及有序 images
  → 页面使用同源 /media/** 获取图像；不可获取则回退统一占位图
 ```
+设计边界：图片上传操作本身和商品写入不在同一数据库事务中。用户取消商品编辑后可能存在未引用的 PNG 文件，需运维周期性清理未被引用的历史图片；本批**不实现自动删除**，避免误删仍被引用的图片。上传对象已登记商户，可在后续阶段作为孤儿对象清理的依据。归属关系在一次认领后本阶段不释放：从商品移除的图片仍只能回到同一商品，不得被其他商品复用；释放/回收与跨商品迁移留到第二阶段对象生命周期设计。
 
-设计边界：图片上传操作本身和商品写入不在同一数据库事务中。用户取消商品编辑后可能存在未引用的 PNG 文件，需要运维周期性清理未被引用的历史图片；本批**不实现自动删除**，避免误删仍被引用的图片。
+新增 SKU 的写事务先锁定商品及规格，再以当前读取得响应所需的聚合、库存和图片，避免旧事务快照与最新商品拼成不一致响应；普通商品查询仍使用同一只读快照。新商品或商品锁内确认原本无主图时，图片只做插入、不先删除空范围，避免不同商品之间的间隙锁死锁；已有图片的替换仍在商品锁内完成。
 
-## 不包含
+## 第二阶段及其他不包含
 
-多图相册、SKU 独立图片、商品视频、自动裁切、CDN/对象存储迁移、图片识别审核。单商品主图满足首版 PRD，不额外虚构这些能力。
+七牛云 Kodo、CDN/对象存储迁移、SKU 独立图片、商品视频、自动裁切和图片识别审核属于后续独立阶段；本阶段只实现 LOCAL 对象引用和兼容展示。
 
 ## 验收
 
 - 允许选择并上传有效图片，显示预览、上传进度状态及结果。
 - 上传失败/文件无效时禁止误提交空图，用户可重新选择或明确移除。
-- 商品创建携带返回的 `imageUrl`；商品修改携带新值与乐观锁版本；移除后保存空字符串。
-- 公开端真实 `/media/**` 路径可展示；缺图和损坏链接都有一致占位。
-- 预览模式不发网络写入；非法格式、超大文件被前端拒绝，后端依然独立校验。
-- 实际测试与未验证范围见 [验收报告](../testing/UI-PRODUCT-IMAGES-VERIFICATION.md)。
+- 创建和新增 SKU 的商品响应及编辑后的查询均包含当前有序图片；调整顺序、删除及事务回滚保持主图和图片列表一致。
+- 未传或传 null 的 `imageUrls` 兼容旧 `imageUrl`；显式空数组清空图片。重复、超过 8 张或非同源 `/media/*.png` 地址由 Java 拒绝。
+- 服务端拒绝不存在、不属于当前商户、已属于其他商品或伪造的 `/media` 引用；事务失败或 `expectedVersion` 冲突不留下部分商品图片引用。
+- 公开端真实 `/media/**` 路径可展示；缺图和损坏链接都有一致占位；详情轮播支持缩略图、按钮和移动端触摸切换。
+- 预览模式不发网络写入；非法格式、超大文件被前端拒绝，后端依然独立校验；本阶段不声称 Qiniu、真实 CDN 或历史对象迁移已完成。
+- 实际测试与未验证范围见 [首版单图历史验收](../testing/UI-PRODUCT-IMAGES-VERIFICATION.md)；该报告不代表多图增量已完成验收，本次范围以对应提交的实际验证为准。

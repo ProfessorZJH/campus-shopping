@@ -72,7 +72,7 @@
 | `GET` | `/api/v1/merchants/public/{merchantId}` | merchantId:String | `MerchantResponseDTO` | anonymous | `MerchantApplicationController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/aftersales` | merchantId:String、state?:String、page?:int、size?:int | `List<AfterSaleResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/aftersales/page` | merchantId:String、state?:String、page?:int、size?:int | `PageResponseDTO<AfterSaleResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
-| `POST` | `/api/v1/merchants/{merchantId}/images` | merchantId:String、body:FileUploadRequestDTO | `ImageResponseDTO` | authenticated + domain ACL | `CatalogController.java` |
+| `POST` | `/api/v1/merchants/{merchantId}/images` | merchantId:String、body:FileUploadRequestDTO | `ProductImageUploadDTO` | authenticated + domain ACL | `CatalogController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/invitations` | merchantId:String、body:InvitationRequestDTO | `InvitationResponseDTO` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/members` | merchantId:String | `List<MembershipResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
 | `DELETE` | `/api/v1/merchants/{merchantId}/members/{userId}` | merchantId:String、userId:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
@@ -195,7 +195,7 @@
 
 ### `ImageResponseDTO`
 
-`url`
+`url`、`imageId`、`provider`、`sortOrder`
 
 ### `InvitationRequestDTO`
 
@@ -261,13 +261,17 @@
 
 `priceCent`、`expectedVersion`
 
+### `ProductImageUploadDTO`
+
+`url`
+
 ### `ProductRequestDTO`
 
-`title`、`description`、`categoryCode`、`imageUrl`、`skus`、`expectedVersion`
+`title`、`description`、`categoryCode`、`imageUrl`、`imageUrls`、`skus`、`expectedVersion`
 
 ### `ProductResponseDTO`
 
-`productId`、`merchantId`、`merchantName`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`status`、`version`、`skus`
+`productId`、`merchantId`、`merchantName`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`images`、`status`、`version`、`skus`
 
 ### `ProposalItemResponseDTO`
 
