@@ -128,7 +128,7 @@ class ProductImageContractTest {
         // 文件存在，但未由当前商户上传登记：视为越权引用。
         List<String> owned = existingObjects(1);
         when(dao.claimProductImage(anyString(), eq("m"), eq("p"))).thenReturn(0);
-        when(dao.productImageUploads("p")).thenReturn(List.of());
+        when(dao.productImageClaims("p")).thenReturn(List.of());
         assertEquals("A0006", assertThrows(AppException.class, () -> repository.replace("p", "m", owned)).getCode());
         verify(dao, never()).deleteProductImages(anyString());
     }
@@ -138,7 +138,7 @@ class ProductImageContractTest {
         var dao = mock(ICatalogDao.class);
         List<String> urls = existingObjects(2);
         when(dao.claimProductImage(anyString(), eq("m"), eq("p"))).thenReturn(0);
-        when(dao.productImageUploads("p")).thenReturn(
+        when(dao.productImageClaims("p")).thenReturn(
             urls
                 .stream()
                 .map(url -> url.substring("/media/".length()))

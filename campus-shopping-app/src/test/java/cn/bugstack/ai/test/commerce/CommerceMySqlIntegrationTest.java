@@ -406,6 +406,28 @@ class CommerceMySqlIntegrationTest {
     }
 
     @Test
+    void legacySharedImageStaysEditableForEveryReferencingProduct() {
+        // 旧库可能让两个商品引用同一个 /media 对象；迁移按“对象 + 商户”登记、不指定商品，
+        // 已引用该对象的商品再次保存时不得因认领被占而报 A0006。
+        String shared = mediaFixture("33333333-3333-3333-3333-333333333333", merchant.id());
+        var first = catalog.createProduct(owner, merchant.id(), albumCommand("共享对象商品一", List.of(shared))).product();
+        var second = catalog.createProduct(owner, merchant.id(), albumCommand("共享对象商品二", List.of())).product();
+        jdbc.update(
+            "INSERT INTO cat_product_image(image_id,product_id,provider,object_key,url,sort_order) VALUES(?,?,'LOCAL',?,?,0)",
+            UUID.randomUUID().toString(),
+            second.getId(),
+            shared.substring("/media/".length()),
+            shared
+        );
+        jdbc.update("UPDATE cat_product SET image_url=? WHERE id=?", shared, second.getId());
+        catalog.editProduct(owner, merchant.id(), second.getId(), "共享对象商品二", "多图相册", "stationery", shared, List.of(shared), second.getVersion());
+        catalog.setProductPublished(owner, merchant.id(), first.getId(), true);
+        catalog.setProductPublished(owner, merchant.id(), second.getId(), true);
+        assertEquals(List.of(shared), imageUrls(catalogQuery.detail(second.getId())));
+        assertEquals(List.of(shared), imageUrls(catalogQuery.detail(first.getId())));
+    }
+
+    @Test
     void concurrentImageEditAndSkuAdditionReturnOneCurrentImageSnapshot() throws Exception {
         String first = mediaFixture("11111111-1111-1111-1111-111111111111", merchant.id());
         String second = mediaFixture("22222222-2222-2222-2222-222222222222", merchant.id());

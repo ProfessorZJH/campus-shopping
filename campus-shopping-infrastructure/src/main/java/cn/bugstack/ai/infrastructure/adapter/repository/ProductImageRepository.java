@@ -112,7 +112,7 @@ public class ProductImageRepository implements IProductImageRepository {
         insertRows(productId, checked);
     }
 
-    /** 只接受本适配器生成、未被其他商户占用且仍存在的对象引用。 */
+    /** 只接受本适配器生成、未被其他商户占用且仍存在的对象引用；商品已引用的历史对象继续可用。 */
     private List<String> claimObjects(String productId, String merchantId, List<String> urls) {
         List<String> checked = urls == null ? List.of() : List.copyOf(urls);
         if (checked.size() > 8 || checked.stream().anyMatch(url -> !isLocalUrl(url)) || checked.stream().distinct().count() != checked.size()) {
@@ -148,7 +148,7 @@ public class ProductImageRepository implements IProductImageRepository {
     }
 
     private boolean isAlreadyClaimedByProduct(String objectKey, String productId) {
-        return dao.productImageUploads(productId).stream().anyMatch(objectKey::equals);
+        return dao.productImageClaims(productId).stream().anyMatch(objectKey::equals);
     }
 
     private boolean isLocalUrl(String url) {
