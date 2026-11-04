@@ -10,7 +10,7 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     private static final String DIGITS = "零〇一二两三四五六七八九十百千万";
     private static final String NUMBER = "[\\d" + DIGITS + "点.]+";
     private static final String UNIT = "[个件份瓶盒包本支杯袋斤]";
-    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|贵一点|还有别的|类似的|这些");
+    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
     private static final Pattern QUANTITY = Pattern.compile("(?<![\\d." + DIGITS + "])(\\d+(?:\\.\\d+)?|[" + DIGITS + "]+)\\s*" + UNIT);
     private static final String UNCERTAIN =
         "(?:[" + DIGITS + "\\d]*[几多来余]|[" + DIGITS + "\\d]+\\s*[到至~-]\\s*[" + DIGITS + "\\d]+|[零〇一两三四五六七八九]\\s*[零〇一两三四五六七八九]+)\\s*";

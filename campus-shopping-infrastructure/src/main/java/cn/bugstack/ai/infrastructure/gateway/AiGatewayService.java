@@ -61,16 +61,55 @@ public class AiGatewayService {
 
     /** 允许 Java 先升级时与仍在运行的旧 Python 实例短暂共存；仅 422 协议拒绝触发降级载荷。 */
     public AiGatewayDTO.Answer queryLegacy(AiGatewayDTO.Query request) {
-        var offers = request.offers().stream().map(o -> java.util.Map.of(
-            "skuId", o.skuId(), "merchantId", o.merchantId(), "title", o.title(),
-            "specKey", o.specKey(), "description", o.description(), "priceCent", o.priceCent(), "available", o.available()
-        )).toList();
-        var payload = java.util.Map.of(
-            "question", request.question(), "allowedDocumentIds", request.allowedDocumentIds(),
-            "offers", offers, "history", request.history(), "retrievalQuery", request.retrievalQuery(),
-            "semanticSkuIds", request.semanticSkuIds()
+        return post("/v1/query", legacyQueryPayload(request, true), AiGatewayDTO.Answer.class);
+    }
+
+    public AiGatewayDTO.Answer queryLegacyWithoutExternalScope(AiGatewayDTO.Query request) {
+        return post("/v1/query", legacyQueryPayload(request, false), AiGatewayDTO.Answer.class);
+    }
+
+    private java.util.Map<String, Object> legacyQueryPayload(AiGatewayDTO.Query request, boolean includeExternalScope) {
+        var offers = request
+            .offers()
+            .stream()
+            .map(o ->
+                java.util.Map.of(
+                    "skuId",
+                    o.skuId(),
+                    "merchantId",
+                    o.merchantId(),
+                    "title",
+                    o.title(),
+                    "specKey",
+                    o.specKey(),
+                    "description",
+                    o.description(),
+                    "priceCent",
+                    o.priceCent(),
+                    "available",
+                    o.available()
+                )
+            )
+            .toList();
+        var payload = new java.util.LinkedHashMap<String, Object>();
+        payload.putAll(
+            java.util.Map.of(
+                "question",
+                request.question(),
+                "allowedDocumentIds",
+                request.allowedDocumentIds(),
+                "offers",
+                offers,
+                "history",
+                request.history(),
+                "retrievalQuery",
+                request.retrievalQuery(),
+                "semanticSkuIds",
+                request.semanticSkuIds()
+            )
         );
-        return post("/v1/query", payload, AiGatewayDTO.Answer.class);
+        if (includeExternalScope) payload.put("externalDocumentIds", request.externalDocumentIds());
+        return payload;
     }
 
     public AiGatewayDTO.ProductSearchResult semanticProducts(AiGatewayDTO.ProductSearch request) {
@@ -115,12 +154,21 @@ public class AiGatewayService {
 
     public void indexLegacy(AiGatewayDTO.Index request) {
         var payload = java.util.Map.of(
-            "documentId", request.documentId(), "title", request.title(), "content", request.content(),
-            "externalAllowed", request.externalAllowed()
+            "documentId",
+            request.documentId(),
+            "title",
+            request.title(),
+            "content",
+            request.content(),
+            "externalAllowed",
+            request.externalAllowed()
         );
         var result = post("/v1/index", payload, AiGatewayDTO.KnowledgeIndexResult.class);
         if (
-            result == null || result.chunks() == null || result.chunks() < 1 || result.chunks() > 162 ||
+            result == null ||
+            result.chunks() == null ||
+            result.chunks() < 1 ||
+            result.chunks() > 162 ||
             !java.util.Set.of("REMOTE_EMBEDDING", "LOCAL_CHAR_NGRAM_DEMO").contains(java.util.Objects.toString(result.mode(), ""))
         ) throw new AppException(ResponseCode.AI_UNAVAILABLE);
     }
@@ -189,10 +237,15 @@ public class AiGatewayService {
     }
 
     public static final class RemoteStatusException extends RuntimeException {
+
         private final int status;
 
-        public RemoteStatusException(int status) { this.status = status; }
+        public RemoteStatusException(int status) {
+            this.status = status;
+        }
 
-        public int status() { return status; }
+        public int status() {
+            return status;
+        }
     }
 }

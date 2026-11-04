@@ -123,6 +123,21 @@ class DddRulesTest {
     }
 
     @Test
+    void versionedIndexNeverFallsBackToLegacyProtocol() {
+        doThrow(new AiGatewayService.RemoteStatusException(422)).when(gateway).index(any());
+        assertEquals("AI0001", assertThrows(AppException.class, () -> port().index("doc", "标题", "正文", 2, false)).getCode());
+        verify(gateway, never()).indexLegacy(any());
+    }
+
+    @Test
+    void persistentQueryProtocolMismatchBecomesUnavailable() {
+        when(gateway.query(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        when(gateway.queryLegacy(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        when(gateway.queryLegacyWithoutExternalScope(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        assertEquals("AI0001", assertThrows(AppException.class, () -> port().query(query())).getCode());
+    }
+
+    @Test
     void errorClassificationRetainsSafeInfoAndCausePositions() {
         var cause = new IllegalStateException("SECRET response body and key");
         var failure = new AppException("AI0001", cause);

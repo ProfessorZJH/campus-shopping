@@ -10,7 +10,7 @@ public final class SkuConstraintPolicy {
     private static final String NEGATIVE =
         "不要推荐|不想要|不想选|不想买|不需要|不要选|不推荐|不接受|不喜欢|不要|不选|不买|不用|别推荐|别选|别买|排除|不考虑|不含|不是|拒绝|非";
     private static final String CUES = NEGATIVE + "|只要|想要|规格为|规格是|要|选择|选|换成|改成|改为";
-    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|贵一点|还有别的|类似的|这些");
+    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
 
     private SkuConstraintPolicy() {}
 

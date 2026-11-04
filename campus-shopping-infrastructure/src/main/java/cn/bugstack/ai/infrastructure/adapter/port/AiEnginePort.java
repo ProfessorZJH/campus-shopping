@@ -13,6 +13,7 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.ProductIndexVO;
 import cn.bugstack.ai.infrastructure.gateway.AiGatewayService;
 import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.util.Base64;
 import java.util.List;
@@ -50,30 +51,40 @@ public class AiEnginePort implements IAiEnginePort {
 
     public AiAnswerVO query(AiQueryEntity query) {
         var request = new AiGatewayDTO.Query(
-                query.question(),
-                query.allowedDocumentIds(),
-                query
-                    .offers()
-                    .stream()
-                    .map(o ->
-                        new AiGatewayDTO.Offer(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.description(), o.attributes(), o.priceCent(), o.available())
-                    )
-                    .toList(),
-                query
-                    .history()
-                    .stream()
-                    .map(m -> new AiGatewayDTO.History(m.role(), m.content()))
-                    .toList(),
-                query.retrievalQuery(),
-                query.semanticSkuIds(),
-                query.externalDocumentIds()
-            );
+            query.question(),
+            query.allowedDocumentIds(),
+            query
+                .offers()
+                .stream()
+                .map(o ->
+                    new AiGatewayDTO.Offer(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.description(), o.attributes(), o.priceCent(), o.available())
+                )
+                .toList(),
+            query
+                .history()
+                .stream()
+                .map(m -> new AiGatewayDTO.History(m.role(), m.content()))
+                .toList(),
+            query.retrievalQuery(),
+            query.semanticSkuIds(),
+            query.externalDocumentIds()
+        );
         AiGatewayDTO.Answer response;
         try {
             response = gateway.query(request);
         } catch (AiGatewayService.RemoteStatusException rejected) {
             if (rejected.status() != 422) throw rejected;
-            response = gateway.queryLegacy(request);
+            try {
+                response = gateway.queryLegacy(request);
+            } catch (AiGatewayService.RemoteStatusException legacyRejected) {
+                if (legacyRejected.status() != 422) throw legacyRejected;
+                try {
+                    response = gateway.queryLegacyWithoutExternalScope(request);
+                } catch (AiGatewayService.RemoteStatusException terminalRejected) {
+                    if (terminalRejected.status() != 422) throw terminalRejected;
+                    throw new AppException(ResponseCode.AI_UNAVAILABLE, terminalRejected);
+                }
+            }
         }
         require(
             response != null &&
@@ -204,6 +215,7 @@ public class AiEnginePort implements IAiEnginePort {
             gateway.index(request);
         } catch (AiGatewayService.RemoteStatusException rejected) {
             if (rejected.status() != 422) throw rejected;
+            if (documentVersion > 1) throw new AppException(ResponseCode.AI_UNAVAILABLE, rejected);
             gateway.indexLegacy(request);
         }
     }

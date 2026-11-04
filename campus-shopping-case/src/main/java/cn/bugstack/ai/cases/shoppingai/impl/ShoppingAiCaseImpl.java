@@ -194,11 +194,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             })
             .filter(o -> o.available() > 0)
             .toList();
-        var prior = java.util.Optional.ofNullable(proposals.proposals(actor, conversation))
-            .orElse(List.of())
-            .stream()
-            .findFirst()
-            .orElse(null);
+        var prior = java.util.Optional.ofNullable(proposals.proposals(actor, conversation)).orElse(List.of()).stream().findFirst().orElse(null);
         Set<String> excludedSkuIds = new HashSet<>();
         long cheaperThan = Long.MAX_VALUE;
         if (prior != null && question.matches(".*(?:换一个|换一款|还有别的|类似的).*")) {
@@ -276,7 +272,9 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         boolean replacementRequest = question.matches(".*(?:换一个|换一款|还有别的|类似的|便宜点|便宜一些|更便宜).*");
         if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
             safeText = items.isEmpty()
-                ? (replacementRequest ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。" : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。")
+                ? replacementRequest
+                    ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。"
+                    : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
                 : "可查看以下商品：" +
                   items
                       .stream()
@@ -312,16 +310,23 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         List<cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO> ranks,
         Set<String> semanticProductIds
     ) {
-        Map<String, Integer> rankByProduct = ranks.stream().collect(Collectors.toMap(
-            cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::productId,
-            cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::rank,
-            Math::min
-        ));
-        Map<String, List<SkuOfferVO>> byProduct = offers.stream()
+        Map<String, Integer> rankByProduct = ranks
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::productId,
+                    cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::rank,
+                    Math::min
+                )
+            );
+        Map<String, List<SkuOfferVO>> byProduct = offers
+            .stream()
             .filter(o -> semanticProductIds.contains(o.productId()))
             .sorted(java.util.Comparator.comparing(SkuOfferVO::skuId))
             .collect(Collectors.groupingBy(SkuOfferVO::productId, LinkedHashMap::new, Collectors.toList()));
-        List<String> productOrder = byProduct.keySet().stream()
+        List<String> productOrder = byProduct
+            .keySet()
+            .stream()
             .sorted(java.util.Comparator.comparingInt((String id) -> rankByProduct.getOrDefault(id, Integer.MAX_VALUE)).thenComparing(id -> id))
             .toList();
         List<String> result = new ArrayList<>();

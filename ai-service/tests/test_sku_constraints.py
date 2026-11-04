@@ -87,10 +87,11 @@ def test_product_name_is_not_misparsed_as_unknown_color_spec(api):
     assert not ask(api, '考试签字笔规格为蓝色')['recommendations']
 
 
-def test_followup_inherits_specs_but_new_dimension_value_replaces_old(api):
+@pytest.mark.parametrize('cheaper', ['这个便宜点', '这个便宜一些', '这个更便宜'])
+def test_followup_inherits_specs_but_new_dimension_value_replaces_old(api, cheaper):
     history = [{'role': 'user', 'content': '考试签字笔要标准装，不要家庭装'},
                {'role': 'assistant', 'content': '家庭装更便宜'}]
-    assert [r['skuId'] for r in ask(api, '这个便宜点', history=history, retrievalQuery='家庭装')['recommendations']] == ['standard']
+    assert [r['skuId'] for r in ask(api, cheaper, history=history, retrievalQuery='家庭装')['recommendations']] == ['standard']
     assert [r['skuId'] for r in ask(api, '这个换成家庭装', history=history)['recommendations']] == ['family']
     assert {r['skuId'] for r in ask(api, '推荐考试签字笔', history=history)['recommendations']} == {'family', 'standard'}
 

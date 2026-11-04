@@ -20,7 +20,7 @@ def chinese_integer(raw: str) -> int:
     return total+section+number
 
 NUMBER=r'[\d零〇一二两三四五六七八九十百千万点.]+'
-FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|贵一点|还有别的|类似的|这些')
+FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些')
 
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
@@ -75,7 +75,7 @@ def purchase_constraints(question: str,history: list[dict]) -> tuple[tuple[int|N
     return budget,quantity
 def query_rewrite(question: str,history: list[dict],store: KnowledgeStore) -> str:
     query=question
-    if re.search(r'它|这个|那个|便宜点|贵一点|还有别的|换一个|这些',question):
+    if re.search(r'它|这个|那个|便宜点|便宜一些|更便宜|贵一点|还有别的|换一个|这些',question):
         previous=[h['content'] for h in history if h['role']=='user'][-2:]
         if previous:query=' '.join(previous+[question])[-2000:]
         if store.settings.llm_key:
@@ -90,7 +90,7 @@ def query_rewrite(question: str,history: list[dict],store: KnowledgeStore) -> st
 def recall_terms(store: KnowledgeStore, question: str, history: list[dict]) -> dict:
     """生成有上限的商品检索词。LLM只建议召回词，不能决定商业事实。"""
     previous=[h['content'] for h in history if h['role']=='user'][-2:]
-    followup=bool(re.search(r'这个|那个|它|换一个|便宜点|贵一点|还有别的|类似的',question) and previous)
+    followup=bool(re.search(r'这个|那个|它|换一个|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的',question) and previous)
     context=(' '.join(previous+[question]))[-2000:] if followup else question
     query=context
     model_terms=[]
@@ -107,7 +107,7 @@ def recall_terms(store: KnowledgeStore, question: str, history: list[dict]) -> d
     # 无模型时采用透明的字面二元词召回；不把这条路径误称为语义向量召回。
     cleaned=re.sub(r'\d+(?:\.\d+)?\s*(?:元|块|瓶|盒|包|支|个|件|份)?',' ',context)
     cleaned=re.sub(r'[一二两三四五六七八九十]+\s*(?:瓶|盒|包|支|个|件|份)',' ',cleaned)
-    for noise in ('帮我','给我','请问','有没有','我想','我要','推荐','买点','想买','购买','买','预算','以内','以下','不超过','适合','最好','便宜点','贵一点','换一个','还有别的','一些','几个','一款','一个','点东西','随便','那个','这个','哪些','什么','怎么','可以','谢谢','的'):
+    for noise in ('帮我','给我','请问','有没有','我想','我要','推荐','买点','想买','购买','买','预算','以内','以下','不超过','适合','最好','便宜点','便宜一些','更便宜','贵一点','换一个','还有别的','一些','几个','一款','一个','点东西','随便','那个','这个','哪些','什么','怎么','可以','谢谢','的'):
         cleaned=cleaned.replace(noise,' ')
     local=[]
     for word in re.findall(r'[\u3400-\u9fff]{2,}|[a-zA-Z][a-zA-Z0-9_-]{1,19}',cleaned):
