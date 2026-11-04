@@ -1266,8 +1266,8 @@ class CommerceMySqlIntegrationTest {
             throw new IllegalStateException("测试图片夹具写入失败", error);
         }
         jdbc.update(
-            "INSERT INTO cat_product_image_upload(object_key,merchant_id) VALUES(?,?) "
-                + "ON DUPLICATE KEY UPDATE merchant_id=VALUES(merchant_id),product_id=NULL",
+            "INSERT INTO cat_product_image_upload(object_key,merchant_id) VALUES(?,?) " +
+                "ON DUPLICATE KEY UPDATE merchant_id=VALUES(merchant_id),product_id=NULL",
             objectKey + ".png",
             merchantId
         );
