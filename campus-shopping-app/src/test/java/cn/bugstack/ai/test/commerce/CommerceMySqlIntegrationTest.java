@@ -9,6 +9,7 @@ import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.merchant.IMerchantAdmissionCase;
 import cn.bugstack.ai.cases.shoppingai.*;
 import cn.bugstack.ai.cases.trading.*;
+import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.*;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
@@ -26,6 +27,7 @@ import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
+import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import java.time.*;
@@ -81,6 +83,9 @@ class CommerceMySqlIntegrationTest {
 
     @Autowired
     ICatalogQueryCase catalogQuery;
+
+    @Autowired
+    IProductImageRepository productImages;
 
     @Autowired
     ICatalogService catalogSearch;
@@ -197,6 +202,7 @@ class CommerceMySqlIntegrationTest {
             "inv_reservation",
             "inv_stock_balance",
             "cat_sku",
+            "cat_product_image",
             "cat_product",
             "iam_invitation",
             "iam_merchant_membership",
@@ -290,6 +296,365 @@ class CommerceMySqlIntegrationTest {
         catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
         if (quantity > 0) catalog.replenishStock(owner, merchant.id(), p.getSkus().get(0).id(), quantity, UUID.randomUUID().toString());
         return catalogQuery.detail(p.getId()).product();
+    }
+
+    @Test
+    void productImagesRemainConsistentAcrossWritesRollbackAndLegacyRequests() {
+        String first = "/media/11111111-1111-1111-1111-111111111111.png";
+        String second = "/media/22222222-2222-2222-2222-222222222222.png";
+        var created = catalog.createProduct(
+            owner,
+            merchant.id(),
+            new ProductCreateCommandEntity(
+                "多图商品",
+                "描述",
+                "stationery",
+                "",
+                List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)),
+                List.of(first, second)
+            )
+        );
+        String id = created.product().getId();
+        assertThrows(IllegalTransactionStateException.class, () -> productImages.findAllForUpdate(id));
+        assertThrows(IllegalTransactionStateException.class, () -> productImages.insertInitial(id, List.of()));
+        assertThrows(IllegalTransactionStateException.class, () -> productImages.replace(id, List.of()));
+        assertEquals(first, created.product().getImageUrl());
+        assertEquals(
+            List.of(first, second),
+            created
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        assertEquals(List.of(first, second), jdbc.queryForList("SELECT url FROM cat_product_image WHERE product_id=? ORDER BY sort_order", String.class, id));
+
+        catalog.setProductPublished(owner, merchant.id(), id, true);
+        var added = catalog.addSkuToProduct(owner, merchant.id(), id, "另一规格", 200);
+        assertEquals(
+            List.of(first, second),
+            added
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        var before = catalogQuery.detail(id);
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", "", List.of(second, first), before.product().getVersion());
+            status.setRollbackOnly();
+        });
+        var rolledBack = catalogQuery.detail(id);
+        assertEquals(first, rolledBack.product().getImageUrl());
+        assertEquals(
+            List.of(first, second),
+            rolledBack
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        assertEquals(
+            ResponseCode.ILLEGAL_PARAMETER.getCode(),
+            code(() ->
+                catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", "", List.of(first, first), rolledBack.product().getVersion())
+            )
+        );
+        assertEquals(
+            List.of(first, second),
+            catalogQuery
+                .detail(id)
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+
+        catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", "", List.of(second, first), rolledBack.product().getVersion());
+        var reordered = catalogQuery.detail(id);
+        assertEquals(second, reordered.product().getImageUrl());
+        assertEquals(
+            List.of(second, first),
+            reordered
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", first, null, reordered.product().getVersion());
+        var legacy = catalogQuery.detail(id);
+        assertEquals(
+            List.of(first),
+            legacy
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", first, List.of(), legacy.product().getVersion());
+        var cleared = catalogQuery.detail(id);
+        assertEquals("", cleared.product().getImageUrl());
+        assertTrue(cleared.images().isEmpty());
+    }
+
+    @Test
+    void concurrentImageEditAndSkuAdditionReturnOneCurrentImageSnapshot() throws Exception {
+        String first = "/media/11111111-1111-1111-1111-111111111111.png";
+        String second = "/media/22222222-2222-2222-2222-222222222222.png";
+        var created = catalog.createProduct(
+            owner,
+            merchant.id(),
+            new ProductCreateCommandEntity(
+                "并发多图商品",
+                "描述",
+                "stationery",
+                "",
+                List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)),
+                List.of(first, second)
+            )
+        );
+        String id = created.product().getId();
+        var edited = new CountDownLatch(1);
+        var snapshot = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var editing = executor.submit(() ->
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    catalog.editProduct(
+                        owner,
+                        merchant.id(),
+                        id,
+                        "并发多图商品",
+                        "描述",
+                        "stationery",
+                        "",
+                        List.of(second, first),
+                        created.product().getVersion()
+                    );
+                    edited.countDown();
+                    try {
+                        if (!release.await(15, TimeUnit.SECONDS)) throw new IllegalStateException("等待并发测试释放超时");
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException(e);
+                    }
+                })
+            );
+            assertTrue(edited.await(15, TimeUnit.SECONDS));
+            var adding = executor.submit(() ->
+                new TransactionTemplate(transactionManager).execute(status -> {
+                    assertEquals("REPEATABLE-READ", jdbc.queryForObject("SELECT @@transaction_isolation", String.class));
+                    assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM iam_user WHERE id=?", Integer.class, owner));
+                    snapshot.countDown();
+                    return catalog.addSkuToProduct(owner, merchant.id(), id, "并发规格", 200);
+                })
+            );
+            assertTrue(snapshot.await(15, TimeUnit.SECONDS));
+            assertThrows(TimeoutException.class, () -> adding.get(200, TimeUnit.MILLISECONDS));
+            release.countDown();
+            editing.get(15, TimeUnit.SECONDS);
+            var result = adding.get(15, TimeUnit.SECONDS);
+            assertNotNull(result);
+            assertEquals(second, result.product().getImageUrl());
+            assertEquals(
+                List.of(second, first),
+                result
+                    .images()
+                    .stream()
+                    .map(image -> image.url())
+                    .toList()
+            );
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    void concurrentSkuChangesAndAdditionReturnCurrentSkuAndStock() throws Exception {
+        var created = catalog.createProduct(
+            owner,
+            merchant.id(),
+            new ProductCreateCommandEntity("并发规格商品", "", "stationery", "", List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)))
+        );
+        String id = created.product().getId();
+        String originalSku = created.product().getSkus().get(0).id();
+        catalog.replenishStock(owner, merchant.id(), originalSku, 10, UUID.randomUUID().toString());
+        var changed = new CountDownLatch(1);
+        var snapshot = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var changing = executor.submit(() ->
+                new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+                    catalog.changeSkuPrice(owner, merchant.id(), id, originalSku, 250, created.product().getVersion());
+                    catalog.replenishStock(owner, merchant.id(), originalSku, 9, UUID.randomUUID().toString());
+                    catalog.addSkuToProduct(owner, merchant.id(), id, "并发规格一", 300);
+                    changed.countDown();
+                    try {
+                        if (!release.await(15, TimeUnit.SECONDS)) throw new IllegalStateException("等待并发测试释放超时");
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        throw new IllegalStateException(e);
+                    }
+                })
+            );
+            assertTrue(changed.await(15, TimeUnit.SECONDS));
+            var adding = executor.submit(() ->
+                new TransactionTemplate(transactionManager).execute(status -> {
+                    assertEquals("REPEATABLE-READ", jdbc.queryForObject("SELECT @@transaction_isolation", String.class));
+                    assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM iam_user WHERE id=?", Integer.class, owner));
+                    snapshot.countDown();
+                    return catalog.addSkuToProduct(owner, merchant.id(), id, "并发规格二", 400);
+                })
+            );
+            assertTrue(snapshot.await(15, TimeUnit.SECONDS));
+            assertThrows(TimeoutException.class, () -> adding.get(200, TimeUnit.MILLISECONDS));
+            release.countDown();
+            changing.get(15, TimeUnit.SECONDS);
+            var result = adding.get(15, TimeUnit.SECONDS);
+            assertNotNull(result);
+            assertAll(
+                () ->
+                    assertEquals(
+                        Set.of("默认", "并发规格一", "并发规格二"),
+                        result.product().getSkus().stream().map(ProductSkuEntity::specKey).collect(java.util.stream.Collectors.toSet()),
+                        "sku set"
+                    ),
+                () ->
+                    assertEquals(
+                        250,
+                        result
+                            .product()
+                            .getSkus()
+                            .stream()
+                            .filter(sku -> sku.id().equals(originalSku))
+                            .findFirst()
+                            .orElseThrow()
+                            .priceCent(),
+                        "sku price"
+                    ),
+                () -> assertEquals(19L, result.availableBySku().get(originalSku), "stock balance")
+            );
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS));
+        }
+    }
+
+    private void synchronizeImageInserts(CountDownLatch ready) {
+        var realDao = sqlSession.getMapper(ICatalogDao.class);
+        doAnswer(invocation -> {
+            ready.countDown();
+            if (!ready.await(15, TimeUnit.SECONDS)) throw new IllegalStateException("等待并发图片写入超时");
+            return realDao.insertProductImage(invocation.getArgument(0));
+        })
+            .when(catalogLockDao)
+            .insertProductImage(any());
+    }
+
+    @Test
+    void concurrentNewProductsWithImagesDoNotDeadlock() throws Exception {
+        var secondMerchant = open(other, "另一并发商户");
+        var ready = new CountDownLatch(2);
+        synchronizeImageInserts(ready);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() ->
+                catalog.createProduct(
+                    owner,
+                    merchant.id(),
+                    new ProductCreateCommandEntity(
+                        "并发商品一",
+                        "",
+                        "stationery",
+                        "",
+                        List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)),
+                        List.of("/media/11111111-1111-1111-1111-111111111111.png")
+                    )
+                )
+            );
+            var second = executor.submit(() ->
+                catalog.createProduct(
+                    other,
+                    secondMerchant.id(),
+                    new ProductCreateCommandEntity(
+                        "并发商品二",
+                        "",
+                        "stationery",
+                        "",
+                        List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)),
+                        List.of("/media/22222222-2222-2222-2222-222222222222.png")
+                    )
+                )
+            );
+            assertEquals(1, first.get(30, TimeUnit.SECONDS).images().size());
+            assertEquals(1, second.get(30, TimeUnit.SECONDS).images().size());
+            verify(catalogLockDao, never()).deleteProductImages(anyString());
+        } finally {
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS));
+        }
+    }
+
+    @Test
+    void concurrentFirstImageEditsDoNotDeadlock() throws Exception {
+        var secondMerchant = open(other, "另一并发商户");
+        var left = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity("无图商品一", "", "stationery", "", List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)))
+            )
+            .product();
+        var right = catalog
+            .createProduct(
+                other,
+                secondMerchant.id(),
+                new ProductCreateCommandEntity("无图商品二", "", "stationery", "", List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)))
+            )
+            .product();
+        var ready = new CountDownLatch(2);
+        synchronizeImageInserts(ready);
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() ->
+                catalog.editProduct(
+                    owner,
+                    merchant.id(),
+                    left.getId(),
+                    "无图商品一",
+                    "",
+                    "stationery",
+                    "",
+                    List.of("/media/11111111-1111-1111-1111-111111111111.png"),
+                    left.getVersion()
+                )
+            );
+            var second = executor.submit(() ->
+                catalog.editProduct(
+                    other,
+                    secondMerchant.id(),
+                    right.getId(),
+                    "无图商品二",
+                    "",
+                    "stationery",
+                    "",
+                    List.of("/media/22222222-2222-2222-2222-222222222222.png"),
+                    right.getVersion()
+                )
+            );
+            first.get(30, TimeUnit.SECONDS);
+            second.get(30, TimeUnit.SECONDS);
+            assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM cat_product_image", Integer.class));
+            verify(catalogLockDao, never()).deleteProductImages(anyString());
+        } finally {
+            executor.shutdownNow();
+            assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS));
+        }
     }
 
     @Test
@@ -395,7 +760,9 @@ class CommerceMySqlIntegrationTest {
                 new ProductCreateCommandEntity("事务响应测试", "", "stationery", "", List.of(new ProductSkuEntity(null, "原规格", 100, "ACTIVE", 0)))
             )
             .product();
-        doThrow(new IllegalStateException("inventory query unavailable")).when(inventoryService).stocks(anyList());
+        new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+            doThrow(new IllegalStateException("inventory query unavailable")).when(inventoryService).stocksForProductWrite(anyList())
+        );
         assertThrows(IllegalStateException.class, () -> catalog.addSkuToProduct(owner, merchant.id(), product.getId(), "新增规格", 200));
         assertEquals(1, jdbc.queryForObject("SELECT COUNT(*) FROM cat_sku WHERE product_id=?", Integer.class, product.getId()));
         assertEquals(product.getVersion(), jdbc.queryForObject("SELECT version FROM cat_product WHERE id=?", Long.class, product.getId()));

@@ -66,7 +66,7 @@ public class CatalogCaseImpl implements ICatalogCase {
         ProductAggregate product = catalog.addSku(merchant, productId, spec, price);
         for (var sku : product.getSkus()) inventory.initialize(merchant, owner.storeId(), sku.id());
         Map<String, StockVO> stocks = inventory
-            .stocks(
+            .stocksForProductWrite(
                 product
                     .getSkus()
                     .stream()
@@ -75,8 +75,8 @@ public class CatalogCaseImpl implements ICatalogCase {
             )
             .stream()
             .collect(java.util.stream.Collectors.toMap(StockVO::skuId, stock -> stock));
-        // 旧规格的库存也属于写操作响应；读取失败会使整个新增规格事务回滚。
-        return ProductReadModel.from(product, owner.name(), stocks);
+        // 商品行已锁定；图片需当前读，不能将旧事务快照混入写操作响应。
+        return ProductReadModel.from(product, owner.name(), stocks, images.findAllForUpdate(product.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)

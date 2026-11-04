@@ -22,6 +22,8 @@ import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 商品图片的本地文件存储适配器。
@@ -70,8 +72,15 @@ public class ProductImageRepository implements IProductImageRepository {
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public List<ProductImageVO> findAll(String productId) {
         return dao.productImages(productId).stream().map(this::vo).toList();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public List<ProductImageVO> findAllForUpdate(String productId) {
+        return dao.productImagesForUpdate(productId).stream().map(this::vo).toList();
     }
 
     @Override
@@ -88,8 +97,19 @@ public class ProductImageRepository implements IProductImageRepository {
     }
 
     @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void insertInitial(String productId, List<String> urls) {
+        insertRows(productId, urls);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
     public void replace(String productId, List<String> urls) {
         dao.deleteProductImages(productId);
+        insertRows(productId, urls);
+    }
+
+    private void insertRows(String productId, List<String> urls) {
         for (int i = 0; i < urls.size(); i++) {
             String url = urls.get(i);
             String key = url.substring("/media/".length());

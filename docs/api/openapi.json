@@ -18755,7 +18755,11 @@
             "type": "string"
           }
         },
-        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ProductImageUploadDTO.java（字段类型来自源码；必填以领域规则为准）"
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ProductImageUploadDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "url"
+        ],
+        "x-nullable-fields": []
       },
       "ProductRequestDTO": {
         "type": "object",

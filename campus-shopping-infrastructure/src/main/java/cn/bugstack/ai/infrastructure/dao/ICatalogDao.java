@@ -21,6 +21,7 @@ public interface ICatalogDao {
     List<CategoryPO> categories();
     int category(@Param("code") String code, @Param("name") String name, @Param("active") boolean active);
     List<ProductImagePO> productImages(@Param("productId") String productId);
+    List<ProductImagePO> productImagesForUpdate(@Param("productId") String productId);
     List<ProductImagePO> productImagesByProducts(@Param("productIds") List<String> productIds);
     int deleteProductImages(@Param("productId") String productId);
     int insertProductImage(@Param("i") ProductImagePO image);

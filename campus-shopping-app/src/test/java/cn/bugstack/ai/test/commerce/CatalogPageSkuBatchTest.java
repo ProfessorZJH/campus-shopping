@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
+import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
@@ -38,8 +39,10 @@ class CatalogPageSkuBatchTest {
         var catalog = mock(ICatalogService.class);
         var merchants = mock(IMerchantService.class);
         var inventory = mock(IInventoryService.class);
+        var images = mock(IProductImageRepository.class);
+        when(images.findAll(anyList())).thenReturn(Map.of());
         ReflectionTestUtils.setField(c, "catalogCase", useCase);
-        ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(catalog, inventory, merchants, mock(IAccessService.class)));
+        ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(catalog, inventory, merchants, mock(IAccessService.class), images));
         when(catalog.searchSorted(null, "", null, true, 1, 100, "NEWEST")).thenReturn(products);
         when(catalog.count(null, "", null, true)).thenReturn(51L);
         when(merchants.findAll(List.of("m1"))).thenReturn(List.of(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园")));
@@ -66,6 +69,7 @@ class CatalogPageSkuBatchTest {
                     .allMatch(s -> s.getAvailable() == 5)
             );
         }
+        verify(images).findAll(products.stream().map(ProductAggregate::getId).toList());
         verify(merchants).findAll(List.of("m1"));
         verify(merchants, never()).find(anyString());
         var captured = org.mockito.ArgumentCaptor.forClass(List.class);

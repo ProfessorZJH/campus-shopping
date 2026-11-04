@@ -49,11 +49,7 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
         this.inventoryService = inventoryService;
         this.merchantService = merchantService;
         this.access = access;
-        this.images = images;
-    }
-
-    public CatalogQueryCaseImpl(ICatalogService catalogService, IInventoryService inventoryService, IMerchantService merchantService, IAccessService access) {
-        this(catalogService, inventoryService, merchantService, access, null);
+        this.images = java.util.Objects.requireNonNull(images);
     }
 
     @Override
@@ -161,8 +157,9 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
             .findAll(products.stream().map(ProductAggregate::getMerchantId).distinct().toList())
             .stream()
             .collect(Collectors.toMap(MerchantVO::id, MerchantVO::name));
-        Map<String, java.util.List<cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO>> imageMap =
-            images == null ? Map.of() : images.findAll(products.stream().map(ProductAggregate::getId).toList());
+        Map<String, java.util.List<cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO>> imageMap = images.findAll(
+            products.stream().map(ProductAggregate::getId).toList()
+        );
         return products
             .stream()
             .map(product -> {

@@ -798,17 +798,17 @@
   function positiveInt(v, max = 99) {
     return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
-  const { ref: ref$h } = Vue;
+  const { ref: ref$i } = Vue;
   const AuthDialog = {
     name: "AuthDialog",
     emits: ["close", "success"],
     setup(props, { emit }) {
-      const mode = ref$h("login");
-      const username = ref$h("");
-      const password = ref$h("");
-      const displayName = ref$h("");
-      const busy = ref$h(false);
-      const error = ref$h("");
+      const mode = ref$i("login");
+      const username = ref$i("");
+      const password = ref$i("");
+      const displayName = ref$i("");
+      const busy = ref$i(false);
+      const error = ref$i("");
       async function submit() {
         if (busy.value) return;
         error.value = "";
@@ -972,13 +972,13 @@
       };
     })()
   };
-  const { ref: ref$g } = Vue;
+  const { ref: ref$h } = Vue;
   const ConsumerShell = {
     name: "ConsumerShell",
     components: { AuthDialog },
     props: { active: { type: String, default: "home" } },
     setup() {
-      const loginOpen = ref$g(false);
+      const loginOpen = ref$h(false);
       async function logout() {
         try {
           await api("/auth/logout", { method: "POST" });
@@ -1110,7 +1110,7 @@
       };
     })()
   };
-  const { computed: computed$f, ref: ref$f, watch: watch$d } = Vue;
+  const { computed: computed$g, ref: ref$g, watch: watch$e } = Vue;
   const ProductImage = {
     name: "ProductImage",
     props: {
@@ -1119,14 +1119,14 @@
       loading: { type: String, default: "lazy" }
     },
     setup(props) {
-      const broken = ref$f(false);
-      watch$d(
+      const broken = ref$g(false);
+      watch$e(
         () => props.src,
         () => {
           broken.value = false;
         }
       );
-      const url = computed$f(
+      const url = computed$g(
         () => {
           var _a;
           return !broken.value && ((_a = props.src) == null ? void 0 : _a.trim()) ? props.src : "./images/product-placeholder.svg";
@@ -1149,7 +1149,7 @@
       };
     })()
   };
-  const { ref: ref$e, computed: computed$e, onMounted: onMounted$d } = Vue;
+  const { ref: ref$f, computed: computed$f, onMounted: onMounted$d } = Vue;
   const staticCategoryArt = {
     food: "./images/category-snacks.webp",
     drink: "./images/category-drinks.webp",
@@ -1164,18 +1164,18 @@
       const scope = requestScope();
       const initialScope = requestScope();
       const keywords = ["泡面", "牛奶", "水果", "文具", "纸巾", "零食"];
-      const search = ref$e("");
-      const category = ref$e("");
-      const merchant = ref$e("");
-      const sort = ref$e("popular");
-      const page = ref$e(1);
-      const selected = ref$e(null);
-      const chosenSku = ref$e("");
-      const count = ref$e(1);
-      const saving = ref$e(false);
-      const categories = computed$e(() => store.categories.filter((c) => c.active).slice(0, 5));
-      const shops = computed$e(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
-      const shown = computed$e(() => {
+      const search = ref$f("");
+      const category = ref$f("");
+      const merchant = ref$f("");
+      const sort = ref$f("popular");
+      const page = ref$f(1);
+      const selected = ref$f(null);
+      const chosenSku = ref$f("");
+      const count = ref$f(1);
+      const saving = ref$f(false);
+      const categories = computed$f(() => store.categories.filter((c) => c.active).slice(0, 5));
+      const shops = computed$f(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
+      const shown = computed$f(() => {
         let arr = store.products.filter((p) => p.status === "PUBLISHED");
         if (preview) {
           const q = search.value.trim().toLowerCase();
@@ -1192,8 +1192,8 @@
         return arr;
       });
       onMounted$d(() => loadPublic({ signal: initialScope.begin().signal }));
-      const pageInfo = computed$e(() => store.publicPage);
-      const chosen = computed$e(
+      const pageInfo = computed$f(() => store.publicPage);
+      const chosen = computed$f(
         () => {
           var _a, _b;
           return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosenSku.value)) || skuOf(selected.value);
@@ -1251,7 +1251,7 @@
         chosenSku.value = ((_b = (_a = p.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available) > 0)) == null ? void 0 : _b.skuId) || "";
         count.value = 1;
       }
-      const canAdd = computed$e(
+      const canAdd = computed$f(
         () => {
           var _a;
           return ((_a = chosen.value) == null ? void 0 : _a.status) === "ACTIVE" && positiveInt(count.value, 99) && Number(count.value) <= Number(chosen.value.available);
@@ -1844,7 +1844,7 @@
       };
     })()
   };
-  const { ref: ref$d, computed: computed$d, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$c } = Vue;
+  const { ref: ref$e, computed: computed$e, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$d } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
     { label: "高蛋白零食", icon: "sparkles", query: "想买点高蛋白的零食，有什么推荐？" },
@@ -1855,22 +1855,22 @@
     name: "Guide",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const input = ref$d("");
-      const thinking = ref$d(false);
-      const selectedIds = ref$d([]);
-      const messages = ref$d([]);
-      const proposal = ref$d(null);
-      const mode = ref$d("");
-      const error = ref$d("");
-      const historyOpen = ref$d(false);
-      const conversations = ref$d([]);
-      const historyPage = ref$d(1);
-      const historyHasMore = ref$d(false);
-      const loadingHistory = ref$d(false);
-      const openingConversation = ref$d(false);
+      const input = ref$e("");
+      const thinking = ref$e(false);
+      const selectedIds = ref$e([]);
+      const messages = ref$e([]);
+      const proposal = ref$e(null);
+      const mode = ref$e("");
+      const error = ref$e("");
+      const historyOpen = ref$e(false);
+      const conversations = ref$e([]);
+      const historyPage = ref$e(1);
+      const historyHasMore = ref$e(false);
+      const loadingHistory = ref$e(false);
+      const openingConversation = ref$e(false);
       let conversationEpoch = 0, historyEpoch = 0;
-      const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
-      const items2 = computed$d(
+      const examples = computed$e(() => DEMO_PRODUCTS.slice(0, 3));
+      const items2 = computed$e(
         () => {
           var _a;
           return preview ? examples.value.map((p) => ({
@@ -1887,15 +1887,15 @@
           }));
         }
       );
-      const total = computed$d(
+      const total = computed$e(
         () => items2.value.filter((i) => selectedIds.value.includes(i.skuId)).reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity || 1), 0)
       );
-      const showProposal = computed$d(() => {
+      const showProposal = computed$e(() => {
         var _a, _b;
         return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
       });
       const formatTime = () => (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
-      watch$c(
+      watch$d(
         () => {
           var _a;
           return (_a = store.user) == null ? void 0 : _a.userId;
@@ -2513,9 +2513,9 @@
       };
     })()
   };
-  const { ref: ref$c, computed: computed$c, onBeforeUnmount, watch: watch$b } = Vue;
-  const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
-  const MAX_BYTES = 2e6;
+  const { ref: ref$d, computed: computed$d, onBeforeUnmount: onBeforeUnmount$1, watch: watch$c } = Vue;
+  const VALID_TYPES$1 = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
+  const MAX_BYTES$1 = 2e6;
   const ProductImageField = {
     name: "ProductImageField",
     components: { ProductImage },
@@ -2528,10 +2528,10 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit }) {
-      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), localUrl = ref$c("");
+      const busy = ref$d(false), error = ref$d(""), notice = ref$d(""), localUrl = ref$d("");
       const scope = requestScope();
       let alive = true, epoch = 0;
-      watch$b(
+      watch$c(
         () => [props.merchantId, props.contextKey],
         () => {
           ++epoch;
@@ -2549,19 +2549,19 @@
           localUrl.value = "";
         }
       }
-      onBeforeUnmount(() => {
+      onBeforeUnmount$1(() => {
         alive = false;
         release();
         if (busy.value) emit("busy", false);
         if (error.value) emit("invalid", false);
       });
-      watch$b(
+      watch$c(
         () => props.modelValue,
         () => {
           if (!busy.value) release();
         }
       );
-      const displayed = computed$c(() => localUrl.value || props.modelValue || "");
+      const displayed = computed$d(() => localUrl.value || props.modelValue || "");
       function clear() {
         if (props.disabled || busy.value) return;
         release();
@@ -2578,12 +2578,12 @@
         error.value = "";
         notice.value = "";
         emit("invalid", false);
-        if (!VALID_TYPES.has(file.type)) {
+        if (!VALID_TYPES$1.has(file.type)) {
           error.value = "请选择 JPG、PNG 或 GIF 图片";
           emit("invalid", true);
           return;
         }
-        if (!file.size || file.size > MAX_BYTES) {
+        if (!file.size || file.size > MAX_BYTES$1) {
           error.value = "图片大小不能超过 2 MB";
           emit("invalid", true);
           return;
@@ -2709,6 +2709,264 @@
       };
     })()
   };
+  const { ref: ref$c, computed: computed$c, watch: watch$b, onBeforeUnmount } = Vue;
+  const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
+  const MAX_BYTES = 2e6;
+  const MAX_IMAGES = 8;
+  const ProductImageListField = {
+    name: "ProductImageListField",
+    components: { ProductImage },
+    props: {
+      modelValue: { type: Array, default: () => [] },
+      merchantId: { type: String, required: true },
+      contextKey: { type: String, default: "" },
+      invalid: Boolean,
+      disabled: Boolean,
+      demo: Boolean
+    },
+    emits: ["update:modelValue", "busy", "invalid"],
+    setup(props, { emit }) {
+      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), demoValues = ref$c(null);
+      const values = computed$c(
+        () => props.demo && demoValues.value ? demoValues.value : props.modelValue || []
+      );
+      const scope = requestScope(), localUrls = /* @__PURE__ */ new Set();
+      let alive = true, epoch = 0;
+      function release() {
+        for (const url of localUrls) URL.revokeObjectURL(url);
+        localUrls.clear();
+        demoValues.value = null;
+      }
+      function reset() {
+        ++epoch;
+        release();
+        busy.value = false;
+        error.value = "";
+        notice.value = "";
+        emit("busy", false);
+        emit("invalid", false);
+      }
+      watch$b(
+        () => [
+          props.merchantId,
+          props.contextKey,
+          props.demo,
+          store.identityVersion,
+          store.route,
+          store.merchantId
+        ],
+        reset
+      );
+      onBeforeUnmount(() => {
+        alive = false;
+        ++epoch;
+        release();
+        if (busy.value) emit("busy", false);
+      });
+      function update(next) {
+        if (props.demo) demoValues.value = next;
+        else emit("update:modelValue", next);
+      }
+      function clearInvalid() {
+        if (props.disabled || busy.value) return;
+        error.value = "";
+        notice.value = "";
+        emit("invalid", false);
+      }
+      function move(i, d) {
+        if (props.disabled || busy.value) return;
+        const next = values.value.slice(), j = i + d;
+        if (j < 0 || j >= next.length) return;
+        [next[i], next[j]] = [next[j], next[i]];
+        update(next);
+      }
+      function remove(i) {
+        if (props.disabled || busy.value) return;
+        const next = values.value.slice(), removed = next.splice(i, 1)[0];
+        if (localUrls.delete(removed)) URL.revokeObjectURL(removed);
+        error.value = "";
+        notice.value = "";
+        emit("invalid", false);
+        update(next);
+      }
+      async function choose(event) {
+        const files = [...event.target.files || []];
+        event.target.value = "";
+        if (!files.length || props.disabled || busy.value) return;
+        error.value = "";
+        notice.value = "";
+        emit("invalid", false);
+        if (values.value.length + files.length > MAX_IMAGES) {
+          error.value = "商品最多保存 8 张图片";
+          emit("invalid", true);
+          return;
+        }
+        if (files.some((file) => !VALID_TYPES.has(file.type) || !file.size || file.size > MAX_BYTES)) {
+          error.value = "图片须为 JPG、PNG 或 GIF，且不超过 2 MB";
+          emit("invalid", true);
+          return;
+        }
+        if (props.demo) {
+          const urls = [];
+          try {
+            for (const file of files) urls.push(URL.createObjectURL(file));
+            for (const url of urls) localUrls.add(url);
+            demoValues.value = values.value.concat(urls);
+            notice.value = "仅本地预览，未上传";
+          } catch {
+            for (const url of urls) URL.revokeObjectURL(url);
+            error.value = "图片预览失败";
+            emit("invalid", true);
+          }
+          return;
+        }
+        const merchant = props.merchantId, context = props.contextKey, stamp = ++epoch, valid = scope.capture();
+        const current = () => alive && valid() && stamp === epoch && merchant === props.merchantId && context === props.contextKey && !props.demo;
+        busy.value = true;
+        emit("busy", true);
+        try {
+          const urls = [];
+          for (const file of files) {
+            const base64 = await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onerror = () => reject(new Error("图片读取失败"));
+              reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+              reader.readAsDataURL(file);
+            });
+            if (!current()) return;
+            const result = await api("/merchants/" + encodeURIComponent(merchant) + "/images", {
+              method: "POST",
+              body: { filename: file.name, contentType: file.type, base64 }
+            });
+            if (!current()) return;
+            if (!/^\/media\/[a-f0-9-]+\.png$/.test((result == null ? void 0 : result.url) || ""))
+              throw new Error("图片上传返回地址无效");
+            urls.push(result.url);
+          }
+          if (values.value.length + urls.length > MAX_IMAGES)
+            throw new Error("商品最多保存 8 张图片");
+          emit("update:modelValue", values.value.concat(urls));
+          emit("invalid", false);
+          notice.value = "上传成功，保存商品后生效";
+        } catch (err) {
+          if (current()) {
+            error.value = err.message || "图片上传失败";
+            emit("invalid", true);
+          }
+        } finally {
+          if (current()) {
+            busy.value = false;
+            emit("busy", false);
+          }
+        }
+      }
+      return { values, busy, error, notice, choose, move, remove, clearInvalid };
+    },
+    render: (() => {
+      const { renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, normalizeClass: _normalizeClass } = Vue;
+      return function render(_ctx, _cache) {
+        const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_Icon = _resolveComponent("Icon");
+        return _openBlock(), _createElementBlock("div", { class: "product-image-list-field" }, [
+          _createElementVNode("div", { class: "product-image-list" }, [
+            (_openBlock(true), _createElementBlock(
+              _Fragment,
+              null,
+              _renderList(_ctx.values, (url, i) => {
+                return _openBlock(), _createElementBlock("div", {
+                  key: url,
+                  class: "product-image-tile"
+                }, [
+                  _createVNode(_component_ProductImage, {
+                    src: url,
+                    alt: "商品图片" + (i + 1)
+                  }, null, 8, ["src", "alt"]),
+                  i === 0 ? (_openBlock(), _createElementBlock("span", { key: 0 }, "主图")) : _createCommentVNode("v-if", true),
+                  _createElementVNode("div", null, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      "aria-label": "左移商品图片" + (i + 1),
+                      disabled: _ctx.disabled || _ctx.busy || i === 0,
+                      onClick: ($event) => _ctx.move(i, -1)
+                    }, "←", 8, ["aria-label", "disabled", "onClick"]),
+                    _createElementVNode("button", {
+                      type: "button",
+                      "aria-label": "右移商品图片" + (i + 1),
+                      disabled: _ctx.disabled || _ctx.busy || i === _ctx.values.length - 1,
+                      onClick: ($event) => _ctx.move(i, 1)
+                    }, "→", 8, ["aria-label", "disabled", "onClick"]),
+                    _createElementVNode("button", {
+                      type: "button",
+                      "aria-label": "移除商品图片" + (i + 1),
+                      disabled: _ctx.disabled || _ctx.busy,
+                      onClick: ($event) => _ctx.remove(i)
+                    }, "删除", 8, ["aria-label", "disabled", "onClick"])
+                  ])
+                ]);
+              }),
+              128
+              /* KEYED_FRAGMENT */
+            ))
+          ]),
+          _createElementVNode(
+            "label",
+            {
+              class: _normalizeClass(["image-upload-button", { disabled: _ctx.disabled || _ctx.busy || _ctx.values.length >= 8 }])
+            },
+            [
+              _createVNode(_component_Icon, {
+                name: "upload",
+                size: 15
+              }),
+              _createTextVNode(
+                _toDisplayString(_ctx.busy ? "上传中…" : "添加图片"),
+                1
+                /* TEXT */
+              ),
+              _createElementVNode("input", {
+                type: "file",
+                multiple: "",
+                accept: "image/png,image/jpeg,image/gif",
+                "aria-label": "选择商品图片",
+                disabled: _ctx.disabled || _ctx.busy || _ctx.values.length >= 8,
+                onChange: _ctx.choose
+              }, null, 40, ["disabled", "onChange"])
+            ],
+            2
+            /* CLASS */
+          ),
+          _createElementVNode("small", null, "最多 8 张；第一张为主图"),
+          _ctx.error || _ctx.invalid ? (_openBlock(), _createElementBlock(
+            "span",
+            {
+              key: 0,
+              class: "image-field-error",
+              role: "alert"
+            },
+            _toDisplayString(_ctx.error || "图片处理未完成，请重新选择或放弃本次选择"),
+            1
+            /* TEXT */
+          )) : _ctx.notice ? (_openBlock(), _createElementBlock(
+            "span",
+            {
+              key: 1,
+              class: "image-field-notice",
+              role: "status"
+            },
+            _toDisplayString(_ctx.notice),
+            1
+            /* TEXT */
+          )) : _createCommentVNode("v-if", true),
+          _ctx.error || _ctx.invalid ? (_openBlock(), _createElementBlock("button", {
+            key: 2,
+            type: "button",
+            disabled: _ctx.disabled || _ctx.busy,
+            onClick: _ctx.clearInvalid
+          }, "放弃本次图片选择", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
+        ]);
+      };
+    })()
+  };
   const { ref: ref$b, computed: computed$b, watch: watch$a, nextTick: nextTick$1, onMounted: onMounted$b, onUnmounted: onUnmounted$8 } = Vue;
   const MENU = [
     ["home", "工作台", "/merchant"],
@@ -2724,7 +2982,7 @@
   ];
   const Merchant = {
     name: "Merchant",
-    components: { AuthDialog, ProductImage, ProductImageField },
+    components: { AuthDialog, ProductImage, ProductImageField, ProductImageListField },
     setup() {
       const scope = requestScope();
       const search = ref$b("");
@@ -2748,10 +3006,17 @@
         description: "",
         categoryCode: "food",
         imageUrl: "",
+        imageUrls: [],
         skus: [{ specKey: "默认规格", price: "4.50" }]
       });
       const skuForm = ref$b({ specKey: "", price: "" });
-      const info = ref$b({ title: "", description: "", categoryCode: "food", imageUrl: "" });
+      const info = ref$b({
+        title: "",
+        description: "",
+        categoryCode: "food",
+        imageUrl: "",
+        imageUrls: []
+      });
       const createImageUploading = ref$b(false), editImageUploading = ref$b(false);
       const createImageInvalid = ref$b(false), editImageInvalid = ref$b(false);
       const merchant = computed$b(
@@ -2844,14 +3109,20 @@
         return ((_a = store.categories.find((c) => c.code === p.categoryCode)) == null ? void 0 : _a.name) || p.categoryCode;
       };
       const choose = (p) => {
-        editImageInvalid.value = false;
+        var _a;
+        if (p.productId !== ((_a = selected.value) == null ? void 0 : _a.productId)) editImageInvalid.value = false;
         selectedId.value = p.productId;
         selectedSkuId.value = skuOf(p).skuId || "";
         drawerTab.value = "stock";
       };
       watch$a(
         selected,
-        (p) => {
+        (p, previous) => {
+          var _a;
+          if ((p == null ? void 0 : p.productId) !== (previous == null ? void 0 : previous.productId)) {
+            editImageInvalid.value = false;
+            editImageUploading.value = false;
+          }
           if (p) {
             if (!p.skus.some((s) => s.skuId === selectedSkuId.value))
               selectedSkuId.value = skuOf(p).skuId || "";
@@ -2859,7 +3130,8 @@
               title: p.title,
               description: p.description || "",
               categoryCode: p.categoryCode,
-              imageUrl: p.imageUrl || ""
+              imageUrl: p.imageUrl || "",
+              imageUrls: ((_a = p.images) == null ? void 0 : _a.length) ? p.images.map((i) => i.url) : p.imageUrl ? [p.imageUrl] : []
             };
           }
         },
@@ -2910,6 +3182,7 @@
           description: "",
           categoryCode: ((_a = store.categories.find((c) => c.active)) == null ? void 0 : _a.code) || "food",
           imageUrl: "",
+          imageUrls: [],
           skus: [{ specKey: "默认规格", price: "" }]
         };
         modal2.value = "create";
@@ -2962,6 +3235,7 @@
               description: f.description.trim(),
               categoryCode: f.categoryCode,
               imageUrl: f.imageUrl || "",
+              imageUrls: f.imageUrls,
               skus
             }
           });
@@ -3110,6 +3384,7 @@
                 description: info.value.description.trim(),
                 categoryCode: info.value.categoryCode,
                 imageUrl: info.value.imageUrl || "",
+                imageUrls: info.value.imageUrls,
                 expectedVersion: selected.value.version
               }
             }
@@ -3227,7 +3502,7 @@
         var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
-        const _component_ProductImageField = _resolveComponent("ProductImageField");
+        const _component_ProductImageListField = _resolveComponent("ProductImageListField");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
         const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
@@ -4105,17 +4380,17 @@
                           [_vModelText, _ctx.info.description]
                         ]),
                         _createElementVNode("label", { class: "field-label" }, "商品主图"),
-                        (_openBlock(), _createBlock(_component_ProductImageField, {
-                          key: "edit-" + _ctx.selected.productId,
-                          "context-key": _ctx.selected.productId,
-                          modelValue: _ctx.info.imageUrl,
-                          "onUpdate:modelValue": ($event) => _ctx.info.imageUrl = $event,
+                        _createVNode(_component_ProductImageListField, {
+                          modelValue: _ctx.info.imageUrls,
+                          "onUpdate:modelValue": ($event) => _ctx.info.imageUrls = $event,
                           "merchant-id": _ctx.store.merchantId,
+                          "context-key": _ctx.selected.productId,
+                          invalid: _ctx.editImageInvalid,
                           demo: _ctx.preview,
                           disabled: !_ctx.owned || _ctx.saving,
                           onBusy: ($event) => _ctx.editImageUploading = $event,
                           onInvalid: ($event) => _ctx.editImageInvalid = $event
-                        }, null, 8, ["context-key", "modelValue", "onUpdate:modelValue", "merchant-id", "demo", "disabled", "onBusy", "onInvalid"])),
+                        }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "context-key", "invalid", "demo", "disabled", "onBusy", "onInvalid"]),
                         _createElementVNode("button", {
                           class: "teal-button inspector-submit",
                           onClick: _ctx.saveInfo,
@@ -4373,15 +4648,16 @@
                 [_vModelText, _ctx.form.description]
               ]),
               _createElementVNode("label", { class: "field-label" }, "商品主图"),
-              _createVNode(_component_ProductImageField, {
-                modelValue: _ctx.form.imageUrl,
-                "onUpdate:modelValue": ($event) => _ctx.form.imageUrl = $event,
+              _createVNode(_component_ProductImageListField, {
+                modelValue: _ctx.form.imageUrls,
+                "onUpdate:modelValue": ($event) => _ctx.form.imageUrls = $event,
                 "merchant-id": _ctx.store.merchantId,
+                invalid: _ctx.createImageInvalid,
                 demo: _ctx.preview,
                 disabled: _ctx.saving || !_ctx.owned,
                 onBusy: ($event) => _ctx.createImageUploading = $event,
                 onInvalid: ($event) => _ctx.createImageInvalid = $event
-              }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "demo", "disabled", "onBusy", "onInvalid"]),
+              }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "invalid", "demo", "disabled", "onBusy", "onInvalid"]),
               _createElementVNode("div", { class: "form-buttons" }, [
                 _createElementVNode("button", {
                   type: "button",
@@ -4518,7 +4794,7 @@
     components: { ConsumerShell, ProductImage },
     setup() {
       const scope = requestScope();
-      const product = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), error = ref$a("");
+      const product = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), error = ref$a(""), imageIndex = ref$a(0), touchStartX = ref$a(null);
       const id = computed$a(() => safeDecodeId(store.route.split("/")[2] || ""));
       const sku2 = computed$a(
         () => {
@@ -4531,6 +4807,12 @@
           var _a;
           return m.merchantId === ((_a = product.value) == null ? void 0 : _a.merchantId);
         }) || {}
+      );
+      const detailImages = computed$a(
+        () => {
+          var _a, _b, _c;
+          return ((_b = (_a = product.value) == null ? void 0 : _a.images) == null ? void 0 : _b.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
+        }
       );
       async function load() {
         const request2 = scope.begin();
@@ -4550,6 +4832,7 @@
         }
         if (!request2.current()) return;
         chosen.value = skuOf(product.value).skuId || "";
+        imageIndex.value = 0;
         count.value = 1;
       }
       onMounted$a(load);
@@ -4572,6 +4855,19 @@
           if (current()) busy.value = false;
         }
       }
+      function touchStart(event) {
+        var _a, _b;
+        touchStartX.value = ((_b = (_a = event.touches) == null ? void 0 : _a[0]) == null ? void 0 : _b.clientX) ?? null;
+      }
+      function touchEnd(event) {
+        var _a, _b;
+        if (touchStartX.value == null || detailImages.value.length < 2) return;
+        const end = (_b = (_a = event.changedTouches) == null ? void 0 : _a[0]) == null ? void 0 : _b.clientX;
+        const delta = typeof end === "number" ? end - touchStartX.value : 0;
+        touchStartX.value = null;
+        if (Math.abs(delta) < 36) return;
+        imageIndex.value = delta < 0 ? (imageIndex.value + 1) % detailImages.value.length : (imageIndex.value + detailImages.value.length - 1) % detailImages.value.length;
+      }
       return {
         product,
         sku: sku2,
@@ -4585,11 +4881,15 @@
         money,
         merchant,
         add,
-        pathId
+        pathId,
+        imageIndex,
+        touchStart,
+        touchEnd,
+        detailImages
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -4624,17 +4924,56 @@
               _Fragment,
               { key: 1 },
               [
-                _createElementVNode("div", { class: "detail-art" }, [
+                _createElementVNode("div", {
+                  class: "detail-art",
+                  onTouchstartPassive: _ctx.touchStart,
+                  onTouchendPassive: _ctx.touchEnd
+                }, [
                   _createVNode(_component_ProductImage, {
-                    src: _ctx.product.imageUrl,
+                    src: _ctx.detailImages[_ctx.imageIndex].url,
                     alt: _ctx.product.title,
                     loading: "eager"
                   }, null, 8, ["src", "alt"]),
-                  _ctx.product.status === "PUBLISHED" ? (_openBlock(), _createElementBlock("span", {
+                  _ctx.detailImages.length > 1 ? (_openBlock(), _createElementBlock("button", {
                     key: 0,
+                    class: "detail-image-prev",
+                    "aria-label": "上一张",
+                    onClick: ($event) => _ctx.imageIndex = (_ctx.imageIndex + _ctx.detailImages.length - 1) % _ctx.detailImages.length
+                  }, "‹", 8, ["onClick"])) : _createCommentVNode("v-if", true),
+                  _ctx.detailImages.length > 1 ? (_openBlock(), _createElementBlock("button", {
+                    key: 1,
+                    class: "detail-image-next",
+                    "aria-label": "下一张",
+                    onClick: ($event) => _ctx.imageIndex = (_ctx.imageIndex + 1) % _ctx.detailImages.length
+                  }, "›", 8, ["onClick"])) : _createCommentVNode("v-if", true),
+                  _ctx.detailImages.length > 1 ? (_openBlock(), _createElementBlock("div", {
+                    key: 2,
+                    class: "detail-image-thumbs"
+                  }, [
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.detailImages, (img, i) => {
+                        return _openBlock(), _createElementBlock("button", {
+                          key: img.imageId || img.url,
+                          class: _normalizeClass({ active: i === _ctx.imageIndex }),
+                          onClick: ($event) => _ctx.imageIndex = i
+                        }, [
+                          _createVNode(_component_ProductImage, {
+                            src: img.url,
+                            alt: _ctx.product.title
+                          }, null, 8, ["src", "alt"])
+                        ], 10, ["onClick"]);
+                      }),
+                      128
+                      /* KEYED_FRAGMENT */
+                    ))
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.product.status === "PUBLISHED" ? (_openBlock(), _createElementBlock("span", {
+                    key: 3,
                     class: "corner-tag"
                   }, "校内自提")) : _createCommentVNode("v-if", true)
-                ]),
+                ], 40, ["onTouchstartPassive", "onTouchendPassive"]),
                 _createElementVNode("div", { class: "detail-info" }, [
                   _createElementVNode("div", { class: "detail-price" }, [
                     _createTextVNode(

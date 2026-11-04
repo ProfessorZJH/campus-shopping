@@ -7,7 +7,13 @@ import java.util.List;
 public interface IProductImageRepository {
     /** 将已上传图片重编码为 PNG，仅返回服务允许的 /media URL。 */
     String storeImage(byte[] bytes);
+    /** 读取新建商品在当前事务中写入的图片。 */
     List<ProductImageVO> findAll(String productId);
+    /** 写事务中先锁定商品，再以当前读取得其图片。 */
+    List<ProductImageVO> findAllForUpdate(String productId);
     java.util.Map<String, List<ProductImageVO>> findAll(List<String> productIds);
+    /** 新建商品或持锁确认原本无主图时，只插入新图片，避免空范围删除的间隙锁。 */
+    void insertInitial(String productId, List<String> imageUrls);
+    /** 持有商品锁且原本有主图时，原子替换其图片。 */
     void replace(String productId, List<String> imageUrls);
 }

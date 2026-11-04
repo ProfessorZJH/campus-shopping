@@ -72,7 +72,7 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 | 入驻申请 | `POST /merchant-applications` | 申请者由 Session 决定；`Idempotency-Key` 业务必填，最长 64 字符，同主体同键同请求返回原申请 |
 | 库存补货 | `POST /merchants/{mid}/stocks/{skuId}/replenish` | 商户成员授权；数量有效；`Idempotency-Key` 必填，最长 64 字符；重放不重复增库存 |
 | 订单创建 | `POST /orders` | 只允许单一商户；每行 `skuId,quantity,expectedPriceCent,expectedVersion` 由 Java 复查；`Idempotency-Key` 必填，最长 64 字符，重放不重复预占 |
-| 商品编辑与规格 | `/merchants/{mid}/products` 及 `/skus` 子路由 | 多 SKU 唯一、报价版本与当前用户权限由 Java 决定；图片 `imageUrl` 来自可信上传接口 |
+| 商品编辑与规格 | `/merchants/{mid}/products` 及 `/skus` 子路由 | 多 SKU 唯一、报价版本与当前用户权限由 Java 决定；有序图片地址由 Java 复验 |
 | 模拟支付/备货/自提 | `/orders/{id}/pay`、商户 `/orders/{id}/prepare|ready|verify` | 根据状态机校验、重复操作幂等，核销凭证有时效与单次消费约束 |
 | AI 推荐提案确认 | `POST /ai/proposals/{proposalId}/confirm` | AI 输出不是业务执行凭据；Java 在确认时复查所有权、失效时间、SKU、价格、库存 |
 
@@ -86,6 +86,7 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 
 ## 5. 图片、引用与 AI 模式
 
+- 商品创建/编辑支持 0–8 张不重复的同源 `/media/*.png` 图片；`imageUrls` 缺失或为 null 时沿用旧 `imageUrl`，显式空数组清空图片。商品响应的 `images` 按顺序返回，兼容字段 `imageUrl` 为首图或空串；上传成功响应必须包含非 null 的 `url`。商品记录与图片引用在同库事务内更新。
 - `CartResponseDTO.merchantName` 从 `mer_merchant` 查出后返回；`imageUrl` 从当前公开商品数据读取。
 - `ProposalItemResponseDTO.imageUrl` 是生成提案时可信 Catalog 数据，不要求新增数据库表；过期提案仍拒绝执行。
 - `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。

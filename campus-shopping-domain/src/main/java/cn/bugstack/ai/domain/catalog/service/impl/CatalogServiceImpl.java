@@ -73,7 +73,7 @@ public class CatalogServiceImpl implements ICatalogService {
             skus
         );
         repository.insert(p);
-        images.replace(p.getId(), imageUrls);
+        images.insertInitial(p.getId(), imageUrls);
         return p;
     }
 
@@ -100,7 +100,8 @@ public class CatalogServiceImpl implements ICatalogService {
         ProductAggregate p = owned(merchant, id);
         p.addSku(new ProductSkuEntity(UUID.randomUUID().toString(), spec, price, SkuStatusEnumVO.ACTIVE.getCode(), 0));
         repository.save(p);
-        return repository.find(id, false);
+        // 已持有商品及规格锁；写响应必须取得当前聚合和递增后的版本。
+        return repository.find(id, true);
     }
 
     public void changeSkuStatus(String merchant, String id, String sku, boolean active, long expectedVersion) {
@@ -117,10 +118,13 @@ public class CatalogServiceImpl implements ICatalogService {
     public void edit(String merchant, String id, String title, String desc, String category, String image, List<String> imageUrls, long expected) {
         validCategory(category);
         ProductAggregate p = owned(merchant, id);
+        boolean hadImages = !p.getImageUrl().isEmpty();
         List<String> checked = checkedImages(imageUrls, image);
         p.changeInfo(title, desc, category, checked.isEmpty() ? "" : checked.get(0), expected);
         repository.save(p);
-        images.replace(id, checked);
+        // 商品行已锁定；原本无图时不做空范围删除，避免不同商品的间隙锁互相阻塞。
+        if (hadImages) images.replace(id, checked);
+        else if (!checked.isEmpty()) images.insertInitial(id, checked);
     }
 
     public void publish(String merchant, String id, boolean onShelf) {
