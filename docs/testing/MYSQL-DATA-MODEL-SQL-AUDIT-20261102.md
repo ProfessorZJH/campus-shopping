@@ -21,8 +21,7 @@
 - 当前一商户一门店约束与单 SKU 单库存余额一致；若未来支持多门店，必须把 `store_id` 纳入购物车、确认和展示查询，而不能移除唯一约束后继续按 SKU 取第一行。
 
 ## 变更范围
-
-- 新增不可变迁移 [`V20261102_01__inventory_integrity_and_query_indexes.sql`](../database/migrations/V20261102_01__inventory_integrity_and_query_indexes.sql)。
+- 当时新增不可变迁移 `V20261102_01__inventory_integrity_and_query_indexes.sql`，该文件后续作为历史版本重命名为 [`V20261105_01__inventory_integrity_and_query_indexes.sql`](../database/migrations/V20261105_01__inventory_integrity_and_query_indexes.sql)。
 - 同步应用 schema、Docker schema、迁移清单、逻辑模型和迁移手册。
 - 收紧 [`schema_contract.py`](../../scripts/schema_contract.py) 的基线、索引方向和 CHECK 结构校验。
 - 修正库存确认防御和 AI 文档摘要查询；未修改现有业务库，也未执行生产迁移。
