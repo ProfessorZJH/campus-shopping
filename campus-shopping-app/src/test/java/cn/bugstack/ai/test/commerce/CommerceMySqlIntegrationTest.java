@@ -308,8 +308,8 @@ class CommerceMySqlIntegrationTest {
 
     @Test
     void productImagesRemainConsistentAcrossWritesRollbackAndLegacyRequests() {
-        String first = "/media/11111111-1111-1111-1111-111111111111.png";
-        String second = "/media/22222222-2222-2222-2222-222222222222.png";
+        String first = mediaFixture("11111111-1111-1111-1111-111111111111", merchant.id());
+        String second = mediaFixture("22222222-2222-2222-2222-222222222222", merchant.id());
         var created = catalog.createProduct(
             owner,
             merchant.id(),
@@ -324,8 +324,8 @@ class CommerceMySqlIntegrationTest {
         );
         String id = created.product().getId();
         assertThrows(IllegalTransactionStateException.class, () -> productImages.findAllForUpdate(id));
-        assertThrows(IllegalTransactionStateException.class, () -> productImages.insertInitial(id, List.of()));
-        assertThrows(IllegalTransactionStateException.class, () -> productImages.replace(id, List.of()));
+        assertThrows(IllegalTransactionStateException.class, () -> productImages.insertInitial(id, merchant.id(), List.of()));
+        assertThrows(IllegalTransactionStateException.class, () -> productImages.replace(id, merchant.id(), List.of()));
         assertEquals(first, created.product().getImageUrl());
         assertEquals(
             List.of(first, second),
@@ -407,8 +407,8 @@ class CommerceMySqlIntegrationTest {
 
     @Test
     void concurrentImageEditAndSkuAdditionReturnOneCurrentImageSnapshot() throws Exception {
-        String first = "/media/11111111-1111-1111-1111-111111111111.png";
-        String second = "/media/22222222-2222-2222-2222-222222222222.png";
+        String first = mediaFixture("11111111-1111-1111-1111-111111111111", merchant.id());
+        String second = mediaFixture("22222222-2222-2222-2222-222222222222", merchant.id());
         var created = catalog.createProduct(
             owner,
             merchant.id(),
@@ -582,7 +582,7 @@ class CommerceMySqlIntegrationTest {
                         "stationery",
                         "",
                         List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)),
-                        List.of("/media/11111111-1111-1111-1111-111111111111.png")
+                        List.of(mediaFixture("11111111-1111-1111-1111-111111111111", merchant.id()))
                     )
                 )
             );
@@ -596,7 +596,7 @@ class CommerceMySqlIntegrationTest {
                         "stationery",
                         "",
                         List.of(new ProductSkuEntity(null, "默认", 100, "ACTIVE", 0)),
-                        List.of("/media/22222222-2222-2222-2222-222222222222.png")
+                        List.of(mediaFixture("22222222-2222-2222-2222-222222222222", secondMerchant.id()))
                     )
                 )
             );
@@ -639,7 +639,7 @@ class CommerceMySqlIntegrationTest {
                     "",
                     "stationery",
                     "",
-                    List.of("/media/11111111-1111-1111-1111-111111111111.png"),
+                    List.of(mediaFixture("11111111-1111-1111-1111-111111111111", merchant.id())),
                     left.getVersion()
                 )
             );
@@ -652,7 +652,7 @@ class CommerceMySqlIntegrationTest {
                     "",
                     "stationery",
                     "",
-                    List.of("/media/22222222-2222-2222-2222-222222222222.png"),
+                    List.of(mediaFixture("22222222-2222-2222-2222-222222222222", secondMerchant.id())),
                     right.getVersion()
                 )
             );
@@ -1255,6 +1255,23 @@ class CommerceMySqlIntegrationTest {
 
     private static java.nio.file.Path uploadRoot() {
         return java.nio.file.Path.of("target", "test-uploads").toAbsolutePath();
+    }
+
+    /** 上传对象归属校验只接受已登记商户的真实对象：夹具同时落盘文件并写入上传凭证。 */
+    private String mediaFixture(String objectKey, String merchantId) {
+        try {
+            Files.createDirectories(uploadRoot());
+            Files.write(uploadRoot().resolve(objectKey + ".png"), new byte[] { 1 });
+        } catch (java.io.IOException error) {
+            throw new IllegalStateException("测试图片夹具写入失败", error);
+        }
+        jdbc.update(
+            "INSERT INTO cat_product_image_upload(object_key,merchant_id) VALUES(?,?) "
+                + "ON DUPLICATE KEY UPDATE merchant_id=VALUES(merchant_id),product_id=NULL",
+            objectKey + ".png",
+            merchantId
+        );
+        return "/media/" + objectKey + ".png";
     }
 
     /** 每个用例清空本次构建目录下的图片文件，不触碰任何运行目录。 */

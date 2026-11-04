@@ -60,7 +60,8 @@ class ProductImageContractTest {
             catalog.create("m", "s", command(urls(count)));
         }
 
-        verify(images, times(4)).replace(anyString(), eq("m"), captor.capture());
+        // 新建商品走插入路径（不先删除空范围，避免不同商品的间隙锁），编辑才替换。
+        verify(images, times(4)).insertInitial(anyString(), eq("m"), captor.capture());
         assertEquals(List.of(0, 1, 4, 8), captor.getAllValues().stream().map(List::size).toList());
         verify(repository, times(4)).insert(any());
     }
@@ -76,6 +77,7 @@ class ProductImageContractTest {
         assertEquals("0002", assertThrows(AppException.class, () -> catalog.create("m", "s", command(List.of("/media/../../etc/passwd.png")))).getCode());
         assertEquals("0002", assertThrows(AppException.class, () -> catalog.create("m", "s", command(List.of(first, first)))).getCode());
         verify(images, never()).replace(anyString(), anyString(), anyList());
+        verify(images, never()).insertInitial(anyString(), anyString(), anyList());
         verify(repository, never()).insert(any());
     }
 
@@ -87,11 +89,11 @@ class ProductImageContractTest {
         String legacy = urls(1).get(0);
 
         catalog.create("m", "s", new ProductCreateCommandEntity("标题", "描述", "food", legacy, skus(), null));
-        verify(images).replace(anyString(), eq("m"), eq(List.of(legacy)));
+        verify(images).insertInitial(anyString(), eq("m"), eq(List.of(legacy)));
 
         // 显式空数组表示“清空相册”，不能再回退旧字段。
         catalog.create("m", "s", new ProductCreateCommandEntity("标题", "描述", "food", legacy, skus(), List.of()));
-        verify(images, times(1)).replace(anyString(), eq("m"), eq(List.of()));
+        verify(images, times(1)).insertInitial(anyString(), eq("m"), eq(List.of()));
     }
 
     @Test
