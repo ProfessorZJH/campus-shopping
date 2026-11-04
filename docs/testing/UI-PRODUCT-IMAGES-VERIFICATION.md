@@ -16,14 +16,16 @@
 - 隔离真实 MySQL 升级/重放验收 `python scripts/verify-mysql-isolated.py --mysql-bin <local> --skip-maven`：PASS，MySQL 8.0.31 临时实例，含新表 `cat_product_image_upload` 的新建/升级/重放与列索引约束一致性。
 - 隔离真实 MySQL + Spring `python scripts/verify-mysql-isolated.py --mysql-bin <local> --maven mvnw.cmd`：Maven `clean verify` BUILD SUCCESS，286 项，0 失败/错误，9 项跳过（8 项 Redis 条件用例 + 1 项 `REDIS_TEST_CACHE_ADDRESS` 未配置的 Redis 缓存用例）。新增 `CommerceMySqlIntegrationTest` 3 项真实集成用例：多图创建/上架读取/重排/清空/回存、跨商户与伪造/缺失对象拒绝及整体回滚、版本冲突时不提前认领对象。
 - 上述脚本因 `skipped != 0` 断言未通过，其整体状态为 FAIL：本机无隔离 Redis 实例（无 redis-server，Docker 守护未运行），Redis 相关 9 项不能计为通过；未完成的后续步骤包括脚本内的 JAR-UI 一致性与发布清单生成。
-- Linux Python 环境执行 `python3 frontend/tests/ui_product_images.py`：NOT_RUN，缺少 Pillow；Windows Python 环境因脚本固定 `/usr/bin/chromium`：NOT_RUN。`frontend/tests/contract_ui.py` 同样因 Linux 环境缺少 Playwright：NOT_RUN。
+- 真实 Chromium + 真实 Vue `frontend/tests/ui_product_images.py`：PASS 14 项（本机 Playwright Chromium，仅将脚本中固定 `/usr/bin/chromium` 本机路径适配运行器，未改断言）：演示预览 2 张本地预览且不写后端、非法格式与超 2 MB 不上传、失败项可移除后表单恢复、同一批重复选择只上传一次、逐张上传与 CSRF、创建持久化有序 `imageUrls` + 首图 `imageUrl`、编辑追加/重排并同步首图、清空相册、8 张上限禁用选择、首页/AI 公共占位、`/media` 真实渲染与 404 降级。
+- `frontend/tests/contract_ui.py`：PASS 20 项；`frontend/tests/ui_remaining.py`：PASS 32 项。
+- `frontend/tests/ui_three_pages.py` 与 `ui_remaining_contract.py` 在本机 Windows 环境失败，在 `fb9ed0f` 基线工作树复现相同失败，不是本次改动引入；本机未重新提交截图/结果证据文件。
 - 既有 Chromium/契约替身报告仍保留，不能替代本次新增的多图专项真实后端验收。
 以上浏览器/契约替身说明沿用原报告：真实 Vue 和 Chromium 可证明页面及请求构造，但不属于 Spring Boot/MySQL 端到端测试。文件读取与本地选图使用真实 FileReader 和 File input，`/media` 响应由浏览器路由替身提供有效 PNG/404。测试替身会记录请求方法和路径，不保存原始图片 base64 到测试报告。
 
 截图：`docs/testing/evidence/product-image-flow/merchant-create-image.png` 为真实 Chromium 打开的新增商品对话框；照片是本地设计预览素材，`?demo=1` 未调用服务端上传。
 
 ## 未执行/范围限制
-- **真实浏览器页面级多图验收未执行**（见下条）；真实 Spring/MySQL 多图链路已在隔离库执行，结果见“本次已执行”。
+- **真实浏览器多图专项验收已在替身环境执行（14 项），但未连接真实 Spring Boot 后端**：页面与请求构造为真实 Vue/Chromium，API 为契约替身。
 - **真实浏览器多图专项验收未执行。** 现有报告的 11 项主图/契约替身检查不覆盖 0/1/4/8 张、部分失败恢复和多图轮播全组合（源代码已实现，未在真实 Chromium 中回归）。
 - **Redis 相关 9 项集成用例未执行**：本机无隔离 Redis，`REDIS_ENABLED=false`；按仓库规则不能记为通过。
 - **真实 HTTP 层（Session/CSRF 上传接口）多图验收未执行**：本次多层验证在 Domain/Case/Repository + MySQL 链路完成，上传控制器与静态资源未做真实 HTTP 回归。
