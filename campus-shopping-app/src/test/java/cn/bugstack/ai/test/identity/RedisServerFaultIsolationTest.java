@@ -101,7 +101,13 @@ class RedisServerFaultIsolationTest {
             try (var socket = new Socket("127.0.0.1", port)) {
                 socket.getOutputStream().write("*2\r\n$8\r\nSHUTDOWN\r\n$6\r\nNOSAVE\r\n".getBytes(StandardCharsets.US_ASCII));
                 socket.setSoTimeout(3000);
-                assertEquals(-1, socket.getInputStream().read());
+                // Linux 下 SHUTDOWN 后是干净 EOF；Windows 可能直接 RST。两者都表示服务已停止，
+                // 下面仍要求子进程在 5 秒内真实退出，避免把“没关掉”误判为成功。
+                try {
+                    assertEquals(-1, socket.getInputStream().read());
+                } catch (java.net.SocketException reset) {
+                    assertTrue(process.waitFor(1, java.util.concurrent.TimeUnit.SECONDS), "Redis 子进程未在关闭后退出");
+                }
             } finally {
                 if (!process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) process.destroyForcibly();
             }
