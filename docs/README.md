@@ -56,3 +56,4 @@
 - [前端整改真实后端联调（用户指定单 Redis）](testing/UI-REMEDIATION-LIVE-20261101.md)
 - [PR #48 审查修复：匿名后台登录与首页加载边界](testing/PR48-REVIEW-FOLLOWUP-20261101.md)
 - [ShoppingAI / RAG 批次 A+B 实施记录](testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)
+- [分支实跑验证：Python / Java / 迁移基线（2026-11-04）](testing/BRANCH-VERIFY-20261104.md)

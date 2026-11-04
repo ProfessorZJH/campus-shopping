@@ -17,10 +17,24 @@
 
 ## 自动验证
 
+以下为 2026-11-01 当次的执行范围：
+
 - `ai-service`：224 项 pytest 通过，包含结构化属性、语义 rank 顺序、预算/数量歧义、跨语言规格继承、旧引用兼容、显式 SQLite 迁移和 chunk 级证据召回回归。
 - Java：`DddRulesTest`、`SkuConstraintPolicyTest` 共 17 项定向回归通过；本轮 `mvnw -B -ntp verify` 全模块构建成功，268 项测试中 180 项执行通过、88 项按环境跳过。
 - `python scripts/verify-api-contract.py`、`verify-api-schemas.py`、`schema_contract.py --check` 和 OpenSpec strict 校验通过。
 - 未在本机启动隔离 MySQL/Redis，也未调用真实外部模型、Embedding 或 Milvus；这些属于后续正式验收范围。
+
+### 2026-11-04 复验（隔离 MySQL/Redis 实跑）
+
+同一提交（`3bf1f11` + 10 个未提交修改）在 JDK17 / Maven 3.8.8 / MySQL 8.0.31 / Redis 上用真实工具链复跑，覆盖上文「未启动隔离 MySQL/Redis」的范围，详见 [分支实跑验证](BRANCH-VERIFY-20261104.md)：
+
+- `ai-service`：**226 passed**（0 失败，78.61s）。
+- Java：定向 51 项、全量 **279 tests / 0 failures / 0 skipped**（真实 MySQL，含 `ShoppingEvaluation*` 与 Redis 双实例用例）；`clean verify` 的 UI 构建、jar 与 `release-manifest.json` 生成成功。
+- `verify-mysql-isolated.py --skip-maven` 8 项检查 PASS；`verify-release.py` 与三项契约门禁 PASS。
+- 仍有 2 项 `RedisServerFaultIsolationTest` 在本机 `NOT_RUN`：Windows Redis 3.2 的 `SHUTDOWN` 以 RST 而非 EOF 结束连接，用例的 `read() == -1` 断言只在 CI 的 Linux Redis 7 成立；未修改测试换取通过。
+- 真实 LLM / Embedding / Milvus 与 `--http-smoke` 真实 HTTP+浏览器链路仍未执行，属后续正式验收范围。
+- 同一轮复验暴露的迁移基线问题（真实旧库被 `apply_migrations` 拒绝，而隔离脚本因整份重放 `schema.sql` 仍报 PASS）记录在该报告第 5 节，待修正。
+
 
 ## 限制与后续
 
