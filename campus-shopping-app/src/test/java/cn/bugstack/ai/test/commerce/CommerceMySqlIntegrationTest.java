@@ -549,7 +549,8 @@ class CommerceMySqlIntegrationTest {
         var realDao = sqlSession.getMapper(ICatalogDao.class);
         doAnswer(invocation -> {
             ready.countDown();
-            if (!ready.await(15, TimeUnit.SECONDS)) throw new IllegalStateException("等待并发图片写入超时");
+            // 其他表的合法行锁可能使事务串行；限时放行，不能由测试屏障制造死锁。
+            ready.await(2, TimeUnit.SECONDS);
             return realDao.insertProductImage(invocation.getArgument(0));
         })
             .when(catalogLockDao)

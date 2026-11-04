@@ -2,15 +2,21 @@
 """图片上传、预览、创建/修改商品及统一缺图：真实 Chromium + API 契约替身。
 不代表已经执行 Java/MySQL 联调。
 """
-import io
 import re
 import shutil
-from PIL import Image
+import struct
+import zlib
 from playwright.sync_api import sync_playwright,expect
 from ui_three_pages import render,BackendContractDouble,ERRORS
 
 def png_bytes():
-    out=io.BytesIO();Image.new('RGB',(30,25),'#4acab8').save(out,format='PNG');return out.getvalue()
+    def chunk(kind, payload):
+        return (struct.pack('>I', len(payload)) + kind + payload
+                + struct.pack('>I', zlib.crc32(kind + payload) & 0xffffffff))
+    header = struct.pack('>IIBBBBB', 30, 25, 8, 2, 0, 0, 0)
+    pixels = (b'\x00' + b'\x4a\xca\xb8' * 30) * 25
+    return (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header)
+            + chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b''))
 
 def set_file(page,buffer,filename='cover.png',mime='image/png'):
     page.locator('.merchant-modal input[type=file]').set_input_files({'name':filename,'mimeType':mime,'buffer':buffer})
