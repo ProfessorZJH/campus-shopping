@@ -2,7 +2,7 @@
 
 > **2026-11-04 基线整合说明**：本分支由 `codex/product-multi-images`（`53188da`）与本地 `fix/product-multi-images-followup`（`e4cd460`）合并而成。后端“上传对象归属”（迁移 `V20261104_01`、`cat_product_image_upload` 认领校验）与 A 线的“当前读”并发加固均已保留；**B 线的逐项失败列表/重试前端实现及对应浏览器用例未纳入本次整合**，`ProductImageListField.js`、`ui_product_images.py`、`contract_ui.py` 仍为 A 线版本。因此下文关于“失败项可移除后表单恢复”“同一批重复选择只上传一次”的浏览器结论不适用于本分支，需要在后续单独跟进；下文 `verify-mysql-isolated` 的 286 项数字也属 B 线基线的当时记录。
 >
-> 整合分支当前的 Java 结果为 **292 项 / 0 失败 / 2 errors / 0 skipped**（真实 MySQL + 双 Redis）；2 项均为 `RedisServerFaultIsolationTest`，因 Windows Redis 3.2 的 `SHUTDOWN` 返回 RST 而非 EOF，记 `NOT_RUN`，与业务改动无关。
+> 整合分支当前的 Java 结果为 **292 项 / 0 失败 / 0 errors / 0 skipped**（真实 MySQL + 双 Redis，Windows 本机执行）。`RedisServerFaultIsolationTest` 已对 Windows 的 RST 关闭语义做兼容（仍要求子进程真实退出），不再按平台跳过。
 > **后续真实验收（2026-10-29）**：商户页面实际上传图片、创建双 SKU 商品并上架，消费者详情/导购/购物车/订单展示实际图片，MySQL 订单图片快照核对通过，见[本地报告](LOCAL-LIVE-20261029.md)。本次没有穷尽所有换图/移除组合；下文的替身记录保留原边界。
 
 日期：2026-11-04（第一阶段多图修复跟进）。
