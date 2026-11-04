@@ -1,5 +1,5 @@
 -- BEGIN GENERATED SCHEMA PREFLIGHT
-SET @campus_new_schema := (SELECT COUNT(*)=0 FROM information_schema.tables WHERE table_schema=DATABASE());
+SET @campus_new_schema := (SELECT COUNT(*)=0 FROM information_schema.tables WHERE table_schema=DATABASE() AND table_name='iam_user');
 -- END GENERATED SCHEMA PREFLIGHT
 -- R1 完整表结构。不得通过删除数据库覆盖用户旧数据。
 CREATE TABLE IF NOT EXISTS iam_user (
