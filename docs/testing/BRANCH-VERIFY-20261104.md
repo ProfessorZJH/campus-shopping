@@ -1,6 +1,6 @@
 # 分支实跑验证：Python / Java / 迁移基线（2026-11-04）
 
-本轮在原「ShoppingAI / RAG 批次 A+B」变更（`codex/shoppingai-rag-corrections`，HEAD `3bf1f11` + 10 个未提交修改）上补齐**真实工具链**执行：此前该变更报告只记录了静态契约与部分回归，明确写着「未在本机启动隔离 MySQL/Redis」。本轮用本机 JDK17 / Maven 3.8.8 / MySQL 8.0.31 / Redis 实跑，并对 `scripts/schema_contract.py` 的基线改动做了独立探针。
+本轮在原「ShoppingAI / RAG 批次 A+B」变更（分支 `codex/shoppingai-rag-corrections`，基于当时的 `3bf1f11` 与工作区修改）上补齐**真实工具链**执行：此前该变更报告只记录了静态契约与部分回归，明确写着「未在本机启动隔离 MySQL/Redis」。本轮用本机 JDK17 / Maven 3.8.8 / MySQL 8.0.31 / Redis 实跑，并对 `scripts/schema_contract.py` 的基线改动做了独立探针。
 
 结论口径：
 
@@ -17,7 +17,7 @@
 | Python | `C:\Users\Profe\AppData\Local\Programs\Python\Python311`（3.11.9） | 已具备 `ai-service/requirements-dev.lock` 所需依赖，无需安装 |
 | MySQL | 8.0.31，127.0.0.1:3306 | 新建空库 `campus_shopping_it`（执行前不存在）；既有 `campus_shopping` 等业务库未被读写 |
 | Redis | `F:\software\Redis-x64-3.2.100` | 既有实例 6379 只读复用（随机 namespace）；另起临时隔离实例 **16380** 满足「安全/缓存必须独立实例」断言 |
-| 源码 | 工作区 10 个未提交修改 | 见 `git status`；本轮未改任何业务源码 |
+| 源码 | 当时工作区含未提交修改 | 该报告记录的是当时的验证快照，不代表当前工作区状态 |
 
 环境变量必须通过 `.cmd` 批处理 `set` 注入：从 WSL 导出的变量**不会**传给 `cmd.exe` 启动的 Windows JVM，第一轮因此出现 88 项被 `@EnabledIfEnvironmentVariable` 跳过（见 3.3）。
 
@@ -27,11 +27,11 @@
 |---|---|---|
 | 1 | `python -m pytest -q`（`ai-service/`） | **226 passed**，1 warning，78.61s |
 | 2 | `mvn -B -ntp -Dfrontend.skip=true -Dsurefire.failIfNoSpecifiedTests=false -Dtest=DddRulesTest,SkuConstraintPolicyTest,PurchaseConstraintTest,AiGatewayProductIndexTest,AiGatewayProtocolTest,ProductVectorSyncJobTest,AiConversationBoundaryTest test` | **51 tests，0 失败，BUILD SUCCESS**（27s） |
-| 3 | `mvn -B -ntp -Dfrontend.skip=true test`（`MYSQL_TEST_URL=campus_shopping_it`、`REDIS_TEST_ADDRESS=6379`、`REDIS_TEST_CACHE_ADDRESS=16380`、`EVALUATION_*`） | **279 tests，0 失败，2 errors，0 skipped**（8m21s） |
+| 3 | `mvn -B -ntp -Dfrontend.skip=true test`（`MYSQL_TEST_URL=campus_shopping_it`、`REDIS_TEST_ADDRESS=6379`、`REDIS_TEST_CACHE_ADDRESS=16380`、`EVALUATION_*`） | **279 tests，0 failures，2 errors，0 skipped**（8m21s；Windows Redis 3.2 RST，详见第 4 节） |
 | 4 | `mvn -B -ntp clean verify`（含 `npm ci` + UI 构建 + schema 契约 + build-source） | `npm ci` 成功（29 包 4s）、UI 构建成功；测试阶段同 #3，故 `verify` 阶段未执行 |
 | 5 | `mvn -B -ntp -DskipTests verify` | **BUILD SUCCESS**（14.5s），生成 `campus-shopping-app.jar` 与 `release-manifest.json` |
 | 6 | `python scripts/verify-mysql-isolated.py --mysql-bin D:\develop\mysql-8.0.31-winx64\bin --skip-maven` | **PASS**，8 项检查全通过，`mysqlVersion=8.0.31`、`existingDatabaseUsed=false`、`temporaryDatabaseCleaned=true` |
-| 7 | `python scripts/verify-release.py` | **PASS** ×2（`javaSyntaxFiles=404`、`internalInterfaceImplementations=61`、`schemaTables=37`、`mybatisMapperFiles=11`、`errors=[]`） |
+| 7 | `python scripts/verify-release.py` | **当时报告为 PASS**（`javaSyntaxFiles=404`、`internalInterfaceImplementations=61`、`schemaTables=37`）；当前在合并树中因历史文档链接指向已重命名迁移而 FAIL，见交付说明 |
 | 8 | `verify-api-contract.py` / `verify-api-schemas.py` / `schema_contract.py --check` | 58 项 PASS / PASS / PASS |
 
 第 3、4 步的 2 个 error 全部来自 `RedisServerFaultIsolationTest`，见第 4 节。
@@ -62,7 +62,7 @@ java.net.SocketException: Connection reset
 
 ## 5. 迁移基线探针（审计发现，需决策）
 
-`scripts/schema_contract.py` 在本分支把 `R1_BASELINE_TABLES` 从「`CORE_BASELINE_TABLES[:31]`」改为「排除 `ai_knowledge_quota`/`ai_knowledge_usage`/`ai_sync_checkpoint`」。用独立探针（`var/verify/p13_baseline_probe.py`、`var/verify/p13_lists.py`）在新建临时库上验证：
+当时工作区的 `scripts/schema_contract.py` 把 `R1_BASELINE_TABLES` 从「`CORE_BASELINE_TABLES[:31]`」改为「排除 `ai_knowledge_quota`/`ai_knowledge_usage`/`ai_sync_checkpoint`」。用独立探针（`var/verify/p13_baseline_probe.py`、`var/verify/p13_lists.py`）在新建临时库上验证：
 
 | 场景 | 结果 |
 |---|---|
@@ -84,7 +84,7 @@ java.net.SocketException: Connection reset
 1. 本分支的改动只是**把一个阻塞条件换成另一个**：旧列表因缺 V31 迁移创建的表而拒绝，新列表因要求 V20261028_02 迁移创建的 RBAC 表而拒绝。两套硬编码清单都不描述旧 Redis 分支的真实形状，`docs/specs/SDD-REDIS-12.md` 承诺的「旧 Redis 升级」路径仍然不可用。
 2. `verify-mysql-isolated.py` 在旧库上重放整份 `schema.sql`（并断言未登记迁移）后才调用 `apply_migrations`，因此第 6 步的 `PASS` **不能**证明真实旧库可升级；这正是被掩盖的位置。
 3. 旧库夹具仍保留 `index_expires_at`、`index_version`（V20261031_02 新增列），因此该迁移的 `ADD COLUMN` 分支在本脚本中从未被执行。
-4. 未改动任何代码：本轮只记录证据与结论，修正方案见下一轮计划 A 项。
+4. 后续已采用 B2 收口：本轮不把迁移基线强化并入 ShoppingAI 变更；该旧库兼容问题需另行设计和验证。
 
 复现方式（需本机 MySQL 凭据与 `scripts/` 依赖）：
 
@@ -103,11 +103,11 @@ cmd> python var\verify\p13_lists.py
 - `scripts/verify-release.py` 会重写 `docs/testing/evidence/ddd-refactor-20261029/{api-schemas,boundaries}.json` 与 `static-release.json`；本轮已 `git checkout` 还原，避免把无关证据目录的改写夹带进本次变更。
 - 运行日志与批处理保留在 `var/verify/`（已被 gitignore）：`integration-3.log`、`full-verify.log`、`package-verify.log`、`mysql-migration.json`、`p13_*.py`、`*.cmd`。批处理内含本机测试库密码，属本地临时文件，不应提交。
 
-## 7. 对既有结论的更新
+## 7. 对既有结论的更新（当时快照）
 
 | 编号 | 原结论 | 现状 |
 |---|---|---|
 | P1-1 | 任务清单勾选「隔离 MySQL/HTTP 测试」，报告写「未启动隔离 MySQL/Redis」 | 集成部分已真实执行（skipped=0），文档需按第 2 节更新；HTTP/浏览器与真实模型仍为 NOT_RUN |
 | P1-2 | 结构化 `attributes` 端到端不可达 | 仍成立；Java 侧无 attributes 契约测试 |
-| P1-3 | 旧库夹具与基线表集合冲突 | **成立并升级**：A/B 探针证明真实旧库被拒、脚本 PASS 属掩盖 |
+| P1-3 | 旧库夹具与基线表集合冲突 | **仍需单独设计**；B2 已将本次 ShoppingAI 提交中的基线强化撤出，原始探针结论仍有效 |
 | P2-1/2/3/4/5 | 知识授权查询放大、permit 生命周期、词表重复、设计文档漂移、索引失败语义 | 均未触及，仍成立 |
