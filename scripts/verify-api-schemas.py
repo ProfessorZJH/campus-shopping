@@ -79,6 +79,11 @@ def main():
     check(order, {'code': 'G0001', 'info': '失败', 'data': {'orderId': 'forged'}}, False,
           'failure cannot carry a success-shaped business object')
     check(order, {'code': 'unknown', 'info': '失败', 'data': None}, False, 'unknown response code is rejected')
+    image_upload = at('paths', '/api/v1/merchants/{merchantId}/images', 'post', 'responses', '200', 'content', 'application/json', 'schema')
+    check(image_upload, {'code':'0000','info':'成功','data':{'url':'/media/11111111-1111-1111-1111-111111111111.png'}}, True,
+          'image upload success includes its URL')
+    check(image_upload, {'code':'0000','info':'成功','data':{}}, False, 'image upload success requires URL')
+    check(image_upload, {'code':'0000','info':'成功','data':{'url':None}}, False, 'image upload URL cannot be null')
     status_examples = {
         'AdmissionResponseDTO': {'applicationId': 'a', 'merchantName': '店铺', 'category': '文具',
                                  'contactName': '经营者', 'contactPhone': '13800000000', 'storeName': '校园店',

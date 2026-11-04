@@ -32,10 +32,13 @@ def fixture_call(fixture):
         return result
     return callback
 
-def render(browser,route='/',demo=True,size=(430,932),fixture=None):
+def render(browser,route='/',demo=True,size=(430,932),fixture=None,routes=None,base=None):
     page=browser.new_page(viewport={'width':size[0],'height':size[1]},device_scale_factor=1,locale='zh-CN')
     page.on('pageerror',lambda exc:ERRORS.append(str(exc)))
-    page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><div id="app"></div></body></html>')
+    # 需要在首次加载前拦截的资源（如 /media/**）由调用方在这里注册路由。
+    if routes: routes(page)
+    # base 只用于把 /media 等绝对路径解析到拦截域名；不改变任何业务断言。
+    page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+(f'<base href="{base}">' if base else '')+'</head><body><div id="app"></div></body></html>')
     page.add_style_tag(path=str(UI/'src/styles/app.css'))
     page.evaluate('''({images,route,demo})=>{
       window.__CAMPUS_TEST_DEMO__=demo;

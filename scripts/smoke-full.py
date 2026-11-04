@@ -35,6 +35,16 @@ def validate_response(method, path, status, data):
             return
     raise AssertionError(f'契约没有声明路由：{method} {route}')
 
+def tiny_png(rgb, size=2):
+    """生成可由 ImageIO 解码的最小 RGB PNG，避免依赖 Pillow。"""
+    import struct, zlib
+    raw = b''.join(b'\x00' + bytes(rgb) * size for _ in range(size))
+    def chunk(tag, data):
+        body = struct.pack('>I', len(data)) + tag + data
+        return body + struct.pack('>I', zlib.crc32(tag + data) & 0xffffffff)
+    ihdr = struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0)
+    return b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(raw)) + chunk(b'IEND', b'')
+
 def check(condition, label):
     if not condition:
         raise AssertionError(label)
@@ -150,6 +160,41 @@ def run(args):
     owner.call('POST',base+'/products/'+product+'/publish',{'published':True})
     p=buyer.call('GET','/products/'+product)
     check(next(s for s in p['skus'] if s['skuId']==sku)['available']==5,'重复补货不增加两次库存')
+    # 真实 HTTP 多图链路：上传→保存→消费者读取→/media 取图→归属与伪造引用拒绝。
+    def upload_image(client, merchant_id, filename, blob):
+        return client.call('POST','/merchants/'+merchant_id+'/images',
+                           {'filename':filename,'contentType':'image/png','base64':base64.b64encode(blob).decode()})['url']
+    first=upload_image(owner,m,'first.png',tiny_png((80,202,184)))
+    second=upload_image(owner,m,'second.png',tiny_png((250,160,90)))
+    check(bool(re.fullmatch(r'/media/[a-f0-9-]+\.png',first)) and first!=second,'真实上传返回不同 /media 对象地址')
+    media=owner.opener.open(args.base_url.rstrip('/')+first,timeout=30)
+    media_body=media.read()
+    check(media.status==200 and media.headers.get('Content-Type','').startswith('image/png') and media_body[:8]==b'\x89PNG\r\n\x1a\n',
+          '/media 返回真实 PNG 字节而不是 base64 Json')
+    owner.call('PUT',base+'/products/'+product,{'title':p['title'],'description':p['description'],'categoryCode':p['categoryCode'],
+                                                'imageUrl':second,'imageUrls':[second,first],'expectedVersion':p['version']})
+    p=buyer.call('GET','/products/'+product)
+    check(p['imageUrl']==second and [i['url'] for i in p['images']]==[second,first],'多图保存后首图兼容字段与有序 images 一致')
+    check([i['sortOrder'] for i in p['images']]==[0,1],'图片顺序按提交的 sortOrder 返回')
+    other_base='/merchants/'+merchants[1]['merchantId']
+    other_product=other.call('POST',other_base+'/products',{'title':'越权图片测试','description':'只用于验证归属','categoryCode':'stationery','imageUrl':'',
+                                                             'skus':[{'specKey':'默认','priceCent':300}]})
+    other.call('PUT',other_base+'/products/'+other_product['productId'],{'title':'越权图片测试','description':'只用于验证归属','categoryCode':'stationery',
+                                                                         'imageUrl':first,'imageUrls':[first],'expectedVersion':other_product['version']},code='A0006')
+    own_after=owner.call('GET','/merchants/'+m+'/products/page?page=1&size=20')
+    check(any(x['productId']==product for x in own_after['items']),'跨商户引用被拒绝且原商品仍在')
+    missing='/'+'media/'+str(uuid.uuid4())+'.png'
+    owner.call('PUT',base+'/products/'+product,{'title':p['title'],'description':p['description'],'categoryCode':p['categoryCode'],
+                                                'imageUrl':missing,'imageUrls':[missing],'expectedVersion':p['version']},code='G0001')
+    owner.call('PUT',base+'/products/'+product,{'title':p['title'],'description':p['description'],'categoryCode':p['categoryCode'],
+                                                'imageUrl':'','imageUrls':[first]*9,'expectedVersion':p['version']},code='0002')
+    owner.call('PUT',base+'/products/'+product,{'title':p['title'],'description':p['description'],'categoryCode':p['categoryCode'],
+                                                'imageUrl':first,'imageUrls':[first,first],'expectedVersion':p['version']},code='0002')
+    check(p['version']==buyer.call('GET','/products/'+product)['version'],'非法图片写入不推进商品版本')
+    owner.call('PUT',base+'/products/'+product,{'title':p['title'],'description':p['description'],'categoryCode':p['categoryCode'],
+                                                'imageUrl':'','imageUrls':[],'expectedVersion':p['version']})
+    p=buyer.call('GET','/products/'+product)
+    check(p['imageUrl']=='' and p['images']==[],'清空相册同步清空兼容 imageUrl')
     status_path=base+'/products/'+product+'/skus/'+p['skus'][1]['skuId']+'/status'
     other.call('PUT',status_path,{'active':False,'expectedVersion':p['version']},code='A0006')
     owner.call('PUT',status_path,{'active':False},code='0002')

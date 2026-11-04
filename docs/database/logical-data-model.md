@@ -273,3 +273,7 @@ merchant_id VARCHAR(36) NOT NULL, role_code VARCHAR(16) NOT NULL, permission VAR
  PRIMARY KEY(merchant_id,role_code,permission),
  CONSTRAINT fk_role_permission FOREIGN KEY (merchant_id,role_code) REFERENCES iam_merchant_role(merchant_id,role_code) ON DELETE CASCADE
 ```
+
+### cat_product_image
+
+商品图片独立保存对象引用，不保存二进制。sort_order 取 0 至 7，0 为主图；provider 当前为 LOCAL，object_key 为可迁移对象键，url 为当前访问投影。`V20261102_01__product_images.sql` 创建表并将历史商品的 `image_url` 幂等回填为第一张图片；`V20261104_01__product_image_upload_ownership.sql` 登记历史对象及后续上传对象的商户归属，商品保存时再绑定具体商品。`cat_product.image_url` 继续作为兼容主图字段。

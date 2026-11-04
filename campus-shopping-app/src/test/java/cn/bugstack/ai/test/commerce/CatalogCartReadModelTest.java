@@ -3,13 +3,16 @@ package cn.bugstack.ai.test.commerce;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import cn.bugstack.ai.cases.catalog.impl.CatalogCaseImpl;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.impl.CartQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
+import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.model.valobj.MembershipVO;
@@ -40,6 +43,7 @@ class CatalogCartReadModelTest {
     private final IAccessService access = mock(IAccessService.class);
     private final IInventoryService inventory = mock(IInventoryService.class);
     private final IMerchantService merchants = mock(IMerchantService.class);
+    private final IProductImageRepository images = mock(IProductImageRepository.class);
 
     private MerchantVO merchant(String id, String state) {
         return new MerchantVO(id, null, "商户" + id, "文具", state, "store", "门店", "校园");
@@ -81,11 +85,45 @@ class CatalogCartReadModelTest {
             0,
             List.of(new ProductSkuEntity("s", "默认", 100, "ACTIVE", 0))
         );
-        assertThrows(IllegalArgumentException.class, () -> new ProductReadModel(product, "商户", Map.of()));
-        assertThrows(IllegalArgumentException.class, () -> new ProductReadModel(product, "  ", Map.of("s", 0L)));
-        var dto = ApiViews.product(ProductReadModel.from(product, "商户", Map.of()));
+        assertThrows(IllegalArgumentException.class, () -> new ProductReadModel(product, "商户", Map.of(), List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new ProductReadModel(product, "  ", Map.of("s", 0L), List.of()));
+        assertThrows(NullPointerException.class, () -> new ProductReadModel(product, "商户", Map.of("s", 0L), null));
+        var dto = ApiViews.product(ProductReadModel.from(product, "商户", Map.of(), List.of()));
         assertEquals(0L, dto.getSkus().get(0).getAvailable());
         assertEquals("商户", dto.getMerchantName());
+    }
+
+    @Test
+    void addingSkuReturnsCurrentImagesAndDoesNotHideImageReadFailure() {
+        var product = new ProductAggregate(
+            "p",
+            "m",
+            "store",
+            "商品",
+            "",
+            "stationery",
+            "/media/a.png",
+            "PUBLISHED",
+            0,
+            List.of(new ProductSkuEntity("s", "默认", 100, "ACTIVE", 0))
+        );
+        var photo = new ProductImageVO("image", "LOCAL", "a.png", "/media/a.png", 0);
+        when(merchants.requireActiveForNewTrade("m")).thenReturn(merchant("m", "ACTIVE"));
+        when(catalog.addSku("m", "p", "新增", 200)).thenReturn(product);
+        when(inventory.stocksForProductWrite(List.of("s"))).thenReturn(List.of(new StockVO("m", "store", "s", 5, 1, 0)));
+        when(images.findAllForUpdate("p")).thenReturn(List.of(photo));
+        var useCase = new CatalogCaseImpl(catalog, inventory, merchants, access, images);
+
+        var result = useCase.addSkuToProduct("u", "m", "p", "新增", 200);
+        assertEquals(List.of(photo), result.images());
+        assertEquals(4L, result.availableBySku().get("s"));
+        verify(inventory).stocksForProductWrite(List.of("s"));
+        assertEquals("/media/a.png", ApiViews.product(result).getImages().get(0).getUrl());
+        verify(access).requirePermission("u", "m", "product.write");
+        verify(images).findAllForUpdate("p");
+
+        when(images.findAllForUpdate("p")).thenThrow(new IllegalStateException());
+        assertThrows(IllegalStateException.class, () -> useCase.addSkuToProduct("u", "m", "p", "新增", 200));
     }
 
     @Test
@@ -101,7 +139,7 @@ class CatalogCartReadModelTest {
                     "商品",
                     "",
                     "stationery",
-                    "",
+                    i == 0 ? "/media/a.png" : "",
                     "PUBLISHED",
                     0,
                     List.of(new ProductSkuEntity("s" + i, "默认", 100, "ACTIVE", 0))
@@ -112,9 +150,14 @@ class CatalogCartReadModelTest {
         when(catalog.search(null, "", null, true, 1, 100)).thenReturn(rows);
         var ids = rows.stream().map(ProductAggregate::getMerchantId).toList();
         when(merchants.findAll(ids)).thenReturn(shops);
-        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access);
+        var productIds = rows.stream().map(ProductAggregate::getId).toList();
+        var photo = new ProductImageVO("image", "LOCAL", "a.png", "/media/a.png", 0);
+        when(images.findAll(productIds)).thenReturn(Map.of("p0", List.of(photo)));
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
         var result = query.publicProducts(null, "", null, 1, 100).stream().map(ApiViews::product).toList();
         assertEquals(100, result.size());
+        assertEquals("/media/a.png", result.get(0).getImages().get(0).getUrl());
+        verify(images).findAll(productIds);
         for (int i = 0; i < 100; i++) assertEquals("商户m" + i, result.get(i).getMerchantName());
         verify(merchants).findAll(ids);
         verify(merchants, never()).find(anyString());
@@ -124,10 +167,10 @@ class CatalogCartReadModelTest {
     @Test
     void deniedAndEmptyProductPagesDoNotReadEnrichment() {
         doThrow(new AppException(ResponseCode.AUTH_FORBIDDEN)).when(access).requirePermission("u", "m", "product.read");
-        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access);
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
         assertThrows(AppException.class, () -> query.managedProducts("u", "m", 1, 20));
         assertTrue(query.publicProducts(null, "", null, 1, 20).isEmpty());
-        verifyNoInteractions(inventory, merchants);
+        verifyNoInteractions(inventory, merchants, images);
     }
 
     @Test
@@ -187,7 +230,7 @@ class CatalogCartReadModelTest {
         when(inventory.list("m", 1, 20, "")).thenReturn(List.of(stock));
         when(catalog.offers(List.of("sku"))).thenReturn(List.of(offer));
         when(inventory.countStocks("m", "")).thenReturn(1L);
-        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access);
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
         var page = query.stockPage("u", "m", 1, 20, "");
         assertEquals(1L, page.total());
         assertEquals(List.of(stock), page.items());

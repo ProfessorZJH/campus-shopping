@@ -20,4 +20,12 @@ public interface ICatalogDao {
     List<OfferPO> offers(@Param("skuIds") List<String> skuIds);
     List<CategoryPO> categories();
     int category(@Param("code") String code, @Param("name") String name, @Param("active") boolean active);
+    List<ProductImagePO> productImages(@Param("productId") String productId);
+    List<ProductImagePO> productImagesForUpdate(@Param("productId") String productId);
+    List<ProductImagePO> productImagesByProducts(@Param("productIds") List<String> productIds);
+    int deleteProductImages(@Param("productId") String productId);
+    int insertProductImage(@Param("i") ProductImagePO image);
+    int registerProductImageUpload(@Param("objectKey") String objectKey, @Param("merchantId") String merchantId);
+    int claimProductImage(@Param("objectKey") String objectKey, @Param("merchantId") String merchantId, @Param("productId") String productId);
+    List<String> productImageClaims(@Param("productId") String productId);
 }

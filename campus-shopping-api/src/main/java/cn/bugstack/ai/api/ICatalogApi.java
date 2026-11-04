@@ -39,7 +39,7 @@ public interface ICatalogApi {
     /** 上架或下架商品。 */
     Response<Void> publish(String merchantId, String productId, PublishRequestDTO request, Principal principal);
     /** 验证图片像素并重编码为 PNG，拒绝 SVG。 */
-    Response<ImageResponseDTO> image(String merchantId, FileUploadRequestDTO request, Principal principal);
+    Response<ProductImageUploadDTO> image(String merchantId, FileUploadRequestDTO request, Principal principal);
     /** 平台违规商品下架。 */
     Response<Void> forceUnpublish(String productId, Principal principal);
     /** 平台维护类目。 */

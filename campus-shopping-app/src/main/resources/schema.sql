@@ -55,6 +55,19 @@ CREATE TABLE IF NOT EXISTS cat_product (
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_product_merchant(merchant_id,status), KEY ix_product_merchant_newest(merchant_id,status,created_at DESC,id), KEY ix_product_public_newest(status,created_at DESC,id,merchant_id), KEY ix_product_category(category_code,status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS cat_product_image (
+ image_id VARCHAR(36) PRIMARY KEY, product_id VARCHAR(36) NOT NULL, provider VARCHAR(32) NOT NULL,
+ object_key VARCHAR(512) NOT NULL, url VARCHAR(255) NOT NULL, sort_order TINYINT UNSIGNED NOT NULL,
+ UNIQUE KEY uk_product_image_order(product_id,sort_order), UNIQUE KEY uk_product_image_object(product_id,object_key),
+ KEY ix_product_image_product(product_id,sort_order), CONSTRAINT ck_product_image_order CHECK (sort_order BETWEEN 0 AND 7)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS cat_product_image_upload (
+ object_key VARCHAR(512) NOT NULL, merchant_id VARCHAR(36) NOT NULL, product_id VARCHAR(36),
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), PRIMARY KEY (object_key,merchant_id),
+ KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id)
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS cat_sku (
  id VARCHAR(36) PRIMARY KEY, product_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
  spec_key VARCHAR(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL, price_cent BIGINT NOT NULL, status VARCHAR(16) NOT NULL DEFAULT 'ACTIVE', version BIGINT NOT NULL DEFAULT 0,
@@ -195,4 +208,6 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261030_01','436372
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_01','8302633d94615ff84f1a4803e94131b26cb0be3bfccb2d93882446faebd2fc07' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a063f6ffd06d3b115175258fb59dd2f2ba3ce72e49cbea2a87a3371b8ca' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
-INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','a97b56a94cea076eeb84461322f10e1af5b5011708b917a59a94b65fec26d6c2' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261104_01','1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_01','a97b56a94cea076eeb84461322f10e1af5b5011708b917a59a94b65fec26d6c2' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
