@@ -73,7 +73,7 @@ public class CatalogServiceImpl implements ICatalogService {
             skus
         );
         repository.insert(p);
-        images.insertInitial(p.getId(), imageUrls);
+        images.insertInitial(p.getId(), merchant, imageUrls);
         return p;
     }
 
@@ -123,8 +123,8 @@ public class CatalogServiceImpl implements ICatalogService {
         p.changeInfo(title, desc, category, checked.isEmpty() ? "" : checked.get(0), expected);
         repository.save(p);
         // 商品行已锁定；原本无图时不做空范围删除，避免不同商品的间隙锁互相阻塞。
-        if (hadImages) images.replace(id, checked);
-        else if (!checked.isEmpty()) images.insertInitial(id, checked);
+        if (hadImages) images.replace(id, merchant, checked);
+        else if (!checked.isEmpty()) images.insertInitial(id, merchant, checked);
     }
 
     public void publish(String merchant, String id, boolean onShelf) {
@@ -246,15 +246,17 @@ public class CatalogServiceImpl implements ICatalogService {
         repository.category(c, Checks.text(name, "类目名称", 50), active);
     }
 
-    public String storeImage(byte[] data) {
-        return images.storeImage(data);
+    public String storeImage(String merchantId, byte[] data) {
+        require(merchantId != null && !merchantId.isBlank(), ResponseCode.ILLEGAL_PARAMETER);
+        return images.storeImage(data, merchantId);
     }
 
     private List<String> checkedImages(List<String> values, String legacy) {
-        List<String> images = values == null ? (legacy == null || legacy.isBlank() ? List.of() : List.of(legacy)) : values;
-        require(images.size() <= 8, ResponseCode.ILLEGAL_PARAMETER);
-        require(images.stream().allMatch(v -> v != null && v.matches("/media/[a-f0-9-]+\\.png")), ResponseCode.ILLEGAL_PARAMETER);
-        require(images.stream().distinct().count() == images.size(), ResponseCode.ILLEGAL_PARAMETER);
-        return List.copyOf(images);
+        List<String> requested = values == null ? (legacy == null || legacy.isBlank() ? List.of() : List.of(legacy)) : values;
+        require(requested.size() <= 8, ResponseCode.ILLEGAL_PARAMETER);
+        require(requested.stream().allMatch(v -> v != null && v.matches("/media/[a-f0-9-]+\\.png")), ResponseCode.ILLEGAL_PARAMETER);
+        require(requested.stream().distinct().count() == requested.size(), ResponseCode.ILLEGAL_PARAMETER);
+        // URL 只作为客户端引用；适配器还要核验对象存在，不能伪造 /media 地址写入图片表。
+        return List.copyOf(requested);
     }
 }

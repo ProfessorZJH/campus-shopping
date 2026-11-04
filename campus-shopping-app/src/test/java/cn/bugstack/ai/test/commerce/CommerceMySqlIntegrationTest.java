@@ -30,6 +30,7 @@ import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
 import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
+import java.nio.file.Files;
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -153,6 +154,9 @@ class CommerceMySqlIntegrationTest {
     @SpyBean
     cn.bugstack.ai.domain.inventory.service.impl.InventoryServiceImpl inventoryService;
 
+    @Autowired
+    cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository imageStore;
+
     String admin, owner, buyer, other;
     MerchantVO merchant;
     static final String PASSWORD = "Test-only-commerce-password-123!";
@@ -173,6 +177,8 @@ class CommerceMySqlIntegrationTest {
         r.add("spring.sql.init.mode", () -> "always");
         r.add("spring.sql.init.schema-locations", () -> "classpath:schema.sql");
         r.add("spring.sql.init.data-locations", () -> "classpath:data.sql");
+        // 图片落盘目录固定到构建目录，避免写入仓库默认 ./var/uploads。
+        r.add("campus.uploads", () -> uploadRoot().toString());
     }
 
     @BeforeEach
@@ -203,6 +209,7 @@ class CommerceMySqlIntegrationTest {
             "inv_stock_balance",
             "cat_sku",
             "cat_product_image",
+            "cat_product_image_upload",
             "cat_product",
             "iam_invitation",
             "iam_merchant_membership",
@@ -216,6 +223,7 @@ class CommerceMySqlIntegrationTest {
             "iam_user"
         ))
             jdbc.update("DELETE FROM " + table);
+        resetUploads();
         jdbc.update("UPDATE ai_knowledge_quota SET used_count=0 WHERE id='global'");
         clock.now = Instant.parse("2026-10-28T04:00:00Z");
         admin = accounts.register("testadmin", PASSWORD, "测试管理员").getUserId();
@@ -1159,6 +1167,111 @@ class CommerceMySqlIntegrationTest {
         assertEquals("C0001", code(() -> catalog.setProductPublished(owner, merchant.id(), p.getId(), true)));
         assertEquals(1200, scalar("SELECT unit_price_cent FROM trd_order_item WHERE order_id=?", o.getId()));
         assertEquals("考试中性笔", jdbc.queryForObject("SELECT title FROM trd_order_item WHERE order_id=?", String.class, o.getId()));
+    }
+
+    @Test
+    void productAlbumIsOrderedOwnedAndAtomicInRealMysql() throws Exception {
+        String merchantId = merchant.id();
+        List<String> urls = new ArrayList<>();
+        for (int i = 0; i < 4; i++) urls.add(imageStore.storeImage(pngBytes(), merchantId));
+
+        var created = catalog.createProduct(owner, merchantId, albumCommand("相册商品", urls));
+        String productId = created.product().getId();
+        assertEquals(urls, imageUrls(created));
+        assertEquals(urls.get(0), created.product().getImageUrl());
+        assertEquals(4L, scalar("SELECT COUNT(*) FROM cat_product_image WHERE product_id=?", productId));
+        assertEquals(4L, scalar("SELECT COUNT(*) FROM cat_product_image_upload WHERE product_id=? AND merchant_id=?", productId, merchantId));
+
+        // 重排 + 移除：上架后用消费者详情读取，只保留最后一张和第一张。
+        catalog.setProductPublished(owner, merchantId, productId, true);
+        long version = catalogSearch.find(productId).getVersion();
+        List<String> reordered = List.of(urls.get(3), urls.get(0));
+        catalog.editProduct(owner, merchantId, productId, "相册商品", "多图", "stationery", "", reordered, version);
+        var edited = catalogQuery.detail(productId);
+        assertEquals(reordered, imageUrls(edited));
+        assertEquals(urls.get(3), edited.product().getImageUrl());
+
+        // 清空相册：兼容主图同步为空，已认领对象仍只能回到本商品。
+        catalog.editProduct(owner, merchantId, productId, "相册商品", "多图", "stationery", "", List.of(), edited.product().getVersion());
+        var cleared = catalogQuery.detail(productId);
+        assertEquals(List.of(), imageUrls(cleared));
+        assertEquals("", cleared.product().getImageUrl());
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image WHERE product_id=?", productId));
+        catalog.editProduct(owner, merchantId, productId, "相册商品", "多图", "stationery", "", List.of(urls.get(0)), cleared.product().getVersion());
+        assertEquals(List.of(urls.get(0)), imageUrls(catalogQuery.detail(productId)));
+    }
+
+    @Test
+    void productImageReferencesRejectForeignOwnershipMissingAndForgedObjects() throws Exception {
+        String merchantId = merchant.id();
+        String mine = imageStore.storeImage(pngBytes(), merchantId);
+        var foreign = open(other, "另一个商户");
+
+        // 文件存在但属于其他商户：不得被本商户引用，商品写入整体回滚。
+        assertEquals("A0006", code(() -> catalog.createProduct(other, foreign.id(), albumCommand("越权商品", List.of(mine)))));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product WHERE merchant_id=?", foreign.id()));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image WHERE object_key=?", mine.substring("/media/".length())));
+
+        // 未登记的伪造对象：即便文件存在也不能入库。
+        String forged = "/media/" + UUID.randomUUID() + ".png";
+        Files.createDirectories(uploadRoot());
+        Files.write(uploadRoot().resolve(forged.substring("/media/".length())), pngBytes());
+        assertEquals("A0006", code(() -> catalog.createProduct(owner, merchantId, albumCommand("伪造商品", List.of(forged)))));
+
+        // 文件不存在的引用：按资源不存在拒绝，而不是静默写入。
+        String missing = "/media/" + UUID.randomUUID() + ".png";
+        assertEquals("G0001", code(() -> catalog.createProduct(owner, merchantId, albumCommand("缺失商品", List.of(missing)))));
+
+        // 非法形状与去重由领域层提前拒绝，不产生任何图片行。
+        assertEquals("0002", code(() -> catalog.createProduct(owner, merchantId, albumCommand("非法商品", List.of("/media/../a.png")))));
+        assertEquals("0002", code(() -> catalog.createProduct(owner, merchantId, albumCommand("重复商品", List.of(mine, mine)))));
+        assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image"));
+    }
+
+    @Test
+    void productAlbumRollsBackBeforeClaimingWhenVersionConflicts() throws Exception {
+        String merchantId = merchant.id();
+        List<String> keep = List.of(imageStore.storeImage(pngBytes(), merchantId), imageStore.storeImage(pngBytes(), merchantId));
+        var created = catalog.createProduct(owner, merchantId, albumCommand("版本商品", keep));
+        String productId = created.product().getId();
+        catalog.setProductPublished(owner, merchantId, productId, true);
+        String spare = imageStore.storeImage(pngBytes(), merchantId);
+
+        assertEquals("G0002", code(() -> catalog.editProduct(owner, merchantId, productId, "版本商品", "多图", "stationery", "", List.of(spare), 99)));
+        assertEquals(keep, imageUrls(catalogQuery.detail(productId)));
+        assertEquals(
+            0L,
+            scalar("SELECT COUNT(*) FROM cat_product_image_upload WHERE product_id=? AND object_key=?", productId, spare.substring("/media/".length()))
+        );
+    }
+
+    private ProductCreateCommandEntity albumCommand(String title, List<String> urls) {
+        return new ProductCreateCommandEntity(title, "多图相册", "stationery", "", List.of(new ProductSkuEntity(null, "标准", 900, "ACTIVE", 0)), urls);
+    }
+
+    private List<String> imageUrls(cn.bugstack.ai.cases.catalog.model.ProductReadModel model) {
+        return model.images().stream().map(cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO::url).toList();
+    }
+
+    private static java.nio.file.Path uploadRoot() {
+        return java.nio.file.Path.of("target", "test-uploads").toAbsolutePath();
+    }
+
+    /** 每个用例清空本次构建目录下的图片文件，不触碰任何运行目录。 */
+    private static void resetUploads() {
+        java.nio.file.Path root = uploadRoot();
+        if (!Files.isDirectory(root)) return;
+        try (var paths = Files.walk(root)) {
+            paths.sorted((a, b) -> b.getNameCount() - a.getNameCount()).forEach(path -> path.toFile().delete());
+        } catch (java.io.IOException error) {
+            throw new IllegalStateException("测试图片目录清理失败", error);
+        }
+    }
+
+    private static byte[] pngBytes() throws Exception {
+        var out = new java.io.ByteArrayOutputStream();
+        javax.imageio.ImageIO.write(new java.awt.image.BufferedImage(4, 4, java.awt.image.BufferedImage.TYPE_INT_RGB), "png", out);
+        return out.toByteArray();
     }
 
     @Test

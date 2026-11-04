@@ -50,5 +50,5 @@ public interface ICatalogService {
     List<SkuOfferVO> availableOffers(List<String> ids);
     List<CategoryVO> categories();
     void category(String code, String name, boolean active);
-    String storeImage(byte[] bytes);
+    String storeImage(String merchantId, byte[] bytes);
 }

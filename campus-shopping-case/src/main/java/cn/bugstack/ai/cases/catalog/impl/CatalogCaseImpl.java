@@ -143,7 +143,7 @@ public class CatalogCaseImpl implements ICatalogCase {
     public String uploadProductImage(String actor, String merchant, byte[] bytes) {
         access.requirePermission(actor, merchant, "product.write");
         require("ACTIVE".equals(merchants.find(merchant).status()), ResponseCode.MERCHANT_SUSPENDED);
-        return catalog.storeImage(bytes);
+        return catalog.storeImage(merchant, bytes);
     }
 
     @Transactional(rollbackFor = Exception.class)

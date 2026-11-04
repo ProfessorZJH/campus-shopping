@@ -40,6 +40,11 @@
       "version": "V20261102_01",
       "file": "V20261102_01__product_images.sql",
       "sha256": "c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d"
+    },
+    {
+      "version": "V20261104_01",
+      "file": "V20261104_01__product_image_upload_ownership.sql",
+      "sha256": "909c93b35fdec81a73204fdd582b1d871229a49cfea35d8efeba41c893e6385c"
     }
   ]
 }

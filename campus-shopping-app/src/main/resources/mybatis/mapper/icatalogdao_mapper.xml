@@ -49,4 +49,7 @@ SELECT image_id,product_id,provider,object_key,url,sort_order FROM cat_product_i
     </select>
     <delete id="deleteProductImages">DELETE FROM cat_product_image WHERE product_id=#{productId}</delete>
     <insert id="insertProductImage">INSERT INTO cat_product_image(image_id,product_id,provider,object_key,url,sort_order) VALUES(#{i.imageId},#{i.productId},#{i.provider},#{i.objectKey},#{i.url},#{i.sortOrder})</insert>
+    <insert id="registerProductImageUpload">INSERT INTO cat_product_image_upload(object_key,merchant_id) VALUES(#{objectKey},#{merchantId})</insert>
+    <update id="claimProductImage">UPDATE cat_product_image_upload SET product_id=#{productId} WHERE object_key=#{objectKey} AND merchant_id=#{merchantId} AND product_id IS NULL</update>
+    <select id="productImageUploads" resultType="java.lang.String">SELECT object_key FROM cat_product_image_upload WHERE product_id=#{productId}</select>
 </mapper>

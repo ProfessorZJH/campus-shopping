@@ -25,4 +25,7 @@ public interface ICatalogDao {
     List<ProductImagePO> productImagesByProducts(@Param("productIds") List<String> productIds);
     int deleteProductImages(@Param("productId") String productId);
     int insertProductImage(@Param("i") ProductImagePO image);
+    int registerProductImageUpload(@Param("objectKey") String objectKey, @Param("merchantId") String merchantId);
+    int claimProductImage(@Param("objectKey") String objectKey, @Param("merchantId") String merchantId, @Param("productId") String productId);
+    List<String> productImageUploads(@Param("productId") String productId);
 }

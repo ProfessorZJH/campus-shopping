@@ -39,15 +39,14 @@ public class ProductImageRepository implements IProductImageRepository {
     private String uploadDir;
 
     @Override
-    public String storeImage(byte[] data) {
+    public String storeImage(byte[] data, String merchantId) {
+        if (merchantId == null || merchantId.isBlank()) throw new AppException(ResponseCode.ILLEGAL_PARAMETER);
         if (data == null || data.length == 0 || data.length > 2 * 1024 * 1024) {
             throw new AppException(ResponseCode.UPLOAD_INVALID);
         }
         try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(data))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
-            if (!readers.hasNext()) {
-                throw new AppException(ResponseCode.UPLOAD_INVALID);
-            }
+            if (!readers.hasNext()) throw new AppException(ResponseCode.UPLOAD_INVALID);
 
             ImageReader reader = readers.next();
             try {
@@ -57,10 +56,13 @@ public class ProductImageRepository implements IProductImageRepository {
                 }
 
                 String name = UUID.randomUUID() + ".png";
-                Path dir = Path.of(uploadDir).toAbsolutePath().normalize();
+                Path dir = uploadDirectory();
                 Files.createDirectories(dir);
                 if (!ImageIO.write(reader.read(0), "png", dir.resolve(name).toFile())) {
                     throw new IOException("图片编码失败");
+                }
+                if (dao.registerProductImageUpload(name, merchantId) != 1) {
+                    throw new IllegalStateException("图片对象登记失败");
                 }
                 return "/media/" + name;
             } finally {
@@ -98,32 +100,73 @@ public class ProductImageRepository implements IProductImageRepository {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void insertInitial(String productId, List<String> urls) {
-        insertRows(productId, urls);
+    public void insertInitial(String productId, String merchantId, List<String> urls) {
+        insertRows(productId, claimObjects(productId, merchantId, urls));
     }
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void replace(String productId, List<String> urls) {
+    public void replace(String productId, String merchantId, List<String> urls) {
+        List<String> checked = claimObjects(productId, merchantId, urls);
         dao.deleteProductImages(productId);
-        insertRows(productId, urls);
+        insertRows(productId, checked);
+    }
+
+    /** 只接受本适配器生成、未被其他商户占用且仍存在的对象引用。 */
+    private List<String> claimObjects(String productId, String merchantId, List<String> urls) {
+        List<String> checked = urls == null ? List.of() : List.copyOf(urls);
+        if (checked.size() > 8 || checked.stream().anyMatch(url -> !isLocalUrl(url)) || checked.stream().distinct().count() != checked.size()) {
+            throw new AppException(ResponseCode.ILLEGAL_PARAMETER);
+        }
+        for (String url : checked) {
+            String key = objectKey(url);
+            if (!Files.isRegularFile(objectPath(url))) {
+                throw new AppException(ResponseCode.NOT_FOUND);
+            }
+            int claimed = dao.claimProductImage(key, merchantId, productId);
+            if (claimed == 0 && !isAlreadyClaimedByProduct(key, productId)) {
+                throw new AppException(ResponseCode.AUTH_FORBIDDEN);
+            }
+        }
+        return checked;
     }
 
     private void insertRows(String productId, List<String> urls) {
         for (int i = 0; i < urls.size(); i++) {
             String url = urls.get(i);
-            String key = url.substring("/media/".length());
             dao.insertProductImage(
                 ProductImagePO.builder()
                     .imageId(UUID.randomUUID().toString())
                     .productId(productId)
                     .provider("LOCAL")
-                    .objectKey(key)
+                    .objectKey(objectKey(url))
                     .url(url)
                     .sortOrder(i)
                     .build()
             );
         }
+    }
+
+    private boolean isAlreadyClaimedByProduct(String objectKey, String productId) {
+        return dao.productImageUploads(productId).stream().anyMatch(objectKey::equals);
+    }
+
+    private boolean isLocalUrl(String url) {
+        return url != null && url.matches("/media/[a-f0-9-]+\\.png");
+    }
+
+    private String objectKey(String url) {
+        return url.substring("/media/".length());
+    }
+
+    private Path objectPath(String url) {
+        Path root = uploadDirectory();
+        Path candidate = root.resolve(objectKey(url)).normalize();
+        return candidate.getParent().equals(root) ? candidate : root.resolve("__invalid__");
+    }
+
+    private Path uploadDirectory() {
+        return Path.of(uploadDir).toAbsolutePath().normalize();
     }
 
     private ProductImageVO vo(ProductImagePO p) {
