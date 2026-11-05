@@ -34,6 +34,20 @@
 - 真实 LLM / Embedding / Milvus 与 `--http-smoke` 真实 HTTP+浏览器链路仍未执行，属后续正式验收范围。
 - 迁移基线问题仍需独立设计；B2 不修改已发布迁移，也不将该问题记作本批次通过。
 
+### 2026-11-05 当前 HEAD 门禁复验（`471a202` / `018f25ea`）
+
+上一小节要求“当前提交后的新门禁须重新执行”，本节为同一分支尾部提交的实际执行结果：
+
+- GitHub Actions [run 41953113243](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41953113243)（headSha `018f25ea`，即 `471a202`）：`Quick quality gates`、`Maven / MySQL / FastAPI / Browser E2E`、`Chromium contract / current`、`Chromium contract / legacy`、`Actual delivery images / isolated Compose transaction chain` 均为 **success**；`Optional live NVIDIA / XFYUN / Milvus smoke` 按设计 skipped。
+- 本机复跑（JDK 17 / Maven Wrapper 3.9.9 / Python 3.11 / Node 22）：
+  - `python scripts/verify-release.py`：**PASS**（`javaSyntaxFiles=408`、`internalInterfaceImplementations=61`、`schemaTables=39`、`mybatisMapperFiles=11`）；`471a202` 修正历史迁移引用后，上一版因 `V20261102_01__inventory_integrity_and_query_indexes.sql` 引用失效产生的 FAIL 已消除。
+  - `schema_contract.py --check`、`verify-api-contract.py`、`verify-api-schemas.py`（61 项）、`verify-supply-chain.py`、`verify-java-readability.py`、`verify-domain.py`（56 项）、`verify-http-body.py`（6 项）、`build-ui-bundle.py --check`：全部 PASS。
+  - `npm run format:check --prefix frontend`：通过；`node --test frontend/tests/*.test.mjs`：14 passed。
+  - `ai-service`：`python -m pytest -q` **226 passed**（89.72s）。
+  - Java 单元回归（`SkuConstraintPolicyTest`、`PurchaseConstraintTest`、`DddRulesTest`、`AiConversationBoundaryTest`、`ContextPathQuotaTest`、`ProductionSecurityGuardTest`、`ProtocolBoundaryTest`）：**35 tests / 0 failures / 0 errors / 0 skipped**，`BUILD SUCCESS`。
+- 本机本轮**未**重跑“真实 MySQL + 安全/缓存双 Redis”的全量 `mvn test`；该范围以上面 CI 的 MySQL/Redis 作业为准，本地只按当次授权执行单元回归，不把单元结果记作全量通过。
+- `verify-release.py` 会重写 `docs/testing/evidence/` 下三份生成物，运行后已 `git checkout` 还原，未夹带进提交。
+- 仍未完成：真实供应商模型 / Embedding / Milvus 调用与人工 Gold 效果验收（属正式 AI 效果验收）；PR #49 上 21 条 Codex 审查线程均未标记 resolved，需逐条确认关闭。
 
 ## 限制与后续
 
