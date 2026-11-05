@@ -550,3 +550,68 @@ test('successful multi-image upload preserves order and permits reordering and r
   assert.deepEqual(props.modelValue, [mediaUrl(2)]);
   assert.equal(vm.busy.value, false);
 });
+
+const qiniuUrl = (index) =>
+  `/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c33${String(index).padStart(2, '0')}.png`;
+
+test('QINIU upload paths are accepted and mixed with LOCAL images in order', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: qiniuUrl(writes) }));
+  });
+  const { props, vm } = mount({ modelValue: [mediaUrl(9)] });
+  await vm.choose(event([file('a.png'), file('b.png')]));
+  assert.equal(writes, 2);
+  assert.deepEqual(props.modelValue, [mediaUrl(9), qiniuUrl(1), qiniuUrl(2)]);
+  assert.equal(vm.failures.value.length, 0);
+  assert.equal(props.invalid, false);
+  // 混合顺序可调、可删，仍保持已保存的 LOCAL 图不被丢弃。
+  vm.move(2, -1);
+  assert.deepEqual(props.modelValue, [mediaUrl(9), qiniuUrl(2), qiniuUrl(1)]);
+  vm.remove(0);
+  assert.deepEqual(props.modelValue, [qiniuUrl(2), qiniuUrl(1)]);
+  assert.equal(vm.busy.value, false);
+});
+
+test('non-contract upload results are recorded as failures and block saving', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  const rejected = [
+    '/media/qiniu/3F2504E0-4F89-41D3-9A0C-0305E82C3301.png',
+    '/media/qiniu/3f2504e04f8941d39a0c0305e82c3301.png',
+    'https://evil.example.com/a.png',
+    '//evil.example.com/a.png',
+    'blob:http://127.0.0.1/abc',
+    '/media/qiniu/../550e8400-e29b-41d4-a716-446655440000.png',
+    '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png?sign=1',
+    // 末尾换行/前后空白：JS 的 `$` 会匹配换行前位置，必须显式拒绝且不 trim 归一。
+    '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png\n',
+    '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png\r\n',
+    ' /media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png',
+    '/media/550e8400-e29b-41d4-a716-446655440000.png ',
+    '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png#frag',
+  ];
+  for (const url of rejected) {
+    globalThis.fetch = uploadFetch(() => Promise.resolve(response({ url })));
+    const { props, vm } = mount();
+    await vm.choose(event([file('a.png')]));
+    assert.deepEqual(props.modelValue, [], '非法地址不得写入相册：' + url);
+    assert.equal(vm.failures.value.length, 1, '必须记为可重试的失败项：' + url);
+    assert.match(vm.failures.value[0].message, /图片上传返回地址无效/);
+    assert.equal(props.invalid, true);
+    assert.equal(vm.busy.value, false);
+  }
+});
