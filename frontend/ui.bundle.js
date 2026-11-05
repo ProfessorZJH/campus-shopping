@@ -111,6 +111,79 @@
     Object.entries(params).filter(([, v]) => v !== void 0 && v !== null && v !== "")
   ).toString();
   const idempotency = () => crypto.randomUUID();
+  async function apiStream(path, { body, signal } = {}, { onDelta, onDone } = {}) {
+    var _a;
+    const stamp = generation;
+    const payload = body === void 0 ? void 0 : JSON.stringify(body);
+    const token = csrf || await getCsrf();
+    requireIdentity(stamp);
+    const headers = {
+      Accept: "text/event-stream, application/json",
+      "Content-Type": "application/json",
+      [token.headerName]: token.token
+    };
+    let r;
+    try {
+      r = await fetch(PREFIX + path, {
+        method: "POST",
+        headers,
+        body: payload,
+        signal,
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      throw fail("服务连接失败，请确认 Java 后端已启动", "NETWORK", 0);
+    }
+    requireIdentity(stamp);
+    if (r.status === 401) {
+      unauthorized();
+      throw fail("请先登录账号", "A0004", 401);
+    }
+    const contentType = r.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const j = await r.json();
+      if (!r.ok || j.code !== "0000") throw fail(j.info || "请求失败", j.code || "HTTP", r.status);
+      if (onDelta && ((_a = j.data) == null ? void 0 : _a.answer)) onDelta(j.data.answer);
+      if (onDone) onDone(j.data);
+      return j.data;
+    }
+    const reader = r.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+    let finalResult = null;
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(":")) continue;
+          if (trimmed.startsWith("data:")) {
+            const rawData = trimmed.slice(5).trim();
+            if (rawData === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(rawData);
+              if (parsed.delta) onDelta == null ? void 0 : onDelta(parsed.delta);
+              if (parsed.done || parsed.proposal || parsed.conversationId) {
+                finalResult = { ...finalResult, ...parsed };
+              }
+            } catch {
+              onDelta == null ? void 0 : onDelta(rawData);
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+    if (onDone) onDone(finalResult);
+    return finalResult;
+  }
   const modal = {
     mounted(element, binding) {
       const previous = document.activeElement;
@@ -423,6 +496,7 @@
     proposal: null,
     photo: null,
     reloadId: 0,
+    authModalOpen: false,
     publicPage: { page: 1, size: 20, total: 0, hasNext: false },
     merchantPage: { page: 1, size: 12, total: 0, hasNext: false }
   });
@@ -488,6 +562,9 @@
   }
   function publicSearchCurrent(stamp) {
     return stamp === publicEpoch;
+  }
+  function openAuthModal() {
+    store.authModalOpen = true;
   }
   function notify(message) {
     store.toast = message;
@@ -798,6 +875,61 @@
   function positiveInt(v, max = 99) {
     return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
+  function formatAiMessage(raw) {
+    if (!raw) return "";
+    const text = String(raw);
+    const escapeHtml = (str) => str.replace(/[&<>'"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[c]);
+    const lines = text.split("\n");
+    let html = "";
+    let inUl = false;
+    let inOl = false;
+    const closeLists = () => {
+      if (inUl) {
+        html += "</ul>";
+        inUl = false;
+      }
+      if (inOl) {
+        html += "</ol>";
+        inOl = false;
+      }
+    };
+    for (let line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        closeLists();
+        continue;
+      }
+      const renderInline = (s) => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      const ulMatch = trimmed.match(/^[-*•]\s+(.+)/);
+      const olMatch = trimmed.match(/^(\d+)[\.、\)]\s+(.+)/);
+      if (ulMatch) {
+        if (inOl) {
+          html += "</ol>";
+          inOl = false;
+        }
+        if (!inUl) {
+          html += '<ul class="ai-msg-list">';
+          inUl = true;
+        }
+        html += `<li>${renderInline(ulMatch[1])}</li>`;
+      } else if (olMatch) {
+        if (inUl) {
+          html += "</ul>";
+          inUl = false;
+        }
+        if (!inOl) {
+          html += '<ol class="ai-msg-list">';
+          inOl = true;
+        }
+        html += `<li>${renderInline(olMatch[2])}</li>`;
+      } else {
+        closeLists();
+        html += `<p>${renderInline(trimmed)}</p>`;
+      }
+    }
+    closeLists();
+    return html;
+  }
   const { ref: ref$i } = Vue;
   const AuthDialog = {
     name: "AuthDialog",
@@ -979,6 +1111,13 @@
     props: { active: { type: String, default: "home" } },
     setup() {
       const loginOpen = ref$h(false);
+      function openLogin() {
+        store.authModalOpen = true;
+      }
+      function closeLogin() {
+        store.authModalOpen = false;
+        loginOpen.value = false;
+      }
       async function logout() {
         try {
           await api("/auth/logout", { method: "POST" });
@@ -990,7 +1129,7 @@
           notify(err.message);
         }
       }
-      return { go, store, preview, loginOpen, logout };
+      return { go, store, preview, loginOpen, logout, openLogin, closeLogin };
     },
     render: (() => {
       const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, resolveComponent: _resolveComponent, createVNode: _createVNode, createTextVNode: _createTextVNode, renderSlot: _renderSlot, normalizeClass: _normalizeClass, createBlock: _createBlock } = Vue;
@@ -1018,7 +1157,7 @@
                 }, "设计预览")) : !_ctx.store.user ? (_openBlock(), _createElementBlock("button", {
                   key: 1,
                   class: "header-login",
-                  onClick: ($event) => _ctx.loginOpen = true
+                  onClick: _ctx.openLogin
                 }, "登录", 8, ["onClick"])) : (_openBlock(), _createElementBlock("button", {
                   key: 2,
                   class: "account-pill",
@@ -1102,9 +1241,9 @@
               ], 10, ["onClick"])
             ])
           ]),
-          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+          _ctx.loginOpen || _ctx.store.authModalOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
             key: 0,
-            onClose: ($event) => _ctx.loginOpen = false
+            onClose: _ctx.closeLogin
           }, null, 8, ["onClose"])) : _createCommentVNode("v-if", true)
         ]);
       };
@@ -1844,7 +1983,7 @@
       };
     })()
   };
-  const { ref: ref$e, computed: computed$e, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$d } = Vue;
+  const { ref: ref$e, computed: computed$e, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$d, nextTick: nextTick$2 } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
     { label: "高蛋白零食", icon: "sparkles", query: "想买点高蛋白的零食，有什么推荐？" },
@@ -1868,33 +2007,91 @@
       const historyHasMore = ref$e(false);
       const loadingHistory = ref$e(false);
       const openingConversation = ref$e(false);
+      const chatThreadRef = ref$e(null);
+      const pendingQuestion = ref$e("");
+      const activeDetailProduct = ref$e(null);
+      const loadingDetail = ref$e(false);
+      const currentAbortController = ref$e(null);
       let conversationEpoch = 0, historyEpoch = 0;
       const examples = computed$e(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$e(
         () => {
           var _a;
-          return preview ? examples.value.map((p) => ({
-            skuId: skuOf(p).skuId,
-            product: p,
-            title: p.title,
-            specKey: skuOf(p).specKey,
-            priceCent: skuOf(p).priceCent,
-            quantity: 1,
-            merchantId: p.merchantId
-          })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({
-            ...i,
-            product: store.products.find((p) => p.skus.some((s) => s.skuId === i.skuId))
-          }));
+          return preview ? examples.value.map((p) => {
+            var _a2;
+            return {
+              skuId: skuOf(p).skuId,
+              product: p,
+              productId: p.productId,
+              title: p.title,
+              specKey: skuOf(p).specKey,
+              imageUrl: skuOf(p).imageUrl || p.imageUrl,
+              priceCent: skuOf(p).priceCent,
+              quantity: 1,
+              merchantId: p.merchantId,
+              merchantName: ((_a2 = store.merchants.find((m) => m.merchantId === p.merchantId)) == null ? void 0 : _a2.name) || "校园商户"
+            };
+          }) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => {
+            var _a2;
+            const matchedProduct = store.products.find((p) => {
+              var _a3;
+              return (_a3 = p.skus) == null ? void 0 : _a3.some((s) => s.skuId === i.skuId);
+            });
+            const mName = (_a2 = store.merchants.find((m) => m.merchantId === i.merchantId)) == null ? void 0 : _a2.name;
+            return {
+              ...i,
+              productId: (matchedProduct == null ? void 0 : matchedProduct.productId) || "",
+              product: matchedProduct,
+              imageUrl: i.imageUrl || (matchedProduct == null ? void 0 : matchedProduct.imageUrl) || "",
+              merchantName: mName || (matchedProduct == null ? void 0 : matchedProduct.merchantName) || "校内商户"
+            };
+          });
         }
       );
       const total = computed$e(
         () => items2.value.filter((i) => selectedIds.value.includes(i.skuId)).reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity || 1), 0)
       );
-      const showProposal = computed$e(() => {
+      const suggestions = computed$e(() => {
         var _a, _b;
-        return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
+        if (preview || !((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length)) return [];
+        return ["换便宜一点的", "换个其他口味", "推荐适合搭配的饮料"];
       });
       const formatTime = () => (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+      function scrollToBottom(force = false) {
+        nextTick$2(() => {
+          const el = chatThreadRef.value;
+          if (!el) return;
+          const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+          if (force || distanceToBottom < 100) {
+            el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+          }
+        });
+      }
+      function stopStreaming() {
+        if (currentAbortController.value) {
+          currentAbortController.value.abort();
+          currentAbortController.value = null;
+        }
+        ++conversationEpoch;
+        thinking.value = false;
+        notify("已停止生成");
+      }
+      function startNewChat() {
+        stopStreaming();
+        ++conversationEpoch;
+        store.conversationId = "";
+        messages.value = [];
+        proposal.value = null;
+        selectedIds.value = [];
+        mode.value = "";
+        error.value = "";
+        input.value = "";
+        pendingQuestion.value = "";
+        thinking.value = false;
+        openingConversation.value = false;
+        historyOpen.value = false;
+        notify("已开启新对话");
+      }
       watch$d(
         () => {
           var _a;
@@ -1918,7 +2115,16 @@
           openingConversation.value = false;
           loadingHistory.value = false;
           historyOpen.value = false;
-          if (now) loadHistory();
+          if (now) {
+            loadHistory();
+            if (pendingQuestion.value) {
+              const q = pendingQuestion.value;
+              pendingQuestion.value = "";
+              nextTick$2(() => ask(q));
+            }
+          } else {
+            pendingQuestion.value = "";
+          }
         }
       );
       onMounted$c(() => {
@@ -1932,6 +2138,12 @@
         var _a;
         const text = String(question || "").trim();
         if (!text || thinking.value || openingConversation.value) return;
+        if (!preview && !store.user) {
+          pendingQuestion.value = text;
+          openAuthModal();
+          notify("请先登录账号使用 AI 导购");
+          return;
+        }
         if (text.length > 500) {
           notify("问题不能超过500字");
           return;
@@ -1940,6 +2152,7 @@
         input.value = "";
         error.value = "";
         messages.value.push({ role: "user", content: text, time: formatTime() });
+        scrollToBottom(true);
         if (preview) {
           messages.value.push({
             role: "assistant",
@@ -1947,35 +2160,80 @@
             time: formatTime(),
             demo: true
           });
+          scrollToBottom(true);
           notify("设计预览 · 未请求真实 AI");
           return;
         }
         thinking.value = true;
+        scrollToBottom(true);
+        const assistantMsg = {
+          role: "assistant",
+          content: "",
+          warning: "",
+          citations: [],
+          time: formatTime(),
+          streaming: true
+        };
+        messages.value.push(assistantMsg);
+        const controller = new AbortController();
+        currentAbortController.value = controller;
         try {
-          const answer = await api("/ai/chat", {
-            method: "POST",
-            body: { question: text, conversationId: store.conversationId || null }
-          });
+          const answer = await apiStream(
+            "/ai/chat",
+            { body: { question: text, conversationId: store.conversationId || null }, signal: controller.signal },
+            {
+              onDelta: (delta) => {
+                if (stamp !== conversationEpoch) return;
+                assistantMsg.content += delta;
+                scrollToBottom();
+              },
+              onDone: (finalData) => {
+                var _a2;
+                if (stamp !== conversationEpoch) return;
+                assistantMsg.streaming = false;
+                if (finalData) {
+                  if (finalData.conversationId) store.conversationId = finalData.conversationId;
+                  if (finalData.mode) mode.value = finalData.mode;
+                  if (finalData.warning) assistantMsg.warning = finalData.warning;
+                  if (finalData.citations) assistantMsg.citations = finalData.citations.map((c) => c.title || c);
+                  if (finalData.proposal) {
+                    proposal.value = finalData.proposal;
+                    selectedIds.value = (((_a2 = proposal.value) == null ? void 0 : _a2.items) || []).map((i) => i.skuId);
+                  }
+                }
+                scrollToBottom();
+              }
+            }
+          );
           if (stamp !== conversationEpoch) return;
-          store.conversationId = answer.conversationId || store.conversationId;
-          mode.value = answer.mode || "";
-          messages.value.push({
-            role: "assistant",
-            content: answer.answer || "暂时没有找到合适答案",
-            warning: answer.warning,
-            citations: (answer.citations || []).map((c) => c.title),
-            time: formatTime()
-          });
-          proposal.value = answer.proposal || null;
-          selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          if (answer) {
+            store.conversationId = answer.conversationId || store.conversationId;
+            mode.value = answer.mode || "";
+            if (!assistantMsg.content && answer.answer) assistantMsg.content = answer.answer;
+            assistantMsg.warning = answer.warning;
+            assistantMsg.citations = (answer.citations || []).map((c) => c.title || c);
+            proposal.value = answer.proposal || null;
+            selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          }
+          assistantMsg.streaming = false;
+          scrollToBottom();
         } catch (err) {
           if (stamp === conversationEpoch) {
+            if (err.name === "AbortError") return;
             error.value = err.status === 401 ? "请先登录账号再使用 AI 导购" : err.message;
-            messages.value.pop();
+            messages.value = messages.value.filter((m) => m !== assistantMsg);
             input.value = text;
+            if (err.status === 401) {
+              pendingQuestion.value = text;
+              openAuthModal();
+            }
           }
         } finally {
-          if (stamp === conversationEpoch) thinking.value = false;
+          if (stamp === conversationEpoch) {
+            thinking.value = false;
+            currentAbortController.value = null;
+            assistantMsg.streaming = false;
+          }
         }
       }
       async function loadHistory(reset = true) {
@@ -2076,7 +2334,52 @@
           thinking.value = false;
         }
       }
+      async function showItemDetail(item) {
+        var _a;
+        if (preview) {
+          activeDetailProduct.value = item.product || {
+            title: item.title,
+            description: "校园热销优质好物，品质保障。",
+            imageUrl: item.imageUrl,
+            skus: [{ skuId: item.skuId, specKey: item.specKey, priceCent: item.priceCent, available: 10, status: "ACTIVE" }],
+            merchantName: item.merchantName
+          };
+          return;
+        }
+        const pid = item.productId || ((_a = item.product) == null ? void 0 : _a.productId);
+        if (pid) {
+          loadingDetail.value = true;
+          try {
+            const detail = await api("/products/" + encodeURIComponent(pid));
+            activeDetailProduct.value = detail;
+          } catch {
+            activeDetailProduct.value = item.product || {
+              title: item.title,
+              imageUrl: item.imageUrl,
+              skus: [{ skuId: item.skuId, specKey: item.specKey, priceCent: item.priceCent, available: "可售", status: "ACTIVE" }],
+              merchantName: item.merchantName
+            };
+          } finally {
+            loadingDetail.value = false;
+          }
+          return;
+        }
+        activeDetailProduct.value = {
+          title: item.title,
+          imageUrl: item.imageUrl,
+          skus: [{ skuId: item.skuId, specKey: item.specKey, priceCent: item.priceCent, available: "可售", status: "ACTIVE" }],
+          merchantName: item.merchantName
+        };
+      }
+      function closeItemDetail() {
+        activeDetailProduct.value = null;
+      }
       return {
+        stopStreaming,
+        activeDetailProduct,
+        loadingDetail,
+        showItemDetail,
+        closeItemDetail,
         store,
         go,
         money,
@@ -2089,7 +2392,11 @@
         items: items2,
         selectedIds,
         total,
-        showProposal,
+        suggestions,
+        showProposal: computed$e(() => {
+          var _a, _b;
+          return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
+        }),
         proposal,
         error,
         mode,
@@ -2097,6 +2404,9 @@
         toggle,
         confirm,
         reject,
+        startNewChat,
+        chatThreadRef,
+        formatAiMessage,
         historyOpen,
         conversations,
         historyHasMore,
@@ -2107,14 +2417,14 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, resolveComponent: _resolveComponent, createVNode: _createVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, resolveComponent: _resolveComponent, createVNode: _createVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, withModifiers: _withModifiers, vModelText: _vModelText, withDirectives: _withDirectives, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "ai" }, {
           default: _withCtx(() => {
-            var _a, _b, _c;
+            var _a, _b, _c, _d, _e, _f, _g, _h, _i;
             return [
               _createElementVNode("section", { class: "ai-hero" }, [
                 _createElementVNode("div", { class: "ai-hero-text" }, [
@@ -2137,6 +2447,7 @@
                 class: "ai-history-head"
               }, [
                 _createElementVNode("button", {
+                  class: "ai-history-toggle",
                   onClick: ($event) => {
                     _ctx.historyOpen = !_ctx.historyOpen;
                     _ctx.historyOpen && _ctx.loadHistory();
@@ -2151,7 +2462,19 @@
                     name: "chevronDown",
                     size: 14
                   })
-                ], 8, ["onClick"])
+                ], 8, ["onClick"]),
+                _createElementVNode("button", {
+                  class: "ai-new-chat-btn",
+                  onClick: _ctx.startNewChat,
+                  disabled: _ctx.thinking || _ctx.openingConversation,
+                  title: "开启新对话"
+                }, [
+                  _createVNode(_component_Icon, {
+                    name: "plus",
+                    size: 15
+                  }),
+                  _createTextVNode(" 新对话")
+                ], 8, ["onClick", "disabled"])
               ])) : _createCommentVNode("v-if", true),
               _ctx.historyOpen ? (_openBlock(), _createElementBlock("div", {
                 key: 1,
@@ -2219,134 +2542,159 @@
                   /* KEYED_FRAGMENT */
                 ))
               ]),
-              _createElementVNode("section", {
-                class: "chat-thread",
-                "aria-label": "AI对话"
-              }, [
-                !_ctx.messages.length ? (_openBlock(), _createElementBlock("div", {
-                  key: 0,
-                  class: "chat-welcome"
-                }, [
-                  _createElementVNode("span", { class: "chat-welcome-icon" }, [
-                    _createVNode(_component_Icon, {
-                      name: "sparkles",
-                      size: 22
-                    })
-                  ]),
-                  _createElementVNode("h2", null, "你好，同学。"),
-                  _createElementVNode("p", null, "告诉我预算或想买的东西。")
-                ])) : _createCommentVNode("v-if", true),
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.messages, (message, index) => {
-                    var _a2;
-                    return _openBlock(), _createElementBlock(
-                      "div",
-                      {
-                        class: _normalizeClass(["chat-row", message.role === "user" ? "is-user" : "is-assistant"]),
-                        key: index
-                      },
-                      [
-                        message.role !== "user" ? (_openBlock(), _createElementBlock("span", {
-                          key: 0,
-                          class: "chat-avatar"
-                        }, [
-                          _createElementVNode("img", {
-                            src: "./images/robot.webp",
-                            alt: "AI"
-                          })
-                        ])) : _createCommentVNode("v-if", true),
-                        _createElementVNode("div", { class: "chat-body" }, [
-                          _createElementVNode(
-                            "div",
-                            { class: "chat-bubble" },
-                            _toDisplayString(message.content),
-                            1
-                            /* TEXT */
-                          ),
-                          message.warning ? (_openBlock(), _createElementBlock(
-                            "div",
-                            {
-                              key: 0,
-                              class: "message-warning"
-                            },
-                            _toDisplayString(message.warning),
-                            1
-                            /* TEXT */
-                          )) : _createCommentVNode("v-if", true),
-                          ((_a2 = message.citations) == null ? void 0 : _a2.length) ? (_openBlock(), _createElementBlock("div", {
-                            key: 1,
-                            class: "citation-chips"
+              _createElementVNode(
+                "section",
+                {
+                  class: "chat-thread",
+                  ref: "chatThreadRef",
+                  "aria-label": "AI对话"
+                },
+                [
+                  !_ctx.messages.length ? (_openBlock(), _createElementBlock("div", {
+                    key: 0,
+                    class: "chat-welcome"
+                  }, [
+                    _createElementVNode("span", { class: "chat-welcome-icon" }, [
+                      _createVNode(_component_Icon, {
+                        name: "sparkles",
+                        size: 22
+                      })
+                    ]),
+                    _createElementVNode("h2", null, "你好，同学。"),
+                    _createElementVNode("p", null, "告诉我预算或想买的东西。")
+                  ])) : _createCommentVNode("v-if", true),
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.messages, (message, index) => {
+                      var _a2;
+                      return _openBlock(), _createElementBlock(
+                        "div",
+                        {
+                          class: _normalizeClass(["chat-row", message.role === "user" ? "is-user" : "is-assistant"]),
+                          key: index
+                        },
+                        [
+                          message.role !== "user" ? (_openBlock(), _createElementBlock("span", {
+                            key: 0,
+                            class: "chat-avatar"
                           }, [
-                            (_openBlock(true), _createElementBlock(
-                              _Fragment,
-                              null,
-                              _renderList(message.citations, (c) => {
-                                return _openBlock(), _createElementBlock("span", { key: c }, [
-                                  _createVNode(_component_Icon, {
-                                    name: "book",
-                                    size: 12
-                                  }),
-                                  _createTextVNode(
-                                    _toDisplayString(c),
-                                    1
-                                    /* TEXT */
-                                  )
-                                ]);
-                              }),
-                              128
-                              /* KEYED_FRAGMENT */
-                            ))
+                            _createElementVNode("img", {
+                              src: "./images/robot.webp",
+                              alt: "AI"
+                            })
                           ])) : _createCommentVNode("v-if", true),
-                          _createElementVNode("span", { class: "chat-timestamp" }, [
-                            _createTextVNode(
-                              _toDisplayString(message.time || "刚刚") + " ",
+                          _createElementVNode("div", { class: "chat-body" }, [
+                            message.role === "user" ? (_openBlock(), _createElementBlock(
+                              "div",
+                              {
+                                key: 0,
+                                class: "chat-bubble"
+                              },
+                              _toDisplayString(message.content),
                               1
                               /* TEXT */
-                            ),
-                            message.demo ? (_openBlock(), _createElementBlock("span", { key: 0 }, "· 示例回答")) : _createCommentVNode("v-if", true)
+                            )) : (_openBlock(), _createElementBlock("div", {
+                              key: 1,
+                              class: "chat-bubble ai-formatted-bubble"
+                            }, [
+                              !message.content && message.streaming ? (_openBlock(), _createElementBlock("span", {
+                                key: 0,
+                                class: "ai-streaming-placeholder"
+                              }, "AI 思考中…")) : (_openBlock(), _createElementBlock("div", {
+                                key: 1,
+                                innerHTML: _ctx.formatAiMessage(message.content)
+                              }, null, 8, ["innerHTML"])),
+                              message.streaming ? (_openBlock(), _createElementBlock("span", {
+                                key: 2,
+                                class: "ai-streaming-cursor"
+                              })) : _createCommentVNode("v-if", true)
+                            ])),
+                            message.warning ? (_openBlock(), _createElementBlock(
+                              "div",
+                              {
+                                key: 2,
+                                class: "message-warning"
+                              },
+                              _toDisplayString(message.warning),
+                              1
+                              /* TEXT */
+                            )) : _createCommentVNode("v-if", true),
+                            ((_a2 = message.citations) == null ? void 0 : _a2.length) ? (_openBlock(), _createElementBlock("div", {
+                              key: 3,
+                              class: "citation-chips"
+                            }, [
+                              (_openBlock(true), _createElementBlock(
+                                _Fragment,
+                                null,
+                                _renderList(message.citations, (c) => {
+                                  return _openBlock(), _createElementBlock("span", { key: c }, [
+                                    _createVNode(_component_Icon, {
+                                      name: "book",
+                                      size: 12
+                                    }),
+                                    _createTextVNode(
+                                      _toDisplayString(c),
+                                      1
+                                      /* TEXT */
+                                    )
+                                  ]);
+                                }),
+                                128
+                                /* KEYED_FRAGMENT */
+                              ))
+                            ])) : _createCommentVNode("v-if", true),
+                            _createElementVNode("span", { class: "chat-timestamp" }, [
+                              _createTextVNode(
+                                _toDisplayString(message.time || "刚刚") + " ",
+                                1
+                                /* TEXT */
+                              ),
+                              message.demo ? (_openBlock(), _createElementBlock("span", { key: 0 }, "· 示例回答")) : _createCommentVNode("v-if", true)
+                            ])
                           ])
-                        ])
-                      ],
-                      2
-                      /* CLASS */
-                    );
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                )),
-                _ctx.thinking ? (_openBlock(), _createElementBlock("div", {
-                  key: 1,
-                  class: "chat-row is-assistant"
-                }, [
-                  _createElementVNode("span", { class: "chat-avatar" }, [
-                    _createElementVNode("img", {
-                      src: "./images/robot.webp",
-                      alt: "AI"
-                    })
-                  ]),
-                  _createElementVNode("div", { class: "typing-bubble" }, [
-                    _createElementVNode("i"),
-                    _createElementVNode("i"),
-                    _createElementVNode("i")
-                  ])
-                ])) : _createCommentVNode("v-if", true),
-                _ctx.error ? (_openBlock(), _createElementBlock("div", {
-                  key: 2,
-                  class: "inline-error"
-                }, [
-                  _createVNode(_component_Icon, {
-                    name: "alert",
-                    size: 17
-                  }),
-                  _createTextVNode(
-                    _toDisplayString(_ctx.error),
-                    1
-                    /* TEXT */
-                  )
-                ])) : _createCommentVNode("v-if", true)
-              ]),
+                        ],
+                        2
+                        /* CLASS */
+                      );
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  )),
+                  _ctx.thinking && !_ctx.messages.some((m) => m.streaming) ? (_openBlock(), _createElementBlock("div", {
+                    key: 1,
+                    class: "chat-row is-assistant"
+                  }, [
+                    _createElementVNode("span", { class: "chat-avatar" }, [
+                      _createElementVNode("img", {
+                        src: "./images/robot.webp",
+                        alt: "AI"
+                      })
+                    ]),
+                    _createElementVNode("div", { class: "typing-bubble" }, [
+                      _createElementVNode("i"),
+                      _createElementVNode("i"),
+                      _createElementVNode("i")
+                    ])
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.error ? (_openBlock(), _createElementBlock("div", {
+                    key: 2,
+                    class: "inline-error"
+                  }, [
+                    _createVNode(_component_Icon, {
+                      name: "alert",
+                      size: 17
+                    }),
+                    _createTextVNode(
+                      _toDisplayString(_ctx.error),
+                      1
+                      /* TEXT */
+                    )
+                  ])) : _createCommentVNode("v-if", true)
+                ],
+                512
+                /* NEED_PATCH */
+              ),
               _ctx.showProposal ? (_openBlock(), _createElementBlock("section", {
                 key: 2,
                 class: "recommendation-panel"
@@ -2370,8 +2718,7 @@
                   (_openBlock(true), _createElementBlock(
                     _Fragment,
                     null,
-                    _renderList(_ctx.items, (item, index) => {
-                      var _a2;
+                    _renderList(_ctx.items, (item) => {
                       return _openBlock(), _createElementBlock("article", {
                         class: "rec-item",
                         key: item.skuId
@@ -2386,20 +2733,33 @@
                             size: 13
                           })
                         ], 10, ["onClick", "aria-label"]),
-                        _createElementVNode("div", { class: "rec-photo" }, [
+                        _createElementVNode("div", {
+                          class: "rec-photo",
+                          onClick: ($event) => _ctx.showItemDetail(item),
+                          style: { "cursor": "pointer" },
+                          title: "点击查看商品详情"
+                        }, [
                           _createVNode(_component_ProductImage, {
-                            src: item.imageUrl || ((_a2 = item.product) == null ? void 0 : _a2.imageUrl),
+                            src: item.imageUrl,
                             alt: item.title
                           }, null, 8, ["src", "alt"])
-                        ]),
-                        _createElementVNode("div", { class: "rec-card-content" }, [
-                          _createElementVNode(
-                            "div",
-                            { class: "rec-item-tag" },
-                            _toDisplayString(index === 0 ? "HOT PICK" : index === 1 ? "DAILY" : "GOOD VALUE"),
-                            1
-                            /* TEXT */
-                          ),
+                        ], 8, ["onClick"]),
+                        _createElementVNode("div", {
+                          class: "rec-card-content",
+                          onClick: ($event) => _ctx.showItemDetail(item),
+                          style: { "cursor": "pointer" }
+                        }, [
+                          _createElementVNode("div", { class: "rec-item-merchant" }, [
+                            _createVNode(_component_Icon, {
+                              name: "store",
+                              size: 11
+                            }),
+                            _createTextVNode(
+                              " " + _toDisplayString(item.merchantName),
+                              1
+                              /* TEXT */
+                            )
+                          ]),
                           _createElementVNode(
                             "strong",
                             null,
@@ -2422,14 +2782,17 @@
                               1
                               /* TEXT */
                             ),
-                            _createElementVNode("span", { class: "pick-mini" }, [
+                            _createElementVNode("span", {
+                              class: "pick-mini",
+                              onClick: _withModifiers(($event) => _ctx.toggle(item.skuId), ["stop"])
+                            }, [
                               _createVNode(_component_Icon, {
-                                name: "plus",
-                                size: 15
-                              })
-                            ])
+                                name: _ctx.selectedIds.includes(item.skuId) ? "check" : "plus",
+                                size: 14
+                              }, null, 8, ["name"])
+                            ], 8, ["onClick"])
                           ])
-                        ])
+                        ], 8, ["onClick"])
                       ]);
                     }),
                     128
@@ -2477,6 +2840,34 @@
                   ])
                 ])
               ])) : _createCommentVNode("v-if", true),
+              _ctx.suggestions.length ? (_openBlock(), _createElementBlock("div", {
+                key: 3,
+                class: "rec-suggestions"
+              }, [
+                (_openBlock(true), _createElementBlock(
+                  _Fragment,
+                  null,
+                  _renderList(_ctx.suggestions, (s) => {
+                    return _openBlock(), _createElementBlock("button", {
+                      key: s,
+                      onClick: ($event) => _ctx.ask(s),
+                      disabled: _ctx.thinking || _ctx.openingConversation
+                    }, [
+                      _createVNode(_component_Icon, {
+                        name: "sparkles",
+                        size: 13
+                      }),
+                      _createTextVNode(
+                        _toDisplayString(s),
+                        1
+                        /* TEXT */
+                      )
+                    ], 8, ["onClick", "disabled"]);
+                  }),
+                  128
+                  /* KEYED_FRAGMENT */
+                ))
+              ])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", {
                 class: "chat-composer-placeholder",
                 "aria-hidden": "true"
@@ -2494,17 +2885,111 @@
                 }, null, 8, ["onUpdate:modelValue", "disabled"]), [
                   [_vModelText, _ctx.input]
                 ]),
-                _createElementVNode("button", {
+                _ctx.thinking ? (_openBlock(), _createElementBlock("button", {
+                  key: 0,
+                  type: "button",
+                  class: "chat-stop-btn",
+                  onClick: _ctx.stopStreaming,
+                  "aria-label": "停止生成",
+                  title: "停止生成"
+                }, [
+                  _createVNode(_component_Icon, {
+                    name: "close",
+                    size: 16
+                  })
+                ], 8, ["onClick"])) : (_openBlock(), _createElementBlock("button", {
+                  key: 1,
                   type: "submit",
-                  disabled: _ctx.thinking || _ctx.openingConversation || !_ctx.input.trim(),
+                  disabled: _ctx.openingConversation || !_ctx.input.trim(),
                   "aria-label": "发送问题"
                 }, [
                   _createVNode(_component_Icon, {
                     name: "send",
                     size: 20
                   })
-                ], 8, ["disabled"])
-              ], 40, ["onSubmit"])
+                ], 8, ["disabled"]))
+              ], 40, ["onSubmit"]),
+              _ctx.activeDetailProduct ? (_openBlock(), _createElementBlock("div", {
+                key: 4,
+                class: "modal-backdrop",
+                onClick: _ctx.closeItemDetail
+              }, [
+                _createElementVNode("div", {
+                  class: "rec-detail-modal",
+                  onClick: _withModifiers(() => {
+                  }, ["stop"])
+                }, [
+                  _createElementVNode("button", {
+                    class: "rec-modal-close",
+                    onClick: _ctx.closeItemDetail,
+                    "aria-label": "关闭"
+                  }, [
+                    _createVNode(_component_Icon, {
+                      name: "close",
+                      size: 16
+                    })
+                  ], 8, ["onClick"]),
+                  _createElementVNode("div", { class: "rec-modal-art" }, [
+                    _createVNode(_component_ProductImage, {
+                      src: _ctx.activeDetailProduct.imageUrl,
+                      alt: _ctx.activeDetailProduct.title
+                    }, null, 8, ["src", "alt"])
+                  ]),
+                  _createElementVNode("div", { class: "rec-modal-body" }, [
+                    _createElementVNode(
+                      "div",
+                      { class: "rec-modal-price" },
+                      _toDisplayString(_ctx.money((_e = (_d = _ctx.activeDetailProduct.skus) == null ? void 0 : _d[0]) == null ? void 0 : _e.priceCent)),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode(
+                      "h3",
+                      null,
+                      _toDisplayString(_ctx.activeDetailProduct.title),
+                      1
+                      /* TEXT */
+                    ),
+                    _ctx.activeDetailProduct.description ? (_openBlock(), _createElementBlock(
+                      "p",
+                      {
+                        key: 0,
+                        class: "rec-modal-desc"
+                      },
+                      _toDisplayString(_ctx.activeDetailProduct.description),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true),
+                    _createElementVNode("div", { class: "rec-modal-shop" }, [
+                      _createVNode(_component_Icon, {
+                        name: "store",
+                        size: 13
+                      }),
+                      _createTextVNode(
+                        " " + _toDisplayString(_ctx.activeDetailProduct.merchantName || "校内商户"),
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _createElementVNode("div", { class: "rec-modal-specs" }, [
+                      _createElementVNode(
+                        "span",
+                        null,
+                        "规格：" + _toDisplayString(((_g = (_f = _ctx.activeDetailProduct.skus) == null ? void 0 : _f[0]) == null ? void 0 : _g.specKey) || "标配"),
+                        1
+                        /* TEXT */
+                      ),
+                      _createElementVNode(
+                        "span",
+                        { class: "rec-modal-stock" },
+                        "状态：" + _toDisplayString(((_i = (_h = _ctx.activeDetailProduct.skus) == null ? void 0 : _h[0]) == null ? void 0 : _i.available) != null ? "在售有货" : "可售"),
+                        1
+                        /* TEXT */
+                      )
+                    ])
+                  ])
+                ], 8, ["onClick"])
+              ], 8, ["onClick"])) : _createCommentVNode("v-if", true)
             ];
           }),
           _: 1

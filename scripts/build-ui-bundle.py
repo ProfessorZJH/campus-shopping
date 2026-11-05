@@ -11,10 +11,26 @@ UI = ROOT / 'frontend'
 STATIC = ROOT / 'campus-shopping-app/src/main/resources/static'
 
 
+def _node_cmd():
+    pi_node = Path('/mnt/c/Users/Profe/AppData/Local/pi-node/current/node.exe')
+    return str(pi_node) if pi_node.is_file() else 'node'
+
+def _to_win_path(p):
+    s = str(p)
+    if s.startswith('/mnt/'):
+        drive = s[5].upper()
+        return drive + ':' + s[6:].replace('/', '\\')
+    return s
+
+def _node_cmd():
+    pi_node = Path('/mnt/c/Users/Profe/AppData/Local/pi-node/current/node.exe')
+    return str(pi_node) if pi_node.is_file() else 'node'
+
 def build(output):
-    subprocess.run(['node', str(UI/'scripts/build.mjs'), '--out='+str(output)], check=True, cwd=ROOT)
-
-
+    cmd = _node_cmd()
+    script = _to_win_path(UI/'scripts/build.mjs') if cmd.endswith('.exe') else str(UI/'scripts/build.mjs')
+    out_arg = '--out=' + (_to_win_path(output) if cmd.endswith('.exe') else str(output))
+    subprocess.run([cmd, script, out_arg], check=True, cwd=ROOT)
 def snapshots(output, check=False):
     mappings = [(output/'ui.bundle.js', UI/'ui.bundle.js'), (output/'ui-build.json', UI/'ui-build.json')]
     for source in output.rglob('*'):
@@ -43,10 +59,14 @@ def main():
     if args.out:
         build(args.out.resolve())
         return
-    with tempfile.TemporaryDirectory(prefix='campus-ui-build-') as folder:
-        output=Path(folder)
-        build(output)
-        snapshots(output, args.check)
+    build_dir = UI / 'dist'
+    if build_dir.exists(): shutil.rmtree(build_dir)
+    build_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        build(build_dir)
+        snapshots(build_dir, args.check)
+    finally:
+        if build_dir.exists(): shutil.rmtree(build_dir)
     print('UI source/artifacts verified' if args.check else 'UI compiled and offline snapshots synchronized')
 
 

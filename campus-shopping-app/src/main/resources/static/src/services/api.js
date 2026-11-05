@@ -110,3 +110,89 @@ export const query = (params) =>
     Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
   ).toString();
 export const idempotency = () => crypto.randomUUID();
+
+/**
+ * 流式请求适配器：使用 POST + fetch + ReadableStream，复用 CSRF 令牌。
+ * 支持服务端 text/event-stream 流式打字输出，同时兼容 application/json 普通响应降级。
+ */
+export async function apiStream(path, { body, signal } = {}, { onDelta, onDone } = {}) {
+  const stamp = generation;
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  const token = csrf || (await getCsrf());
+  requireIdentity(stamp);
+
+  const headers = {
+    Accept: 'text/event-stream, application/json',
+    'Content-Type': 'application/json',
+    [token.headerName]: token.token,
+  };
+
+  let r;
+  try {
+    r = await fetch(PREFIX + path, {
+      method: 'POST',
+      headers,
+      body: payload,
+      signal,
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    throw fail('服务连接失败，请确认 Java 后端已启动', 'NETWORK', 0);
+  }
+
+  requireIdentity(stamp);
+  if (r.status === 401) {
+    unauthorized();
+    throw fail('请先登录账号', 'A0004', 401);
+  }
+
+  const contentType = r.headers.get('content-type') || '';
+  // 兼容普通 JSON 响应降级
+  if (contentType.includes('application/json')) {
+    const j = await r.json();
+    if (!r.ok || j.code !== '0000') throw fail(j.info || '请求失败', j.code || 'HTTP', r.status);
+    if (onDelta && j.data?.answer) onDelta(j.data.answer);
+    if (onDone) onDone(j.data);
+    return j.data;
+  }
+
+  // SSE 流式解析 (text/event-stream)
+  const reader = r.body.getReader();
+  const decoder = new TextDecoder('utf-8');
+  let buffer = '';
+  let finalResult = null;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith(':')) continue;
+        if (trimmed.startsWith('data:')) {
+          const rawData = trimmed.slice(5).trim();
+          if (rawData === '[DONE]') continue;
+          try {
+            const parsed = JSON.parse(rawData);
+            if (parsed.delta) onDelta?.(parsed.delta);
+            if (parsed.done || parsed.proposal || parsed.conversationId) {
+              finalResult = { ...finalResult, ...parsed };
+            }
+          } catch {
+            // 普通文本 chunk 直接作为增量内容
+            onDelta?.(rawData);
+          }
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  if (onDone) onDone(finalResult);
+  return finalResult;
+}
