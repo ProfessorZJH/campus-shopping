@@ -52,6 +52,7 @@ public class CartCaseImpl implements ICartCase {
         merchants.requireActiveForNewTrade(hint.merchantId());
         var offer = catalog.saleOffersForUpdate(List.of(checked)).get(0);
         var stocks = inventory.stocksForConfirmation(List.of(checked));
+        Checks.require(stocks.size() <= 1, ResponseCode.STOCK_STATE_INVALID);
         Checks.require(!stocks.isEmpty() && stocks.get(0).onHand() - stocks.get(0).reserved() >= quantity, ResponseCode.STOCK_NOT_ENOUGH);
         trading.setCart(user, offer.merchantId(), checked, quantity);
     }
@@ -68,6 +69,7 @@ public class CartCaseImpl implements ICartCase {
         var stocks = inventory.stocksForConfirmation(List.of(checked));
         // 与 AI 确认共用锁内累计能力；并发标签页不能用旧快照覆盖其他请求的增量。
         int total = trading.addCart(user, offer.merchantId(), checked, quantity);
+        Checks.require(stocks.size() <= 1, ResponseCode.STOCK_STATE_INVALID);
         Checks.require(!stocks.isEmpty() && stocks.get(0).onHand() - stocks.get(0).reserved() >= total, ResponseCode.STOCK_NOT_ENOUGH);
     }
 

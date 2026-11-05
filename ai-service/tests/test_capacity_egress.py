@@ -126,6 +126,29 @@ def test_answer_payload_excludes_private_evidence_and_assistant_history(tmp_path
     store.close()
 
 
+def test_query_redacts_documents_outside_the_server_egress_allowlist(tmp_path):
+    from app.retrieval import INTERNAL_SNIPPET, INTERNAL_TITLE
+    app = create_app(Settings(KEY, str(tmp_path / 'redaction.db')))
+    store = app.state.store
+    store.index('internal', '内部退款规则', '内部退款暗号9286，仅商户可见。')
+    store.index('public', '公开退款规则', '公开退款说明：在订单页申请售后。')
+    with TestClient(app, headers={'X-Service-Key': KEY}) as client:
+        data = client.post('/v1/query', json={
+            'question': '退款说明是什么', 'allowedDocumentIds': ['internal', 'public'],
+            'externalDocumentIds': ['public'], 'offers': []}).json()
+        denied = client.post('/v1/query', json={
+            'question': '退款说明是什么', 'allowedDocumentIds': ['public'], 'offers': []}).json()
+    by_id = {c['documentId']: c for c in data['citations']}
+    assert by_id['public']['snippet'].startswith('公开退款说明')
+    assert by_id['public']['title'] == '公开退款规则'
+    assert by_id['internal']['snippet'] == INTERNAL_SNIPPET
+    assert by_id['internal']['title'] == INTERNAL_TITLE
+    serialized = json.dumps(data, ensure_ascii=False)
+    assert '9286' not in serialized and '内部退款规则' not in serialized
+    # 未声明外发白名单时默认不外发，连公开文档的原文也留在 Python 侧。
+    assert denied['citations'] and all(c['snippet'] == INTERNAL_SNIPPET for c in denied['citations'])
+
+
 def test_unapproved_index_skips_configured_qdrant_and_embedding(tmp_path, monkeypatch):
     app = create_app(Settings(KEY, str(tmp_path / 'no-egress.db'), qdrant_url='https://qdrant.test', qdrant_key='test',
                               embedding_url='https://embed.test', embedding_key='test', embedding_model='remote-v1'))

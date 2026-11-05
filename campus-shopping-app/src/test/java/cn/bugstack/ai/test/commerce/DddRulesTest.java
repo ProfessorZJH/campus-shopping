@@ -22,6 +22,7 @@ import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.common.FailureDiagnostics;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -93,8 +94,47 @@ class DddRulesTest {
     void validProtocolStillAcceptsLocalFallback() {
         when(gateway.query(any())).thenReturn(new AiGatewayDTO.Answer("回答", "LOCAL_FALLBACK", "BM25_DEGRADED", "买笔", "模型超时", List.of(), List.of(), 12));
         assertEquals("LOCAL_FALLBACK", port().query(query()).mode());
+        String emojiSnippet = "😀".repeat(500);
+        when(gateway.query(any())).thenReturn(answer(List.of(new AiGatewayDTO.Citation("d", "c", "标题", emojiSnippet, 1)), List.of()));
+        assertDoesNotThrow(() -> port().query(query()));
         when(gateway.semanticProducts(any())).thenReturn(new AiGatewayDTO.ProductSearchResult(List.of(" "), "MILVUS"));
         code("AI0001", () -> port().semanticProducts("买笔", 80));
+    }
+
+    @Test
+    void oldCitationJsonDefaultsToTheLegacyProtocol() throws Exception {
+        var citation = new ObjectMapper().readValue(
+            "{\"documentId\":\"d\",\"chunkId\":\"c\",\"title\":\"标题\",\"snippet\":\"片段\",\"score\":1}",
+            AiGatewayDTO.Citation.class
+        );
+        assertEquals(1, citation.documentVersion());
+        assertEquals(-1, citation.ordinal());
+        assertEquals("", citation.contentHash());
+        when(gateway.query(any())).thenReturn(answer(List.of(citation), List.of()));
+        assertDoesNotThrow(() -> port().query(query()));
+    }
+
+    @Test
+    void protocol422RetriesLegacyQueryPayload() {
+        when(gateway.query(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        when(gateway.queryLegacy(any())).thenReturn(answer(List.of(), List.of()));
+        assertDoesNotThrow(() -> port().query(query()));
+        verify(gateway).queryLegacy(any());
+    }
+
+    @Test
+    void versionedIndexNeverFallsBackToLegacyProtocol() {
+        doThrow(new AiGatewayService.RemoteStatusException(422)).when(gateway).index(any());
+        assertEquals("AI0001", assertThrows(AppException.class, () -> port().index("doc", "标题", "正文", 2, false)).getCode());
+        verify(gateway, never()).indexLegacy(any());
+    }
+
+    @Test
+    void persistentQueryProtocolMismatchBecomesUnavailable() {
+        when(gateway.query(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        when(gateway.queryLegacy(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        when(gateway.queryLegacyWithoutExternalScope(any())).thenThrow(new AiGatewayService.RemoteStatusException(422));
+        assertEquals("AI0001", assertThrows(AppException.class, () -> port().query(query())).getCode());
     }
 
     @Test

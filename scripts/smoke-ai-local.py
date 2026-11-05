@@ -57,7 +57,7 @@ def main():
                     assert not response['recommendations'] and '规格' in response['answer']
                     results.append('真实HTTP组合规格逐项核实：'+question)
                 call('POST','/v1/index',{'documentId':'refund','title':'签字笔退款规则','content':'这款签字笔退款请打开订单详情，选择申请售后并填写原因。'})
-                response=call('POST','/v1/query',{'question':'这款标准装签字笔怎么申请退款？','allowedDocumentIds':['refund'],'offers':offers})
+                response=call('POST','/v1/query',{'question':'这款标准装签字笔怎么申请退款？','allowedDocumentIds':['refund'],'externalDocumentIds':['refund'],'offers':offers})
                 assert not response['recommendations'] and '申请售后' in response['answer'] and response['citations']
                 results.append('真实HTTP非空报价不覆盖退款知识回答，不生成商品建议')
                 call('DELETE','/v1/index/public');response=call('POST','/v1/query',{'question':'几点自提','allowedDocumentIds':['public'],'offers':[],'history':[]});assert not response['citations'];results.append('删除索引后不可再次召回')

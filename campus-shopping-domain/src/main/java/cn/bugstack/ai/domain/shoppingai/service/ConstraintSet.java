@@ -8,11 +8,16 @@ import java.util.regex.Pattern;
 /** 用户原文的可执行约束；远程模型不能补写、放宽预算或购买数量。 */
 public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCent, Integer requestedQuantity, boolean clarification) {
     private static final String DIGITS = "零〇一二两三四五六七八九十百千万";
+    private static final String SIMPLE = "一二两三四五六七八九";
     private static final String NUMBER = "[\\d" + DIGITS + "点.]+";
     private static final String UNIT = "[个件份瓶盒包本支杯袋斤]";
-    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|贵一点|还有别的|类似的|这些");
+    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
     private static final Pattern QUANTITY = Pattern.compile("(?<![\\d." + DIGITS + "])(\\d+(?:\\.\\d+)?|[" + DIGITS + "]+)\\s*" + UNIT);
-    private static final String UNCERTAIN = "(?:[" + DIGITS + "\\d]*[几多来余]|[" + DIGITS + "\\d]+\\s*[到至~-]\\s*[" + DIGITS + "\\d]+)\\s*";
+    // 复合口语数词：二三 十、十二 三、一百二三 等区间；完整数词（如一百零二、二十三点五）不得误判。
+    private static final String RANGE = "[" + DIGITS + "\\d]+\\s*[到至~-]\\s*[" + DIGITS + "\\d]+";
+    private static final String COMPOUND = "[" + SIMPLE + "][" + SIMPLE + "][十百千万]|[百千万][" + SIMPLE + "][" + SIMPLE + "]";
+    private static final String NARROW = "(?<![" + DIGITS + "\\d])十[" + SIMPLE + "][" + SIMPLE + "]|[零〇一两三四五六七八九]\\s*[零〇一两三四五六七八九]+";
+    private static final String UNCERTAIN = "(?:[" + DIGITS + "\\d]*[几多来余]|" + RANGE + "|" + COMPOUND + "|" + NARROW + ")\\s*";
 
     private record Intent(Long value, boolean specified, boolean invalid) {}
 
@@ -42,7 +47,11 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     }
 
     private static Intent budget(String text) {
-        boolean marker = Pattern.compile("预算|不超过|最多|不到|上限|(?:元|块)\\s*(?:以内|以下|左右)").matcher(text).find();
+        boolean marker = Pattern.compile(
+            "预算|不超过|最多|不到|上限|(?:元|块)\\s*(?:以内|以下|左右)|(?:\\d+|[" + DIGITS + "]+)\\s*[到至~-]\\s*(?:\\d+|[" + DIGITS + "]+)\\s*(?:元|块)"
+        )
+            .matcher(text)
+            .find();
         if (
             marker &&
             Pattern.compile(UNCERTAIN + "(?:元|块)")

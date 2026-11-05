@@ -45,6 +45,11 @@
       "version": "V20261104_01",
       "file": "V20261104_01__product_image_upload_ownership.sql",
       "sha256": "1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165"
+    },
+    {
+      "version": "V20261105_01",
+      "file": "V20261105_01__inventory_integrity_and_query_indexes.sql",
+      "sha256": "a97b56a94cea076eeb84461322f10e1af5b5011708b917a59a94b65fec26d6c2"
     }
   ]
 }

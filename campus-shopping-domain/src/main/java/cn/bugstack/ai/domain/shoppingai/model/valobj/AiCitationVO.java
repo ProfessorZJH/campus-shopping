@@ -1,4 +1,17 @@
 package cn.bugstack.ai.domain.shoppingai.model.valobj;
 
 /** 引用必须在 Java 端复验授权与正文一致性。 */
-public record AiCitationVO(String documentId, String chunkId, String title, String snippet, double score) {}
+public record AiCitationVO(
+    String documentId,
+    String chunkId,
+    String title,
+    String snippet,
+    double score,
+    int documentVersion,
+    int ordinal,
+    String contentHash
+) {
+    public AiCitationVO(String documentId, String chunkId, String title, String snippet, double score) {
+        this(documentId, chunkId, title, snippet, score, 1, -1, "");
+    }
+}

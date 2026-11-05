@@ -14,12 +14,17 @@ import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.domain.shoppingai.service.*;
 import cn.bugstack.ai.domain.shoppingai.service.impl.ConversationServiceImpl;
+import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.exception.AppException;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.*;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 /** 测试规则和能力边界；数据库 CAS/原子提交另由真实 MySQL 测试覆盖。 */
 class AiConversationBoundaryTest {
@@ -148,5 +153,98 @@ class AiConversationBoundaryTest {
                 clock.instant()
             )
         );
+    }
+
+    @Test
+    void internalCitationIsVerifiedByChunkIdentityWithoutTransferringRawSnippet() throws Exception {
+        var state = mock(IConversationService.class);
+        var engine = mock(IAiEnginePort.class);
+        var knowledge = mock(IKnowledgeCase.class);
+        var catalog = mock(ICatalogService.class);
+        var inventory = mock(IInventoryService.class);
+        var accounts = mock(IUserAccountService.class);
+        var turns = mock(IConversationTurnCase.class);
+        var turn = new ConversationTurnVO("conversation", "buyer", "attempt");
+        String question = "这款签字笔怎么申请退款？";
+        String content = "内部退款规则：仅商户可见的售后处理说明。";
+        String chunkId = chunkId("internal", 0);
+        String chunkHash = Fingerprints.sha256(content);
+        var scope = List.of(new KnowledgeScopeVO("internal", "内部退款规则", "MERCHANT_INTERNAL"));
+        when(state.beginTurn("buyer", "conversation", question)).thenReturn(turn);
+        when(state.messages("buyer", "conversation", 12)).thenReturn(List.of());
+        when(knowledge.readableScope("buyer")).thenReturn(scope);
+        when(knowledge.citationDocuments("buyer", List.of("internal"))).thenReturn(
+            List.of(
+                new KnowledgeDocumentVO(
+                    "internal",
+                    "root",
+                    "base",
+                    "内部退款规则",
+                    null,
+                    "MERCHANT_INTERNAL",
+                    1,
+                    "PUBLISHED",
+                    "READY",
+                    content,
+                    "",
+                    clock.instant()
+                )
+            )
+        );
+        when(engine.recall(anyString(), anyList())).thenReturn(new AiRecallVO(question, List.of()));
+        when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
+        when(catalog.recall(anyList(), anyInt())).thenReturn(List.of());
+        when(catalog.recallByIds(anyList())).thenReturn(List.of());
+        when(catalog.saleOffers(anyList())).thenReturn(List.of());
+        when(catalog.availableOffers(anyList())).thenReturn(List.of());
+        when(inventory.stocks(anyList())).thenReturn(List.of());
+        // Python 对未获外发许可的文档只回传受控标识与固定脱敏说明，不携带原文。
+        when(engine.query(any())).thenReturn(
+            new AiAnswerVO(
+                "回答",
+                "LOCAL_RETRIEVAL_DEMO",
+                "LOCAL_CHAR_NGRAM_DEMO",
+                question,
+                "",
+                List.of(new AiCitationVO("internal", chunkId, "内部资料", "内部资料来源，原文片段不公开展示", 1.0, 1, 0, chunkHash)),
+                List.of(),
+                1
+            )
+        );
+        var useCase = new ShoppingAiCaseImpl(
+            state,
+            mock(IProposalService.class),
+            engine,
+            knowledge,
+            catalog,
+            inventory,
+            accounts,
+            clock,
+            turns,
+            mock(IProposalConfirmationCase.class),
+            new KnowledgeEgressPolicy("", "")
+        );
+        useCase.chat("buyer", "conversation", question);
+        var query = ArgumentCaptor.forClass(cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity.class);
+        var answer = ArgumentCaptor.forClass(String.class);
+        verify(engine).query(query.capture());
+        verify(turns).complete(eq(turn), eq(question), answer.capture(), eq(List.of()), any(), anyString());
+        assertTrue(query.getValue().externalDocumentIds().isEmpty());
+        assertTrue(answer.getValue().contains("内部资料来源，原文片段不公开展示"));
+        assertFalse(answer.getValue().contains(content));
+    }
+
+    private static String chunkId(String document, int ordinal) throws Exception {
+        var namespace = UUID.fromString("6ba7b811-9dad-11d1-80b4-00c04fd430c8");
+        var bytes = ByteBuffer.allocate(16).putLong(namespace.getMostSignificantBits()).putLong(namespace.getLeastSignificantBits()).array();
+        var name = (document + ":" + ordinal).getBytes(StandardCharsets.UTF_8);
+        var input = new byte[bytes.length + name.length];
+        System.arraycopy(bytes, 0, input, 0, bytes.length);
+        System.arraycopy(name, 0, input, bytes.length, name.length);
+        byte[] digest = MessageDigest.getInstance("SHA-1").digest(input);
+        digest[6] = (byte) ((digest[6] & 0x0f) | 0x50);
+        digest[8] = (byte) ((digest[8] & 0x3f) | 0x80);
+        var result = ByteBuffer.wrap(digest);
+        return new UUID(result.getLong(), result.getLong()).toString();
     }
 }
