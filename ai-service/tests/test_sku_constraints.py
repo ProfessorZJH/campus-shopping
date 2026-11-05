@@ -5,7 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.engine import FOLLOWUP
 from app.main import create_app
+from app.sku_constraints import NEGATIVE, spec_constraints
 
 
 @pytest.fixture
@@ -66,6 +68,14 @@ def test_unknown_negative_attribute_clarifies_even_with_known_positive_spec(api)
     data = ask(api, '考试签字笔要标准装，不要家庭装和礼盒装')
     assert not data['recommendations']
     assert '规格' in data['answer'] and '明确' in data['answer']
+
+
+@pytest.mark.parametrize('cue', NEGATIVE.split('|'))
+def test_every_negative_cue_marks_an_unknown_attribute_for_clarification(cue):
+    # 否定线索必须与 NEGATIVE 字典同源，新增线索不能只在部分线索列表中生效。
+    specs = spec_constraints(cue + '含糖饮料', [], [dict(title='矿泉水', specKey='瓶装')], FOLLOWUP)
+    assert '含糖饮料' in specs.forbidden, cue
+    assert specs.ambiguous, cue
 
 
 def test_negative_spec_requires_spec_evidence_not_description(api):
@@ -172,7 +182,7 @@ def test_refund_knowledge_answer_survives_recalled_offers(api, monkeypatch, mode
                         recommendations=[] if model == 'empty' else [dict(skuId='family', reason='家庭装更适合')])
         monkeypatch.setattr(app.state.store.provider, 'complete', complete)
     response = client.post('/v1/query', json=dict(question='这款标准装签字笔怎么申请退款？', offers=offers(),
-                            allowedDocumentIds=['refund'], history=[]))
+                            allowedDocumentIds=['refund'], externalDocumentIds=['refund'], history=[]))
     assert response.status_code == 200
     data = response.json()
     assert data['recommendations'] == []

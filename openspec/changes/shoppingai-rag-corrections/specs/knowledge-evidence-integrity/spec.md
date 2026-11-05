@@ -7,7 +7,7 @@
 ## ADDED Requirements
 
 ### Requirement: Citations identify an authorized immutable chunk
-引用 MUST 包含文档版本、确定性 chunk 标识、片段位置或等价的可验证定位；Java MUST 在输出前核验文档仍处于当前授权范围、版本和发布状态，并核验片段确实来自该 chunk。
+引用 MUST 包含文档版本、确定性 chunk 标识、片段位置或等价的可验证定位；Java MUST 在输出前核验文档仍处于当前授权范围、版本和发布状态。公开引用还须核验片段确实来自该 chunk；内部引用以确定性 chunkId、序号和内容哈希核验定位，不要求跨服务传输原文片段。
 
 #### Scenario: Stale version
 - **WHEN** 模型返回旧文档版本的引用，而当前授权范围已发布新版本
@@ -22,7 +22,7 @@
 
 #### Scenario: Internal document citation
 - **WHEN** 检索命中仅对商户可见的内部资料
-- **THEN** 响应只保留受控来源标识或脱敏说明，不返回内部原文
+- **THEN** Python 对未列入服务端外发名单的文档只返回受控来源标识和固定脱敏说明；Java 以 chunkId、序号与内容哈希复验定位后，再按内部资料脱敏展示，不返回内部原文
 
 ### Requirement: Knowledge answers require relevant evidence
 知识回答 MUST 将引用合法性、Gold 证据覆盖和回答事实支持分别记录；仅引用合法不能被记录为证据覆盖或回答支持通过。

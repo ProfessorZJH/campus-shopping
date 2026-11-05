@@ -51,7 +51,8 @@ def test_index_and_evidence_are_real_substrings(app_client):
     _,client=app_client
     text='本店自提时间为每天九点到二十一点。核销前未提货订单可以申请退款。'
     assert index(client,'policy','自提政策',text).status_code==200
-    data=query(client,'自提时间是什么时候',['policy']).json()
+    data=client.post('/v1/query',json={'question':'自提时间是什么时候','allowedDocumentIds':['policy'],
+                                       'externalDocumentIds':['policy'],'offers':[],'history':[]}).json()
     assert data['mode']=='LOCAL_RETRIEVAL_DEMO'
     assert data['citations'] and data['citations'][0]['snippet'] in text
 
@@ -202,8 +203,10 @@ def test_chinese_budget_and_unclear_constraints(app_client):
     assert budget_cent('预算二十元买一瓶矿泉水')==2000
     assert budget_cent('十二点五元以内')==1250
     assert budget_cent('不到20元')==2000
+    assert budget_cent('预算十二三元') is None
+    assert budget_cent('预算二三十元') is None
     assert not query(client,'预算二十元买一瓶矿泉水',[],offers).json()['recommendations']
-    for question in ('买十几瓶矿泉水','买二十到三十瓶矿泉水','预算几十元买矿泉水'):
+    for question in ('买十几瓶矿泉水','买二十到三十瓶矿泉水','预算几十元买矿泉水','买二三十瓶矿泉水','买十二三瓶矿泉水'):
         data=query(client,question,[],offers).json()
         assert not data['recommendations'] and '明确' in data['answer']
 

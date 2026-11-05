@@ -92,9 +92,12 @@ public final class SkuConstraintPolicy {
             }
             String remainder = token.substring(cursor).replaceAll("^(?:和|及|与|并且|同时|的|也)+", "");
             boolean productName = titles.stream().anyMatch(title -> !remainder.isEmpty() && normalize(title).contains(remainder));
+            // 商户范围由服务端 merchant 白名单执行，不是SKU属性，不能被否定线索误判为未知规格。
+            boolean merchantScope = remainder.matches(".*(?:商户|商家).*");
             if (
                 !remainder.isEmpty() &&
                 !productName &&
+                !merchantScope &&
                 (explicit.group().startsWith("规格为") ||
                     explicit.group().startsWith("规格是") ||
                     (explicit.group().matches("^(?:" + NEGATIVE + "|只要|要|换成|改成|改为).*") && remainder.length() <= 12))
@@ -172,6 +175,7 @@ public final class SkuConstraintPolicy {
                 ambiguous |= inherited
                     .forbidden()
                     .stream()
+                    .filter(value -> newAxes.contains(dimension(value)))
                     .anyMatch(value -> !vocabulary.contains(value));
                 axes.addAll(newAxes);
                 if (!FOLLOWUP.matcher(history.get(i)).find()) break;

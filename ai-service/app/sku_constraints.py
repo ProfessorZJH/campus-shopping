@@ -35,6 +35,8 @@ def dimension(value):
 
 NEGATIVE = r'不要推荐|不想要|不想选|不想买|不需要|不要选|不推荐|不接受|不喜欢|不要|不选|不买|不用|别推荐|别选|别买|排除|不考虑|不含|不是|拒绝|非'
 CUES = re.compile(r'(' + NEGATIVE + r'|只要|想要|规格为|规格是|要|选择|选|换成|改成|改为)')
+# 商户范围由服务端 merchant 白名单执行，不是SKU属性；不能因否定线索误判为未知规格。
+MERCHANT_SCOPE = re.compile(r'(?:商户|商家)')
 
 
 @dataclass(frozen=True)
@@ -78,7 +80,12 @@ def extract(question, vocabulary, titles=()):
             cursor = attribute.end()
         remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
         product_name = any(remainder and remainder in normalize(title) for title in titles)
-        if remainder and not product_name and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为', '不要', '不含', '排除', '不考虑', '不喜欢', '不接受')) and len(remainder) <= 12)):
+        # 否定线索直接复用 NEGATIVE 字典，新增线索不会只在部分调用点生效。
+        cue = CUES.match(match.group()).group()
+        explicit_attribute = cue in ('规格为', '规格是')
+        explicit_negative = re.fullmatch(NEGATIVE, cue) is not None
+        if remainder and not product_name and not MERCHANT_SCOPE.search(remainder) and (explicit_attribute or (
+                (explicit_negative or cue in ('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 12)):
             terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))

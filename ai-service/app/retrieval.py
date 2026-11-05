@@ -12,6 +12,10 @@ from .egress import minimized, audit
 from .observability import observed, failure
 from .sqlite_migration import create_schema, DOC_COLUMNS, CHUNK_COLUMNS
 
+# 未获服务端外发许可的文档只回传受控标识；原文与标题留在检索服务内。
+INTERNAL_TITLE='内部资料'
+INTERNAL_SNIPPET='内部资料来源，原文片段不公开展示'
+
 def tokens(text: str) -> list[str]:
     text=text.lower()
     words=re.findall(r"[a-z0-9_]+",text)
@@ -167,6 +171,7 @@ class KnowledgeStore:
         if not allowed:return [],self.provider.vector_mode
         allowed=list(dict.fromkeys(allowed))
         if len(allowed)>1000:raise ValueError('allowed document scope exceeds 1000')
+        egress=set(external_document_ids or [])
         with self.lock:
             rows=[]
             for start in range(0,len(allowed),500):
@@ -184,7 +189,7 @@ class KnowledgeStore:
                 for i in local_indices:
                     v=json.loads(rows[i]['embedding']);score=sum(a*b for a,b in zip(v,local))
                     if score>0.05:dense.append((i,score))
-            remote_ids=list(dict.fromkeys(r['doc_id'] for r in rows if r['model']==self.provider.model_tag and r['model']!='local-char-ngram-v1' and r['doc_id'] in set(external_document_ids or [])))
+            remote_ids=list(dict.fromkeys(r['doc_id'] for r in rows if r['model']==self.provider.model_tag and r['model']!='local-char-ngram-v1' and r['doc_id'] in egress))
             if not remote_ids:
                 mode='LOCAL_CHAR_NGRAM_DEMO'
                 dense=sorted(dense,key=lambda x:-x[1])[:30]
@@ -216,7 +221,9 @@ class KnowledgeStore:
             _trace.update(authorized=[r['id'] for r in rows], sparse=[rows[i]['id'] for i,_ in sparse],
                           dense=[rows[i]['id'] for i,_ in dense], selected=[rows[i]['id'] for i in selected],
                           selectionDepth=top_k, strategy=_strategy, scores={rows[i]['id']:v for i,v in scores.items()})
-        return [{'documentId':rows[i]['doc_id'],'chunkId':rows[i]['id'],'title':rows[i]['title'],'snippet':rows[i]['body'][:500],
+        return [{'documentId':rows[i]['doc_id'],'chunkId':rows[i]['id'],
+                 'title':rows[i]['title'] if rows[i]['doc_id'] in egress else INTERNAL_TITLE,
+                 'snippet':rows[i]['body'][:500] if rows[i]['doc_id'] in egress else INTERNAL_SNIPPET,
                  'score':scores[i], 'documentVersion':rows[i]['document_version'], 'ordinal':rows[i]['ordinal'],
                  'contentHash':hashlib.sha256(rows[i]['body'].encode('utf-8')).hexdigest()} for i in selected],mode
 

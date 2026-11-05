@@ -20,13 +20,20 @@ def chinese_integer(raw: str) -> int:
     return total+section+number
 
 NUMBER=r'[\d零〇一二两三四五六七八九十百千万点.]+'
+DIGITS=r'零〇一二两三四五六七八九十百千万'
+SIMPLE=r'一二两三四五六七八九'
+# 复合口语数词：二三 十、十二 三、一百二三 等区间；完整数词（如一百零二、二十三点五）不得误判。
+UNCERTAIN=(r'(?:['+DIGITS+r'\d]*[几多来余]|['+DIGITS+r'\d]+\s*[到至~-]\s*['+DIGITS+r'\d]+'
+           r'|['+SIMPLE+r']['+SIMPLE+r'][十百千万]|[百千万]['+SIMPLE+r']['+SIMPLE+r']'
+           r'|(?<!['+DIGITS+r'\d])十['+SIMPLE+r']['+SIMPLE+r']'
+           r'|[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+)\s*')
 FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些')
 
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
     patterns=[r'(?:预算|上限)\s*('+NUMBER+r')\s*(?:元|块)?',r'(?:不超过|最多|不到)\s*('+NUMBER+r')\s*(?:元|块)',r'('+NUMBER+r')\s*(?:元|块)\s*(?:以内|以下|左右)']
     marker=bool(re.search(r'预算|不超过|最多|不到|上限|(?:元|块)\s*(?:以内|以下|左右)|(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*[到至~-]\s*(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*(?:元|块)',question))
-    if marker and re.search(r'(?:[零〇一二两三四五六七八九十百千万\d]*[几多来余]|[零〇一二两三四五六七八九十百千万\d]+\s*[到至~-]\s*[零〇一二两三四五六七八九十百千万\d]+)\s*(?:元|块)',question):return None,'AMBIGUOUS'
+    if marker and re.search(UNCERTAIN+r'(?:元|块)',question):return None,'AMBIGUOUS'
     amounts=[]
     for pattern in patterns:
         for raw in re.findall(pattern,question):
@@ -52,7 +59,7 @@ QUANTITY_PATTERN=re.compile(r'(?<![\d.零〇一二两三四五六七八九十百
 def quantity_intent(question: str) -> tuple[int|None,str]:
     """区分未指定、明确有效、歧义和超限数量，不从完整数词中间截取。"""
     question=re.sub(r'换一个|换一款|还有一个选择','',question)
-    if re.search(r'(?:[零〇一二两三四五六七八九十百千万\d]*[几多来余]|[零〇一二两三四五六七八九十百千万\d]+\s*[到至~-]\s*[零〇一二两三四五六七八九十百千万\d]+|[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+)\s*[个件份瓶盒包本支杯袋斤]',question):return None,'AMBIGUOUS'
+    if re.search(UNCERTAIN+r'[个件份瓶盒包本支杯袋斤]',question):return None,'AMBIGUOUS'
     matches=QUANTITY_PATTERN.findall(question)
     if not matches:return None,'UNSPECIFIED'
     if len(matches)!=1:return None,'AMBIGUOUS'
@@ -132,6 +139,7 @@ def knowledge_question(question: str) -> bool:
 
 def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[dict],history: list[dict],retrieval_query: str="",semantic_sku_ids: list[str]|None=None,*,_trace: dict|None=None,external_document_ids: list[str]|None=None) -> dict:
     started=time.perf_counter();query=retrieval_query or query_rewrite(question,history,store)
+    egress=set(external_document_ids or [])
     evidence,retrieval_mode=store.search(query,allowed,6,external_document_ids=external_document_ids)
     if _trace is not None:_trace.update(offers=[o['skuId'] for o in offers], eligible=[], candidates=[], selected=[])
     knowledge_only=knowledge_question(question)
@@ -166,7 +174,7 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     text=''
     if store.settings.llm_key:
         try:
-            result=store.provider.complete(ANSWER_SYSTEM,{'question':question,'history':[h for h in history if h['role']=='user'][-3:],'authorizedEvidence':[e for e in evidence if e['documentId'] in set(external_document_ids or [])],'candidates':candidates,'budgetCent':limit,'requestedQuantity':requested})
+            result=store.provider.complete(ANSWER_SYSTEM,{'question':question,'history':[h for h in history if h['role']=='user'][-3:],'authorizedEvidence':[e for e in evidence if e['documentId'] in egress],'candidates':candidates,'budgetCent':limit,'requestedQuantity':requested})
             proposed=result.get('recommendations',[]);lookup={o['skuId']:o for o in candidates};filtered=[];seen=set();spent=0
             if not isinstance(proposed,list):raise ValueError('建议格式错误')
             for r in proposed:
@@ -194,9 +202,10 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
             mode='LOCAL_FALLBACK';warning='远程模型不可用或未提供有效建议，已降级为本地检索；未执行任何购物操作。'
     if not text:
         parts=[]
-        if evidence and not offers and not specs.active:
+        visible=[c for c in evidence if c['documentId'] in egress]
+        if visible and not offers and not specs.active:
             parts.append('根据当前允许访问的知识资料：')
-            for c in evidence[:3]:parts.append('《'+c['title']+'》：'+c['snippet'][:180])
+            for c in visible[:3]:parts.append('《'+c['title']+'》：'+c['snippet'][:180])
         if recommendations:
             lookup={o['skuId']:o for o in candidates}
             parts.append('可查看以下商品：'+ '；'.join(lookup[r['skuId']]['title']+'（'+lookup[r['skuId']]['specKey']+'）×'+str(r['quantity']) for r in recommendations))

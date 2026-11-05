@@ -355,16 +355,19 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         List<AiCitationVO> citations = new ArrayList<>();
         for (var citation : requested) {
             var document = byId.get(citation.documentId());
+            require(document != null, ResponseCode.KNOWLEDGE_NOT_READY);
+            boolean publicDocument = "PUBLIC".equals(document.visibility());
+            String chunkBody = citation.ordinal() < 0 ? "" : chunk(document.content(), citation.ordinal());
             require(
-                document != null &&
-                    citation.documentVersion() == document.version() &&
+                citation.documentVersion() == document.version() &&
                     citation.snippet() != null &&
                     citation.snippet().codePointCount(0, citation.snippet().length()) <= 500 &&
+                    // 内部原文不跨服务传输：PUBLIC 才校验片段属于该 chunk，其余以 chunkId、序号和内容哈希定位。
                     (citation.ordinal() < 0
-                        ? document.content().contains(citation.snippet())
+                        ? (!publicDocument || document.content().contains(citation.snippet()))
                         : citation.chunkId().equals(chunkId(document.id(), citation.ordinal())) &&
-                          chunk(document.content(), citation.ordinal()).contains(citation.snippet()) &&
-                          citation.contentHash().equals(hash(chunk(document.content(), citation.ordinal())))),
+                          citation.contentHash().equals(hash(chunkBody)) &&
+                          (!publicDocument || chunkBody.contains(citation.snippet()))),
                 ResponseCode.KNOWLEDGE_NOT_READY
             );
             citations.add(
