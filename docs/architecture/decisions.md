@@ -143,3 +143,16 @@
 状态：本轮已接受整改。Java/MySQL保有授权及checkpoint事实，Python只接收当前获批外发文档范围。PUBLIC可外发，内部知识默认本地检索；商户和知识库双白名单由服务端控制，平台知识库单白名单。文本基础脱敏、上下文最小化、无原文审计，不宣称撤回历史供应商数据。操作与兼容边界见[容量外发手册](../operations/R1-capacity-egress.md)。
 
 订单用有界keyset扫描加逐单幂等事务；商品远程成功后提交MySQL checkpoint，幂等重放优先于引入消息队列。多Java仍由Redis协调，同一Python实际执行容量持续占用到结束。保留单Python/持久卷约束，故障与外部降级证据按本轮报告区分。
+
+## ADR-018：商品图片的可选七牛存储与稳定引用
+
+日期：2026-11-05；状态：本次第二阶段授权下的实施决定，验证范围见 QINIU-IMAGES-PHASE2 报告。
+
+- 默认 LOCAL；显式 QINIU 且必需配置完整才上传云端，缺失或部分配置启动失败，不静默降级。LOCAL 上传回退时保留七牛完整配置，已有云图仍可读。
+- 保留旧 `/media/{key}.png`，新增 `/media/qiniu/{小写UUID}.png` 与 `object_key=qiniu/{uuid}.png`。商品、提案、订单只保存稳定相对引用，不保存域名或短期签名。复用既有归属/图片表，不新增迁移。
+- 上传先校验 2,000,000 字节/1200 万像素并重编码 PNG；SDK 固定 7.19.0，限定 key 的服务端 token、`image/png` 与 CRC。SDK 异步接口桥接有界 60 秒回调等待，避免同步解析器输出异常栈。超时不表示云任务取消；迟到响应关闭且不登记。
+- 上传必须显式固定区域（`z0`/`z1`/`z2`/`na0`/`as0`/`cn-east-2`），不支持 `auto`、不猜 bucket 区：SDK 的 `autoRegion` 会在上传前联网发现区域，失败时在 `FormUploader` 内部 `printStackTrace`，在不改全局 stderr、不反射 SDK 的前提下无法可靠消除。access-key 限定 `[A-Za-z0-9_-]`（凭证首段），避免 SDK 自解析 token 失败后再打印栈；secret-key 仅作 HMAC 密钥。
+- 成功上传后登记商户归属；失败不返回可认领地址。商品事务只在 MySQL 认领和写入引用，不访问云端；LOCAL 继续复验文件，QINIU 依据上传登记。
+- `/media/qiniu/**` 为应用公开资产入口，302 到配置的 HTTPS 纯 DNS 域名并 `no-store`；私有桶默认签名 300 秒，范围 30–3600。非法引用 404，未配置/运行故障 503；CSP 只为已验证下载 host 扩展 `img-src`。
+- 基础设施仓库内委派 Qiniu 网关完成既有上传能力；领域窄 Port 仅提供下载地址投影，不查询业务表、不代理下载。凭据仅从私有配置注入，不记录签名/下游异常正文。
+- 自动删除、对象释放/跨商品复用、历史迁移和真实云/生产验收均未在本次实现中；操作与验证分别见 [../operations/QINIU-IMAGES.md](../operations/QINIU-IMAGES.md) 及 [../testing/QINIU-IMAGES-PHASE2-20261105.md](../testing/QINIU-IMAGES-PHASE2-20261105.md)。

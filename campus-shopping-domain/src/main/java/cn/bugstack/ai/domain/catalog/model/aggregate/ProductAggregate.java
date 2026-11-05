@@ -5,6 +5,7 @@ import static cn.bugstack.ai.types.common.Checks.require;
 import static cn.bugstack.ai.types.common.Checks.text;
 
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageRef;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -39,7 +40,7 @@ public final class ProductAggregate {
         this.description = optional(description, 5000);
         this.categoryCode = text(categoryCode, "类别", 32);
         this.imageUrl = optional(imageUrl, 255);
-        require(this.imageUrl.isEmpty() || this.imageUrl.matches("/media/[a-f0-9-]+\\.png"), ResponseCode.ILLEGAL_PARAMETER);
+        require(this.imageUrl.isEmpty() || ProductImageRef.accepts(this.imageUrl), ResponseCode.ILLEGAL_PARAMETER);
         require(version >= 0, ResponseCode.STATE_CONFLICT);
         this.status = ProductStatusEnumVO.fromCode(status);
         this.version = version;
@@ -102,7 +103,7 @@ public final class ProductAggregate {
         String checkedDescription = optional(desc, 5000);
         String checkedCategory = text(category, "类别", 32);
         String checkedImage = optional(image, 255);
-        require(checkedImage.isEmpty() || checkedImage.matches("/media/[a-f0-9-]+\\.png"), ResponseCode.ILLEGAL_PARAMETER);
+        require(checkedImage.isEmpty() || ProductImageRef.accepts(checkedImage), ResponseCode.ILLEGAL_PARAMETER);
         // 聚合校验失败时保留原状态；不依赖数据库回滚来修复内存中的半更新。
         this.title = checkedTitle;
         this.description = checkedDescription;

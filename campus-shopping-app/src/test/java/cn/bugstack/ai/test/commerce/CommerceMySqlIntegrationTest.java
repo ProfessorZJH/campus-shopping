@@ -2,6 +2,11 @@ package cn.bugstack.ai.test.commerce;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cn.bugstack.ai.Application;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
@@ -27,9 +32,12 @@ import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
+import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
+import cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.*;
 import java.util.*;
@@ -37,13 +45,17 @@ import java.util.concurrent.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.*;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -58,6 +70,7 @@ import org.springframework.transaction.support.TransactionTemplate;
     properties = { "campus.jobs.enabled=false", "campus.bootstrap.enabled=false", "campus.security.rate-limit-enabled=false" }
 )
 @ActiveProfiles("mysql-integration")
+@AutoConfigureMockMvc
 @EnabledIfEnvironmentVariable(named = "MYSQL_TEST_URL", matches = ".+")
 class CommerceMySqlIntegrationTest {
 
@@ -284,6 +297,18 @@ class CommerceMySqlIntegrationTest {
         }
     }
 
+    @Autowired
+    MockMvc mvc;
+
+    @Autowired
+    com.fasterxml.jackson.databind.ObjectMapper json;
+
+    @Autowired
+    ProductImageStorageProperties imageProperties;
+
+    @SpyBean
+    QiniuObjectGateway qiniuGateway;
+
     private MerchantVO open(String applicant, String name) {
         var a = applications.submitDetailed(
             applicant,
@@ -291,6 +316,290 @@ class CommerceMySqlIntegrationTest {
             UUID.randomUUID().toString()
         );
         return admission.approve(admin, a.getApplicationId());
+    }
+
+    // ----------------------------------------------------------------
+    // 七牛图片：真实 HTTP + 真实 MySQL 事务；云上传网关为替身，不访问任何云。
+    // ----------------------------------------------------------------
+
+    /** 上传云端为替身：返回 repository 传入的确切对象键，并记录调用。 */
+    private List<String> stubCloudUpload() {
+        List<String> keys = new ArrayList<>();
+        doAnswer(invocation -> {
+            // 云上传不得处于数据库事务中：否则长调用会持有连接/行锁。
+            assertFalse(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive(), "云上传不得在数据库事务内执行");
+            String key = invocation.getArgument(1);
+            keys.add(key);
+            return key;
+        })
+            .when(qiniuGateway)
+            .upload(any(byte[].class), anyString());
+        return keys;
+    }
+
+    private MockHttpServletRequestBuilder asOwner(MockHttpServletRequestBuilder request) throws Exception {
+        return request.with(user(owner)).with(csrf()).contentType(MediaType.APPLICATION_JSON);
+    }
+
+    private String bodyOf(org.springframework.test.web.servlet.MvcResult result) throws Exception {
+        return result.getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    private String uploadImage(String merchantId, String actor) throws Exception {
+        String payload = json.writeValueAsString(
+            Map.of("filename", "probe.png", "contentType", "image/png", "base64", Base64.getEncoder().encodeToString(pngBytes()))
+        );
+        var request = post("/api/v1/merchants/" + merchantId + "/images")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(payload);
+        var result = actor == null ? mvc.perform(request).andReturn() : mvc.perform(request.with(user(actor)).with(csrf())).andReturn();
+        return bodyOf(result);
+    }
+
+    private String createProductOverHttp(String merchantId, String title, List<String> urls) throws Exception {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("title", title);
+        body.put("description", "多图相册");
+        body.put("categoryCode", "stationery");
+        body.put("imageUrls", urls);
+        body.put("skus", List.of(Map.of("specKey", "标准", "priceCent", 900)));
+        var result = mvc.perform(asOwner(post("/api/v1/merchants/" + merchantId + "/products")).content(json.writeValueAsString(body))).andReturn();
+        return bodyOf(result);
+    }
+
+    private String editProductOverHttp(String merchantId, String productId, String title, List<String> urls, long version) throws Exception {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("title", title);
+        body.put("description", "多图相册");
+        body.put("categoryCode", "stationery");
+        body.put("imageUrls", urls);
+        body.put("expectedVersion", version);
+        var result = mvc.perform(asOwner(put("/api/v1/merchants/" + merchantId + "/products/" + productId)).content(json.writeValueAsString(body))).andReturn();
+        return bodyOf(result);
+    }
+
+    private List<String> albumKeys(String productId) {
+        return jdbc.queryForList("SELECT object_key FROM cat_product_image WHERE product_id=? ORDER BY sort_order", String.class, productId);
+    }
+
+    private long imageVersion(String productId) {
+        return jdbc.queryForObject("SELECT version FROM cat_product WHERE id=?", Long.class, productId);
+    }
+
+    /** A：完整 HTTP 上传 + 混合相册持久化，以及重排/移除后仍可放回原商品。 */
+    @Test
+    void qiniuUploadAndMixedAlbumPersistThroughRealHttpAndTransactions() throws Exception {
+        List<String> keys = stubCloudUpload();
+        imageProperties.setProvider("QINIU");
+        try {
+            var uploaded = json.readTree(uploadImage(merchant.id(), owner));
+            assertEquals("0000", uploaded.get("code").asText(), uploaded.toString());
+            String qiniuUrl = uploaded.get("data").get("url").asText();
+            assertTrue(qiniuUrl.matches("^/media/qiniu/[a-f0-9-]{36}\\.png$"), qiniuUrl);
+            String objectKey = "qiniu/" + qiniuUrl.substring("/media/qiniu/".length());
+            assertEquals(List.of(objectKey), keys, "必须只上传一次且键与稳定引用一致");
+            assertEquals(
+                1L,
+                scalar("SELECT COUNT(*) FROM cat_product_image_upload WHERE object_key=? AND merchant_id=? AND product_id IS NULL", objectKey, merchant.id())
+            );
+
+            String localUrl = mediaFixture("44444444-4444-4444-4444-444444444444", merchant.id());
+            var created = json.readTree(createProductOverHttp(merchant.id(), "混合相册商品", List.of(localUrl, qiniuUrl)));
+            assertEquals("0000", created.get("code").asText(), created.toString());
+            String productId = created.get("data").get("productId").asText();
+            assertEquals(List.of("44444444-4444-4444-4444-444444444444.png", objectKey), albumKeys(productId), "顺序、object_key 必须与提交一致");
+            assertEquals(
+                List.of("LOCAL", "QINIU"),
+                jdbc.queryForList("SELECT provider FROM cat_product_image WHERE product_id=? ORDER BY sort_order", String.class, productId)
+            );
+            assertEquals(localUrl, created.get("data").get("imageUrl").asText(), "主图为第一张");
+            assertEquals(productId, jdbc.queryForObject("SELECT product_id FROM cat_product_image_upload WHERE object_key=?", String.class, objectKey));
+
+            // 重排：QINIU 升为首图，主图随之变化。
+            assertEquals(
+                "0000",
+                json
+                    .readTree(editProductOverHttp(merchant.id(), productId, "混合相册商品", List.of(qiniuUrl, localUrl), imageVersion(productId)))
+                    .get("code")
+                    .asText()
+            );
+            assertEquals(List.of(objectKey, "44444444-4444-4444-4444-444444444444.png"), albumKeys(productId));
+
+            // 未发布前匿名不可读；显式发布后再核对主图，避免把权限绕过当行为。
+            catalog.setProductPublished(owner, merchant.id(), productId, true);
+            assertEquals(
+                qiniuUrl,
+                json
+                    .readTree(
+                        bodyOf(
+                            mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/products/" + productId)).andReturn()
+                        )
+                    )
+                    .get("data")
+                    .get("imageUrl")
+                    .asText()
+            );
+
+            // 移除后再放回：同一商品仍可重新认领自己曾经的 QINIU 对象。
+            assertEquals(
+                "0000",
+                json
+                    .readTree(editProductOverHttp(merchant.id(), productId, "混合相册商品", List.of(), imageVersion(productId)))
+                    .get("code")
+                    .asText()
+            );
+            assertEquals(List.of(), albumKeys(productId));
+            assertEquals(
+                "0000",
+                json
+                    .readTree(editProductOverHttp(merchant.id(), productId, "混合相册商品", List.of(qiniuUrl), imageVersion(productId)))
+                    .get("code")
+                    .asText()
+            );
+            assertEquals(List.of(objectKey), albumKeys(productId));
+            assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image_upload WHERE product_id IS NULL AND object_key=?", objectKey));
+            // 保存、重排、移除、放回与读取均不得产生额外云调用。
+            assertEquals(List.of(objectKey), keys, "整个 HTTP 流程只能有一次云上传");
+            verify(qiniuGateway, times(1)).upload(any(byte[].class), anyString());
+        } finally {
+            imageProperties.setProvider("LOCAL");
+        }
+    }
+
+    /** B：跨商户、跨商品、未登记、非法形状分别拒绝，且鉴权路径不触碰网关。 */
+    @Test
+    void qiniuReferencesRejectCrossMerchantReuseUnregisteredAndIllegalShapes() throws Exception {
+        List<String> keys = stubCloudUpload();
+        imageProperties.setProvider("QINIU");
+        try {
+            String qiniuUrl = json.readTree(uploadImage(merchant.id(), owner)).get("data").get("url").asText();
+            String objectKey = "qiniu/" + qiniuUrl.substring("/media/qiniu/".length());
+            assertEquals(1, keys.size());
+
+            var first = json.readTree(createProductOverHttp(merchant.id(), "先占用", List.of(qiniuUrl)));
+            assertEquals("0000", first.get("code").asText(), first.toString());
+            long imagesBefore = scalar("SELECT COUNT(*) FROM cat_product_image");
+            long productsBeforeFailures = scalar("SELECT COUNT(*) FROM cat_product");
+
+            // 同商户不同商品复用同一已认领对象。
+            assertEquals(
+                "A0006",
+                json
+                    .readTree(createProductOverHttp(merchant.id(), "跨商品复用", List.of(qiniuUrl)))
+                    .get("code")
+                    .asText()
+            );
+            // 未登记对象。
+            assertEquals(
+                "A0006",
+                json
+                    .readTree(createProductOverHttp(merchant.id(), "未登记", List.of("/media/qiniu/55555555-5555-5555-5555-555555555555.png")))
+                    .get("code")
+                    .asText()
+            );
+            // 非法形状（非小写 UUID）。
+            assertEquals(
+                "0002",
+                json
+                    .readTree(createProductOverHttp(merchant.id(), "非法形状", List.of("/media/qiniu/5555555A-5555-5555-5555-555555555555.png")))
+                    .get("code")
+                    .asText()
+            );
+            assertEquals(imagesBefore, scalar("SELECT COUNT(*) FROM cat_product_image"), "失败请求不得新增图片行");
+            assertEquals(productsBeforeFailures, scalar("SELECT COUNT(*) FROM cat_product"), "失败请求不得新增商品行");
+
+            // 另一商户的对象不得被本商户商品引用。
+            MerchantVO second = open(buyer, "第二文具商户");
+            imageProperties.setProvider("QINIU");
+            String foreignUrl = json.readTree(uploadImage(second.id(), buyer)).get("data").get("url").asText();
+            assertEquals(
+                "A0006",
+                json
+                    .readTree(createProductOverHttp(merchant.id(), "跨商户引用", List.of(foreignUrl)))
+                    .get("code")
+                    .asText()
+            );
+            assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image WHERE object_key=?", "qiniu/" + foreignUrl.substring("/media/qiniu/".length())));
+
+            // 鉴权：匿名（带 CSRF）401、已登录无 CSRF 403、无该商户写权限 A0006 且网关未调用。
+            int callsBefore = keys.size();
+            assertEquals(
+                401,
+                mvc
+                    .perform(
+                        post("/api/v1/merchants/" + merchant.id() + "/images")
+                            .with(csrf())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}")
+                    )
+                    .andReturn()
+                    .getResponse()
+                    .getStatus()
+            );
+            assertEquals(
+                403,
+                mvc
+                    .perform(
+                        post("/api/v1/merchants/" + merchant.id() + "/images")
+                            .with(user(owner))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}")
+                    )
+                    .andReturn()
+                    .getResponse()
+                    .getStatus()
+            );
+            assertEquals("A0006", json.readTree(uploadImage(merchant.id(), other)).get("code").asText());
+            assertEquals(callsBefore, keys.size(), "越权请求不得调用云端上传");
+            verify(qiniuGateway, times(callsBefore)).upload(any(byte[].class), anyString());
+        } finally {
+            imageProperties.setProvider("LOCAL");
+        }
+    }
+
+    /** C：云上传失败不登记；版本冲突不认领备用对象；库存初始化失败使创建事务整体回滚。 */
+    @Test
+    void qiniuFailuresDoNotRegisterOrLeakClaimsAndInventoryFailureRollsBack() throws Exception {
+        imageProperties.setProvider("QINIU");
+        try {
+            doThrow(new AppException(ResponseCode.UN_ERROR)).when(qiniuGateway).upload(any(byte[].class), anyString());
+            var failed = json.readTree(uploadImage(merchant.id(), owner));
+            assertEquals("0001", failed.get("code").asText(), failed.toString());
+            assertTrue(failed.get("data") == null || failed.get("data").isNull(), "失败不得返回可认领地址");
+            assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image_upload"), "云上传失败不得登记对象");
+
+            // 版本冲突：备用对象不得被认领。
+            List<String> keys = stubCloudUpload();
+            String keepUrl = json.readTree(uploadImage(merchant.id(), owner)).get("data").get("url").asText();
+            var created = json.readTree(createProductOverHttp(merchant.id(), "版本冲突商品", List.of(keepUrl)));
+            assertEquals("0000", created.get("code").asText(), created.toString());
+            String productId = created.get("data").get("productId").asText();
+            String spareUrl = json.readTree(uploadImage(merchant.id(), owner)).get("data").get("url").asText();
+            String spareKey = "qiniu/" + spareUrl.substring("/media/qiniu/".length());
+            assertEquals(
+                "G0002",
+                json
+                    .readTree(editProductOverHttp(merchant.id(), productId, "版本冲突商品", List.of(spareUrl), 99L))
+                    .get("code")
+                    .asText()
+            );
+            assertEquals(List.of("qiniu/" + keepUrl.substring("/media/qiniu/".length())), albumKeys(productId));
+            assertNull(jdbc.queryForObject("SELECT product_id FROM cat_product_image_upload WHERE object_key=?", String.class, spareKey));
+            assertEquals(2, keys.size(), "上传次数必须与真实调用一致");
+
+            // 库存初始化故障：商品、相册、认领全部回滚（认领发生在库存初始化之前）。
+            String rollbackUrl = json.readTree(uploadImage(merchant.id(), owner)).get("data").get("url").asText();
+            String rollbackKey = "qiniu/" + rollbackUrl.substring("/media/qiniu/".length());
+            long productsBefore = scalar("SELECT COUNT(*) FROM cat_product");
+            doThrow(new IllegalStateException("fake-inventory-init-failure")).when(inventoryService).initialize(anyString(), anyString(), anyString());
+            var rolledBack = json.readTree(createProductOverHttp(merchant.id(), "回滚商品", List.of(rollbackUrl)));
+            assertEquals("0001", rolledBack.get("code").asText(), rolledBack.toString());
+            assertEquals(productsBefore, scalar("SELECT COUNT(*) FROM cat_product"), "商品行必须回滚");
+            assertEquals(0L, scalar("SELECT COUNT(*) FROM cat_product_image WHERE object_key=?", rollbackKey), "相册行必须回滚");
+            assertNull(jdbc.queryForObject("SELECT product_id FROM cat_product_image_upload WHERE object_key=?", String.class, rollbackKey), "认领必须回滚");
+        } finally {
+            imageProperties.setProvider("LOCAL");
+        }
     }
 
     private ProductAggregate product(int quantity) {

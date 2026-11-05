@@ -18789,7 +18789,7 @@
               "null"
             ],
             "maxLength": 255,
-            "pattern": "^$|^/media/[a-f0-9-]+\\.png$"
+            "pattern": "^\\s*$|^/media/(?:[a-f0-9-]+|qiniu/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\\.png$"
           },
           "imageUrls": {
             "type": [
@@ -18798,7 +18798,7 @@
             ],
             "items": {
               "type": "string",
-              "pattern": "^/media/[a-f0-9-]+\\.png$"
+              "pattern": "^/media/(?:[a-f0-9-]+|qiniu/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\\.png$"
             },
             "maxItems": 8,
             "uniqueItems": true

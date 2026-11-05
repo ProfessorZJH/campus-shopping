@@ -23,7 +23,7 @@
 | **SDD-05 商户自定义 RBAC + 全局排序** | [设计/权限矩阵](specs/SDD-RBAC-05.md)、[验证记录](testing/SDD-RBAC-05-VERIFICATION.md) |
 | **SDD-07 AI 商品召回 + 讯飞兼容模型** | [召回规格与调用链](specs/SDD-AI-RECALL-07.md)、[验证计划](testing/SDD-AI-RECALL-07-VERIFICATION.md) |
 | **UI-06 页面文案与移动端权限导航** | [前端设计约束](specs/UI-POLISH-06.md)、[实际浏览器验证](testing/UI-POLISH-06-VERIFICATION.md) |
-| **商品图片与多图增量** | [第一阶段收尾（编辑兼容与逐文件失败）](testing/PRODUCT-IMAGES-PHASE1-COMPLETION-20261105.md)、[修复前只读审计（历史）](testing/PRODUCT-IMAGES-PHASE-AUDIT-20261105.md)、[上传、权限、兼容及验收规则](specs/UI-PRODUCT-IMAGES.md)、[HTTP 行为契约](api/behavior-v1.1.md)、[两线整合与 `ab31f89` 前历史](testing/UI-PRODUCT-IMAGES-VERIFICATION.md)、[PR #50 局部验证与合并阻塞（历史）](testing/PR50-MULTI-IMAGE-REVIEW-20261103.md) |
+| **商品图片与多图增量** | [第一阶段收尾（编辑兼容与逐文件失败）](testing/PRODUCT-IMAGES-PHASE1-COMPLETION-20261105.md)、[第二阶段 QINIU 实施与本地验证](testing/QINIU-IMAGES-PHASE2-20261105.md)、[七牛图片配置](operations/QINIU-IMAGES.md)、[ADR-018](architecture/decisions.md)、[修复前只读审计（历史）](testing/PRODUCT-IMAGES-PHASE-AUDIT-20261105.md)、[上传、权限、兼容及验收规则](specs/UI-PRODUCT-IMAGES.md)、[HTTP 行为契约](api/behavior-v1.1.md)、[两线整合与 `ab31f89` 前历史](testing/UI-PRODUCT-IMAGES-VERIFICATION.md)、[PR #50 局部验证与合并阻塞（历史）](testing/PR50-MULTI-IMAGE-REVIEW-20261103.md) |
 | **SDD-09 契约、数据库、API 与异常专项审查** | [审查与修正记录](testing/CONTRACT-DATABASE-API-AUDIT-09.md)、[旧库升级说明](database/migrations/README.md) |
 | **工程化收敛** | [八项修复、构建流程及实际验证](testing/ENGINEERING-10.md) |
 | **DDD 枚举、异常及领域边界审查** | [问题、代码依据与实施顺序](architecture/DDD-REVIEW-20261029.md)、[隔离行为探针](testing/evidence/ddd-review-20261029.json) |

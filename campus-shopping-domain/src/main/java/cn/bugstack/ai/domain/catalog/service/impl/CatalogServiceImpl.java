@@ -2,6 +2,7 @@ package cn.bugstack.ai.domain.catalog.service.impl;
 
 import static cn.bugstack.ai.types.common.Checks.require;
 
+import cn.bugstack.ai.domain.catalog.adapter.port.IProductImageMediaPort;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
@@ -9,6 +10,7 @@ import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageRef;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
@@ -31,11 +33,21 @@ public class CatalogServiceImpl implements ICatalogService {
     private final ICatalogRepository repository;
     private final IProductImageRepository images;
     private final ICatalogQueryRepository queries;
+    private final IProductImageMediaPort media;
 
-    public CatalogServiceImpl(ICatalogRepository repository, ICatalogQueryRepository queries, IProductImageRepository images) {
+    public CatalogServiceImpl(ICatalogRepository repository, ICatalogQueryRepository queries, IProductImageRepository images, IProductImageMediaPort media) {
         this.repository = repository;
         this.queries = queries;
         this.images = images;
+        this.media = media;
+    }
+
+    /** 只接受服务生成的 QINIU 引用；LOCAL 或其他形态一律拒绝。 */
+    @Override
+    public String productImageDownloadUrl(String url) {
+        ProductImageRef ref = ProductImageRef.of(url);
+        require(ProductImageRef.PROVIDER_QINIU.equals(ref.provider()), ResponseCode.ILLEGAL_PARAMETER);
+        return media.downloadUrl(ref.objectKey());
     }
 
     public List<ProductAggregate> recall(List<String> terms, int limit) {
@@ -288,7 +300,7 @@ public class CatalogServiceImpl implements ICatalogService {
     private List<String> checkedImages(List<String> values, String legacy) {
         List<String> requested = values == null ? (legacy == null || legacy.isBlank() ? List.of() : List.of(legacy)) : values;
         require(requested.size() <= 8, ResponseCode.ILLEGAL_PARAMETER);
-        require(requested.stream().allMatch(v -> v != null && v.matches("/media/[a-f0-9-]+\\.png")), ResponseCode.ILLEGAL_PARAMETER);
+        require(requested.stream().allMatch(ProductImageRef::accepts), ResponseCode.ILLEGAL_PARAMETER);
         require(requested.stream().distinct().count() == requested.size(), ResponseCode.ILLEGAL_PARAMETER);
         // URL 只作为客户端引用；适配器还要核验对象存在，不能伪造 /media 地址写入图片表。
         return List.copyOf(requested);
