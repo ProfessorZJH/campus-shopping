@@ -70,6 +70,11 @@
 .rec-suggestions button{display:inline-flex;align-items:center;gap:4px;padding:6px 11px;border-radius:15px;background:#f3f8fb;border:1px solid #e1ecf2;color:#45627a;font-size:11px;white-space:nowrap;cursor:pointer}
 .rec-suggestions button:hover:not(:disabled){background:#e6f3f8;color:#0b8896}
 .rec-suggestions button:disabled{opacity:.5;cursor:not-allowed}
+.ai-streaming-placeholder{color:#9aaec0;font-size:12px;font-style:italic}
+.ai-streaming-cursor{display:inline-block;width:2px;height:14px;background:#05b99d;vertical-align:middle;margin-left:2px;animation:cursorBlink .8s infinite}
+@keyframes cursorBlink{0%,100%{opacity:1}50%{opacity:0}}
+.chat-stop-btn{display:grid;place-items:center;background:#ff6b7d!important;color:white!important;width:35px;height:35px;border-radius:12px;cursor:pointer}
+.chat-stop-btn:hover{background:#fa5368!important}
 /* 商品主图上传与空图占位：延续现有管理端抽屉的简洁组件密度 */
 .product-image-field{display:flex;align-items:center;gap:13px;margin:2px 0 18px}
 .product-image-preview{position:relative;flex:0 0 112px;width:112px;height:112px;border:1px solid #e5eff2;border-radius:13px;background:#f4f9fa;overflow:hidden;display:grid;place-items:center}

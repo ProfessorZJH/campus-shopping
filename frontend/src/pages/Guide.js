@@ -1,6 +1,6 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
-import { api, query } from '../services/api.js';
+import { api, apiStream, query } from '../services/api.js';
 import {
   aiModeClass,
   aiModeLabel,
@@ -38,6 +38,7 @@ export default {
     const pendingQuestion = ref('');
     const activeDetailProduct = ref(null);
     const loadingDetail = ref(false);
+    const currentAbortController = ref(null);
     let conversationEpoch = 0,
       historyEpoch = 0;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
@@ -90,13 +91,32 @@ export default {
       });
     }
 
+    function stopStreaming() {
+      if (currentAbortController.value) {
+        currentAbortController.value.abort();
+        currentAbortController.value = null;
+      }
+      ++conversationEpoch;
+      thinking.value = false;
+      notify('已停止生成');
+    }
+
     function startNewChat() {
+      stopStreaming();
       ++conversationEpoch;
       store.conversationId = '';
       messages.value = [];
       proposal.value = null;
       selectedIds.value = [];
       mode.value = '';
+      error.value = '';
+      input.value = '';
+      pendingQuestion.value = '';
+      thinking.value = false;
+      openingConversation.value = false;
+      historyOpen.value = false;
+      notify('已开启新对话');
+    }
       error.value = '';
       input.value = '';
       pendingQuestion.value = '';
@@ -178,24 +198,76 @@ export default {
       }
       thinking.value = true;
       scrollToBottom(true);
+      const assistantMsg = {
+        role: 'assistant',
+        content: '',
+        warning: '',
+        citations: [],
+        time: formatTime(),
+        streaming: true,
+      };
+      messages.value.push(assistantMsg);
+      const controller = new AbortController();
+      currentAbortController.value = controller;
+
       try {
-        const answer = await api('/ai/chat', {
-          method: 'POST',
-          body: { question: text, conversationId: store.conversationId || null },
-        });
+        const answer = await apiStream(
+          '/ai/chat',
+          { body: { question: text, conversationId: store.conversationId || null }, signal: controller.signal },
+          {
+            onDelta: (delta) => {
+              if (stamp !== conversationEpoch) return;
+              assistantMsg.content += delta;
+              scrollToBottom();
+            },
+            onDone: (finalData) => {
+              if (stamp !== conversationEpoch) return;
+              assistantMsg.streaming = false;
+              if (finalData) {
+                if (finalData.conversationId) store.conversationId = finalData.conversationId;
+                if (finalData.mode) mode.value = finalData.mode;
+                if (finalData.warning) assistantMsg.warning = finalData.warning;
+                if (finalData.citations) assistantMsg.citations = finalData.citations.map((c) => c.title || c);
+                if (finalData.proposal) {
+                  proposal.value = finalData.proposal;
+                  selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+                }
+              }
+              scrollToBottom();
+            },
+          },
+        );
         if (stamp !== conversationEpoch) return;
-        store.conversationId = answer.conversationId || store.conversationId;
-        mode.value = answer.mode || '';
-        messages.value.push({
-          role: 'assistant',
-          content: answer.answer || '暂时没有找到合适答案',
-          warning: answer.warning,
-          citations: (answer.citations || []).map((c) => c.title),
-          time: formatTime(),
-        });
-        proposal.value = answer.proposal || null;
-        selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+        if (answer) {
+          store.conversationId = answer.conversationId || store.conversationId;
+          mode.value = answer.mode || '';
+          if (!assistantMsg.content && answer.answer) assistantMsg.content = answer.answer;
+          assistantMsg.warning = answer.warning;
+          assistantMsg.citations = (answer.citations || []).map((c) => c.title || c);
+          proposal.value = answer.proposal || null;
+          selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+        }
+        assistantMsg.streaming = false;
         scrollToBottom();
+      } catch (err) {
+        if (stamp === conversationEpoch) {
+          if (err.name === 'AbortError') return;
+          error.value = err.status === 401 ? '请先登录账号再使用 AI 导购' : err.message;
+          messages.value = messages.value.filter((m) => m !== assistantMsg);
+          input.value = text;
+          if (err.status === 401) {
+            pendingQuestion.value = text;
+            openAuthModal();
+          }
+        }
+      } finally {
+        if (stamp === conversationEpoch) {
+          thinking.value = false;
+          currentAbortController.value = null;
+          assistantMsg.streaming = false;
+        }
+      }
+    }
       } catch (err) {
         if (stamp === conversationEpoch) {
           error.value = err.status === 401 ? '请先登录账号再使用 AI 导购' : err.message;
@@ -353,6 +425,7 @@ export default {
     }
 
     return {
+      stopStreaming,
       activeDetailProduct,
       loadingDetail,
       showItemDetail,
@@ -413,13 +486,17 @@ export default {
           <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
           <div class="chat-body">
             <div v-if="message.role==='user'" class="chat-bubble">{{message.content}}</div>
-            <div v-else class="chat-bubble ai-formatted-bubble" v-html="formatAiMessage(message.content)"></div>
+            <div v-else class="chat-bubble ai-formatted-bubble">
+              <span v-if="!message.content && message.streaming" class="ai-streaming-placeholder">AI 思考中…</span>
+              <div v-else v-html="formatAiMessage(message.content)"></div>
+              <span v-if="message.streaming" class="ai-streaming-cursor"></span>
+            </div>
             <div v-if="message.warning" class="message-warning">{{message.warning}}</div>
             <div v-if="message.citations?.length" class="citation-chips"><span v-for="c in message.citations" :key="c"><Icon name="book" :size="12"/>{{c}}</span></div>
             <span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span>
           </div>
         </div>
-        <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
+        <div v-if="thinking && !messages.some((m) => m.streaming)" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
         <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>
       </section>
       <section v-if="showProposal" class="recommendation-panel">
@@ -440,7 +517,11 @@ export default {
       </section>
       <div v-if="suggestions.length" class="rec-suggestions"><button v-for="s in suggestions" :key="s" @click="ask(s)" :disabled="thinking||openingConversation"><Icon name="sparkles" :size="13"/>{{s}}</button></div>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
-      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button type="submit" :disabled="thinking||openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
+      <form class="chat-composer" @submit.prevent="ask()">
+        <input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/>
+        <button v-if="thinking" type="button" class="chat-stop-btn" @click="stopStreaming" aria-label="停止生成" title="停止生成"><Icon name="close" :size="16"/></button>
+        <button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button>
+      </form>
       <div v-if="activeDetailProduct" class="modal-backdrop" @click="closeItemDetail">
         <div class="rec-detail-modal" @click.stop>
           <button class="rec-modal-close" @click="closeItemDetail" aria-label="关闭"><Icon name="close" :size="16"/></button>
