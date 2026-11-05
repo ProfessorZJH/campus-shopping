@@ -23,6 +23,7 @@ export const store = reactive({
   proposal: null,
   photo: null,
   reloadId: 0,
+  authModalOpen: false,
   publicPage: { page: 1, size: 20, total: 0, hasNext: false },
   merchantPage: { page: 1, size: 12, total: 0, hasNext: false },
 });
@@ -96,6 +97,12 @@ export function publicSearchCurrent(stamp) {
   return stamp === publicEpoch;
 }
 
+export function openAuthModal() {
+  store.authModalOpen = true;
+}
+export function closeAuthModal() {
+  store.authModalOpen = false;
+}
 export function notify(message) {
   store.toast = message;
   clearTimeout(toastTimer);

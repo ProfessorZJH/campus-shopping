@@ -1,9 +1,16 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
 import { api, query } from '../services/api.js';
+import {
+  aiModeClass,
+  aiModeLabel,
+  retrievalModeLabel,
+  toAssistantMessage,
+} from '../services/ai-answer.js';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
-import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
-const { ref, computed, onMounted, onUnmounted, watch } = Vue;
+import { store, go, money, skuOf, preview, previewGuard, notify, openAuthModal } from '../services/store.js';
+import { formatAiMessage } from '../services/page-utils.js';
+const { ref, computed, onMounted, onUnmounted, watch, nextTick } = Vue;
 const prompts = [
   { label: '30元内夜宵', icon: 'clock', query: '30元以内，推荐几样适合复习时吃的夜宵' },
   { label: '高蛋白零食', icon: 'sparkles', query: '想买点高蛋白的零食，有什么推荐？' },
@@ -27,6 +34,8 @@ export default {
     const historyHasMore = ref(false);
     const loadingHistory = ref(false);
     const openingConversation = ref(false);
+    const chatThreadRef = ref(null);
+    const pendingQuestion = ref('');
     let conversationEpoch = 0,
       historyEpoch = 0;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
@@ -54,6 +63,34 @@ export default {
     const showProposal = computed(() => preview || !!proposal.value?.items?.length);
     const formatTime = () =>
       new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // 滚动到底部（支持智能滚动判断：若用户正在查看历史则不打扰）
+    function scrollToBottom(force = false) {
+      nextTick(() => {
+        const el = chatThreadRef.value;
+        if (!el) return;
+        const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        if (force || distanceToBottom < 100) {
+          el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+        }
+      });
+    }
+
+    function startNewChat() {
+      ++conversationEpoch;
+      store.conversationId = '';
+      messages.value = [];
+      proposal.value = null;
+      selectedIds.value = [];
+      mode.value = '';
+      error.value = '';
+      input.value = '';
+      pendingQuestion.value = '';
+      thinking.value = false;
+      openingConversation.value = false;
+      historyOpen.value = false;
+      notify('已开启新对话');
+    }
+
     // 同一 AI 页面内退出/切换账号时，不能保留上一身份的本地会话与回答。
     watch(
       () => store.user?.userId,
@@ -75,7 +112,17 @@ export default {
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
-        if (now) loadHistory();
+        if (now) {
+          loadHistory();
+          // 登录唤醒后如果有暂存的问题，恢复输入并自动触发提问
+          if (pendingQuestion.value) {
+            const q = pendingQuestion.value;
+            pendingQuestion.value = '';
+            nextTick(() => ask(q));
+          }
+        } else {
+          pendingQuestion.value = '';
+        }
       },
     );
     onMounted(() => {
@@ -88,6 +135,12 @@ export default {
     async function ask(question = input.value) {
       const text = String(question || '').trim();
       if (!text || thinking.value || openingConversation.value) return;
+      if (!preview && !store.user) {
+        pendingQuestion.value = text;
+        openAuthModal();
+        notify('请先登录账号使用 AI 导购');
+        return;
+      }
       if (text.length > 500) {
         notify('问题不能超过500字');
         return;
@@ -96,6 +149,7 @@ export default {
       input.value = '';
       error.value = '';
       messages.value.push({ role: 'user', content: text, time: formatTime() });
+      scrollToBottom(true);
       if (preview) {
         messages.value.push({
           role: 'assistant',
@@ -103,10 +157,12 @@ export default {
           time: formatTime(),
           demo: true,
         });
+        scrollToBottom(true);
         notify('设计预览 · 未请求真实 AI');
         return;
       }
       thinking.value = true;
+      scrollToBottom(true);
       try {
         const answer = await api('/ai/chat', {
           method: 'POST',
@@ -124,11 +180,16 @@ export default {
         });
         proposal.value = answer.proposal || null;
         selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+        scrollToBottom();
       } catch (err) {
         if (stamp === conversationEpoch) {
           error.value = err.status === 401 ? '请先登录账号再使用 AI 导购' : err.message;
           messages.value.pop();
           input.value = text;
+          if (err.status === 401) {
+            pendingQuestion.value = text;
+            openAuthModal();
+          }
         }
       } finally {
         if (stamp === conversationEpoch) thinking.value = false;
@@ -254,6 +315,9 @@ export default {
       toggle,
       confirm,
       reject,
+      startNewChat,
+      chatThreadRef,
+      formatAiMessage,
       historyOpen,
       conversations,
       historyHasMore,
@@ -270,13 +334,27 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
+      <div v-if="!preview" class="ai-history-head">
+        <button class="ai-history-toggle" @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button>
+        <button class="ai-new-chat-btn" @click="startNewChat" :disabled="thinking||openingConversation" title="开启新对话"><Icon name="plus" :size="15"/> 新对话</button>
+      </div>
+      <div v-if="historyOpen" class="ai-history-list">
+        <button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button>
+        <span v-if="!conversations.length">暂无历史记录</span>
+        <button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button>
+      </div>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
-      <section class="chat-thread" aria-label="AI对话">
+      <section class="chat-thread" ref="chatThreadRef" aria-label="AI对话">
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>
         <div class="chat-row" v-for="(message,index) in messages" :key="index" :class="message.role==='user'?'is-user':'is-assistant'">
           <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
-          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><span v-for="c in message.citations" :key="c"><Icon name="book" :size="12"/>{{c}}</span></div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
+          <div class="chat-body">
+            <div v-if="message.role==='user'" class="chat-bubble">{{message.content}}</div>
+            <div v-else class="chat-bubble ai-formatted-bubble" v-html="formatAiMessage(message.content)"></div>
+            <div v-if="message.warning" class="message-warning">{{message.warning}}</div>
+            <div v-if="message.citations?.length" class="citation-chips"><span v-for="c in message.citations" :key="c"><Icon name="book" :size="12"/>{{c}}</span></div>
+            <span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span>
+          </div>
         </div>
         <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
         <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>

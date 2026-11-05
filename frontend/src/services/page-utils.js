@@ -133,3 +133,52 @@ export function amount(row) {
 export function positiveInt(v, max = 99) {
   return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
 }
+
+/**
+ * 安全轻量格式化（转义 HTML，解析加粗与常见列表，避免引入重型且有 XSS 风险的外部解析器）
+ */
+export function formatAiMessage(raw) {
+  if (!raw) return '';
+  const text = String(raw);
+  // 1. 转义 HTML 特殊字符，防 XSS
+  const escapeHtml = (str) =>
+    str.replace(/[&<>'"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[c]);
+
+  const lines = text.split('\n');
+  let html = '';
+  let inUl = false;
+  let inOl = false;
+
+  const closeLists = () => {
+    if (inUl) { html += '</ul>'; inUl = false; }
+    if (inOl) { html += '</ol>'; inOl = false; }
+  };
+
+  for (let line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      closeLists();
+      continue;
+    }
+    // 解析加粗 **bold**
+    const renderInline = (s) => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+
+    const ulMatch = trimmed.match(/^[-*•]\s+(.+)/);
+    const olMatch = trimmed.match(/^(\d+)[\.、\)]\s+(.+)/);
+
+    if (ulMatch) {
+      if (inOl) { html += '</ol>'; inOl = false; }
+      if (!inUl) { html += '<ul class="ai-msg-list">'; inUl = true; }
+      html += `<li>${renderInline(ulMatch[1])}</li>`;
+    } else if (olMatch) {
+      if (inUl) { html += '</ul>'; inUl = false; }
+      if (!inOl) { html += '<ol class="ai-msg-list">'; inOl = true; }
+      html += `<li>${renderInline(olMatch[2])}</li>`;
+    } else {
+      closeLists();
+      html += `<p>${renderInline(trimmed)}</p>`;
+    }
+  }
+  closeLists();
+  return html;
+}

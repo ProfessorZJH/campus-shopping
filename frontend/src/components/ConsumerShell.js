@@ -8,6 +8,13 @@ export default {
   props: { active: { type: String, default: 'home' } },
   setup() {
     const loginOpen = ref(false);
+    function openLogin() {
+      store.authModalOpen = true;
+    }
+    function closeLogin() {
+      store.authModalOpen = false;
+      loginOpen.value = false;
+    }
     async function logout() {
       try {
         await api('/auth/logout', { method: 'POST' });
@@ -19,7 +26,7 @@ export default {
         notify(err.message);
       }
     }
-    return { go, store, preview, loginOpen, logout };
+    return { go, store, preview, loginOpen, logout, openLogin, closeLogin };
   },
   template: `
     <div class="consumer-shell">
@@ -29,7 +36,7 @@ export default {
             <div class="brand-pin"><span></span></div>
             <div><div class="location-name">青柠校园</div><div class="location-sub">校园好物 · 到店自提</div></div>
           </div>
-          <div class="header-trailing"><span v-if="store.preview" class="demo-pill" title="仅用于视觉预览">设计预览</span><button v-else-if="!store.user" class="header-login" @click="loginOpen=true">登录</button><button v-else class="account-pill" @click="logout" title="退出登录">{{store.user.displayName?.slice(0,2)||'我'}} <Icon name="logout" :size="12" /></button></div>
+          <div class="header-trailing"><span v-if="store.preview" class="demo-pill" title="仅用于视觉预览">设计预览</span><button v-else-if="!store.user" class="header-login" @click="openLogin">登录</button><button v-else class="account-pill" @click="logout" title="退出登录">{{store.user.displayName?.slice(0,2)||'我'}} <Icon name="logout" :size="12" /></button></div>
         </header>
         <main class="consumer-main"><slot /></main>
       </div>
@@ -42,6 +49,6 @@ export default {
           <button :class="{selected:active==='account'}" @click="go('/account')"><Icon name="user" :size="23"/><span>我的</span></button>
         </div>
       </nav>
-      <AuthDialog v-if="loginOpen" @close="loginOpen=false" />
+      <AuthDialog v-if="loginOpen || store.authModalOpen" @close="closeLogin" />
     </div>`,
 };

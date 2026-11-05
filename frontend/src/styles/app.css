@@ -36,7 +36,21 @@
 @media(max-width:1100px){.knowledge-layout{grid-template-columns:190px 1fr}.kb-preview{grid-column:1/-1}.orders-split{grid-template-columns:1fr}.order-inspector{border-left:0;border-top:1px solid #edf2f5;padding:17px 0 0}.ops-kpis{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.ops-grid,.inventory-grid,.admin-review-grid,.kb-forms{grid-template-columns:1fr}.knowledge-layout{grid-template-columns:1fr}.ops-card{padding:15px}.ops-kpis{gap:8px}.ops-kpis>div{padding:14px}.ops-kpis strong{font-size:22px}.ops-quick{grid-template-columns:repeat(2,1fr)}.filter-pills{flex-wrap:wrap}.ops-toolbar{flex-wrap:wrap}.merchant-main{padding:17px 13px}.order-inspector{padding:15px 0}.kb-preview{grid-column:auto}}
 @media(max-width:400px){.mobile-page-top{padding-bottom:12px}.detail-art{height:290px}.cart-line>img{width:70px;height:78px}.cart-line-info strong{font-size:12px}.cart-store{padding:12px 9px}}
-.ai-history-head{display:flex;justify-content:flex-end;padding:0 2px 6px}.ai-history-head button{display:inline-flex;align-items:center;gap:5px;color:#65819a;font-size:11px;padding:6px 8px}.ai-history-list{border:1px solid #e7f1f5;background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:8px;margin-bottom:10px;max-height:220px;overflow:auto}.ai-history-list button{display:flex;align-items:center;gap:8px;text-align:left;width:100%;font-size:12px;color:#3b5973;padding:11px 8px;border-bottom:1px solid #edf2f5}.ai-history-list button svg:last-child{margin-left:auto}.ai-history-list>span{display:block;color:#a0b1bf;text-align:center;padding:14px;font-size:11px}
+.ai-history-head{display:flex;justify-content:space-between;align-items:center;padding:0 2px 8px}
+.ai-history-head button{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:6px 10px;border-radius:8px}
+.ai-history-toggle{color:#65819a;background:transparent}
+.ai-new-chat-btn{color:#008f89;background:#e6f8f6;border:1px solid #b8ece5;font-weight:600;cursor:pointer}
+.ai-new-chat-btn:hover:not(:disabled){background:#d8f5ef}
+.ai-new-chat-btn:disabled{opacity:.5;cursor:not-allowed}
+.ai-history-list{border:1px solid #e7f1f5;background:#fff;border-radius:14px;box-shadow:var(--shadow);padding:8px;margin-bottom:10px;max-height:220px;overflow:auto}
+.ai-history-list button{display:flex;align-items:center;gap:8px;text-align:left;width:100%;font-size:12px;color:#3b5973;padding:11px 8px;border-bottom:1px solid #edf2f5}
+.ai-history-list button svg:last-child{margin-left:auto}
+.ai-history-list>span{display:block;color:#a0b1bf;text-align:center;padding:14px;font-size:11px}
+.ai-formatted-bubble p{margin:0 0 6px}
+.ai-formatted-bubble p:last-child{margin-bottom:0}
+.ai-formatted-bubble ul.ai-msg-list, .ai-formatted-bubble ol.ai-msg-list{margin:4px 0 6px 18px;padding:0}
+.ai-formatted-bubble li{margin-bottom:3px;line-height:1.5}
+.ai-formatted-bubble strong{color:#1a2e4c;font-weight:700}
 
 /* 商品主图上传与空图占位：延续现有管理端抽屉的简洁组件密度 */
 .product-image-field{display:flex;align-items:center;gap:13px;margin:2px 0 18px}
