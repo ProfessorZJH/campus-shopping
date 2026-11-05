@@ -29,6 +29,11 @@
 - 浏览器 CSP 首轮失败于 Playwright `route` 只处理 redirect 链首个 URL，改为 CDP `Fetch.requestPaused` 后通过；另修正对照页可能走真实 DNS 与计数共享问题。
 - region 收口首轮 21 项 1 失败：以末尾换行作非法 access-key 样本，但既有 `text().trim()` 会规范化两端空白；保留 trim 语义，改用归一化后仍非法的内部字符样本。
 - 首轮日志部分已被重跑覆盖，控制台摘录保留在 `var/verify/*-first-failure.log`，文件头标注为转录而非原始日志。
+- **PR #53 首轮 CI（run 41992440579）失败**：`Actual delivery images / isolated Compose transaction chain` 在 `Build and verify delivery images` 阶段失败。镜像构建阶段 `mvn verify -Dfrontend.skip=true` 执行到 `QiniuObjectGatewayProtocolTest` 时报 `Cannot run program "node": error=2, No such file or directory`（2 个 ERROR），原因是 Maven build 阶段只安装了 python3，Node 仅存在于 frontend 阶段。非网络偶发，不重跑碰运气。修复：在 build 阶段从同一锁定的 `node:22.16.0-bookworm-slim` frontend 阶段 `COPY /usr/local/bin/node`，不引入 apt 浮动 Node、不把 Node 带入最终 JRE 运行层、不删除或跳过该测试。节点二进制由 Debian bookworm 构建、build 阶段为 Ubuntu 同 x64 平台，兼容性以远端 Docker 构建实测为准。原始日志：`var/verify/ci-53-images-first-failure.log`（含 ANSI）与 `.clean.log`（去转义）。
+- **PR #53 首轮 CI 主 job（`Maven / MySQL / FastAPI / Browser E2E`，job 127127600172）失败**：`Real Maven build + MySQL tests` 步结果为 339 tests / 8 errors / 0 failures / 0 skipped，两个测试装配根因：
+  1. 新增回滚用例在事务外对 `@SpyBean` 的 `inventoryService.initialize`（`PROPAGATION_MANDATORY`）做 `doThrow().when(...)`，Spring AOP 先拒绝事务（`IllegalTransactionStateException`）并产生 `UnfinishedStubbing`，污染后续 `suspendBlocksNewOrdersButNotPaidFulfillment`。修复：按已有 `addSkuViewFailureRollsBack` 写法，用 `TransactionTemplate.executeWithoutResult` 在事务内仅设置 stub；生产 `MANDATORY` 不变，真实回滚仍由 HTTP 创建在 Case 事务中验证。
+  2. `ShoppingEvaluationFixture` 会手动 `new CommerceMySqlIntegrationTest()` 后 `autowireBean`，而两个评测上下文未启用 MVC；新增的 `@Autowired MockMvc` 字段导致 `ShoppingEvaluationMySqlTest`（1 error）与 `ShoppingEvaluationSafetyMySqlTest`（5 errors）装配失败。修复：该字段改为 `@Autowired ObjectProvider<MockMvc>`，仅在 HTTP 辅助方法中 `getObject()`；主类仍保留 `@AutoConfigureMockMvc`，真正调用 HTTP 的 3 个新用例缺 MVC 仍会硬失败。
+  - 原始日志：`var/verify/ci-53-mysql-first-failure.log`（含 ANSI）与 `.clean.log`（去转义）。
 
 ## 固定区域收口（2026-11-05）
 

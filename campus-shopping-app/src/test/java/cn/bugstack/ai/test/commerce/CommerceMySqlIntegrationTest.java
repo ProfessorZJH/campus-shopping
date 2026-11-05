@@ -44,6 +44,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -297,8 +298,16 @@ class CommerceMySqlIntegrationTest {
         }
     }
 
+    /**
+     * HTTP 专属依赖用 ObjectProvider 延迟获取：评测 fixture 会手动 autowire 本类，
+     * 而那些上下文没有启用 MVC；真正调用 HTTP 的用例缺 MockMvc 仍会硬失败。
+     */
     @Autowired
-    MockMvc mvc;
+    ObjectProvider<MockMvc> mvcProvider;
+
+    private MockMvc mvc() {
+        return mvcProvider.getObject();
+    }
 
     @Autowired
     com.fasterxml.jackson.databind.ObjectMapper json;
@@ -352,7 +361,12 @@ class CommerceMySqlIntegrationTest {
         var request = post("/api/v1/merchants/" + merchantId + "/images")
             .contentType(MediaType.APPLICATION_JSON)
             .content(payload);
-        var result = actor == null ? mvc.perform(request).andReturn() : mvc.perform(request.with(user(actor)).with(csrf())).andReturn();
+        var result =
+            actor == null
+                ? mvc().perform(request).andReturn()
+                : mvc()
+                      .perform(request.with(user(actor)).with(csrf()))
+                      .andReturn();
         return bodyOf(result);
     }
 
@@ -363,7 +377,9 @@ class CommerceMySqlIntegrationTest {
         body.put("categoryCode", "stationery");
         body.put("imageUrls", urls);
         body.put("skus", List.of(Map.of("specKey", "标准", "priceCent", 900)));
-        var result = mvc.perform(asOwner(post("/api/v1/merchants/" + merchantId + "/products")).content(json.writeValueAsString(body))).andReturn();
+        var result = mvc()
+            .perform(asOwner(post("/api/v1/merchants/" + merchantId + "/products")).content(json.writeValueAsString(body)))
+            .andReturn();
         return bodyOf(result);
     }
 
@@ -374,7 +390,9 @@ class CommerceMySqlIntegrationTest {
         body.put("categoryCode", "stationery");
         body.put("imageUrls", urls);
         body.put("expectedVersion", version);
-        var result = mvc.perform(asOwner(put("/api/v1/merchants/" + merchantId + "/products/" + productId)).content(json.writeValueAsString(body))).andReturn();
+        var result = mvc()
+            .perform(asOwner(put("/api/v1/merchants/" + merchantId + "/products/" + productId)).content(json.writeValueAsString(body)))
+            .andReturn();
         return bodyOf(result);
     }
 
@@ -432,7 +450,9 @@ class CommerceMySqlIntegrationTest {
                 json
                     .readTree(
                         bodyOf(
-                            mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/products/" + productId)).andReturn()
+                            mvc()
+                                .perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/v1/products/" + productId))
+                                .andReturn()
                         )
                     )
                     .get("data")
@@ -525,7 +545,7 @@ class CommerceMySqlIntegrationTest {
             int callsBefore = keys.size();
             assertEquals(
                 401,
-                mvc
+                mvc()
                     .perform(
                         post("/api/v1/merchants/" + merchant.id() + "/images")
                             .with(csrf())
@@ -538,7 +558,7 @@ class CommerceMySqlIntegrationTest {
             );
             assertEquals(
                 403,
-                mvc
+                mvc()
                     .perform(
                         post("/api/v1/merchants/" + merchant.id() + "/images")
                             .with(user(owner))
@@ -591,7 +611,11 @@ class CommerceMySqlIntegrationTest {
             String rollbackUrl = json.readTree(uploadImage(merchant.id(), owner)).get("data").get("url").asText();
             String rollbackKey = "qiniu/" + rollbackUrl.substring("/media/qiniu/".length());
             long productsBefore = scalar("SELECT COUNT(*) FROM cat_product");
-            doThrow(new IllegalStateException("fake-inventory-init-failure")).when(inventoryService).initialize(anyString(), anyString(), anyString());
+            // initialize 是 MANDATORY 事务方法：在事务内设置 stub，避免 Spring AOP 先拒绝事务。
+            // 真实回滚仍由下面的 HTTP 创建在 Case 事务中验证。
+            new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+                doThrow(new IllegalStateException("fake-inventory-init-failure")).when(inventoryService).initialize(anyString(), anyString(), anyString())
+            );
             var rolledBack = json.readTree(createProductOverHttp(merchant.id(), "回滚商品", List.of(rollbackUrl)));
             assertEquals("0001", rolledBack.get("code").asText(), rolledBack.toString());
             assertEquals(productsBefore, scalar("SELECT COUNT(*) FROM cat_product"), "商品行必须回滚");
