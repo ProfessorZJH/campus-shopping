@@ -155,7 +155,7 @@
 - 成功上传后登记商户归属；失败不返回可认领地址。商品事务只在 MySQL 认领和写入引用，不访问云端；LOCAL 继续复验文件，QINIU 依据上传登记。
 - `/media/qiniu/**` 为应用公开资产入口，302 到配置的 HTTPS 纯 DNS 域名并 `no-store`；私有桶默认签名 300 秒，范围 30–3600。非法引用 404，未配置/运行故障 503；CSP 只为已验证下载 host 扩展 `img-src`。
 - 基础设施仓库内委派 Qiniu 网关完成既有上传能力；领域窄 Port 仅提供下载地址投影，不查询业务表、不代理下载。凭据仅从私有配置注入，不记录签名/下游异常正文。
-- 自动删除、对象释放/跨商品复用、历史迁移和真实云/生产验收均未在本次实现中（此处“未进行”仅指本轮实施阶段，后续第一轮真实联调见 [QINIU-IMAGES-LIVE-ROUND1](QINIU-IMAGES-LIVE-ROUND1-20261105.md)）；操作与验证分别见 [../operations/QINIU-IMAGES.md](../operations/QINIU-IMAGES.md) 及 [../testing/QINIU-IMAGES-PHASE2-20261105.md](../testing/QINIU-IMAGES-PHASE2-20261105.md)。
+- 自动删除、对象释放/跨商品复用、历史迁移和真实云/生产验收均未在本次实现中（此处“未进行”仅指本轮实施阶段，后续第一轮真实联调见 [../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md](../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)）；操作与验证分别见 [../operations/QINIU-IMAGES.md](../operations/QINIU-IMAGES.md) 及 [../testing/QINIU-IMAGES-PHASE2-20261105.md](../testing/QINIU-IMAGES-PHASE2-20261105.md)。
 
 ## ADR-019：受控的本机公开测试域名 HTTP 展示例外
 
