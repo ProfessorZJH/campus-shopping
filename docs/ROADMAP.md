@@ -1,6 +1,18 @@
 # R1 开发与验收状态
 
-当前日期：2026-10-31。当前 Redis 交付与主线整合见[SDD-12验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)及[运行手册](operations/REDIS-12-runbook.md)；前序领域整改见[2026-10-30报告](testing/DDD-DOC-CLOSURE-20261030.md)，历史真实模型及浏览器交易见[本机验收](testing/LOCAL-LIVE-20261029.md)。各日期报告仅代表当时版本与环境。
+## 2026-11-05 产品化整体规划（待实施）
+
+用户已确认覆盖消费者、AI 导购、商户、平台和知识库的整体路线。保留 Vue 3 + Vite，逐步迁移 `.vue` 并试点 TypeScript；复用已完成的商品多图和可选七牛存储。整体方案按 M0～M6 分阶段推进，每阶段可以拆成多个独立 PR。
+
+- [整体方案、范围和交付阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)
+- [技术设计、审查条目追踪、数据兼容与依赖](../openspec/changes/productize-campus-shopping-experience/design.md)
+- [可执行任务与逐项验收条件](../openspec/changes/productize-campus-shopping-experience/tasks.md)
+
+当前只完成规划落盘，业务任务保持待实施；该计划不覆盖下方历史结果，也不将 SSE、历史事件等新能力标为已交付。正式域名 HTTPS 和真实模型效果保持独立验收范围。
+
+## R1 历史交付记录（2026-10-31）
+
+本节记录截至 2026-10-31 的范围。Redis 交付与主线整合见[SDD-12验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)及[运行手册](operations/REDIS-12-runbook.md)；前序领域整改见[2026-10-30报告](testing/DDD-DOC-CLOSURE-20261030.md)，历史真实模型及浏览器交易见[本机验收](testing/LOCAL-LIVE-20261029.md)。各日期报告仅代表当时版本与环境。
 
 | 范围 | 当前实现 | 验证状态 |
 | --- | --- | --- |
