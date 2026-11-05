@@ -59,3 +59,4 @@
 - [ShoppingAI / RAG 批次 A+B 实施记录](testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)
 - [分支实跑验证：Python / Java / 迁移基线（2026-11-04）](testing/BRANCH-VERIFY-20261104.md)
 - [分支实跑复验：全量 Java 298 项与静态门禁（2026-11-05）](testing/BRANCH-VERIFY-20261105.md)
+- [旧库升级形状探针：猜测夹具 vs git 固定发布（2026-11-05）](testing/LEGACY-DB-UPGRADE-PROBE-20261105.md)

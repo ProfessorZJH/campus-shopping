@@ -85,6 +85,7 @@ java.net.SocketException: Connection reset
 2. `verify-mysql-isolated.py` 在旧库上重放整份 `schema.sql`（并断言未登记迁移）后才调用 `apply_migrations`，因此第 6 步的 `PASS` **不能**证明真实旧库可升级；这正是被掩盖的位置。
 3. 旧库夹具仍保留 `index_expires_at`、`index_version`（V20261031_02 新增列），因此该迁移的 `ADD COLUMN` 分支在本脚本中从未被执行。
 4. 后续已采用 B2 收口：本轮不把迁移基线强化并入 ShoppingAI 变更；该旧库兼容问题需另行设计和验证。
+5. **更正（2026-11-05）**：本节结论基于一个用正则变造出来的「旧库夹具」，不代表任何真实发行形状。改用 git 固定的真实发布 `schema.sql` 复验后，v1.2.3 导入版（33 表）、pre-Redis 版（34 表）、pre-multi-image 版（37 表）均可在当前代码上升级成功，且升级后结构与新空库指纹一致；真实缺陷是残缺库被静默登记为已升级。证据与修正后的范围见 [旧库升级形状探针](LEGACY-DB-UPGRADE-PROBE-20261105.md)，后续设计见 `openspec/changes/legacy-db-upgrade-baseline/`。
 
 复现方式（需本机 MySQL 凭据与 `scripts/` 依赖）：
 
