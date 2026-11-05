@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -13,6 +14,50 @@ DDL = """CREATE TABLE IF NOT EXISTS sys_schema_migration (
  version VARCHAR(32) PRIMARY KEY, checksum CHAR(64) NOT NULL,
  installed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;"""
+
+
+def _normalized_default(value):
+    if value is None:
+        return "<NULL>"
+    return re.sub(r"\s+", " ", str(value).strip())
+
+
+def _normalized_check(value):
+    return re.sub(r"\s+", " ", str(value or "").strip().lower())
+
+
+def schema_fingerprint_rows(cursor, database):
+    """读取不含字符集、统计值和自增当前值的结构投影。"""
+    queries = [
+        ("columns", "SELECT TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA "
+                   "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,ORDINAL_POSITION"),
+        ("indexes", "SELECT TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,COLLATION "
+                   "FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX"),
+        ("constraints", "SELECT TABLE_NAME,CONSTRAINT_NAME,CONSTRAINT_TYPE,ENFORCED "
+                        "FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA=%s ORDER BY TABLE_NAME,CONSTRAINT_NAME"),
+        ("checks", "SELECT CONSTRAINT_NAME,CHECK_CLAUSE FROM information_schema.CHECK_CONSTRAINTS "
+                    "WHERE CONSTRAINT_SCHEMA=%s ORDER BY CONSTRAINT_NAME"),
+    ]
+    result = {}
+    for name, query in queries:
+        cursor.execute(query, (database,))
+        rows = cursor.fetchall()
+        if name == "columns":
+            rows = [[r[0], r[1], r[2], str(r[3]).lower(), r[4], _normalized_default(r[5]),
+                     re.sub(r"\bauto_increment\b", "", str(r[6]).lower()).strip()] for r in rows]
+        elif name == "indexes":
+            rows = [[r[0], r[1], r[2], r[3], r[4], r[5] or ""] for r in rows]
+        elif name == "constraints":
+            rows = [[r[0], r[1], r[2], r[3]] for r in rows]
+        else:
+            rows = [[r[0], _normalized_check(r[1])] for r in rows]
+        result[name] = rows
+    return result
+
+
+def schema_fingerprint(cursor, database):
+    payload = json.dumps(schema_fingerprint_rows(cursor, database), ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def migrations():
@@ -78,6 +123,10 @@ def apply_migrations(connection, expected=None):
 
 def generated_files():
     entries = migrations()
+    baseline_manifest_path = ROOT / "docs/database/baselines/manifest.json"
+    baseline_manifest = json.loads(baseline_manifest_path.read_text("utf-8")) if baseline_manifest_path.exists() else {"baselines": []}
+    target_fingerprints = [item.get("targetFingerprint") for item in baseline_manifest.get("baselines", []) if item.get("targetFingerprint")]
+    schema_fingerprint_value = target_fingerprints[0] if target_fingerprints and len(set(target_fingerprints)) == 1 else None
     schema_path = ROOT / "campus-shopping-app/src/main/resources/schema.sql"
     schema = schema_path.read_text("utf-8")
     if HEADER in schema:
@@ -97,7 +146,9 @@ def generated_files():
     if HEADER in prefix:
         prefix = prefix.split(HEADER, 1)[0]
     return {schema_path: final, docker: prefix + final,
-            ROOT / "campus-shopping-app/src/main/resources/database-manifest.json": json.dumps({"schemaVersion": 1, "migrations": entries}, ensure_ascii=False, indent=2) + "\n"}
+            ROOT / "campus-shopping-app/src/main/resources/database-manifest.json": json.dumps(
+                {"schemaVersion": 1, "schemaFingerprint": schema_fingerprint_value, "migrations": entries},
+                ensure_ascii=False, indent=2) + "\n"}
 
 
 if __name__ == "__main__":

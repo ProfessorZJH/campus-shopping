@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "baselines": [
+    {
+      "release": "v1.2.3-import",
+      "file": "docs/database/baselines/v1.2.3-import.sql",
+      "sourceCommit": "e5cd2c1",
+      "expectedHistoryPrefix": "",
+      "targetFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+    },
+    {
+      "release": "pre-redis-7bd21e2",
+      "file": "docs/database/baselines/pre-redis-7bd21e2.sql",
+      "sourceCommit": "7bd21e2^",
+      "expectedHistoryPrefix": "V20261028_01..V20261030_01",
+      "targetFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+    },
+    {
+      "release": "pre-multiimage-ab31f89",
+      "file": "docs/database/baselines/pre-multiimage-ab31f89.sql",
+      "sourceCommit": "ab31f89^",
+      "expectedHistoryPrefix": "V20261028_01..V20261031_03",
+      "targetFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+    }
+  ]
+}

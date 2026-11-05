@@ -62,6 +62,8 @@ java.net.SocketException: Connection reset
 
 ## 5. 迁移基线探针（审计发现，需决策）
 
+> **更正（2026-11-05）**：本节以下原始探针使用了从当前 schema 正则删改得到的猜测夹具，不能代表真实发布库，结论不作为当前升级能力证据。使用 git 固定的三个真实发布快照复验后，v1.2.3 导入版、pre-Redis 版和 pre-multi-image 版均可升级，结果结构与新库指纹一致；当前实际缺陷是残缺库可能被静默登记为已升级。新证据见 [旧库升级形状探针](LEGACY-DB-UPGRADE-PROBE-20261105.md)，实现任务见 `openspec/changes/legacy-db-upgrade-baseline/`。
+
 当时工作区的 `scripts/schema_contract.py` 把 `R1_BASELINE_TABLES` 从「`CORE_BASELINE_TABLES[:31]`」改为「排除 `ai_knowledge_quota`/`ai_knowledge_usage`/`ai_sync_checkpoint`」。用独立探针（`var/verify/p13_baseline_probe.py`、`var/verify/p13_lists.py`）在新建临时库上验证：
 
 | 场景 | 结果 |

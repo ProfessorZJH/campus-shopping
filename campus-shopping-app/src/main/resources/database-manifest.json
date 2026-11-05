@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "schemaFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc",
   "migrations": [
     {
       "version": "V20261028_01",

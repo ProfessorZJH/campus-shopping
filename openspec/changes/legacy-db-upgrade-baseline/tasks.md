@@ -2,10 +2,10 @@
 
 ## P1 证据与回归（不改变升级判定行为）
 
-- [ ] 1. 入库不可变基线快照 `docs/database/baselines/{v1.2.3-import,pre-redis-7bd21e2,pre-multiimage-ab31f89}.sql`（内容取自对应发布提交的 `schema.sql`）与 `baselines/manifest.json`（release、期望历史前缀、目标指纹）。
-- [ ] 2. `scripts/schema_contract.py` 生成 `database-manifest.json` 时追加归一化 `schemaFingerprint`，并把归一化实现抽成可复用函数。
-- [ ] 3. `scripts/verify-mysql-isolated.py` 删除 `INDEXES`/`CHECKS` 正则变造夹具，改为逐基线重放 + 指纹等价断言；保留脏数据拒绝、重复升级幂等、误放 `schema.sql` 不登记、元数据等价检查。
-- [ ] 4. 用 `var/verify/legacy_upgrade_probe.py` 的证据更正 `docs/testing/BRANCH-VERIFY-20261104.md` 第 5 节与 `docs/testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md` 中基于猜测夹具的结论，新增本轮探针报告。
+- [x] 1. 入库不可变基线快照 `docs/database/baselines/{v1.2.3-import,pre-redis-7bd21e2,pre-multiimage-ab31f89}.sql`（内容取自对应发布提交的 `schema.sql`）与 `baselines/manifest.json`（release、期望历史前缀、目标指纹）。
+- [x] 2. `scripts/schema_contract.py` 生成 `database-manifest.json` 时追加归一化 `schemaFingerprint`，并把归一化实现抽成可复用函数。
+- [x] 3. `scripts/verify-mysql-isolated.py` 删除 `INDEXES`/`CHECKS` 正则变造夹具，改为逐基线重放 + 指纹等价断言；保留脏数据拒绝、重复升级幂等、误放 `schema.sql` 不登记、元数据等价检查。
+- [x] 4. 用 `var/verify/legacy_upgrade_probe.py` 的证据更正 `docs/testing/BRANCH-VERIFY-20261104.md` 第 5 节与 `docs/testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md` 中基于猜测夹具的结论，新增本轮探针报告。
 
 ## P2 准入与漂移判定
 
