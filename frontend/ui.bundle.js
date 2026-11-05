@@ -2513,6 +2513,12 @@
       };
     })()
   };
+  const LOCAL_UPLOAD = /^\/media\/[a-f0-9-]+\.png$/;
+  const QINIU_UPLOAD = /^\/media\/qiniu\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.png$/;
+  function uploadedImageUrl(value) {
+    if (typeof value !== "string" || value !== value.trim()) return "";
+    return LOCAL_UPLOAD.test(value) || QINIU_UPLOAD.test(value) ? value : "";
+  }
   const { ref: ref$d, computed: computed$d, onBeforeUnmount: onBeforeUnmount$1, watch: watch$c } = Vue;
   const VALID_TYPES$1 = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES$1 = 2e6;
@@ -2610,10 +2616,10 @@
             method: "POST",
             body: { filename: file.name, contentType: file.type, base64 }
           });
-          if (!/^\/media\/[a-f0-9-]+\.png$/.test((result == null ? void 0 : result.url) || ""))
-            throw new Error("图片上传返回地址无效");
+          const url = uploadedImageUrl(result == null ? void 0 : result.url);
+          if (!url) throw new Error("图片上传返回地址无效");
           if (!current()) return;
-          emit("update:modelValue", result.url);
+          emit("update:modelValue", url);
           notice.value = "上传成功，保存商品后生效";
           release();
         } catch (err) {
@@ -2835,9 +2841,9 @@
           method: "POST",
           body: { filename: file.name, contentType: file.type, base64 }
         });
-        if (!/^\/media\/[a-f0-9-]+\.png$/.test((result == null ? void 0 : result.url) || ""))
-          throw new Error("图片上传返回地址无效");
-        return result.url;
+        const url = uploadedImageUrl(result == null ? void 0 : result.url);
+        if (!url) throw new Error("图片上传返回地址无效");
+        return url;
       }
       async function process(entries) {
         if (!entries.length || !alive || props.disabled || busy.value) return;

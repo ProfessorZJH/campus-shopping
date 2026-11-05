@@ -13,7 +13,7 @@ files=[
 # 源码清单固定，避免无意把测试替身当生产实现。
 files=['campus-shopping-types/'+BASE+'types/'+p for p in ['enums/ResponseCode.java','exception/AppException.java','common/Checks.java','common/Fingerprints.java','common/EnumValues.java']]
 files += ['campus-shopping-domain/'+BASE+'domain/'+p for p in [
- 'catalog/model/entity/ProductSkuEntity.java','catalog/model/aggregate/ProductAggregate.java',
+ 'catalog/model/entity/ProductSkuEntity.java','catalog/model/aggregate/ProductAggregate.java','catalog/model/valobj/ProductImageRef.java',
  'inventory/model/aggregate/StockBalanceAggregate.java','trading/model/entity/OrderItemEntity.java','trading/model/aggregate/OrderAggregate.java',
  'fulfillment/model/valobj/PickupVO.java','fulfillment/model/aggregate/PickupAggregate.java','shoppingai/model/aggregate/ProposalAggregate.java',
  'shoppingai/model/valobj/ProposalVO.java','shoppingai/model/valobj/ProposalItemVO.java']]

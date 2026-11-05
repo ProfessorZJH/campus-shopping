@@ -49,6 +49,31 @@ def main():
     check(create, {**product, 'skus': [{'specKey': '黑色', 'priceCent': 500.5}]}, False, 'fractional price is rejected')
     check(edit, product, False, 'edit requires expectedVersion')
     check(edit, {**product, 'expectedVersion': 0, 'imageUrl': None}, True, 'edit permits explicit missing image')
+    sku = [{'specKey': '黑色', 'priceCent': 500}]
+    local_image = '/media/11111111-1111-1111-1111-111111111111.png'
+    qiniu_image = '/media/qiniu/11111111-1111-1111-1111-111111111111.png'
+    check(create, {**product, 'skus': sku, 'imageUrl': local_image}, True,
+          'legacy LOCAL image reference is accepted')
+    check(create, {**product, 'skus': sku, 'imageUrl': '/media/a.png'}, True,
+          'short legacy LOCAL reference remains accepted')
+    check(create, {**product, 'skus': sku, 'imageUrl': '   '}, True,
+          'edit-compatible blank imageUrl clears the image')
+    check(create, {**product, 'skus': sku, 'imageUrl': ' /media/a.png'}, False,
+          'blank-padded image URL is not silently trimmed')
+    check(create, {**product, 'skus': sku, 'imageUrls': [local_image, qiniu_image]}, True,
+          'QINIU stable reference is accepted alongside legacy LOCAL')
+    check(create, {**product, 'skus': sku, 'imageUrls': ['   ']}, False,
+          'array items cannot be blank')
+    check(create, {**product, 'skus': sku, 'imageUrl': '/media/qiniu/1111111A-1111-1111-1111-111111111111.png'}, False,
+          'uppercase QINIU UUID is rejected')
+    check(create, {**product, 'skus': sku, 'imageUrls': ['/media/qiniu/1111.png']}, False,
+          'non UUID QINIU reference is rejected')
+    check(create, {**product, 'skus': sku, 'imageUrls': [qiniu_image + '?token=1']}, False,
+          'QINIU reference with query is rejected')
+    check(create, {**product, 'skus': sku, 'imageUrls': ['/media/qiniu/%2e%2e/11111111-1111-1111-1111-111111111111.png']}, False,
+          'percent-encoded QINIU path is rejected')
+    check(create, {**product, 'skus': sku, 'imageUrl': 'https://cdn.example.com/media/qiniu/11111111-1111-1111-1111-111111111111.png'}, False,
+          'absolute external image URL is rejected')
     admission = body('/api/v1/admin/merchant-applications/{applicationId}/review')
     refund = body('/api/v1/admin/orders/{orderId}/refund-decision')
     check(admission, {'approved': True}, True, 'admission approval has no mandatory reason')

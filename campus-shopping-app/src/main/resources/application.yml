@@ -56,6 +56,25 @@ campus:
     product-sync:
       enabled: ${AI_PRODUCT_VECTOR_SYNC_ENABLED:false}
   uploads: ${UPLOAD_DIR:./var/uploads}
+  images:
+    # 默认 LOCAL，历史本地图片路由保持不变；显式选择 QINIU 才启用云上传。
+    provider: ${IMAGE_PROVIDER:LOCAL}
+    qiniu:
+      # 只通过环境变量或私有配置注入真实凭据，仓库内不写值。
+      access-key: ${QINIU_ACCESS_KEY:}
+      secret-key: ${QINIU_SECRET_KEY:}
+      bucket: ${QINIU_BUCKET:}
+      download-domain: ${QINIU_DOWNLOAD_DOMAIN:}
+      private-bucket: ${QINIU_PRIVATE_BUCKET:true}
+      # 本机开发测试例外：默认 false；为 true 时仅 dev + 回环 + 公有桶 + 七牛测试域名形状可用明文 HTTP 展示。
+      public-http-download: ${QINIU_PUBLIC_HTTP_DOWNLOAD:false}
+      signature-ttl-seconds: ${QINIU_SIGNATURE_TTL_SECONDS:300}
+      connect-timeout-seconds: ${QINIU_CONNECT_TIMEOUT_SECONDS:5}
+      read-timeout-seconds: ${QINIU_READ_TIMEOUT_SECONDS:15}
+      write-timeout-seconds: ${QINIU_WRITE_TIMEOUT_SECONDS:15}
+      retry-max: ${QINIU_RETRY_MAX:2}
+      # 上传必须显式固定区域（z0/z1/z2/na0/as0/cn-east-2）；不支持 auto，也不默认猜测 bucket 区。
+      region: ${QINIU_REGION:}
   order:
     payment-minutes: ${ORDER_TIMEOUT_MINUTES:15}
     expiry-scan-ms: ${ORDER_EXPIRY_SCAN_MS:15000}

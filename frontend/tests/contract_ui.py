@@ -30,13 +30,17 @@ class StaticHandler(SimpleHTTPRequestHandler):
         self.send_header('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'")
         super().end_headers()
 
+# 与 scripts/api_contract_rules.py 的 IMAGE_URL 保持一致：旧 LOCAL 宽松字符集 + QINIU 小写分组 UUID 命名空间。
+IMAGE_URL=re.compile(r'/media/(?:[a-f0-9-]+|qiniu/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\.png')
+
 def image_fields(body):
     values=body.get('imageUrls')
     if values is None:values=[body['imageUrl']] if body.get('imageUrl') else []
     assert isinstance(values,list) and len(values)<=8 and len(set(values))==len(values)
-    assert all(isinstance(url,str) and re.fullmatch(r'/media/[a-f0-9-]+\.png',url) for url in values)
+    assert all(isinstance(url,str) and IMAGE_URL.fullmatch(url) for url in values)
     return {'imageUrl':values[0] if values else '',
-            'images':[{'imageId':f'image-{i}','url':url,'provider':'LOCAL','sortOrder':i} for i,url in enumerate(values)]}
+            # provider 跟随真实存储命名空间：QINIU 独立 /media/qiniu/，其余为历史 LOCAL。
+            'images':[{'imageId':f'image-{i}','url':url,'provider':'QINIU' if url.startswith('/media/qiniu/') else 'LOCAL','sortOrder':i} for i,url in enumerate(values)]}
 
 class BackendContractDouble:
     def __init__(self):

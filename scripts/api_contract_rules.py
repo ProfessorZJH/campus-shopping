@@ -24,6 +24,11 @@ PASSWORD = {'minLength': 8, 'maxLength': 64, 'writeOnly': True,
             'description': '不可 trim；UTF-8 编码最长 72 字节。', 'x-maxUtf8Bytes': 72}
 PRICE = {'minimum': 1, 'maximum': 100_000_000, 'description': '金额单位为整数分。'}
 VERSION = {'minimum': 0}
+# 图片引用：旧 LOCAL 路径保持宽松白名单；QINIU 必须是小写 UUID 的独立 /media/qiniu 命名空间，
+# 与 ProductImageRef.of 一致，不因生成器放宽导致可提交云端伪造路径。
+IMAGE_URL = r'^/media/(?:[a-f0-9-]+|qiniu/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\.png$'
+# 可选 imageUrl 按已接受的编辑兼容规则允许全空白清空；非空时仍须完整匹配稳定引用，不 trim 合法地址。
+OPTIONAL_IMAGE_URL = r'^\s*$|' + IMAGE_URL
 REASON = text(500)
 IDENTITY = 'domain/identity/service/impl/UserAccountServiceImpl.java'
 CATALOG = 'domain/catalog/model/aggregate/ProductAggregate.java'
@@ -47,8 +52,8 @@ REQUEST_RULES = {
         'domain/catalog/service/impl/CatalogServiceImpl.java'),
     'ProductRequestDTO': rule('title categoryCode', {
         'title': text(100), 'description': optional_text(5000), 'categoryCode': text(32),
-        'imageUrl': optional_text(255, pattern=r'^$|^/media/[a-f0-9-]+\.png$'),
-        'imageUrls': {'type': ['array', 'null'], 'maxItems': 8, 'uniqueItems': True, 'items': {'type': 'string', 'pattern': r'^/media/[a-f0-9-]+\.png$'}},
+        'imageUrl': optional_text(255, pattern=OPTIONAL_IMAGE_URL),
+        'imageUrls': {'type': ['array', 'null'], 'maxItems': 8, 'uniqueItems': True, 'items': {'type': 'string', 'pattern': IMAGE_URL}},
         'skus': {'minItems': 1, 'maxItems': 20}, 'expectedVersion': VERSION}, CATALOG),
     'SkuRequestDTO': rule('specKey priceCent', {'specKey': text(100), 'priceCent': PRICE}, CATALOG),
     'SkuStatusRequestDTO': rule('active expectedVersion', {'active': {}, 'expectedVersion': VERSION}, CATALOG),

@@ -13,6 +13,7 @@ import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.catalog.service.impl.CatalogServiceImpl;
 import cn.bugstack.ai.infrastructure.adapter.repository.ProductImageRepository;
+import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
 import cn.bugstack.ai.infrastructure.dao.po.ProductImagePO;
 import cn.bugstack.ai.types.exception.AppException;
@@ -358,7 +359,12 @@ class ProductImageContractTest {
 
     private CatalogServiceImpl catalog(ICatalogRepository repository, IProductImageRepository images) {
         when(repository.categories()).thenReturn(List.of(new CategoryVO("food", "食品", true)));
-        return new CatalogServiceImpl(repository, mock(ICatalogQueryRepository.class), images);
+        return new CatalogServiceImpl(
+            repository,
+            mock(ICatalogQueryRepository.class),
+            images,
+            mock(cn.bugstack.ai.domain.catalog.adapter.port.IProductImageMediaPort.class)
+        );
     }
 
     private ProductAggregate product(String mainImage, long version) {
@@ -440,6 +446,9 @@ class ProductImageContractTest {
         var repository = new ProductImageRepository();
         ReflectionTestUtils.setField(repository, "dao", dao);
         ReflectionTestUtils.setField(repository, "uploadDir", uploadDir.toString());
+        // 默认 LOCAL 配置，云网关显式替身，避免无意触发云端路径。
+        ReflectionTestUtils.setField(repository, "properties", new ProductImageStorageProperties());
+        ReflectionTestUtils.setField(repository, "qiniu", mock(cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway.class));
         return repository;
     }
 

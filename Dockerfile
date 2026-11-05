@@ -10,6 +10,9 @@ FROM maven:3.9.9-eclipse-temurin-17@sha256:f58d59b6273e785ac0a4477f6e9b5ba1d7731
 WORKDIR /workspace
 COPY . .
 RUN apt-get update && apt-get install -y --no-install-recommends python3 && rm -rf /var/lib/apt/lists/*
+# 七牛协议测试用真实 Node stub 验证上传协议；复用锁定 frontend 阶段同一 Node 22.16.0，
+# 不用 apt 安装浮动 Node，也不把 Node 带入最终 JRE 运行层。
+COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
 COPY --from=frontend /workspace/frontend/dist /workspace/campus-shopping-app/target/generated-ui
 RUN mvn -B -ntp verify -Dfrontend.skip=true
 

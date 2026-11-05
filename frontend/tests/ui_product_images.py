@@ -229,6 +229,69 @@ with sync_playwright() as x:
     expect(photo.locator('.home-product img').first).to_have_attribute('src','./images/product-placeholder.svg')
     checks.append('missing /media file falls back to placeholder')
     photo.close()
+
+    # QINIU：上传响应为 /media/qiniu/{小写分组 UUID}.png，必须被上传组件接受并按选择顺序写入表单；
+    # 大写 UUID 与外链仍须拒绝。本段只证明离线 Chromium + 契约替身，不代表 Java/MySQL 联调。
+    qiniu_fixture=BackendContractDouble();qiniu_fixture.logged=True
+    qiniu_png=png_bytes()
+    def qiniu_routes(p):
+        p.route('**/media/**',lambda route: route.fulfill(status=200,body=qiniu_png,content_type='image/png'))
+    qiniu=render(browser,'/merchant/products',False,(1448,1050),qiniu_fixture,routes=qiniu_routes,base='https://assets.fake/')
+    qiniu.get_by_role('button',name='新增商品').click()
+    qiniu.evaluate('''() => {const send=window.fetch;window.__imagePosts=0;window.__replies=[
+        '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png',
+        '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3302.png',
+        '/media/550e8400-e29b-41d4-a716-446655440000.png',
+        '/media/qiniu/3F2504E0-4F89-41D3-9A0C-0305E82C3301.png',
+        'https://evil.example.com/a.png',
+    ];
+    window.fetch=async (url,options={})=>{
+        const isImage=String(url).endsWith('/images')&&(options.method||'GET')==='POST';
+        const reply=await send(url,options);
+        if(!isImage)return reply;
+        const index=window.__imagePosts++;
+        if(index>=window.__replies.length)return reply;
+        return new Response(JSON.stringify({code:'0000',data:{url:window.__replies[index]}}),{status:200,headers:{'Content-Type':'application/json'}});
+    };}''')
+    qiniu_name=qiniu.locator('.merchant-modal input.admin-input').nth(0)
+    qiniu_name.fill('云端图片商品')
+    qiniu.locator('.merchant-modal input.admin-input').nth(1).fill('标准款')
+    qiniu.locator('.merchant-modal input.admin-input').nth(2).fill('9.90')
+    qiniu_uploads=qiniu.locator('.merchant-modal input[type=file]')
+    qiniu_uploads.set_input_files({'name':'q1.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(1)
+    expect(qiniu.locator('.merchant-modal .product-image-tile img').first).to_have_attribute('src','/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png')
+    expect(qiniu.locator('.merchant-modal .image-field-notice')).to_contain_text('上传成功')
+    qiniu.wait_for_function("document.querySelector('.merchant-modal .product-image-tile img').naturalWidth>0")
+    checks.append('QINIU upload path is accepted, echoed in the tile and renders as an image')
+    qiniu_uploads.set_input_files({'name':'q2.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(2)
+    qiniu_uploads.set_input_files({'name':'local.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(3)
+    assert not qiniu.locator('.merchant-modal .product-image-failures').count(),qiniu.locator('.merchant-modal .image-field-error').inner_text()
+    mixed=['/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png','/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3302.png','/media/550e8400-e29b-41d4-a716-446655440000.png']
+    assert qiniu.evaluate("Array.from(document.querySelectorAll('.merchant-modal .product-image-tile img')).map(i=>i.getAttribute('src'))")==mixed
+    checks.append('mixed LOCAL and QINIU uploads keep the selection order in the form')
+    qiniu_uploads.set_input_files({'name':'upper.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .image-field-error')).to_contain_text('图片上传返回地址无效')
+    qiniu_uploads.set_input_files({'name':'external.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-failures .product-image-failure')).to_have_count(2)
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(3)
+    expect(qiniu.get_by_role('button',name='保存商品')).to_be_disabled()
+    checks.append('uppercase QINIU UUID and external URLs stay rejected without entering the album')
+    qiniu.get_by_role('button',name='移除失败图片upper.png').click()
+    qiniu.get_by_role('button',name='移除失败图片external.png').click()
+    expect(qiniu.locator('.merchant-modal .product-image-failures')).to_have_count(0)
+    expect(qiniu.get_by_role('button',name='保存商品')).to_be_enabled()
+    qiniu.get_by_role('button',name='保存商品').click()
+    expect(qiniu.locator('.product-table')).to_contain_text('云端图片商品')
+    qiniu_created=next(p for p in qiniu_fixture.products if p['productId']=='p-created')
+    assert qiniu_created['imageUrl']==mixed[0],qiniu_created
+    assert [image['url'] for image in qiniu_created['images']]==mixed,qiniu_created
+    assert [image['provider'] for image in qiniu_created['images']]==['QINIU','QINIU','LOCAL'],qiniu_created
+    checks.append('saving a mixed album persists the QINIU primary image and the ordered list')
+    assert not qiniu_fixture.unhandled,qiniu_fixture.unhandled
+    qiniu.close()
     assert not fixture.unhandled,fixture.unhandled
     assert not ERRORS,ERRORS
     browser.close()

@@ -42,5 +42,11 @@
             <groupId>cn.bugstack.ai</groupId>
             <artifactId>campus-shopping-domain</artifactId>
         </dependency>
+        <!-- 仅基础设施适配器使用七牛 SDK；领域与 HTTP 层不直接依赖。 -->
+        <dependency>
+            <groupId>com.qiniu</groupId>
+            <artifactId>qiniu-java-sdk</artifactId>
+            <version>${qiniu.version}</version>
+        </dependency>
     </dependencies>
 </project>

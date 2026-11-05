@@ -44,7 +44,8 @@ class InvalidInputContractTest {
         var catalog = new CatalogServiceImpl(
             repository,
             mock(cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository.class),
-            mock(cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository.class)
+            mock(cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository.class),
+            mock(cn.bugstack.ai.domain.catalog.adapter.port.IProductImageMediaPort.class)
         );
         assertEquals("0002", assertThrows(AppException.class, () -> catalog.saleOffers(Arrays.asList("sku", null))).getCode());
         verifyNoInteractions(repository);

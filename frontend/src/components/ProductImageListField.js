@@ -1,4 +1,5 @@
 import { requestScope } from '../services/request-scope.js';
+import { uploadedImageUrl } from '../services/media-url.js';
 import { store } from '../services/store.js';
 import ProductImage from './ProductImage.js';
 import { api } from '../services/api.js';
@@ -148,9 +149,9 @@ export default {
         method: 'POST',
         body: { filename: file.name, contentType: file.type, base64 },
       });
-      if (!/^\/media\/[a-f0-9-]+\.png$/.test(result?.url || ''))
-        throw new Error('图片上传返回地址无效');
-      return result.url;
+      const url = uploadedImageUrl(result?.url);
+      if (!url) throw new Error('图片上传返回地址无效');
+      return url;
     }
     async function process(entries) {
       if (!entries.length || !alive || props.disabled || busy.value) return;
