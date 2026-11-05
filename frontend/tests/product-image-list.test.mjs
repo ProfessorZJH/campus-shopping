@@ -114,14 +114,15 @@ test('invalid or excessive files are rejected before any upload', async (t) => {
     requests++;
     throw new Error('unexpected request');
   };
-  const { vm, events } = mount({ modelValue: Array(7).fill('/media/existing.png') });
+  const { props, vm, events } = mount({ modelValue: Array(7).fill('/media/existing.png') });
   await vm.choose(event([file('a.png'), file('b.png')]));
   assert.match(vm.error.value, /最多保存 8 张/);
   await vm.choose(event([file('empty.png', 0)]));
   assert.match(vm.error.value, /JPG/);
   assert.equal(requests, 0);
-  assert.equal(events.at(-1)[0], 'invalid');
-  assert.equal(events.at(-1)[1], true);
+  // 事件顺序不作为契约：只看最终父表单状态与最后一个 invalid 事件。
+  assert.equal(props.invalid, true);
+  assert.equal(events.filter(([name]) => name === 'invalid').at(-1)[1], true);
 });
 
 test('invalid state survives unmount until the user explicitly abandons the selection', async () => {
@@ -194,6 +195,339 @@ test('a changed context during file reading never starts the old upload', async 
   assert.equal(vm.busy.value, false);
 });
 
+function uploadFetch(handler) {
+  return (url, options = {}) => {
+    if (String(url).endsWith('/auth/csrf'))
+      return Promise.resolve(response({ headerName: 'X-CSRF', token: 'test' }));
+    const body = options.body ? JSON.parse(options.body) : {};
+    return handler(body.filename, body);
+  };
+}
+
+function mediaUrl(index) {
+  return `/media/00000000-0000-0000-0000-00000000000${index}.png`;
+}
+
+test('mixed valid and invalid files keep successful uploads and record failures', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount();
+  await vm.choose(
+    event([file('good.png'), file('unsafe.svg', 20, 'image/svg+xml'), file('second.png')]),
+  );
+  assert.equal(writes, 2);
+  assert.deepEqual(props.modelValue, [mediaUrl(1), mediaUrl(2)]);
+  assert.equal(vm.failures.value.length, 1);
+  assert.equal(vm.failures.value[0].name, 'unsafe.svg');
+  assert.match(vm.failures.value[0].message, /JPG/);
+  assert.match(vm.error.value, /unsafe\.svg/);
+  assert.equal(props.invalid, true);
+  assert.equal(vm.busy.value, false);
+});
+
+test('reordering or removing a successful image keeps unresolved failures', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount();
+  await vm.choose(event([file('a.png'), file('bad.svg', 20, 'image/svg+xml'), file('b.png')]));
+  vm.move(0, 1);
+  assert.deepEqual(props.modelValue, [mediaUrl(2), mediaUrl(1)]);
+  assert.equal(vm.failures.value.length, 1);
+  assert.equal(props.invalid, true);
+  vm.remove(0);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+  assert.equal(vm.failures.value.length, 1);
+  assert.equal(props.invalid, true);
+});
+
+test('retry uploads only the failed file and restores the form when nothing is left', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0,
+    online = false;
+  globalThis.fetch = uploadFetch((name) => {
+    writes++;
+    if (name === 'b.png' && !online) return Promise.reject(new Error('boom'));
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount();
+  await vm.choose(event([file('a.png'), file('b.png')]));
+  assert.equal(writes, 2);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+  assert.equal(vm.failures.value.length, 1);
+  assert.equal(vm.failures.value[0].name, 'b.png');
+  assert.match(vm.failures.value[0].message, /服务连接失败/);
+  assert.equal(props.invalid, true);
+
+  online = true;
+  await vm.retry(vm.failures.value[0]);
+
+  assert.equal(writes, 3);
+  assert.deepEqual(props.modelValue, [mediaUrl(1), mediaUrl(3)]);
+  assert.equal(vm.failures.value.length, 0);
+  assert.equal(props.invalid, false);
+  assert.equal(vm.error.value, '');
+});
+
+test('retrying an invalid file re-runs validation without any request', async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+  let requests = 0;
+  globalThis.fetch = uploadFetch(() => {
+    requests++;
+    return Promise.resolve(response({ url: mediaUrl(1) }));
+  });
+  const { props, vm } = mount();
+  await vm.choose(event([file('empty.png', 0), file('huge.png', 2000001)]));
+  assert.equal(requests, 0);
+  assert.equal(vm.failures.value.length, 2);
+  assert.equal(props.invalid, true);
+
+  await vm.retry(vm.failures.value[0]);
+  await vm.retry(vm.failures.value[0]);
+
+  assert.equal(requests, 0);
+  assert.equal(vm.failures.value.length, 2);
+  assert.equal(props.invalid, true);
+});
+
+test('only one request per identical file in the same batch', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount();
+  const same = () => file('same.png', 20, 'image/png');
+  await vm.choose(event([same(), same()]));
+  assert.equal(writes, 1);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+  assert.equal(vm.failures.value.length, 1);
+  assert.match(vm.failures.value[0].message, /重复/);
+  assert.equal(props.invalid, true);
+
+  vm.removeFailed(vm.failures.value[0].id);
+  assert.equal(props.invalid, false);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+
+  await vm.choose(event([same()]));
+  assert.equal(writes, 2);
+  assert.deepEqual(props.modelValue, [mediaUrl(1), mediaUrl(2)]);
+});
+
+test('removing the last failure restores the form and keeps successful images', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount();
+  await vm.choose(event([file('a.png'), file('bad.svg', 20, 'image/svg+xml')]));
+  assert.equal(props.invalid, true);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+
+  vm.removeFailed(vm.failures.value[0].id);
+
+  assert.equal(vm.failures.value.length, 0);
+  assert.equal(vm.error.value, '');
+  assert.equal(props.invalid, false);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+});
+
+test('a late failure after a context switch is discarded', { timeout: 5000 }, async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  const upload = deferred(),
+    started = deferred();
+  globalThis.fetch = uploadFetch(() => {
+    started.resolve();
+    return upload.promise;
+  });
+  const { props, vm, events } = mount();
+  const pending = vm.choose(event([file()]));
+  await started.promise;
+  props.contextKey = 'p2';
+  flushWatchers();
+  upload.promise.catch(() => {});
+  upload.resolve(Promise.reject(new Error('late failure')));
+  await pending;
+  assert.equal(vm.failures.value.length, 0);
+  assert.equal(events.filter(([name, value]) => name === 'invalid' && value === true).length, 0);
+  assert.equal(events.filter(([name]) => name === 'update:modelValue').length, 0);
+  assert.equal(vm.busy.value, false);
+});
+
+test('a failure arriving after unmount is not reported', { timeout: 5000 }, async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  const upload = deferred(),
+    started = deferred();
+  globalThis.fetch = uploadFetch(() => {
+    started.resolve();
+    return upload.promise;
+  });
+  const { vm, events, unmount } = mount();
+  const pending = vm.choose(event([file()]));
+  await started.promise;
+  unmount();
+  upload.promise.catch(() => {});
+  upload.resolve(Promise.reject(new Error('late failure')));
+  await pending;
+  assert.equal(vm.failures.value.length, 0);
+  assert.equal(events.filter(([name, value]) => name === 'invalid' && value === true).length, 0);
+  assert.equal(events.filter(([name]) => name === 'update:modelValue').length, 0);
+});
+
+test('a retry still in flight cannot report into another product', { timeout: 5000 }, async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  const retried = deferred(),
+    started = deferred();
+  let writes = 0,
+    attempts = 0;
+  globalThis.fetch = uploadFetch((name) => {
+    if (name === 'b.png') {
+      attempts++;
+      if (attempts === 1) return Promise.reject(new Error('offline'));
+      started.resolve();
+      return retried.promise;
+    }
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm, events } = mount();
+  await vm.choose(event([file('a.png'), file('b.png')]));
+  assert.equal(writes, 1);
+  assert.equal(vm.failures.value.length, 1);
+
+  const pending = vm.retry(vm.failures.value[0]);
+  await started.promise;
+  // 父组件切到另一个商品：给它自己的图片，而不是清空别人的表单。
+  props.contextKey = 'p2';
+  props.modelValue = [mediaUrl(8)];
+  flushWatchers();
+  const afterSwitch = events.length;
+  retried.resolve(response({ url: mediaUrl(9) }));
+  await pending;
+
+  const late = events.slice(afterSwitch);
+  assert.deepEqual(props.modelValue, [mediaUrl(8)]);
+  assert.equal(vm.failures.value.length, 0);
+  assert.equal(late.filter(([name]) => name === 'update:modelValue').length, 0);
+  assert.equal(late.filter(([name, value]) => name === 'invalid' && value === true).length, 0);
+  assert.equal(vm.busy.value, false);
+});
+
+test('a new valid selection cannot clear an earlier failure', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount();
+  await vm.choose(event([file('bad.svg', 20, 'image/svg+xml')]));
+  assert.equal(props.invalid, true);
+
+  await vm.choose(event([file('good.png')]));
+
+  assert.equal(writes, 1);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+  assert.equal(vm.failures.value.length, 1);
+  assert.equal(props.invalid, true);
+});
+
+test('remounting with invalid keeps blocking even after removing a saved image', async (t) => {
+  const originalFetch = globalThis.fetch,
+    originalReader = globalThis.FileReader;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+    globalThis.FileReader = originalReader;
+  });
+  fastReader();
+  let writes = 0;
+  globalThis.fetch = uploadFetch(() => {
+    writes++;
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
+  const { props, vm } = mount({ invalid: true, modelValue: [mediaUrl(5)] });
+
+  vm.remove(0);
+  assert.deepEqual(props.modelValue, []);
+  assert.equal(props.invalid, true);
+
+  await vm.choose(event([file('good.png')]));
+  assert.equal(writes, 1);
+  assert.deepEqual(props.modelValue, [mediaUrl(1)]);
+  assert.equal(props.invalid, true);
+
+  vm.clearInvalid();
+  assert.equal(props.invalid, false);
+  assert.match(vm.error.value, /^$/);
+});
+
 test('successful multi-image upload preserves order and permits reordering and removal', async (t) => {
   const originalFetch = globalThis.fetch,
     originalReader = globalThis.FileReader;
@@ -203,23 +537,16 @@ test('successful multi-image upload preserves order and permits reordering and r
   });
   fastReader();
   let writes = 0;
-  globalThis.fetch = (url) => {
-    if (String(url).endsWith('/auth/csrf'))
-      return Promise.resolve(response({ headerName: 'X-CSRF', token: 'test' }));
+  globalThis.fetch = uploadFetch(() => {
     writes++;
-    return Promise.resolve(
-      response({ url: `/media/00000000-0000-0000-0000-00000000000${writes}.png` }),
-    );
-  };
+    return Promise.resolve(response({ url: mediaUrl(writes) }));
+  });
   const { props, vm } = mount();
   await vm.choose(event([file('a.png'), file('b.png')]));
   assert.equal(writes, 2);
-  assert.deepEqual(props.modelValue, [
-    '/media/00000000-0000-0000-0000-000000000001.png',
-    '/media/00000000-0000-0000-0000-000000000002.png',
-  ]);
+  assert.deepEqual(props.modelValue, [mediaUrl(1), mediaUrl(2)]);
   vm.move(1, -1);
   vm.remove(1);
-  assert.deepEqual(props.modelValue, ['/media/00000000-0000-0000-0000-000000000002.png']);
+  assert.deepEqual(props.modelValue, [mediaUrl(2)]);
   assert.equal(vm.busy.value, false);
 });

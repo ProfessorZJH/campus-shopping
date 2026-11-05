@@ -86,7 +86,9 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 
 ## 5. 图片、引用与 AI 模式
 
-- 商品创建/编辑支持 0–8 张不重复的同源 `/media/*.png` 图片；`imageUrls` 缺失或为 null 时沿用旧 `imageUrl`，显式空数组清空图片。商品响应的 `images` 按顺序返回，兼容字段 `imageUrl` 为首图或空串；上传成功响应必须包含非 null 的 `url`。商品记录与图片引用在同库事务内更新。
+- 商品创建/编辑支持 0–8 张不重复的同源 `/media/*.png` 图片；商品响应的 `images` 按顺序返回，兼容字段 `imageUrl` 为首图或空串；上传成功响应必须包含非 null 的 `url`。商品记录与图片引用在同库事务内更新。
+- 图片字段兼容：创建时 `imageUrls` 缺失或为 null 沿用旧 `imageUrl`，显式 `[]` 创建空相册；编辑时 `imageUrls` 非 null 优先且 `[]` 清空，`imageUrls` 为 null 时 `imageUrl` 也为 null 表示不改图片，与当前主图相同保留相册，空串或全空白字符串清空，其他有效地址替换首图并保留原副图，已在相册则升首位保留全部（不重复、最多 8 张）。
+- 前端逐文件上传：合法文件成功即保留在表单（部分成功不丢），失败项按文件名/原因列出并可单项重试或移除；非法类型、空文件、超 2,000,000 字节不发请求且重试仍校验；同一批 `name+size+type` 重复只上传一次，不是内容哈希去重；未解决失败或重挂载 `invalid` 兜底继续阻断保存，显式放弃保留已成功图片，迟到结果按商户/商品/身份/路由/卸载隔离。
 - `CartResponseDTO.merchantName` 从 `mer_merchant` 查出后返回；`imageUrl` 从当前公开商品数据读取。
 - `ProposalItemResponseDTO.imageUrl` 是生成提案时可信 Catalog 数据，不要求新增数据库表；过期提案仍拒绝执行。
 - `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。

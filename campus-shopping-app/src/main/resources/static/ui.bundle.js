@@ -2713,6 +2713,10 @@
   const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES = 2e6;
   const MAX_IMAGES = 8;
+  const INVALID_FILE = "图片须为 JPG、PNG 或 GIF，且不超过 2 MB";
+  const DUPLICATE_FILE = "同一批中重复选择（同名、同大小、同类型），已跳过";
+  const DUPLICATE_URL = "图片不能重复";
+  const LIMIT_MESSAGE = "商品最多保存 8 张图片";
   const ProductImageListField = {
     name: "ProductImageListField",
     components: { ProductImage },
@@ -2726,12 +2730,12 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit }) {
-      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), demoValues = ref$c(null);
+      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), demoValues = ref$c(null), failures = ref$c([]), blocked = ref$c(Boolean(props.invalid));
       const values = computed$c(
         () => props.demo && demoValues.value ? demoValues.value : props.modelValue || []
       );
       const scope = requestScope(), localUrls = /* @__PURE__ */ new Set();
-      let alive = true, epoch = 0;
+      let alive = true, epoch = 0, failureSequence = 0;
       function release() {
         for (const url of localUrls) URL.revokeObjectURL(url);
         localUrls.clear();
@@ -2743,6 +2747,8 @@
         busy.value = false;
         error.value = "";
         notice.value = "";
+        failures.value = [];
+        blocked.value = false;
         emit("busy", false);
         emit("invalid", false);
       }
@@ -2767,8 +2773,20 @@
         if (props.demo) demoValues.value = next;
         else emit("update:modelValue", next);
       }
+      function releaseUrl(url) {
+        if (localUrls.delete(url)) URL.revokeObjectURL(url);
+      }
+      function syncInvalid() {
+        const pending = failures.value;
+        if (pending.length)
+          error.value = "有 " + pending.length + " 张图片未完成：" + pending.map((item) => item.name + "（" + item.message + "）").join("；");
+        else if (!blocked.value) error.value = "";
+        emit("invalid", pending.length > 0 || blocked.value);
+      }
       function clearInvalid() {
         if (props.disabled || busy.value) return;
+        failures.value = [];
+        blocked.value = false;
         error.value = "";
         notice.value = "";
         emit("invalid", false);
@@ -2783,84 +2801,133 @@
       function remove(i) {
         if (props.disabled || busy.value) return;
         const next = values.value.slice(), removed = next.splice(i, 1)[0];
-        if (localUrls.delete(removed)) URL.revokeObjectURL(removed);
-        error.value = "";
-        notice.value = "";
-        emit("invalid", false);
+        releaseUrl(removed);
         update(next);
+        syncInvalid();
+      }
+      function removeFailed(id) {
+        if (props.disabled || busy.value) return;
+        failures.value = failures.value.filter((item) => item.id !== id);
+        syncInvalid();
+      }
+      function validate(file) {
+        if (!VALID_TYPES.has(file.type) || !file.size || file.size > MAX_BYTES) return INVALID_FILE;
+        return "";
+      }
+      function fingerprint(file) {
+        return [file.name, file.size, file.type].join("\0");
+      }
+      function readBase64(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("图片读取失败"));
+          reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
+          reader.readAsDataURL(file);
+        });
+      }
+      function previewUrl(file) {
+        const url = URL.createObjectURL(file);
+        localUrls.add(url);
+        return url;
+      }
+      async function uploadFile(file, base64, merchant) {
+        const result = await api("/merchants/" + encodeURIComponent(merchant) + "/images", {
+          method: "POST",
+          body: { filename: file.name, contentType: file.type, base64 }
+        });
+        if (!/^\/media\/[a-f0-9-]+\.png$/.test((result == null ? void 0 : result.url) || ""))
+          throw new Error("图片上传返回地址无效");
+        return result.url;
+      }
+      async function process(entries) {
+        if (!entries.length || !alive || props.disabled || busy.value) return;
+        const merchant = props.merchantId, context = props.contextKey, demo = props.demo, stamp = ++epoch, valid = demo ? null : scope.capture();
+        const current = () => alive && stamp === epoch && merchant === props.merchantId && context === props.contextKey && demo === props.demo && (demo || valid());
+        const working = values.value.slice(), seen = /* @__PURE__ */ new Set(), batch = [];
+        busy.value = true;
+        emit("busy", true);
+        try {
+          for (const entry of entries) {
+            const file = entry.file;
+            try {
+              if (!current()) return;
+              const invalid = validate(file);
+              if (invalid) throw new Error(invalid);
+              const key = fingerprint(file);
+              if (seen.has(key)) throw new Error(DUPLICATE_FILE);
+              seen.add(key);
+              if (working.length >= MAX_IMAGES) throw new Error(LIMIT_MESSAGE);
+              let url;
+              if (demo) {
+                url = previewUrl(file);
+              } else {
+                const base64 = await readBase64(file);
+                if (!current()) return;
+                url = await uploadFile(file, base64, merchant);
+              }
+              if (!current()) {
+                releaseUrl(url);
+                return;
+              }
+              if (working.includes(url)) {
+                releaseUrl(url);
+                throw new Error(DUPLICATE_URL);
+              }
+              working.push(url);
+              update(working.slice());
+            } catch (cause) {
+              batch.push({
+                id: entry.id || ++failureSequence,
+                file,
+                name: file.name || "未命名图片",
+                message: (cause == null ? void 0 : cause.message) || "图片上传失败"
+              });
+            }
+          }
+        } finally {
+          if (current()) {
+            if (batch.length) failures.value = failures.value.concat(batch);
+            if (!failures.value.length && !blocked.value)
+              notice.value = demo ? "仅本地预览，未上传" : "上传成功，保存商品后生效";
+            busy.value = false;
+            emit("busy", false);
+            syncInvalid();
+          }
+        }
       }
       async function choose(event) {
         const files = [...event.target.files || []];
         event.target.value = "";
         if (!files.length || props.disabled || busy.value) return;
-        error.value = "";
         notice.value = "";
-        emit("invalid", false);
+        syncInvalid();
         if (values.value.length + files.length > MAX_IMAGES) {
-          error.value = "商品最多保存 8 张图片";
+          blocked.value = true;
+          error.value = LIMIT_MESSAGE;
           emit("invalid", true);
           return;
         }
-        if (files.some((file) => !VALID_TYPES.has(file.type) || !file.size || file.size > MAX_BYTES)) {
-          error.value = "图片须为 JPG、PNG 或 GIF，且不超过 2 MB";
-          emit("invalid", true);
-          return;
-        }
-        if (props.demo) {
-          const urls = [];
-          try {
-            for (const file of files) urls.push(URL.createObjectURL(file));
-            for (const url of urls) localUrls.add(url);
-            demoValues.value = values.value.concat(urls);
-            notice.value = "仅本地预览，未上传";
-          } catch {
-            for (const url of urls) URL.revokeObjectURL(url);
-            error.value = "图片预览失败";
-            emit("invalid", true);
-          }
-          return;
-        }
-        const merchant = props.merchantId, context = props.contextKey, stamp = ++epoch, valid = scope.capture();
-        const current = () => alive && valid() && stamp === epoch && merchant === props.merchantId && context === props.contextKey && !props.demo;
-        busy.value = true;
-        emit("busy", true);
-        try {
-          const urls = [];
-          for (const file of files) {
-            const base64 = await new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onerror = () => reject(new Error("图片读取失败"));
-              reader.onload = () => resolve(String(reader.result).split(",")[1] || "");
-              reader.readAsDataURL(file);
-            });
-            if (!current()) return;
-            const result = await api("/merchants/" + encodeURIComponent(merchant) + "/images", {
-              method: "POST",
-              body: { filename: file.name, contentType: file.type, base64 }
-            });
-            if (!current()) return;
-            if (!/^\/media\/[a-f0-9-]+\.png$/.test((result == null ? void 0 : result.url) || ""))
-              throw new Error("图片上传返回地址无效");
-            urls.push(result.url);
-          }
-          if (values.value.length + urls.length > MAX_IMAGES)
-            throw new Error("商品最多保存 8 张图片");
-          emit("update:modelValue", values.value.concat(urls));
-          emit("invalid", false);
-          notice.value = "上传成功，保存商品后生效";
-        } catch (err) {
-          if (current()) {
-            error.value = err.message || "图片上传失败";
-            emit("invalid", true);
-          }
-        } finally {
-          if (current()) {
-            busy.value = false;
-            emit("busy", false);
-          }
-        }
+        await process(files.map((file) => ({ file })));
       }
-      return { values, busy, error, notice, choose, move, remove, clearInvalid };
+      async function retry(item) {
+        if (props.disabled || busy.value || !alive) return;
+        failures.value = failures.value.filter((candidate) => candidate.id !== item.id);
+        syncInvalid();
+        await process([{ file: item.file, id: item.id }]);
+      }
+      return {
+        values,
+        busy,
+        error,
+        notice,
+        failures,
+        choose,
+        move,
+        remove,
+        retry,
+        removeFailed,
+        clearInvalid
+      };
     },
     render: (() => {
       const { renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, normalizeClass: _normalizeClass } = Vue;
@@ -2908,6 +2975,44 @@
               /* KEYED_FRAGMENT */
             ))
           ]),
+          _ctx.failures.length ? (_openBlock(), _createElementBlock("div", {
+            key: 0,
+            class: "product-image-failures",
+            role: "status"
+          }, [
+            (_openBlock(true), _createElementBlock(
+              _Fragment,
+              null,
+              _renderList(_ctx.failures, (item) => {
+                return _openBlock(), _createElementBlock("div", {
+                  key: item.id,
+                  class: "product-image-failure"
+                }, [
+                  _createElementVNode(
+                    "span",
+                    null,
+                    _toDisplayString(item.name) + "：" + _toDisplayString(item.message),
+                    1
+                    /* TEXT */
+                  ),
+                  _createElementVNode("button", {
+                    type: "button",
+                    "aria-label": "重试图片" + item.name,
+                    disabled: _ctx.disabled || _ctx.busy,
+                    onClick: ($event) => _ctx.retry(item)
+                  }, "重试", 8, ["aria-label", "disabled", "onClick"]),
+                  _createElementVNode("button", {
+                    type: "button",
+                    "aria-label": "移除失败图片" + item.name,
+                    disabled: _ctx.disabled || _ctx.busy,
+                    onClick: ($event) => _ctx.removeFailed(item.id)
+                  }, "移除", 8, ["aria-label", "disabled", "onClick"])
+                ]);
+              }),
+              128
+              /* KEYED_FRAGMENT */
+            ))
+          ])) : _createCommentVNode("v-if", true),
           _createElementVNode(
             "label",
             {
@@ -2939,7 +3044,7 @@
           _ctx.error || _ctx.invalid ? (_openBlock(), _createElementBlock(
             "span",
             {
-              key: 0,
+              key: 1,
               class: "image-field-error",
               role: "alert"
             },
@@ -2949,7 +3054,7 @@
           )) : _ctx.notice ? (_openBlock(), _createElementBlock(
             "span",
             {
-              key: 1,
+              key: 2,
               class: "image-field-notice",
               role: "status"
             },
@@ -2958,7 +3063,7 @@
             /* TEXT */
           )) : _createCommentVNode("v-if", true),
           _ctx.error || _ctx.invalid ? (_openBlock(), _createElementBlock("button", {
-            key: 2,
+            key: 3,
             type: "button",
             disabled: _ctx.disabled || _ctx.busy,
             onClick: _ctx.clearInvalid

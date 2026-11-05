@@ -389,17 +389,57 @@ class CommerceMySqlIntegrationTest {
                 .map(image -> image.url())
                 .toList()
         );
+        // 旧客户端只提交主图：first 已是相册中的副图，升为首图并保留其余副图，不得截断成单图。
         catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", first, null, reordered.product().getVersion());
         var legacy = catalogQuery.detail(id);
+        assertEquals(first, legacy.product().getImageUrl());
         assertEquals(
-            List.of(first),
+            List.of(first, second),
             legacy
                 .images()
                 .stream()
                 .map(image -> image.url())
                 .toList()
         );
-        catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", first, List.of(), legacy.product().getVersion());
+        // 旧客户端再提交当前主图却不带列表：视为不改图片，相册保持两图。
+        catalog.editProduct(owner, merchant.id(), id, "多图商品", "描述", "stationery", first, null, legacy.product().getVersion());
+        var untouched = catalogQuery.detail(id);
+        assertEquals(
+            List.of(first, second),
+            untouched
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        // 两个图片字段都为 null：表示未提供图片变更，改标题也不动主图与相册。
+        catalog.editProduct(owner, merchant.id(), id, "多图商品改标题", "描述", "stationery", null, null, untouched.product().getVersion());
+        var plain = catalogQuery.detail(id);
+        assertEquals("多图商品改标题", plain.product().getTitle());
+        assertEquals(first, plain.product().getImageUrl());
+        assertEquals(
+            List.of(first, second),
+            plain
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        // 新主图替换旧首图：third 排首位，原副图 second 保留，商品主图与图片引用首图一致。
+        String third = mediaFixture("44444444-4444-4444-4444-444444444444", merchant.id());
+        catalog.editProduct(owner, merchant.id(), id, "多图商品改标题", "描述", "stationery", third, null, plain.product().getVersion());
+        var replaced = catalogQuery.detail(id);
+        assertEquals(third, replaced.product().getImageUrl());
+        assertEquals(
+            List.of(third, second),
+            replaced
+                .images()
+                .stream()
+                .map(image -> image.url())
+                .toList()
+        );
+        assertEquals(List.of(third, second), jdbc.queryForList("SELECT url FROM cat_product_image WHERE product_id=? ORDER BY sort_order", String.class, id));
+        catalog.editProduct(owner, merchant.id(), id, "多图商品改标题", "描述", "stationery", third, List.of(), replaced.product().getVersion());
         var cleared = catalogQuery.detail(id);
         assertEquals("", cleared.product().getImageUrl());
         assertTrue(cleared.images().isEmpty());
