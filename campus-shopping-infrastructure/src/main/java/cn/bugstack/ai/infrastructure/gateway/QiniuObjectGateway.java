@@ -107,7 +107,7 @@ public class QiniuObjectGateway implements IProductImageMediaPort {
             // 2xx 也必须核对回执：key 必须与写入对象一致，hash 必须非空，否则视为失败。
             DefaultPutRet putRet = response.jsonToObject(DefaultPutRet.class);
             if (putRet == null || putRet.key == null || !objectKey.equals(putRet.key) || putRet.hash == null || putRet.hash.isBlank()) {
-                log.warn("七牛图片上传回执不匹配 key={}", objectKey);
+                log.warn("七牛图片上传回执不匹配");
                 throw new AppException(ResponseCode.UN_ERROR);
             }
             return objectKey;

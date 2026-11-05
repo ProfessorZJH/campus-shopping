@@ -139,6 +139,8 @@ class QiniuObjectGatewayProtocolTest {
         }
         String logs = output.getAll();
         assertFalse(logs.contains(secret), "日志不得输出下游响应正文");
+        // 回执不匹配分支也不得日志记录真实对象键。
+        assertFalse(logs.contains(key), "日志不得输出对象键");
         assertFalse(logs.contains("fake-access-key"), "日志不得输出 access key");
         assertFalse(logs.contains("fake-secret-key"), "日志不得输出 secret key");
         // 本次修复的目标：SDK 同步解析器输出的异常栈（com.qiniu 帧）不得再出现；允许 JsonSyntaxException 类型名。
