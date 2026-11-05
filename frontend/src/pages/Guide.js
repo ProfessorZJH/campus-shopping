@@ -36,6 +36,8 @@ export default {
     const openingConversation = ref(false);
     const chatThreadRef = ref(null);
     const pendingQuestion = ref('');
+    const activeDetailProduct = ref(null);
+    const loadingDetail = ref(false);
     let conversationEpoch = 0,
       historyEpoch = 0;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
@@ -44,23 +46,36 @@ export default {
         ? examples.value.map((p) => ({
             skuId: skuOf(p).skuId,
             product: p,
+            productId: p.productId,
             title: p.title,
             specKey: skuOf(p).specKey,
+            imageUrl: skuOf(p).imageUrl || p.imageUrl,
             priceCent: skuOf(p).priceCent,
             quantity: 1,
             merchantId: p.merchantId,
+            merchantName: store.merchants.find((m) => m.merchantId === p.merchantId)?.name || '校园商户',
           }))
-        : (proposal.value?.items || []).map((i) => ({
-            ...i,
-            product: store.products.find((p) => p.skus.some((s) => s.skuId === i.skuId)),
-          })),
+        : (proposal.value?.items || []).map((i) => {
+            const matchedProduct = store.products.find((p) => p.skus?.some((s) => s.skuId === i.skuId));
+            const mName = store.merchants.find((m) => m.merchantId === i.merchantId)?.name;
+            return {
+              ...i,
+              productId: matchedProduct?.productId || '',
+              product: matchedProduct,
+              imageUrl: i.imageUrl || matchedProduct?.imageUrl || '',
+              merchantName: mName || matchedProduct?.merchantName || '校内商户',
+            };
+          }),
     );
     const total = computed(() =>
       items.value
         .filter((i) => selectedIds.value.includes(i.skuId))
         .reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity || 1), 0),
     );
-    const showProposal = computed(() => preview || !!proposal.value?.items?.length);
+    const suggestions = computed(() => {
+      if (preview || !proposal.value?.items?.length) return [];
+      return ['换便宜一点的', '换个其他口味', '推荐适合搭配的饮料'];
+    });
     const formatTime = () =>
       new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
     // 滚动到底部（支持智能滚动判断：若用户正在查看历史则不打扰）
@@ -293,8 +308,55 @@ export default {
       } finally {
         thinking.value = false;
       }
+    async function showItemDetail(item) {
+      if (preview) {
+        activeDetailProduct.value = item.product || {
+          title: item.title,
+          description: '校园热销优质好物，品质保障。',
+          imageUrl: item.imageUrl,
+          skus: [{ skuId: item.skuId, specKey: item.specKey, priceCent: item.priceCent, available: 10, status: 'ACTIVE' }],
+          merchantName: item.merchantName,
+        };
+        return;
+      }
+      // 1. 如果已有关联的 product 且有 productId，直接使用或请求详情
+      const pid = item.productId || item.product?.productId;
+      if (pid) {
+        loadingDetail.value = true;
+        try {
+          const detail = await api('/products/' + encodeURIComponent(pid));
+          activeDetailProduct.value = detail;
+        } catch {
+          // 降级使用提案中的快照信息展示弹窗，避免白屏或报错打断体验
+          activeDetailProduct.value = item.product || {
+            title: item.title,
+            imageUrl: item.imageUrl,
+            skus: [{ skuId: item.skuId, specKey: item.specKey, priceCent: item.priceCent, available: '可售', status: 'ACTIVE' }],
+            merchantName: item.merchantName,
+          };
+        } finally {
+          loadingDetail.value = false;
+        }
+        return;
+      }
+      // 2. 如果缺少 productId（因跨页未加载对应商品聚合），直接基于提案安全快照展示微型详情卡片
+      activeDetailProduct.value = {
+        title: item.title,
+        imageUrl: item.imageUrl,
+        skus: [{ skuId: item.skuId, specKey: item.specKey, priceCent: item.priceCent, available: '可售', status: 'ACTIVE' }],
+        merchantName: item.merchantName,
+      };
     }
+
+    function closeItemDetail() {
+      activeDetailProduct.value = null;
+    }
+
     return {
+      activeDetailProduct,
+      loadingDetail,
+      showItemDetail,
+      closeItemDetail,
       store,
       go,
       money,
@@ -307,7 +369,8 @@ export default {
       items,
       selectedIds,
       total,
-      showProposal,
+      suggestions,
+      showProposal: computed(() => preview || !!proposal.value?.items?.length),
       proposal,
       error,
       mode,
@@ -362,15 +425,34 @@ export default {
       <section v-if="showProposal" class="recommendation-panel">
         <div class="recommendation-header"><div><h2>为你选了 <em>{{items.length}}</em> 件好物</h2></div></div>
         <div class="rec-cards">
-          <article class="rec-item" v-for="(item,index) in items" :key="item.skuId">
+          <article class="rec-item" v-for="item in items" :key="item.skuId">
             <button class="rec-check" :class="{checked:selectedIds.includes(item.skuId)}" @click="toggle(item.skuId)" :aria-label="'选择'+item.title"><Icon name="check" :size="13"/></button>
-            <div class="rec-photo"><ProductImage :src="item.imageUrl||item.product?.imageUrl" :alt="item.title"/></div>
-            <div class="rec-card-content"><div class="rec-item-tag">{{index===0?'HOT PICK':index===1?'DAILY':'GOOD VALUE'}}</div><strong>{{item.title}}</strong><small>{{item.specKey}}</small><div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini"><Icon name="plus" :size="15"/></span></div></div>
+            <div class="rec-photo" @click="showItemDetail(item)" style="cursor:pointer" title="点击查看商品详情"><ProductImage :src="item.imageUrl" :alt="item.title"/></div>
+            <div class="rec-card-content" @click="showItemDetail(item)" style="cursor:pointer">
+              <div class="rec-item-merchant"><Icon name="store" :size="11"/> {{item.merchantName}}</div>
+              <strong>{{item.title}}</strong>
+              <small>{{item.specKey}}</small>
+              <div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini" @click.stop="toggle(item.skuId)"><Icon :name="selectedIds.includes(item.skuId)?'check':'plus'" :size="14"/></span></div>
+            </div>
           </article>
         </div>
         <div class="proposal-footer"><div class="proposal-total"><span>已选 {{selectedIds.length}} 件</span><strong>{{money(total)}}</strong></div><div class="proposal-actions"><button v-if="!preview&&proposal?.status==='PENDING'" class="ghost-decline" @click="reject">放弃</button><button class="confirm-button" @click="confirm" :disabled="preview||thinking||!selectedIds.length||(!preview&&proposal?.status!=='PENDING')"><Icon name="check" :size="17"/>{{proposal?.status==='CONFIRMED'?'已确认':'确认加购'}}</button></div></div>
       </section>
+      <div v-if="suggestions.length" class="rec-suggestions"><button v-for="s in suggestions" :key="s" @click="ask(s)" :disabled="thinking||openingConversation"><Icon name="sparkles" :size="13"/>{{s}}</button></div>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
       <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button type="submit" :disabled="thinking||openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
+      <div v-if="activeDetailProduct" class="modal-backdrop" @click="closeItemDetail">
+        <div class="rec-detail-modal" @click.stop>
+          <button class="rec-modal-close" @click="closeItemDetail" aria-label="关闭"><Icon name="close" :size="16"/></button>
+          <div class="rec-modal-art"><ProductImage :src="activeDetailProduct.imageUrl" :alt="activeDetailProduct.title"/></div>
+          <div class="rec-modal-body">
+            <div class="rec-modal-price">{{money(activeDetailProduct.skus?.[0]?.priceCent)}}</div>
+            <h3>{{activeDetailProduct.title}}</h3>
+            <p v-if="activeDetailProduct.description" class="rec-modal-desc">{{activeDetailProduct.description}}</p>
+            <div class="rec-modal-shop"><Icon name="store" :size="13"/> {{activeDetailProduct.merchantName || '校内商户'}}</div>
+            <div class="rec-modal-specs"><span>规格：{{activeDetailProduct.skus?.[0]?.specKey || '标配'}}</span><span class="rec-modal-stock">状态：{{activeDetailProduct.skus?.[0]?.available != null ? '在售有货' : '可售'}}</span></div>
+          </div>
+        </div>
+      </div>
     </ConsumerShell>`,
 };
