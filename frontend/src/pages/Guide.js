@@ -117,14 +117,6 @@ export default {
       historyOpen.value = false;
       notify('已开启新对话');
     }
-      error.value = '';
-      input.value = '';
-      pendingQuestion.value = '';
-      thinking.value = false;
-      openingConversation.value = false;
-      historyOpen.value = false;
-      notify('已开启新对话');
-    }
 
     // 同一 AI 页面内退出/切换账号时，不能保留上一身份的本地会话与回答。
     watch(
@@ -268,20 +260,6 @@ export default {
         }
       }
     }
-      } catch (err) {
-        if (stamp === conversationEpoch) {
-          error.value = err.status === 401 ? '请先登录账号再使用 AI 导购' : err.message;
-          messages.value.pop();
-          input.value = text;
-          if (err.status === 401) {
-            pendingQuestion.value = text;
-            openAuthModal();
-          }
-        }
-      } finally {
-        if (stamp === conversationEpoch) thinking.value = false;
-      }
-    }
     async function loadHistory(reset = true) {
       if (preview) return;
       if (loadingHistory.value && !reset) return;
@@ -380,6 +358,7 @@ export default {
       } finally {
         thinking.value = false;
       }
+    }
     async function showItemDetail(item) {
       if (preview) {
         activeDetailProduct.value = item.product || {
@@ -423,7 +402,6 @@ export default {
     function closeItemDetail() {
       activeDetailProduct.value = null;
     }
-
     return {
       stopStreaming,
       activeDetailProduct,
