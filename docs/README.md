@@ -58,3 +58,4 @@
 - [PR #48 审查修复：匿名后台登录与首页加载边界](testing/PR48-REVIEW-FOLLOWUP-20261101.md)
 - [ShoppingAI / RAG 批次 A+B 实施记录](testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)
 - [分支实跑验证：Python / Java / 迁移基线（2026-11-04）](testing/BRANCH-VERIFY-20261104.md)
+- [分支实跑复验：全量 Java 298 项与静态门禁（2026-11-05）](testing/BRANCH-VERIFY-20261105.md)
