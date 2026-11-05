@@ -364,7 +364,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                     citation.snippet().codePointCount(0, citation.snippet().length()) <= 500 &&
                     // 内部原文不跨服务传输：PUBLIC 才校验片段属于该 chunk，其余以 chunkId、序号和内容哈希定位。
                     (citation.ordinal() < 0
-                        ? (!publicDocument || document.content().contains(citation.snippet()))
+                        ? !publicDocument || document.content().contains(citation.snippet())
                         : citation.chunkId().equals(chunkId(document.id(), citation.ordinal())) &&
                           citation.contentHash().equals(hash(chunkBody)) &&
                           (!publicDocument || chunkBody.contains(citation.snippet()))),

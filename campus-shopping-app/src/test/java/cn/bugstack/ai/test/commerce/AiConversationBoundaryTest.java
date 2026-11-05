@@ -174,7 +174,22 @@ class AiConversationBoundaryTest {
         when(state.messages("buyer", "conversation", 12)).thenReturn(List.of());
         when(knowledge.readableScope("buyer")).thenReturn(scope);
         when(knowledge.citationDocuments("buyer", List.of("internal"))).thenReturn(
-            List.of(new KnowledgeDocumentVO("internal", "root", "base", "内部退款规则", null, "MERCHANT_INTERNAL", 1, "PUBLISHED", "READY", content, "", clock.instant()))
+            List.of(
+                new KnowledgeDocumentVO(
+                    "internal",
+                    "root",
+                    "base",
+                    "内部退款规则",
+                    null,
+                    "MERCHANT_INTERNAL",
+                    1,
+                    "PUBLISHED",
+                    "READY",
+                    content,
+                    "",
+                    clock.instant()
+                )
+            )
         );
         when(engine.recall(anyString(), anyList())).thenReturn(new AiRecallVO(question, List.of()));
         when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
