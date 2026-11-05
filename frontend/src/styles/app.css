@@ -54,6 +54,13 @@
 .product-image-controls small{color:#91a1af;font-size:10px;line-height:1.4}
 .image-field-error{color:#d83a4b;font-size:11px;line-height:1.4}
 .image-field-notice{color:#009e89;font-size:10.5px;line-height:1.4}
+/* 逐项失败列表：沿用图片字段的紧凑密度，失败项可单独重试或移除 */
+.product-image-failures{display:flex;flex-direction:column;gap:4px;margin:6px 0}
+.product-image-list-field>.image-field-error,.product-image-list-field>.image-field-notice{display:block;margin:5px 0 2px}
+.product-image-failure{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#d83a4b;background:#fff5f6;border:1px solid #f5d3d8;border-radius:7px;padding:5px 7px}
+.product-image-failure span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.product-image-failure button{font-size:10px;padding:3px 6px;border:1px solid #e6c3c9;border-radius:5px;background:#fff;color:#a33;cursor:pointer;white-space:nowrap}
+.product-image-failure button:disabled{opacity:.55;cursor:not-allowed}
 .order-item-placeholder img{width:100%;height:100%;object-fit:contain;border-radius:inherit}
 @media(max-width:400px){.product-image-field{gap:10px}.product-image-preview{width:96px;height:96px;flex-basis:96px}}
 

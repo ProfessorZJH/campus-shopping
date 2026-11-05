@@ -15,6 +15,8 @@
         <java.version>17</java.version>
         <maven.compiler.release>17</maven.compiler.release>
         <redisson.version>4.8.0</redisson.version>
+        <!-- 七牛 Java SDK 固定版本：不做版本区间，升级需单独评审。 -->
+        <qiniu.version>7.19.0</qiniu.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <frontend.skip>false</frontend.skip>
         <npm.executable>npm</npm.executable>

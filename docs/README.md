@@ -8,6 +8,7 @@
 | **PR与主线质量门禁** | [PR模板](../.github/pull_request_template.md)、[main保护与核验](development/REPOSITORY-GATES.md) |
 | **R1 六批审查整改** | [增量约束](specs/SDD-R1-REMEDIATION-13.md)、[逐批状态与实际验证](testing/R1-REMEDIATION-20261031.md)、[容量与外发操作](operations/R1-capacity-egress.md)、[供应链与发布边界](operations/R1-release-governance.md) |
 | **OpenSpec需求变更试用** | [安装、资料归属与使用](development/OPENSPEC.md)、[试点实际记录](testing/OPENSPEC-PILOT-20261031.md) |
+| **全链路产品化规划（2026-11-05，待实施）** | [整体方案与阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)、[技术设计与审查追踪](../openspec/changes/productize-campus-shopping-experience/design.md)、[实施任务与验收](../openspec/changes/productize-campus-shopping-experience/tasks.md)；保留 Vue 3 + Vite，逐步采用 `.vue` 并试点 TypeScript，覆盖消费者、AI、商户、平台及知识库 |
 | **FR-023 智能导购评测** | [工具/指标/实验/复现](../ai-service/evaluation/README.md)、[120例草稿与人工标注](../ai-service/evaluation/datasets/campus-shopping-v1/README.md)、[最新审查修复与完整验收](testing/AI-SKU-REVIEW-20261031.md)、[前轮防御补强](testing/AI-SKU-DEFENSE-20261031.md)、[前轮规格过滤修复](testing/AI-SKU-CONSTRAINTS-20261031.md)、[前轮审查与原始失败](testing/AI-EVALUATION-REVIEW-20261031.md)、[历史实现验证](testing/AI-EVALUATION-20261031.md) |
 | **当前 SDD-12 Redis 交付** | [规格与验收矩阵](specs/SDD-REDIS-12.md)、[主线整合实际验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[配置、升级与回退](operations/REDIS-12-runbook.md) |
 | **PR #11 审查收口** | [文档状态与Python资源容量修复、复现及65项回归](testing/REDIS-REVIEW-FOLLOWUP-20261031.md) |
@@ -23,7 +24,7 @@
 | **SDD-05 商户自定义 RBAC + 全局排序** | [设计/权限矩阵](specs/SDD-RBAC-05.md)、[验证记录](testing/SDD-RBAC-05-VERIFICATION.md) |
 | **SDD-07 AI 商品召回 + 讯飞兼容模型** | [召回规格与调用链](specs/SDD-AI-RECALL-07.md)、[验证计划](testing/SDD-AI-RECALL-07-VERIFICATION.md) |
 | **UI-06 页面文案与移动端权限导航** | [前端设计约束](specs/UI-POLISH-06.md)、[实际浏览器验证](testing/UI-POLISH-06-VERIFICATION.md) |
-| **商品图片与多图增量** | [上传、权限、兼容及验收规则](specs/UI-PRODUCT-IMAGES.md)、[HTTP 行为契约](api/behavior-v1.1.md)、[PR #50 局部验证与合并阻塞](testing/PR50-MULTI-IMAGE-REVIEW-20261103.md) |
+| **商品图片与多图增量** | [第一阶段收尾（编辑兼容与逐文件失败）](testing/PRODUCT-IMAGES-PHASE1-COMPLETION-20261105.md)、[第二阶段 QINIU 实施与本地验证](testing/QINIU-IMAGES-PHASE2-20261105.md)、[第一轮真实联调（含本机 HTTP 测试例外）](testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)、[七牛图片配置](operations/QINIU-IMAGES.md)、[ADR-018 / ADR-019](architecture/decisions.md)、[修复前只读审计（历史）](testing/PRODUCT-IMAGES-PHASE-AUDIT-20261105.md)、[上传、权限、兼容及验收规则](specs/UI-PRODUCT-IMAGES.md)、[HTTP 行为契约](api/behavior-v1.1.md)、[两线整合与 `ab31f89` 前历史](testing/UI-PRODUCT-IMAGES-VERIFICATION.md)、[PR #50 局部验证与合并阻塞（历史）](testing/PR50-MULTI-IMAGE-REVIEW-20261103.md) |
 | **SDD-09 契约、数据库、API 与异常专项审查** | [审查与修正记录](testing/CONTRACT-DATABASE-API-AUDIT-09.md)、[旧库升级说明](database/migrations/README.md) |
 | **工程化收敛** | [八项修复、构建流程及实际验证](testing/ENGINEERING-10.md) |
 | **DDD 枚举、异常及领域边界审查** | [问题、代码依据与实施顺序](architecture/DDD-REVIEW-20261029.md)、[隔离行为探针](testing/evidence/ddd-review-20261029.json) |

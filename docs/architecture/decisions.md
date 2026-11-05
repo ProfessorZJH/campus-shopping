@@ -143,3 +143,31 @@
 状态：本轮已接受整改。Java/MySQL保有授权及checkpoint事实，Python只接收当前获批外发文档范围。PUBLIC可外发，内部知识默认本地检索；商户和知识库双白名单由服务端控制，平台知识库单白名单。文本基础脱敏、上下文最小化、无原文审计，不宣称撤回历史供应商数据。操作与兼容边界见[容量外发手册](../operations/R1-capacity-egress.md)。
 
 订单用有界keyset扫描加逐单幂等事务；商品远程成功后提交MySQL checkpoint，幂等重放优先于引入消息队列。多Java仍由Redis协调，同一Python实际执行容量持续占用到结束。保留单Python/持久卷约束，故障与外部降级证据按本轮报告区分。
+
+## ADR-018：商品图片的可选七牛存储与稳定引用
+
+日期：2026-11-05；状态：本次第二阶段授权下的实施决定，验证范围见 QINIU-IMAGES-PHASE2 报告。
+
+- 默认 LOCAL；显式 QINIU 且必需配置完整才上传云端，缺失或部分配置启动失败，不静默降级。LOCAL 上传回退时保留七牛完整配置，已有云图仍可读。
+- 保留旧 `/media/{key}.png`，新增 `/media/qiniu/{小写UUID}.png` 与 `object_key=qiniu/{uuid}.png`。商品、提案、订单只保存稳定相对引用，不保存域名或短期签名。复用既有归属/图片表，不新增迁移。
+- 上传先校验 2,000,000 字节/1200 万像素并重编码 PNG；SDK 固定 7.19.0，限定 key 的服务端 token、`image/png` 与 CRC。SDK 异步接口桥接有界 60 秒回调等待，避免同步解析器输出异常栈。超时不表示云任务取消；迟到响应关闭且不登记。
+- 上传必须显式固定区域（`z0`/`z1`/`z2`/`na0`/`as0`/`cn-east-2`），不支持 `auto`、不猜 bucket 区：SDK 的 `autoRegion` 会在上传前联网发现区域，失败时在 `FormUploader` 内部 `printStackTrace`，在不改全局 stderr、不反射 SDK 的前提下无法可靠消除。access-key 限定 `[A-Za-z0-9_-]`（凭证首段），避免 SDK 自解析 token 失败后再打印栈；secret-key 仅作 HMAC 密钥。
+- 成功上传后登记商户归属；失败不返回可认领地址。商品事务只在 MySQL 认领和写入引用，不访问云端；LOCAL 继续复验文件，QINIU 依据上传登记。
+- `/media/qiniu/**` 为应用公开资产入口，302 到配置的 HTTPS 纯 DNS 域名并 `no-store`；私有桶默认签名 300 秒，范围 30–3600。非法引用 404，未配置/运行故障 503；CSP 只为已验证下载 host 扩展 `img-src`。
+- 基础设施仓库内委派 Qiniu 网关完成既有上传能力；领域窄 Port 仅提供下载地址投影，不查询业务表、不代理下载。凭据仅从私有配置注入，不记录签名/下游异常正文。
+- 自动删除、对象释放/跨商品复用、历史迁移和真实云/生产验收均未在本次实现中（此处“未进行”仅指本轮实施阶段，后续第一轮真实联调见 [../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md](../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)）；操作与验证分别见 [../operations/QINIU-IMAGES.md](../operations/QINIU-IMAGES.md) 及 [../testing/QINIU-IMAGES-PHASE2-20261105.md](../testing/QINIU-IMAGES-PHASE2-20261105.md)。
+
+## ADR-019：受控的本机公开测试域名 HTTP 展示例外
+
+日期：2026-11-05；状态：本次第二阶段授权下的实施决定，仅用于本机开发验证，不改变正式默认。
+
+- 默认仍是 HTTPS：`campus.images.qiniu.public-http-download` 默认 `false`，下载展示地址与 CSP 均与历史逐字一致。正式环境（含生产）继续要求 HTTPS，未提供任何生产放行手段。
+- 开关为 `true` 时必须同时满足以下全部条件，缺一即启动失败（fail closed，不静默降级）：
+  1. 有效 profile 只有单独的 `dev`（显式 active 优先；active 为空时才回退 `spring.profiles.default`），不接受未配置或多 profile，`dev` 与 `prod`/`production` 混开直接拒绝；
+  2. `server.address` 是精确回环字面值（`127.0.0.1` 或 `::1`/`[::1]`），包括 `localhost` 这类可解析名称或 `0.0.0.0` 等非回环值均拒绝；
+  3. 七牛已完整配置且 `private-bucket=false`（公有桶），因此该分支永不生成签名；
+  4. 下载域名匹配严格的七牛公有测试域名形状 `<有效标签>.<以 bkt 结尾的地区标签>.clouddn.com`：`bkt` 标签不可省略，`<label>.clouddn.com` 这类纯泛域名、`qiniudn.com` 以及任意自有域名一律拒绝。
+- 只影响“下载展示地址的协议”与 CSP 的 `img-src`：启用时 `img-src` 在同一策略里额外追加且只追加一个精确的 `http://<测试host>`，其余指令逐字不变；未启用时不追加任何内容。
+- 上传链路始终 HTTPS，本开关不改上传域名、超时、重试或区域；明文分支不生成、不传递任何签名或 token，若生成的地址形状不符（含查询串、非预期前缀）直接按业务失败处理。
+- 网关下载地址与 CSP 由同一个策略对象（`QiniuPublicHttpPolicy`）驱动，避免两处判断漂移；策略在配置装配阶段创建，早于网关与安全过滤链使用，因此失败发生在任何业务请求与上传之前。
+- 该例外是用户授权的本机测试便利，不是正式链路验收：正式 HTTPS 下载与浏览器展示仍需自有域名 ICP 备案后补验；本机公有 HTTP 也不代表私有桶、生产或多实例部署可行。

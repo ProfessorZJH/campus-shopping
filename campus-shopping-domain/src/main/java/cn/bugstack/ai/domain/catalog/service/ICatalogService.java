@@ -51,4 +51,6 @@ public interface ICatalogService {
     List<CategoryVO> categories();
     void category(String code, String name, boolean active);
     String storeImage(String merchantId, byte[] bytes);
+    /** 按服务端图片引用解析云对象下载地址；只接受 QINIU 引用，未配置读取能力时返回 null。 */
+    String productImageDownloadUrl(String url);
 }

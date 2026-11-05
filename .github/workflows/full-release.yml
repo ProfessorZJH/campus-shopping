@@ -178,6 +178,10 @@ jobs:
           export EVALUATION_SAFETY_OUTPUT="${{ github.workspace }}/var/evaluation/safety"
           bash ./mvnw -B -ntp clean verify
           python scripts/generate-release-manifest.py --require-full-tests
+      - name: Real Chromium QINIU CSP contract
+        # fixture 由上一步的 Maven 测试（MediaAssetContractTest）写到 campus-shopping-app/target，
+        # Playwright Chromium 已在前面的依赖步骤安装；本步骤只使用假下载域名与本地测试对端。
+        run: python scripts/verify-qiniu-csp-browser.py
       - name: Inventory tested application dependencies
         run: python scripts/generate-sbom.py
       - name: Local AI HTTP capacity and restart
@@ -274,6 +278,7 @@ jobs:
             var/ci/*.log
             var/evaluation/**
             var/supply-chain/**
+            var/verify/qiniu-phase2-csp-browser.json
       - name: Stop isolated services
         if: always()
         shell: bash

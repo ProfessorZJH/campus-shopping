@@ -86,7 +86,9 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 
 ## 5. 图片、引用与 AI 模式
 
-- 商品创建/编辑支持 0–8 张不重复的同源 `/media/*.png` 图片；`imageUrls` 缺失或为 null 时沿用旧 `imageUrl`，显式空数组清空图片。商品响应的 `images` 按顺序返回，兼容字段 `imageUrl` 为首图或空串；上传成功响应必须包含非 null 的 `url`。商品记录与图片引用在同库事务内更新。
+- 商品创建/编辑支持 0–8 张不重复的服务端稳定引用（旧 `/media/{object}.png` 或 `/media/qiniu/{小写UUID}.png`）；商品响应的 `images` 按顺序返回，兼容字段 `imageUrl` 为首图或空串；上传成功响应必须包含非 null 的 `url`。商品记录与图片引用在同库事务内更新。
+- 图片字段兼容：创建时 `imageUrls` 缺失或为 null 沿用旧 `imageUrl`，显式 `[]` 创建空相册；编辑时 `imageUrls` 非 null 优先且 `[]` 清空，`imageUrls` 为 null 时 `imageUrl` 也为 null 表示不改图片，与当前主图相同保留相册，空串或全空白字符串清空，其他有效地址替换首图并保留原副图，已在相册则升首位保留全部（不重复、最多 8 张）。
+- 前端逐文件上传：合法文件成功即保留在表单（部分成功不丢），失败项按文件名/原因列出并可单项重试或移除；非法类型、空文件、超 2,000,000 字节不发请求且重试仍校验；同一批 `name+size+type` 重复只上传一次，不是内容哈希去重；未解决失败或重挂载 `invalid` 兜底继续阻断保存，显式放弃保留已成功图片，迟到结果按商户/商品/身份/路由/卸载隔离。
 - `CartResponseDTO.merchantName` 从 `mer_merchant` 查出后返回；`imageUrl` 从当前公开商品数据读取。
 - `ProposalItemResponseDTO.imageUrl` 是生成提案时可信 Catalog 数据，不要求新增数据库表；过期提案仍拒绝执行。
 - `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。
@@ -95,6 +97,15 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 知识库列表返回完整的授权元数据，授权判断不再先截取 1000 个知识库。单次知识检索白名单最多 1000 份当前 PUBLISHED + READY + 根活动版本文档；Java 查询额外检测超限，超过上限返回 `AI0005`，不调用模型、不保存本轮回答/提案。Python 对超过 1000 个 ID 的内部请求返回 422，直接检索调用也拒绝超限，不静默切片；1000 个 ID 的 SQLite 查询分批执行。历史消息接口是最近 100 条的上下文窗口，提案列表是最近 20 条；二者不承诺完整导出。
 
 中文与阿拉伯数字的明确预算/数量由 Python 规则校验总价与库存；含糊金额或数量、数量超出 1–99 时要求澄清并返回空建议。明确的继续/替换追问沿用最近用户需求的预算和数量，当前消息中的明确约束优先；检索改写和模型不能覆盖该约束。Java 仍在提案生成/确认时独立复核当前商品、库存、权限和报价。
+
+### 5.1 QINIU 稳定引用与媒体解析（2026-11-05）
+
+- 图片字段接受旧 `/media/{object}.png` 与服务端生成的 `/media/qiniu/{小写UUID}.png`；可选 `imageUrl` 允许全空白表示清空（与 IMG 编辑兼容一致，合法地址不做 trim），`imageUrls` 数组元素不得为空白，绝对外链、大写 UUID、带 query 或编码绕路返回 `0002`。
+- 上传成功时 `data.url` 为稳定相对引用；图像内容非法（字节超限、像素超限、无法识别的图片）返回 `UPLOAD_INVALID`（`AI0004`）；引用格式非法返回 `0002`；对象存储、回执不匹配或登记失败返回 `UN_ERROR`（`0001`）；引用未登记、已属其他商品或越权返回 `A0006`；未登录、CSRF 或商户写权限不足仍沿第 2 节原契约。失败不返回可认领 URL、不 fallback 到 LOCAL；商品保存事务只在本库认领对象与写引用，不访问云端。
+- `GET /media/qiniu/{uuid}.png` 是 `/api/v1` JSON 业务 API 之外的页面资产入口（不进 OpenAPI 业务路由表）：合法引用返回 **302** + `Location` + `Cache-Control: no-store`；非法引用 **404**；七牛读取能力未配置或运行故障 **503**（与上传 provider 选择无关）。三者都不返回 JSON `Response` 体。
+- `Location` 只由服务端配置构建：HTTPS + 纯 DNS 下载 host；私有桶默认签名 300 秒（30–3600），公开桶不带签名。302 必然把签名交给浏览器，但签名不作为业务 DTO 稳定引用持久化，也不写入日志。
+- 上传配置要求：七牛字段全空且 `provider=LOCAL` 时离线；`provider=QINIU` 时 access-key/secret-key/bucket/download-domain 与 **region** 均必填，region 只接受 `z0`/`z1`/`z2`/`na0`/`as0`/`cn-east-2`，`auto` 或留空启动失败（不猜 bucket 区）；access-key 只允许 `[A-Za-z0-9_-]`。
+- 旧 `/media/{object}.png` 继续由静态资源路由提供，状态与缓存语义不变，历史地址不会被改写为云地址。
 
 ## 6. 前端、CI 与验收证据
 

@@ -1,4 +1,5 @@
 import { requestScope } from '../services/request-scope.js';
+import { uploadedImageUrl } from '../services/media-url.js';
 import ProductImage from './ProductImage.js';
 import { api } from '../services/api.js';
 const { ref, computed, onBeforeUnmount, watch } = Vue;
@@ -111,10 +112,10 @@ export default {
           method: 'POST',
           body: { filename: file.name, contentType: file.type, base64 },
         });
-        if (!/^\/media\/[a-f0-9-]+\.png$/.test(result?.url || ''))
-          throw new Error('图片上传返回地址无效');
+        const url = uploadedImageUrl(result?.url);
+        if (!url) throw new Error('图片上传返回地址无效');
         if (!current()) return;
-        emit('update:modelValue', result.url);
+        emit('update:modelValue', url);
         notice.value = '上传成功，保存商品后生效';
         release();
       } catch (err) {

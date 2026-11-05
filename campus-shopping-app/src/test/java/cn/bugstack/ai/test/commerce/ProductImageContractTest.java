@@ -6,11 +6,14 @@ import static org.mockito.Mockito.*;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogQueryRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
 import cn.bugstack.ai.domain.catalog.adapter.repository.IProductImageRepository;
+import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.catalog.service.impl.CatalogServiceImpl;
 import cn.bugstack.ai.infrastructure.adapter.repository.ProductImageRepository;
+import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
 import cn.bugstack.ai.infrastructure.dao.po.ProductImagePO;
 import cn.bugstack.ai.types.exception.AppException;
@@ -20,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import javax.imageio.ImageIO;
@@ -94,6 +98,168 @@ class ProductImageContractTest {
         // 显式空数组表示“清空相册”，不能再回退旧字段。
         catalog.create("m", "s", new ProductCreateCommandEntity("标题", "描述", "food", legacy, skus(), List.of()));
         verify(images, times(1)).insertInitial(anyString(), eq("m"), eq(List.of()));
+    }
+
+    /** 旧客户端只带原主图改标题：相册必须保留副图，不能被截断成单图。 */
+    @Test
+    void legacySameMainImageKeepsWholeAlbum() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(2);
+        var album = new Album(gallery);
+        var catalog = catalogFor(repository, album, product(gallery.get(0), 3));
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", gallery.get(0), null, 3);
+
+        assertEquals(gallery, album.urls());
+        assertEquals(0, album.writeCount());
+        verify(repository).save(any());
+    }
+
+    /** 两个图片字段都未提供表示本次不改图片，相册与主图都保持原值。 */
+    @Test
+    void editWithoutAnyImageFieldKeepsAlbumAndMainImage() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(2);
+        var album = new Album(gallery);
+        var product = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, album, product);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", null, null, 3);
+
+        assertEquals(gallery, album.urls());
+        assertEquals(0, album.writeCount());
+        assertEquals(gallery.get(0), product.getImageUrl());
+        verify(repository).save(any());
+    }
+
+    /** 旧客户端换主图：换下旧主图，新主图排首位，其余副图保持原顺序。 */
+    @Test
+    void legacyNewMainImageReplacesFirstAndKeepsSecondaries() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(3);
+        String replacement = urls(1).get(0);
+        var album = new Album(gallery);
+        var product = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, album, product);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", replacement, null, 3);
+
+        assertEquals(List.of(replacement, gallery.get(1), gallery.get(2)), album.urls());
+        assertEquals(List.of(replacement, gallery.get(1), gallery.get(2)), album.lastWrite());
+        assertEquals(replacement, product.getImageUrl());
+    }
+
+    /** 旧客户端把已有副图升为主图：移到首位且不产生重复图片。 */
+    @Test
+    void legacyPromotesExistingSecondaryWithoutDuplicates() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(3);
+        var album = new Album(gallery);
+        var product = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, album, product);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", gallery.get(2), null, 3);
+
+        assertEquals(List.of(gallery.get(2), gallery.get(0), gallery.get(1)), album.urls());
+        assertEquals(3, album.urls().stream().distinct().count());
+        assertEquals(gallery.get(2), product.getImageUrl());
+    }
+
+    /** 旧空串沿用清空语义；显式空数组同样清空相册，两者都不回写旧主图。 */
+    @Test
+    void legacyBlankAndExplicitEmptyListClearAlbum() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(2);
+        var legacyAlbum = new Album(gallery);
+        var legacyProduct = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, legacyAlbum, legacyProduct);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", "", null, 3);
+
+        assertTrue(legacyAlbum.urls().isEmpty());
+        assertEquals(List.of(), legacyAlbum.lastWrite());
+        assertEquals("", legacyProduct.getImageUrl());
+
+        var clearedAlbum = new Album(gallery);
+        var clearedProduct = product(gallery.get(0), 3);
+        catalogFor(repository, clearedAlbum, clearedProduct).edit("m", "p1", "改标题", "描述", "food", gallery.get(0), List.of(), 3);
+
+        assertTrue(clearedAlbum.urls().isEmpty());
+        assertEquals("", clearedProduct.getImageUrl());
+    }
+
+    /** 新客户端提交的有序列表优先于旧字段，并按提交顺序整体覆盖。 */
+    @Test
+    void explicitListOverridesLegacyField() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(2);
+        List<String> submitted = urls(2);
+        var album = new Album(gallery);
+        var product = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, album, product);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", gallery.get(1), submitted, 3);
+
+        assertEquals(submitted, album.urls());
+        assertEquals(submitted, album.lastWrite());
+        assertEquals(submitted.get(0), product.getImageUrl());
+    }
+
+    /** 版本冲突必须在写图片引用前失败：不替换、不插入、不认领对象。 */
+    @Test
+    void versionConflictDoesNotTouchImages() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(2);
+        String replacement = urls(1).get(0);
+        var album = new Album(gallery);
+        var product = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, album, product);
+
+        assertEquals("G0002", assertThrows(AppException.class, () -> catalog.edit("m", "p1", "改标题", "描述", "food", replacement, null, 2)).getCode());
+        assertEquals("G0002", assertThrows(AppException.class, () -> catalog.edit("m", "p1", "改标题", "描述", "food", "", List.of(replacement), 2)).getCode());
+
+        assertEquals(gallery, album.urls());
+        assertEquals(0, album.writeCount());
+        verify(repository, never()).save(any());
+    }
+
+    /** 原本无图的商品首次加图：本就没有旧相册可保留，不得为读空范围而锁定图片行。 */
+    @Test
+    void legacyFirstImageOnEmptyProductInsertsWithoutLockingImages() {
+        var repository = mock(ICatalogRepository.class);
+        var images = mock(IProductImageRepository.class);
+        String first = urls(1).get(0);
+        var product = product("", 3);
+        var catalog = catalogFor(repository, images, product);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", first, null, 3);
+
+        verify(images).insertInitial("p1", "m", List.of(first));
+        verify(images, never()).replace(anyString(), anyString(), anyList());
+        verify(images, never()).findAllForUpdate(anyString());
+        assertEquals(first, product.getImageUrl());
+    }
+
+    /** 8 张相册换一张不在相册的新主图：换下旧主图并保留原 7 张副图，仍是 8 张，必须成功。 */
+    @Test
+    void legacyNewCoverOnFullAlbumStaysEightImages() {
+        var repository = mock(ICatalogRepository.class);
+        List<String> gallery = urls(8);
+        String cover = urls(1).get(0);
+        var album = new Album(gallery);
+        var product = product(gallery.get(0), 3);
+        var catalog = catalogFor(repository, album, product);
+
+        catalog.edit("m", "p1", "改标题", "描述", "food", cover, null, 3);
+
+        List<String> expected = new ArrayList<>();
+        expected.add(cover);
+        expected.addAll(gallery.subList(1, 8));
+        assertEquals(expected, album.urls());
+        assertEquals(8, album.urls().size());
+        assertFalse(album.urls().contains(gallery.get(0)));
+        assertEquals(cover, product.getImageUrl());
+        assertEquals(expected, album.lastWrite());
     }
 
     @Test
@@ -193,13 +359,96 @@ class ProductImageContractTest {
 
     private CatalogServiceImpl catalog(ICatalogRepository repository, IProductImageRepository images) {
         when(repository.categories()).thenReturn(List.of(new CategoryVO("food", "食品", true)));
-        return new CatalogServiceImpl(repository, mock(ICatalogQueryRepository.class), images);
+        return new CatalogServiceImpl(
+            repository,
+            mock(ICatalogQueryRepository.class),
+            images,
+            mock(cn.bugstack.ai.domain.catalog.adapter.port.IProductImageMediaPort.class)
+        );
+    }
+
+    private ProductAggregate product(String mainImage, long version) {
+        return new ProductAggregate("p1", "m", "s", "标题", "描述", "food", mainImage, "DRAFT", version, skus());
+    }
+
+    private CatalogServiceImpl catalogFor(ICatalogRepository repository, IProductImageRepository images, ProductAggregate product) {
+        var catalog = catalog(repository, images);
+        when(repository.find(product.getId(), true)).thenReturn(product);
+        return catalog;
+    }
+
+    /** 内存相册替身：保留调用方提交的顺序，并记录编辑期间发生的图片写入。 */
+    private static final class Album implements IProductImageRepository {
+
+        private final List<String> urls;
+        private final List<List<String>> writes = new ArrayList<>();
+
+        Album(List<String> urls) {
+            this.urls = new ArrayList<>(urls);
+        }
+
+        @Override
+        public String storeImage(byte[] bytes, String merchantId) {
+            throw new UnsupportedOperationException("编辑用例不上传图片");
+        }
+
+        @Override
+        public List<ProductImageVO> findAll(String productId) {
+            return ordered();
+        }
+
+        @Override
+        public List<ProductImageVO> findAllForUpdate(String productId) {
+            return ordered();
+        }
+
+        @Override
+        public Map<String, List<ProductImageVO>> findAll(List<String> productIds) {
+            return Map.of();
+        }
+
+        @Override
+        public void insertInitial(String productId, String merchantId, List<String> imageUrls) {
+            writes.add(List.copyOf(imageUrls));
+            urls.clear();
+            urls.addAll(imageUrls);
+        }
+
+        @Override
+        public void replace(String productId, String merchantId, List<String> imageUrls) {
+            writes.add(List.copyOf(imageUrls));
+            urls.clear();
+            urls.addAll(imageUrls);
+        }
+
+        List<String> urls() {
+            return List.copyOf(urls);
+        }
+
+        int writeCount() {
+            return writes.size();
+        }
+
+        List<String> lastWrite() {
+            return writes.isEmpty() ? List.of() : writes.get(writes.size() - 1);
+        }
+
+        private List<ProductImageVO> ordered() {
+            List<ProductImageVO> rows = new ArrayList<>();
+            for (int i = 0; i < urls.size(); i++) {
+                rows.add(new ProductImageVO("image-" + i, "LOCAL", urls.get(i).substring("/media/".length()), urls.get(i), i));
+            }
+            return rows;
+        }
     }
 
     private ProductImageRepository repository(ICatalogDao dao) {
         var repository = new ProductImageRepository();
         ReflectionTestUtils.setField(repository, "dao", dao);
         ReflectionTestUtils.setField(repository, "uploadDir", uploadDir.toString());
+        // 默认 LOCAL 配置，云网关显式替身，避免无意触发云端路径。
+        ReflectionTestUtils.setField(repository, "properties", new ProductImageStorageProperties());
+        ReflectionTestUtils.setField(repository, "qiniu", mock(cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway.class));
         return repository;
     }
 

@@ -6,6 +6,7 @@ import re
 import shutil
 import struct
 import zlib
+from pathlib import Path
 from playwright.sync_api import sync_playwright,expect
 from ui_three_pages import render,BackendContractDouble,ERRORS
 
@@ -61,6 +62,65 @@ with sync_playwright() as x:
     checks.append('invalid image can be explicitly abandoned without losing the product form')
     empty_page.close()
 
+    # 逐文件失败与重试：混合选择保留成功项，失败项单独阻断保存并可重试/移除
+    partial_fixture=BackendContractDouble();partial_fixture.logged=True
+    placeholder_svg=Path(__file__).resolve().parents[1]/'public/images/product-placeholder.svg'
+    def partial_routes(p):
+        p.route('**/media/**',lambda route: route.fulfill(status=200,body=png_bytes(),content_type='image/png'))
+        p.route('**/images/product-placeholder.svg',lambda route: route.fulfill(status=200,body=placeholder_svg.read_bytes(),content_type='image/svg+xml'))
+    partial=render(browser,'/merchant/products',False,(1448,1050),partial_fixture,routes=partial_routes,base='https://assets.fake/')
+    partial.get_by_role('button',name='新增商品').click()
+    partial.evaluate('''() => {window.__imagePosts=0;const send=window.fetch;window.fetch=async (url,options={})=>{
+        const isImage=String(url).endsWith('/images')&&(options.method||'GET')==='POST';
+        if(isImage&&++window.__imagePosts===2)return new Response(JSON.stringify({code:'G0001',info:'图片上传失败'}),{status:500,headers:{'Content-Type':'application/json'}});
+        return send(url,options);
+    };}''')
+    partial.locator('.merchant-modal input[type=file]').set_input_files([
+        {'name':'ok.png','mimeType':'image/png','buffer':png_bytes()},
+        {'name':'retry.png','mimeType':'image/png','buffer':png_bytes()},
+        {'name':'bad.svg','mimeType':'image/svg+xml','buffer':b'<svg/>'},
+    ])
+    expect(partial.locator('.merchant-modal .product-image-tile')).to_have_count(1)
+    expect(partial.locator('.merchant-modal .product-image-failures .product-image-failure')).to_have_count(2)
+    expect(partial.locator('.merchant-modal .image-field-error')).to_contain_text('retry.png')
+    expect(partial.locator('.merchant-modal .image-field-error')).to_contain_text('JPG、PNG 或 GIF')
+    expect(partial.get_by_role('button',name='保存商品')).to_be_disabled()
+    assert len(partial_fixture.uploaded_images)==1
+    # 该夹具离线提供 /media 图片，成功项必须真实渲染才能用于目视审查。
+    partial.wait_for_function("() => {const img=document.querySelector('.merchant-modal .product-image-tile img');return !!img && img.naturalWidth>0;}")
+    assert partial.evaluate("document.querySelector('.merchant-modal .product-image-tile img').naturalWidth")>0
+    checks.append('successful image in the failure-list fixture renders a real PNG')
+    verify_dir=Path(__file__).resolve().parents[2]/'var/verify'
+    verify_dir.mkdir(parents=True,exist_ok=True)
+    partial.screenshot(path=str(verify_dir/'ui-product-image-partial-failure.png'))
+    checks.append('mixed selection keeps the successful image while invalid and failed files stay listed')
+    partial.get_by_role('button',name='重试图片retry.png').click()
+    expect(partial.locator('.merchant-modal .product-image-tile')).to_have_count(2)
+    expect(partial.locator('.merchant-modal .product-image-failures .product-image-failure')).to_have_count(1)
+    expect(partial.get_by_role('button',name='保存商品')).to_be_disabled()
+    assert len(partial_fixture.uploaded_images)==2
+    assert partial.evaluate('window.__imagePosts')==3
+    checks.append('single-item retry uploads only the failed file and keeps the remaining failure blocking save')
+    partial.get_by_role('button',name='移除失败图片bad.svg').click()
+    expect(partial.locator('.merchant-modal .product-image-failures')).to_have_count(0)
+    expect(partial.get_by_role('button',name='保存商品')).to_be_enabled()
+    checks.append('removing the last failure re-enables saving and keeps both successful images')
+    # 同一批重复的 name+size+type 只上传一次，并给出可移除的明确失败项
+    before_duplicate=len(partial_fixture.uploaded_images)
+    partial.locator('.merchant-modal input[type=file]').set_input_files([
+        {'name':'dup.png','mimeType':'image/png','buffer':png_bytes()},
+        {'name':'dup.png','mimeType':'image/png','buffer':png_bytes()},
+    ])
+    expect(partial.locator('.merchant-modal .product-image-failures .product-image-failure')).to_have_count(1)
+    expect(partial.locator('.merchant-modal .product-image-failures')).to_contain_text('重复')
+    expect(partial.get_by_role('button',name='保存商品')).to_be_disabled()
+    assert len(partial_fixture.uploaded_images)==before_duplicate+1
+    partial.get_by_role('button',name='移除失败图片dup.png').click()
+    expect(partial.get_by_role('button',name='保存商品')).to_be_enabled()
+    checks.append('identical files in one batch are uploaded once and reported as a removable duplicate')
+    assert not partial_fixture.unhandled,partial_fixture.unhandled
+    partial.close()
+
     fixture=BackendContractDouble();fixture.logged=True
     page=render(browser,'/merchant/products',False,(1448,1050),fixture)
     page.evaluate('''() => {const send=window.fetch;window.__productSaves=0;window.fetch=async (url,options={})=>{
@@ -81,9 +141,17 @@ with sync_playwright() as x:
     assert not fixture.uploaded_images
     checks.append('oversized file rejected before upload')
     data=png_bytes()
+    # 新选一张合法图片不能被旧失败抹除：图片入表单，但旧失败仍阻断保存。
     set_file(page,data)
-    expect(page.locator('.merchant-modal .image-field-notice')).to_contain_text('上传成功')
+    expect(page.locator('.merchant-modal .product-image-tile')).to_have_count(1)
+    expect(page.locator('.merchant-modal .image-field-error')).to_contain_text('JPG、PNG 或 GIF')
+    expect(page.get_by_role('button',name='保存商品')).to_be_disabled()
+    assert len(fixture.uploaded_images)==1
+    checks.append('a later valid selection keeps earlier unresolved failures blocking save')
+    page.get_by_role('button',name='放弃本次图片选择').click()
+    expect(page.locator('.merchant-modal .product-image-failures')).to_have_count(0)
     expect(page.get_by_role('button',name='保存商品')).to_be_enabled()
+    checks.append('explicit abandon clears the failures and keeps the uploaded image')
     assert fixture.uploaded_images[-1]['data']==data
     assert fixture.uploaded_images[-1]['contentType']=='image/png'
     assert fixture.writes[-1]['csrf'] and fixture.writes[-1]['path']=='/merchants/m1/images'
@@ -143,7 +211,6 @@ with sync_playwright() as x:
     checks.append('AI recommendation uses same product placeholder')
     page.close()
     # 验证同源 /media URL 实际能被 img 渲染，损坏链接转到本地占位。
-    from pathlib import Path
     fixture.products[0]['imageUrl']=''
     photo=render(browser,'/',False,(430,932),fixture)
     photo.route('**/media/**',lambda route: route.fulfill(status=200,body=data,content_type='image/png') if route.request.url.endswith('550e8400-e29b-41d4-a716-446655440000.png') else route.fulfill(status=404,body=''))
@@ -162,6 +229,69 @@ with sync_playwright() as x:
     expect(photo.locator('.home-product img').first).to_have_attribute('src','./images/product-placeholder.svg')
     checks.append('missing /media file falls back to placeholder')
     photo.close()
+
+    # QINIU：上传响应为 /media/qiniu/{小写分组 UUID}.png，必须被上传组件接受并按选择顺序写入表单；
+    # 大写 UUID 与外链仍须拒绝。本段只证明离线 Chromium + 契约替身，不代表 Java/MySQL 联调。
+    qiniu_fixture=BackendContractDouble();qiniu_fixture.logged=True
+    qiniu_png=png_bytes()
+    def qiniu_routes(p):
+        p.route('**/media/**',lambda route: route.fulfill(status=200,body=qiniu_png,content_type='image/png'))
+    qiniu=render(browser,'/merchant/products',False,(1448,1050),qiniu_fixture,routes=qiniu_routes,base='https://assets.fake/')
+    qiniu.get_by_role('button',name='新增商品').click()
+    qiniu.evaluate('''() => {const send=window.fetch;window.__imagePosts=0;window.__replies=[
+        '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png',
+        '/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3302.png',
+        '/media/550e8400-e29b-41d4-a716-446655440000.png',
+        '/media/qiniu/3F2504E0-4F89-41D3-9A0C-0305E82C3301.png',
+        'https://evil.example.com/a.png',
+    ];
+    window.fetch=async (url,options={})=>{
+        const isImage=String(url).endsWith('/images')&&(options.method||'GET')==='POST';
+        const reply=await send(url,options);
+        if(!isImage)return reply;
+        const index=window.__imagePosts++;
+        if(index>=window.__replies.length)return reply;
+        return new Response(JSON.stringify({code:'0000',data:{url:window.__replies[index]}}),{status:200,headers:{'Content-Type':'application/json'}});
+    };}''')
+    qiniu_name=qiniu.locator('.merchant-modal input.admin-input').nth(0)
+    qiniu_name.fill('云端图片商品')
+    qiniu.locator('.merchant-modal input.admin-input').nth(1).fill('标准款')
+    qiniu.locator('.merchant-modal input.admin-input').nth(2).fill('9.90')
+    qiniu_uploads=qiniu.locator('.merchant-modal input[type=file]')
+    qiniu_uploads.set_input_files({'name':'q1.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(1)
+    expect(qiniu.locator('.merchant-modal .product-image-tile img').first).to_have_attribute('src','/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png')
+    expect(qiniu.locator('.merchant-modal .image-field-notice')).to_contain_text('上传成功')
+    qiniu.wait_for_function("document.querySelector('.merchant-modal .product-image-tile img').naturalWidth>0")
+    checks.append('QINIU upload path is accepted, echoed in the tile and renders as an image')
+    qiniu_uploads.set_input_files({'name':'q2.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(2)
+    qiniu_uploads.set_input_files({'name':'local.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(3)
+    assert not qiniu.locator('.merchant-modal .product-image-failures').count(),qiniu.locator('.merchant-modal .image-field-error').inner_text()
+    mixed=['/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3301.png','/media/qiniu/3f2504e0-4f89-41d3-9a0c-0305e82c3302.png','/media/550e8400-e29b-41d4-a716-446655440000.png']
+    assert qiniu.evaluate("Array.from(document.querySelectorAll('.merchant-modal .product-image-tile img')).map(i=>i.getAttribute('src'))")==mixed
+    checks.append('mixed LOCAL and QINIU uploads keep the selection order in the form')
+    qiniu_uploads.set_input_files({'name':'upper.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .image-field-error')).to_contain_text('图片上传返回地址无效')
+    qiniu_uploads.set_input_files({'name':'external.png','mimeType':'image/png','buffer':qiniu_png})
+    expect(qiniu.locator('.merchant-modal .product-image-failures .product-image-failure')).to_have_count(2)
+    expect(qiniu.locator('.merchant-modal .product-image-tile')).to_have_count(3)
+    expect(qiniu.get_by_role('button',name='保存商品')).to_be_disabled()
+    checks.append('uppercase QINIU UUID and external URLs stay rejected without entering the album')
+    qiniu.get_by_role('button',name='移除失败图片upper.png').click()
+    qiniu.get_by_role('button',name='移除失败图片external.png').click()
+    expect(qiniu.locator('.merchant-modal .product-image-failures')).to_have_count(0)
+    expect(qiniu.get_by_role('button',name='保存商品')).to_be_enabled()
+    qiniu.get_by_role('button',name='保存商品').click()
+    expect(qiniu.locator('.product-table')).to_contain_text('云端图片商品')
+    qiniu_created=next(p for p in qiniu_fixture.products if p['productId']=='p-created')
+    assert qiniu_created['imageUrl']==mixed[0],qiniu_created
+    assert [image['url'] for image in qiniu_created['images']]==mixed,qiniu_created
+    assert [image['provider'] for image in qiniu_created['images']]==['QINIU','QINIU','LOCAL'],qiniu_created
+    checks.append('saving a mixed album persists the QINIU primary image and the ordered list')
+    assert not qiniu_fixture.unhandled,qiniu_fixture.unhandled
+    qiniu.close()
     assert not fixture.unhandled,fixture.unhandled
     assert not ERRORS,ERRORS
     browser.close()

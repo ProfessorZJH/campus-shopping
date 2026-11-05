@@ -2,6 +2,7 @@ package cn.bugstack.ai.config;
 
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
+import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.trigger.http.AccountStatusFilter;
 import cn.bugstack.ai.trigger.http.AuthenticationRateFilter;
 import cn.bugstack.ai.trigger.http.RequestBodyLimitFilter;
@@ -68,20 +69,16 @@ public class SessionSecurityConfig {
         LogoutHandler sessionLogoutHandler,
         IUserAccountService accountService,
         ObjectMapper mapper,
-        cn.bugstack.ai.domain.identity.adapter.repository.IRequestQuotaRepository quotas
+        cn.bugstack.ai.domain.identity.adapter.repository.IRequestQuotaRepository quotas,
+        ProductImageStorageProperties images,
+        cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy publicHttpPolicy
     ) throws Exception {
         return http
             .securityContext(s -> s.securityContextRepository(repository).requireExplicitSave(true))
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
             // 登录、注册也保留 CSRF 校验，不使用 permitAll 代替安全校验。
             .csrf(c -> c.csrfTokenRepository(csrfRepository))
-            .headers(h ->
-                h.contentSecurityPolicy(c ->
-                    c.policyDirectives(
-                        "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
-                    )
-                )
-            )
+            .headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives(cspPolicy(images, publicHttpPolicy))))
             .requestCache(AbstractHttpConfigurer::disable)
             .formLogin(AbstractHttpConfigurer::disable)
             .httpBasic(AbstractHttpConfigurer::disable)
@@ -135,6 +132,22 @@ public class SessionSecurityConfig {
             .addFilterBefore(new AccountStatusFilter(accountService, sessionLogoutHandler, mapper), AuthorizationFilter.class)
             .addFilterAfter(new cn.bugstack.ai.trigger.http.ProtectedQuotaFilter(quotas, mapper, rateLimitEnabled), AuthorizationFilter.class)
             .build();
+    }
+
+    /**
+     * 图片只允许同源、data: 与已校验的七牛下载域名；未完整配置七牛时保持原策略字节语义。
+     * downloadDomain 由 qiniuEnabled() 统一规范化并校验为纯 host，不接受任意 scheme 或通配符。
+     * 本机公开测试模式只额外追加精确的 http://<测试host>，其余字符不变。
+     */
+    static String cspPolicy(ProductImageStorageProperties images, cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy publicHttpPolicy) {
+        String imgSrc = images != null && images.qiniuEnabled() ? "'self' data: https://" + images.getQiniu().getDownloadDomain() : "'self' data:";
+        String extra = publicHttpPolicy != null ? publicHttpPolicy.cspImageSource() : "";
+        if (!extra.isEmpty()) imgSrc = imgSrc + " " + extra;
+        return (
+            "default-src 'self'; script-src 'self'; style-src 'self'; img-src " +
+            imgSrc +
+            "; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+        );
     }
 
     private void writeError(ObjectMapper mapper, HttpServletResponse response, int status, ResponseCode code) throws IOException {
