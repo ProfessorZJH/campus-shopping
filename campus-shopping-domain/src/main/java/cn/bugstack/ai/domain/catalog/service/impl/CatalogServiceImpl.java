@@ -9,6 +9,7 @@ import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
@@ -16,6 +17,7 @@ import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -119,12 +121,44 @@ public class CatalogServiceImpl implements ICatalogService {
         validCategory(category);
         ProductAggregate p = owned(merchant, id);
         boolean hadImages = !p.getImageUrl().isEmpty();
-        List<String> checked = checkedImages(imageUrls, image);
-        p.changeInfo(title, desc, category, checked.isEmpty() ? "" : checked.get(0), expected);
+        // null 表示本次未提供图片变更，保持现有相册；空列表表示显式清空。
+        List<String> album = resolveAlbum(id, p.getImageUrl(), imageUrls, image);
+        p.changeInfo(title, desc, category, album == null ? p.getImageUrl() : album.isEmpty() ? "" : album.get(0), expected);
         repository.save(p);
+        if (album == null) return;
         // 商品行已锁定；原本无图时不做空范围删除，避免不同商品的间隙锁互相阻塞。
-        if (hadImages) images.replace(id, merchant, checked);
-        else if (!checked.isEmpty()) images.insertInitial(id, merchant, checked);
+        if (hadImages) images.replace(id, merchant, album);
+        else if (!album.isEmpty()) images.insertInitial(id, merchant, album);
+    }
+
+    /**
+     * 解析编辑后的有序相册，null 表示本次不写图片。
+     * 新客户端 imageUrls 非 null 时优先，显式空数组即清空；旧客户端只提交 imageUrl：空串沿用清空语义，
+     * 与当前主图相同视为不改相册；已有副图升主图时移到首位并保留其余图片，新地址则替换首图、
+     * 只保留原副图，两种情况都不重复且不超过 8 张。
+     */
+    private List<String> resolveAlbum(String productId, String currentMain, List<String> imageUrls, String legacy) {
+        if (imageUrls != null) return checkedImages(imageUrls, null);
+        if (legacy == null) return null;
+        List<String> requested = checkedImages(null, legacy);
+        if (requested.isEmpty()) return List.of();
+        String promoted = requested.get(0);
+        if (promoted.equals(currentMain)) return null;
+        // 原本无主图时没有相册可保留，不读空范围图片，直接沿用新建图片的窄能力。
+        if (currentMain.isEmpty()) return requested;
+        // 已持商品锁，用当前读取得相册顺序；旧客户端只给主图，不能因此丢掉副图。
+        List<String> current = images.findAllForUpdate(productId).stream().map(ProductImageVO::url).toList();
+        List<String> album = new ArrayList<>();
+        album.add(promoted);
+        if (current.contains(promoted)) {
+            // 已有副图升为主图：移到首位，保留其余所有图片。
+            for (String url : current) if (!url.equals(promoted)) album.add(url);
+        } else {
+            // 新主图替换旧首图：只保留原副图，不把旧主图降为副图。
+            for (int i = 1; i < current.size(); i++) album.add(current.get(i));
+        }
+        // 最终列表沿用同一数量、格式与去重规则，避免组合后超出 8 张或出现重复引用。
+        return checkedImages(album, null);
     }
 
     public void publish(String merchant, String id, boolean onShelf) {

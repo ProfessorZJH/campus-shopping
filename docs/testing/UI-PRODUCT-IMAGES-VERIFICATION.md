@@ -1,5 +1,7 @@
 # 商品图片链路 · 验证报告
 
+> **当前收尾入口**：编辑兼容与逐文件失败的收尾结论、实际命令与本机未验证范围见[第一阶段收尾报告](PRODUCT-IMAGES-PHASE1-COMPLETION-20261105.md)。下文（含顶部“本分支合并”“B 线未纳入”）均为 `ab31f89` 及更早提交的历史范围记录，日期与数字保持原样，不代表当前修复后的结果。
+
 > **2026-11-04 基线整合说明**：本分支由 `codex/product-multi-images`（`53188da`）与本地 `fix/product-multi-images-followup`（`e4cd460`）合并而成。后端“上传对象归属”（迁移 `V20261104_01`、`cat_product_image_upload` 认领校验）与 A 线的“当前读”并发加固均已保留；**B 线的逐项失败列表/重试前端实现及对应浏览器用例未纳入本次整合**，`ProductImageListField.js`、`ui_product_images.py`、`contract_ui.py` 仍为 A 线版本。因此下文关于“失败项可移除后表单恢复”“同一批重复选择只上传一次”的浏览器结论不适用于本分支，需要在后续单独跟进；下文 `verify-mysql-isolated` 的 286 项数字也属 B 线基线的当时记录。
 >
 > 整合分支当前的 Java 结果为 **292 项 / 0 失败 / 0 errors / 0 skipped**（真实 MySQL + 双 Redis，Windows 本机执行）。`RedisServerFaultIsolationTest` 已对 Windows 的 RST 关闭语义做兼容（仍要求子进程真实退出），不再按平台跳过。

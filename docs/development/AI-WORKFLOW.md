@@ -52,7 +52,7 @@ Java全量构建必须有隔离MySQL及所需Redis环境，不能把跳过的集
 
 填写 [PR模板](../../.github/pull_request_template.md) 的六项，可标明“不涉及”并说明依据。提交、推送和创建PR依本次任务授权执行。正文描述最终实现，代码更新后同步结果，不用旧提交的绿色检查代替最新提交。
 
-所有PR均执行 Quick quality gates，不在工作流级别按路径跳过。main推送、每日夜间及手动执行完整MySQL/Redis/浏览器/镜像验收；发布前须核对对应提交完整验收结果。门禁检查名与 [main保护配置](../../.github/rulesets/main-quality-gates.json)一致；修改名称/矩阵/条件时必须同步检查保护规则，不能遗留永远等不到的必需检查。可选外部AI不作为常规合并必需项，未执行写`NOT_RUN`。
+所有PR均执行 Quick quality gates，不在工作流级别按路径跳过；非草稿PR、main推送、每日夜间与手动执行完整MySQL/Redis/浏览器/镜像验收，草稿PR的完整验收 job 跳过。发布前须核对对应提交完整验收结果。门禁检查名与 [main保护配置](../../.github/rulesets/main-quality-gates.json)一致；修改名称/矩阵/条件时必须同步检查保护规则，不能遗留永远等不到的必需检查。可选外部AI不作为常规合并必需项，未执行写`NOT_RUN`。
 
 PR模板负责说明，GitHub Actions负责机器可验证的检查，代码/业务审查负责判定实现是否符合目标。三者不互相替代。发现CI失败须读原始日志定位原因，不把失败简单归为偶发后反复重跑直到绿色。
 
