@@ -14,12 +14,15 @@
 | IMG-06 | `?demo=1` 仅允许本地 Blob 预览，不发上传或其他写请求，也不写真实表单数据；预览对象在移除、上下文切换及卸载时释放 | `ProductImageListField.js` 与现有 `preview` 开关 |
 | IMG-07 | 逐文件校验与上传，部分成功不丢已成功图片；失败项显示文件名与原因，可单项重试或移除，重试仍先校验；未解决失败（含重挂载时的 `invalid` 兜底）阻断保存，显式放弃保留已成功图。图片引用只能来自服务生成的 LOCAL 或 QINIU 稳定引用 | `ProductImageListField.js` 的 `failures/retry/removeFailed/clearInvalid`；旧商户、商品、身份或已卸载组件的迟到结果不得写入新表单；`ProductImageRepository` 对 LOCAL 复验文件存在与安全路径，对 QINIU 只认上传时登记的对象行，并通过 `cat_product_image_upload` 认领对象（同一对象仅能归属一个商品） |
 | IMG-08 | 图片 provider 默认 `LOCAL`，只有显式选择 `QINIU` 才上传云端；两者共用 `/media` 前缀，QINIU 使用 `qiniu/{小写UUID}.png` 独立命名空间，无需查库即可区分 provider。请求中的图片地址只接受旧 LOCAL `/media/{object}.png` 或严格小写 UUID 的 `/media/qiniu/{uuid}.png`；绝对外链、query、编码绕过与路径穿越一律拒绝 | `ProductImageStorageProperties.normalizedProvider`、`ProductImageRef.of/accepts`；`scripts/api_contract_rules.py` 的图片地址 pattern 与生成契约同步 |
-| IMG-09 | 商品只保存服务端生成的稳定引用 `/media/qiniu/{uuid}.png`，不保存签名或 CDN 临时地址；读取时 `GET /media/qiniu/{uuid}.png` 返回 302 `Location` 与 `Cache-Control: no-store`，目标地址完全由服务端配置构建 | `MediaAssetController`；`QiniuObjectGateway.downloadUrl` 的 `DownloadUrl` 只接收纯 DNS host 并固定 HTTPS |
+| IMG-09 | 商品只保存服务端生成的稳定引用 `/media/qiniu/{uuid}.png`，不保存签名或 CDN 临时地址；读取时 `GET /media/qiniu/{uuid}.png` 返回 302 `Location` 与 `Cache-Control: no-store`，目标地址完全由服务端配置构建。默认与生产均为 HTTPS；仅 IMG-15 的本机公开测试例外生效时，302 目标才为无签名明文 HTTP | `MediaAssetController`；`QiniuObjectGateway.downloadUrl` 的 `DownloadUrl` 只接收纯 DNS host，协议由 `QiniuPublicHttpPolicy` 决定（默认 HTTPS） |
 | IMG-10 | 旧 LOCAL 地址 `/media/{object}.png` 继续由静态资源路由提供，状态与缓存语义不变；QINIU 引用不走静态目录，历史 LOCAL 地址不会被改写为云地址 | `WebAssetsConfig` 与 `ProductImageRepository`；页面按引用前缀分别加载 |
 | IMG-11 | 七牛字段全空表示未启用；选择 `QINIU` 但缺少必填项、只填部分、bucket/下载 host/TTL/超时/重试/region 非法时启动失败，不静默降级为 LOCAL。上传必须显式固定区域（`z0`/`z1`/`z2`/`na0`/`as0`/`cn-east-2`），不支持 `auto` 或留空：SDK 的 autoRegion 会联网发现区域并在失败时内部打印异常栈。access-key 限定 `[A-Za-z0-9_-]`。LOCAL 上传时若保留完整七牛配置，仍可为历史云图生成下载地址 | `ProductImageStorageProperties.validateAndEnabled`；启动即校验，运行期不自动切换 provider |
 | IMG-12 | 私有桶默认开启，下载签名有效期默认 300 秒、允许 30–3600 秒；签名只为一次即时跳转生成，不持久化、不写入响应正文或日志 | `ProductImageStorageProperties.Qiniu`；`ProductImageRef` 不保存签名 |
 | IMG-13 | 云端上传失败不返回可认领 URL、不 fallback 到 LOCAL、不写入商品图片；失败只返回脱敏业务错误 | `QiniuObjectGateway.upload` 与 `ProductImageRepository.storeImage`；上传失败不登记对象归属 |
 | IMG-14 | 商品创建/编辑事务只在本库认领对象并写入商品图片引用，不访问云端；沿用既有 `cat_product_image` / `cat_product_image_upload`，本次不需要数据库迁移 | `CatalogServiceImpl` 与 `ProductImageRepository.claimObjects`；QINIU 只认上传时登记的对象行 |
+| IMG-15 | 本机开发测试例外默认关闭（`campus.images.qiniu.public-http-download=false`）：开启后仅当「有效 profile 只有单独 dev」且「`server.address` 为精确回环字面值 `127.0.0.1` 或 `::1`」且「公有桶 `private-bucket=false`」且「下载域名匹配严格七牛公有测试域名形状」时，下载展示地址才为无签名明文 HTTP；任一条件不满足即启动失败，不静默降级。上传始终 HTTPS，不改上传域名/超时/重试/区域；正式与生产环境仍要求 HTTPS | `QiniuPublicHttpPolicy`（网关与 CSP 共用同一策略实例）、`ProductImageStorageConfig` 装配期创建；`QiniuObjectGateway.downloadUrl` 的明文分支校验无查询串/无 token |
+| IMG-16 | CSP `img-src` 默认只含 `'self' data:` 与已校验的 HTTPS 下载 host；仅 IMG-15 生效时额外追加且只追加一个精确的 `http://<测试host>`，其余指令逐字不变；任何不是该精确 host 的 HTTP 源不得出现 | `SessionSecurityConfig.cspPolicy`；`QiniuPublicHttpPolicy.cspImageSource()` |
+| IMG-17 | `QINIU_KEY_PREFIX` 当前**不生效**：对象命名空间固定为 `qiniu/{小写UUID}.png`，不从环境变量拼接前缀，配置该变量不会改变 key 形状 | 代码不读取该键；以本规格为准，避免运维误以为前缀可改 |
 
 ## 完整业务路径
 
@@ -38,7 +41,7 @@
  → CatalogServiceImpl 校验数量/格式/去重；图片适配器 LOCAL 复验文件存在，QINIU 复验已登记对象归属；同库认领并写入 cat_product_image
  → 商品记录与 cat_product_image 图片引用在同库事务中更新；主图为第一张或空串
  → 公开 GET /products / GET /products/{id} 返回 imageUrl 及有序 images
- → 页面使用同源 /media/** 获取图像；QINIU 引用经 302 跳转到配置的 HTTPS 下载域名；不可获取则回退统一占位图
+ → 页面使用同源 /media/** 获取图像；QINIU 引用经 302 跳转到配置的下载域名：默认与生产为 HTTPS（私有桶附签名），仅 IMG-15 本机公开测试例外生效时为无签名明文 HTTP；不可获取则回退统一占位图
 ```
 设计边界：图片上传操作本身和商品写入不在同一数据库事务中。用户取消商品编辑后可能存在未引用的 PNG 文件，需运维周期性清理未被引用的历史图片；本批**不实现自动删除**，避免误删仍被引用的图片。上传对象已登记商户，可作为将来孤儿对象识别的依据，但**自动删除、对象释放与复用、跨商品迁移、历史对象迁移本次均未实现、也未验收**；不存在“第二阶段将自动释放/回收”的承诺。归属关系在一次认领后本阶段不释放：从商品移除的图片仍只能回到同一商品，不得被其他商品复用。运维不得据此删除线上对象。
 
@@ -48,7 +51,9 @@
 
 本批（2026-11-05）只落地 QINIU 对象存储实现、稳定引用与媒体投影：默认仍为 LOCAL，旧 LOCAL 地址与数据库结构不变，无新增迁移；配置、环境变量与启动失败条件见[七牛图片配置说明](../operations/QINIU-IMAGES.md)，代码测试范围见[第二阶段报告](../testing/QINIU-IMAGES-PHASE2-20261105.md)。
 
-明确**未实现、未验收**：自动删除与对象生命周期回收、释放后跨商品复用、跨商品迁移、历史 LOCAL 或历史云对象迁移、批量清理工具、CDN 加速与图片裁切瘦身、SKU 独立图片、图片识别审核。以上不因 QINIU 接入而自动具备，未授权前也不得对既有业务库或线上对象执行清理。真实七牛云上传/下载、真实后端联调与生产性能本轮未执行。
+明确**未实现、未验收**：自动删除与对象生命周期回收、释放后跨商品复用、跨商品迁移、历史 LOCAL 或历史云对象迁移、批量清理工具、CDN 加速与图片裁切瘦身、SKU 独立图片、图片识别审核。以上不因 QINIU 接入而自动具备，未授权前也不得对既有业务库或线上对象执行清理。真实云抽样已完成第一轮（真实上传、只读 stat、匿名 HTTP 内容一致、真实 Chromium 解码与本机公开测试模式下的商品页 302 + 解码），见[第一轮真实联调报告](../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)；正式 HTTPS、私有桶签名、生产与性能仍未验收。
+
+本机公开测试域名例外（IMG-15/IMG-16）不属于上述能力，是**限定范围的本机公有 HTTP 验收**手段：默认关闭、只对单独 `dev` + 回环 + 公有桶 + 严格测试域名生效，不提供任何生产放行手段；可作该范围结论，但不能替代正式 HTTPS 验收，正式 HTTPS 下载与浏览器展示仍需自有域名备案后补验。
 
 ## 验收
 
@@ -62,4 +67,5 @@
 - 公开端真实 `/media/**` 路径可展示；缺图和损坏链接都有一致占位；详情轮播支持缩略图、按钮和移动端触摸切换。
 - 预览模式不发网络写入；非法格式、超大文件被前端拒绝，后端依然独立校验。
 - **QINIU（2026-11-05）**：默认 LOCAL 时行为与第一阶段一致；显式选择 QINIU 且配置完整时才上传云端；成功响应返回稳定的 `/media/qiniu/{小写UUID}.png`，失败不返回 URL、不 fallback；读取该引用返回 302 + `no-store`，非法引用 404，未配置或运行故障 503；商品保存事务内不发生云端调用。编写时已执行的测试、未验证范围与后续结果以[第二阶段报告](../testing/QINIU-IMAGES-PHASE2-20261105.md)及对应 PR 最新 Checks 为准。
+- **本机公开 HTTP 测试例外（2026-11-05）**：开关默认关闭；开启后仅当单独 `dev` profile、回环字面值绑定、公有桶、严格七牛公有测试域名形状同时成立时，`/media/qiniu/{uuid}.png` 302 目标为无签名、无查询串的明文 HTTP，且 CSP 的 `img-src` 恰好额外包含一个该 host 的 `http://` 源；任一条件不满足（含 `dev` 与 `prod` 混开、非回环地址、私有桶、`<label>.clouddn.com` 或任意自有域名）必须在启动阶段失败。上传仍 HTTPS，生产仍要求 HTTPS。该范围的实测结果见[第一轮真实联调报告](../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)，不替代正式 HTTPS 验收。
 - 实际测试与未验证范围见[第一阶段收尾报告](../testing/PRODUCT-IMAGES-PHASE1-COMPLETION-20261105.md)与[第二阶段报告](../testing/QINIU-IMAGES-PHASE2-20261105.md)；历史单图与两线整合记录见[验证报告](../testing/UI-PRODUCT-IMAGES-VERIFICATION.md)，其数字属当时范围。

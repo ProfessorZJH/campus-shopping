@@ -66,6 +66,8 @@ campus:
       bucket: ${QINIU_BUCKET:}
       download-domain: ${QINIU_DOWNLOAD_DOMAIN:}
       private-bucket: ${QINIU_PRIVATE_BUCKET:true}
+      # 本机开发测试例外：默认 false；为 true 时仅 dev + 回环 + 公有桶 + 七牛测试域名形状可用明文 HTTP 展示。
+      public-http-download: ${QINIU_PUBLIC_HTTP_DOWNLOAD:false}
       signature-ttl-seconds: ${QINIU_SIGNATURE_TTL_SECONDS:300}
       connect-timeout-seconds: ${QINIU_CONNECT_TIMEOUT_SECONDS:5}
       read-timeout-seconds: ${QINIU_READ_TIMEOUT_SECONDS:15}

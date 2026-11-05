@@ -18,6 +18,28 @@
 | `QINIU_WRITE_TIMEOUT_SECONDS` | `15` | 1–60 秒 |
 | `QINIU_RETRY_MAX` | `2` | 0–3 |
 | `QINIU_REGION` | 空 | **上传必填**：`z0`/`z1`/`z2`/`na0`/`as0`/`cn-east-2`；不支持 `auto` 或留空（见下） |
+| `QINIU_PUBLIC_HTTP_DOWNLOAD` | `false` | 本机开发测试例外，默认关闭；开启条件与限制见下节 |
+| `QINIU_KEY_PREFIX` | — | **当前不生效**：对象命名空间固定 `qiniu/{小写UUID}.png`，代码不读取该变量，配置它不会改变 key 形状或存储路径 |
+
+## 本机开发测试例外（默认关闭）
+
+`QINIU_PUBLIC_HTTP_DOWNLOAD=true` 只用于本机开发阶段验证公有测试域名能否正常展示图片。**默认 `false`；正式与生产环境继续要求 HTTPS，本开关不提供任何生产放行手段。**
+
+开启后必须**同时**满足下列全部条件，否则**启动失败**（fail closed，不会静默回退 HTTPS）：
+
+1. 有效 profile 只有单独的 `dev`。显式 `spring.profiles.active` 优先；active 为空时才回落 `spring.profiles.default`。`dev` 与 `prod`/`production` 混开、未配置、或其它 profile 一律拒绝。
+2. `server.address` 是**精确回环字面值**：`127.0.0.1` 或 `::1`（含 `[::1]`）。`localhost` 这类可解析名称、`0.0.0.0`、内网地址均拒绝。
+3. 七牛已完整配置且 `QINIU_PRIVATE_BUCKET=false`（公有桶）。私有桶开启时拒绝，因此该模式**永不生成签名**。
+4. `QINIU_DOWNLOAD_DOMAIN` 匹配严格的七牛公有测试域名形状：`<有效标签>.<以 bkt 结尾的地区标签>.clouddn.com`。地区标签中的 `bkt` 不可省略，`<label>.clouddn.com` 这类泛域名、`qiniudn.com`、及任意自有域名均拒绝。
+
+生效时的行为：
+
+- `GET /media/qiniu/{uuid}.png` 的 302 目标为 `http://<host>/qiniu/{uuid}.png`，**无签名、无查询串、无 token**；生成的地址若形状不符（含 `?`、非预期前缀）直接按业务失败处理。
+- CSP 的 `img-src` 在同一策略里额外追加且只追加一个精确的 `http://<host>`，其余指令逐字不变；未启用时不追加任何内容。
+- 上传链路**始终 HTTPS**，本开关不改上传域名、超时、重试或区域；因此 `QINIU_REGION` 仍然必填。
+- 网关与 CSP 由同一个策略对象驱动，策略在配置装配阶段创建并早失败，先于任何业务请求与上传。
+
+限制：本例外仅用于本机验证，不代表正式链路。正式 HTTPS 下载与浏览器展示仍需自有域名备案后补验；不得把本机公有 HTTP 结果当作私有桶、生产或多实例部署可行性的证据。
 
 ## 启用与回退
 
@@ -54,9 +76,31 @@ QINIU_BUCKET=example-bucket
 QINIU_DOWNLOAD_DOMAIN=images.example.com
 QINIU_PRIVATE_BUCKET=true
 QINIU_SIGNATURE_TTL_SECONDS=300
+QINIU_REGION=z0
+```
+
+本机公开测试例外（仅开发机，域名只写纯 host）：
+
+```bash
+IMAGE_PROVIDER=QINIU
+QINIU_ACCESS_KEY=example-access-key
+QINIU_SECRET_KEY=example-secret-key
+QINIU_BUCKET=example-bucket
+# 必须是七牛分配的公测域名形状：<标签>.<以 bkt 结尾的地区标签>.clouddn.com
+# 首标签只能是小写字母/数字（策略正则不接受连字符）
+QINIU_DOWNLOAD_DOMAIN=exampletest1234.hn-bkt.clouddn.com
+QINIU_PRIVATE_BUCKET=false
+QINIU_REGION=z0
+# 仅开发机：单独 dev profile + 回环绑定，缺一即启动失败
+QINIU_PUBLIC_HTTP_DOWNLOAD=true
+SPRING_PROFILES_ACTIVE=dev
+SERVER_ADDRESS=127.0.0.1
 ```
 
 ## 未验证与禁止操作
 
-- 真实七牛上传/下载、私有桶签名时效、真实 CDN 与生产性能均未在本地验证，需单独授权与证据。
+- 本机隔离环境已完成**第一轮真实云抽样**：真实上传、只读 stat、匿名无签名 HTTP 的 etag/像素一致、真实 Chromium 解码，以及本机公开测试模式下真实商品页的 302 + 浏览器只读解码；详见[第一轮真实联调报告](../testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)。
+- **仍未验收**：正式 HTTPS 下载与浏览器展示（待域名备案后开展第二轮）、私有桶签名时效、真实 CDN、生产性能与多实例部署；各项需具备相应条件与证据，部署类操作仍依项目授权规则。
+- 本机公开 HTTP 测试例外是**限定范围的本机公有 HTTP 验收**（第一轮真实云抽样已通过该范围），不能替代正式 HTTPS、私有桶与生产验收。
+- 本机 Redis 相关链路**未验收**（本轮 `REDIS_ENABLED=false`，未接入）。
 - 未实现自动删除、对象释放/跨商品复用、历史对象迁移；不得以本配置上线为由批量清理既有业务库或线上对象。

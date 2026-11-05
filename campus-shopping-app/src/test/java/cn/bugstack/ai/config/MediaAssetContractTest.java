@@ -193,7 +193,7 @@ class MediaAssetContractTest {
     void defaultLocalPolicyStaysByteIdenticalWithoutQiniu() {
         assertEquals(
             DEFAULT_POLICY,
-            SessionSecurityConfig.cspPolicy(new ProductImageStorageProperties()),
+            SessionSecurityConfig.cspPolicy(new ProductImageStorageProperties(), cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy.disabled()),
             "未配置七牛时 CSP 必须保持原 literal，不得多出 img-src 来源"
         );
     }

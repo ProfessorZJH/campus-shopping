@@ -121,6 +121,11 @@ public class ProductImageStorageProperties {
         private String downloadDomain = "";
         /** 桶默认私有：稳定 URL 经本服务按需签名跳转。 */
         private boolean privateBucket = true;
+        /**
+         * 本机开发测试例外：允许公有七牛测试域名以明文 HTTP 展示（仅 dev + 回环 + 公有桶 + 测试域名形状）。
+         * 默认 false，即正式行为始终 HTTPS；为 true 但条件不符时启动失败。
+         */
+        private boolean publicHttpDownload = false;
         private long signatureTtlSeconds = 300;
         private int connectTimeoutSeconds = 5;
         private int readTimeoutSeconds = 15;
@@ -167,6 +172,14 @@ public class ProductImageStorageProperties {
 
         public void setPrivateBucket(boolean privateBucket) {
             this.privateBucket = privateBucket;
+        }
+
+        public boolean isPublicHttpDownload() {
+            return publicHttpDownload;
+        }
+
+        public void setPublicHttpDownload(boolean publicHttpDownload) {
+            this.publicHttpDownload = publicHttpDownload;
         }
 
         public long getSignatureTtlSeconds() {

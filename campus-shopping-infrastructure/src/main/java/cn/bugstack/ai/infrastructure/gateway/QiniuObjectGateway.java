@@ -2,6 +2,7 @@ package cn.bugstack.ai.infrastructure.gateway;
 
 import cn.bugstack.ai.domain.catalog.adapter.port.IProductImageMediaPort;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
+import cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import com.qiniu.common.QiniuException;
@@ -39,6 +40,7 @@ public class QiniuObjectGateway implements IProductImageMediaPort {
 
     private final ProductImageStorageProperties props;
     private final Clock clock;
+    private final QiniuPublicHttpPolicy publicHttpPolicy;
     private final boolean configured;
     private final boolean uploadEnabled;
     private final Auth auth;
@@ -46,14 +48,24 @@ public class QiniuObjectGateway implements IProductImageMediaPort {
     private final UploadManager uploadManager;
 
     @Autowired
-    public QiniuObjectGateway(ProductImageStorageProperties props, Clock clock) {
-        this(props, clock, null);
+    public QiniuObjectGateway(ProductImageStorageProperties props, Clock clock, QiniuPublicHttpPolicy publicHttpPolicy) {
+        this(props, clock, null, publicHttpPolicy);
     }
 
-    /** 测试入口：允许把 SDK 上传域名指向本地 HTTP stub；生产装配使用上一个构造器。 */
+    /** 测试入口：默认关闭本机公开测试模式（HTTPS + 原 CSP）。 */
+    public QiniuObjectGateway(ProductImageStorageProperties props, Clock clock) {
+        this(props, clock, null, QiniuPublicHttpPolicy.disabled());
+    }
+
+    /** 测试入口：允许把 SDK 上传域名指向本地 HTTP stub；生产装配使用上面带策略的构造器。 */
     public QiniuObjectGateway(ProductImageStorageProperties props, Clock clock, Configuration stubConfiguration) {
+        this(props, clock, stubConfiguration, QiniuPublicHttpPolicy.disabled());
+    }
+
+    QiniuObjectGateway(ProductImageStorageProperties props, Clock clock, Configuration stubConfiguration, QiniuPublicHttpPolicy publicHttpPolicy) {
         this.props = props;
         this.clock = clock;
+        this.publicHttpPolicy = publicHttpPolicy == null ? QiniuPublicHttpPolicy.disabled() : publicHttpPolicy;
         this.configured = props.qiniuEnabled();
         this.uploadEnabled = configured && props.qiniuSelected();
         if (configured) {
@@ -169,16 +181,26 @@ public class QiniuObjectGateway implements IProductImageMediaPort {
         }
     }
 
-    /** 未配置返回 null；私有桶按当前时间生成短时签名，公开桶返回不带签名的稳定下载地址。 */
+    /** 未配置返回 null；私有桶按当前时间生成短时签名，公有桶返回不带签名的稳定下载地址。 */
     @Override
     public String downloadUrl(String objectKey) {
         if (!configured) return null;
         if (objectKey == null || !OBJECT_KEY.matcher(objectKey).matches()) throw new AppException(ResponseCode.ILLEGAL_PARAMETER);
         ProductImageStorageProperties.Qiniu qiniu = props.getQiniu();
-        // host 只传纯域名，第二个参数 true 表示使用 HTTPS；公开桶 buildURL() 不带签名，私有桶签 deadline。
-        DownloadUrl downloadUrl = new DownloadUrl(qiniu.getDownloadDomain(), true, objectKey);
+        // 本机公开测试模式只对公有桶生效，策略层已拒绝私有桶，因此该分支永不生成签名。
+        boolean plainHttp = publicHttpPolicy.isEnabled();
+        // host 只传纯域名；第二个参数为 false 时生成明文 HTTP 地址（仅本机测试模式）。
+        DownloadUrl downloadUrl = new DownloadUrl(qiniu.getDownloadDomain(), !plainHttp, objectKey);
         try {
-            if (!qiniu.isPrivateBucket()) return downloadUrl.buildURL();
+            if (!qiniu.isPrivateBucket()) {
+                String url = downloadUrl.buildURL();
+                if (plainHttp && (url.indexOf('?') >= 0 || !url.startsWith("http://" + qiniu.getDownloadDomain() + "/"))) {
+                    // 明文测试模式绝不允许带签名/查询串；形状不符直接失败。
+                    log.warn("本机公开测试模式生成的下载地址形状不合法");
+                    throw new AppException(ResponseCode.UN_ERROR);
+                }
+                return url;
+            }
             long deadline = Instant.now(clock).getEpochSecond() + qiniu.getSignatureTtlSeconds();
             return downloadUrl.buildURL(auth, deadline);
         } catch (QiniuException e) {

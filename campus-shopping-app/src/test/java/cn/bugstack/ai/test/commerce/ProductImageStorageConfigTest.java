@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageRef;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageConfig;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
+import cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy;
 import cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway;
 import java.net.URI;
 import java.time.Clock;
@@ -40,6 +41,95 @@ class ProductImageStorageConfigTest {
         Clock fixedClock() {
             return Clock.fixed(NOW, ZoneOffset.UTC);
         }
+    }
+
+    /** 本机公开测试模式所需的最小真装配属性：假密钥 + 公有桶 + 七牛测试域名形状。 */
+    private static String[] publicHttpProperties() {
+        return new String[] {
+            "campus.images.provider=QINIU",
+            "campus.images.qiniu.access-key=fake-access-key",
+            "campus.images.qiniu.secret-key=fake-secret-key",
+            "campus.images.qiniu.bucket=fake-bucket",
+            "campus.images.qiniu.download-domain=abcdefgh12345678.hn-bkt.clouddn.com",
+            "campus.images.qiniu.region=z0",
+            "campus.images.qiniu.private-bucket=false",
+            "campus.images.qiniu.public-http-download=true",
+            "server.address=127.0.0.1",
+        };
+    }
+
+    @Test
+    void publicHttpModeIsEnabledWithDefaultDevProfile() {
+        // 用户常见本机启动：不显式设 active profile，仅 spring.profiles.default=dev。
+        runner
+            .withPropertyValues(publicHttpProperties())
+            .withPropertyValues("spring.profiles.default=dev")
+            .run(context -> {
+                assertNull(context.getStartupFailure(), "spring.profiles.default=dev 必须能启用本机公开测试模式");
+                QiniuPublicHttpPolicy policy = context.getBean(QiniuPublicHttpPolicy.class);
+                assertTrue(policy.isEnabled());
+                assertEquals("http", policy.downloadScheme());
+                QiniuObjectGateway gateway = context.getBean(QiniuObjectGateway.class);
+                String url = gateway.downloadUrl(KEY);
+                assertTrue(url.startsWith("http://"), "本机测试模式下载地址应为明文 HTTP");
+                assertFalse(url.contains("?"), "明文测试模式绝不生成签名/查询串");
+            });
+    }
+
+    @Test
+    void publicHttpModeIsEnabledWithExplicitDevProfile() {
+        runner
+            .withPropertyValues(publicHttpProperties())
+            .withInitializer(context -> context.getEnvironment().setActiveProfiles("dev"))
+            .run(context -> {
+                assertNull(context.getStartupFailure(), "显式 dev profile 必须能启用本机公开测试模式");
+                assertTrue(context.getBean(QiniuPublicHttpPolicy.class).isEnabled());
+            });
+    }
+
+    @Test
+    void publicHttpModeFailsClosedForMixedOrNonDevProfiles() {
+        // dev+prod 混开：必须在策略 Bean 创建时失败，早于网关与 CSP 使用。
+        runner
+            .withPropertyValues(publicHttpProperties())
+            .withInitializer(context -> context.getEnvironment().setActiveProfiles("dev", "prod"))
+            .run(context -> assertNotNull(context.getStartupFailure(), "dev+prod 混开必须启动失败"));
+
+        runner
+            .withPropertyValues(publicHttpProperties())
+            .withInitializer(context -> context.getEnvironment().setActiveProfiles("staging"))
+            .run(context -> assertNotNull(context.getStartupFailure(), "非 dev profile 必须启动失败"));
+    }
+
+    @Test
+    void publicHttpModeFailsClosedForNonLoopbackBinding() {
+        String[] properties = publicHttpProperties();
+        properties[properties.length - 1] = "server.address=0.0.0.0";
+        runner
+            .withPropertyValues(properties)
+            .withPropertyValues("spring.profiles.default=dev")
+            .run(context -> assertNotNull(context.getStartupFailure(), "非回环绑定必须启动失败"));
+    }
+
+    @Test
+    void publicHttpModeOffByDefaultKeepsHttps() {
+        runner
+            .withPropertyValues(
+                "campus.images.provider=QINIU",
+                "campus.images.qiniu.access-key=fake-access-key",
+                "campus.images.qiniu.secret-key=fake-secret-key",
+                "campus.images.qiniu.bucket=fake-bucket",
+                "campus.images.qiniu.download-domain=abcdefgh12345678.hn-bkt.clouddn.com",
+                "campus.images.qiniu.region=z0",
+                "campus.images.qiniu.private-bucket=false",
+                "server.address=127.0.0.1"
+            )
+            .withPropertyValues("spring.profiles.default=dev")
+            .run(context -> {
+                assertNull(context.getStartupFailure(), "默认关闭时即使配置完整也必须能启动");
+                assertFalse(context.getBean(QiniuPublicHttpPolicy.class).isEnabled(), "默认必须是关闭状态");
+                assertTrue(context.getBean(QiniuObjectGateway.class).downloadUrl(KEY).startsWith("https://"));
+            });
     }
 
     private static String[] completeQiniu(String provider) {
