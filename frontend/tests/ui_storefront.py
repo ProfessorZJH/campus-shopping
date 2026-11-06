@@ -25,7 +25,7 @@ class StorefrontBackend(TwoMerchantBackend):
             {
                 'description': '校园文具与打印服务，支持到店自提。',
                 'businessHours': '周一至周五 08:00-20:00（北京时间）',
-                'imageUrl': STORE_IMAGE,
+                'imageUrl': STORE_IMAGE + '?initial=1',
             }
         )
         self.shops[1].update({'description': '', 'businessHours': '', 'imageUrl': ''})
