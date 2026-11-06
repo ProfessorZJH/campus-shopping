@@ -69,7 +69,10 @@ public class MerchantApplicationServiceImpl implements IMerchantApplicationServi
             "ACTIVE",
             UUID.randomUUID().toString(),
             c.storeName(),
-            c.location()
+            c.location(),
+            "",
+            "",
+            ""
         );
         repository.saveReview(a);
         merchants.save(m);

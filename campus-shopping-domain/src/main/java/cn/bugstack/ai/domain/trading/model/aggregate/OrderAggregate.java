@@ -13,12 +13,13 @@ import java.util.*;
  */
 public final class OrderAggregate {
 
-    private final String id, buyerId, merchantId, storeId;
+    private final String id, buyerId, merchantId, storeId, pickupStoreName, pickupLocation;
     private final List<OrderItemEntity> items;
     private final long totalCent;
     private final Instant deadline, createdAt;
     private OrderStatusEnumVO status;
 
+    /** 兼容旧调用；未提供快照时明确保存为空，不读取当前门店资料。 */
     public OrderAggregate(
         String id,
         String buyerId,
@@ -29,10 +30,27 @@ public final class OrderAggregate {
         Instant deadline,
         Instant createdAt
     ) {
+        this(id, buyerId, merchantId, storeId, "", "", items, status, deadline, createdAt);
+    }
+
+    public OrderAggregate(
+        String id,
+        String buyerId,
+        String merchantId,
+        String storeId,
+        String pickupStoreName,
+        String pickupLocation,
+        List<OrderItemEntity> items,
+        String status,
+        Instant deadline,
+        Instant createdAt
+    ) {
         this.id = text(id, "订单ID", 64);
         this.buyerId = text(buyerId, "买家ID", 64);
         this.merchantId = text(merchantId, "商户ID", 64);
         this.storeId = text(storeId, "门店ID", 64);
+        this.pickupStoreName = optional(pickupStoreName, 100);
+        this.pickupLocation = optional(pickupLocation, 200);
         require(items != null && !items.isEmpty() && items.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
         Set<String> seen = new HashSet<>();
         long total = 0;
@@ -107,6 +125,14 @@ public final class OrderAggregate {
 
     public String getStoreId() {
         return storeId;
+    }
+
+    public String getPickupStoreName() {
+        return pickupStoreName;
+    }
+
+    public String getPickupLocation() {
+        return pickupLocation;
     }
 
     public List<OrderItemEntity> getItems() {

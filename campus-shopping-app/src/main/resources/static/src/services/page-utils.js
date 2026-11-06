@@ -38,6 +38,22 @@ export const pickupStatusLabel = statusLabel({
   COMPLETED: '已核销',
 });
 export const membershipStatusLabel = statusLabel({ ACTIVE: '有效成员', REVOKED: '已撤销' });
+export const orderEventLabel = statusLabel({
+  ORDER_CREATED: '已下单',
+  PAYMENT_SUCCEEDED: '已付款',
+  PREPARING: '商户备货中',
+  READY: '备货完成，待自提',
+  PICKED_UP: '已核销',
+  CANCELED: '已取消',
+  EXPIRED: '已过期',
+  REFUND_REQUESTED: '申请退款',
+  MERCHANT_REJECTED: '商户驳回退款',
+  MERCHANT_APPROVED: '商户同意退款',
+  REFUND_DISPUTED: '申请平台介入',
+  PLATFORM_APPROVED: '平台裁决同意退款',
+  PLATFORM_REJECTED: '平台裁决驳回退款',
+  REFUND_COMPLETED: '模拟退款完成',
+});
 export const invitationStatusLabel = statusLabel({
   PENDING: '待接受',
   ACCEPTED: '已接受',

@@ -289,7 +289,7 @@ export default {
     <section class="merchant-section">
       <div class="section-head"><div class="section-title"><span class="head-accent mint"><Icon name="store" :size="21"/></span><h2>附近商家</h2></div><span class="tiny-note">校内自提</span></div>
       <div class="merchant-cards"><button class="merchant-card" v-for="(m,idx) in shops" :key="m.merchantId" @click="merchant=m.merchantId;page=1;loadSearch()" :class="{active:merchant===m.merchantId}">
-        <span class="merchant-logo" :class="'store-'+idx"><img v-if="m.image" :src="m.image" :alt="m.name"/><Icon v-else name="store" :size="21"/></span>
+        <span class="merchant-logo" :class="'store-'+idx"><img v-if="m.imageUrl" :src="m.imageUrl" :alt="m.name"/><Icon v-else name="store" :size="21"/></span>
         <strong>{{m.name}}</strong><small>{{m.storeName||m.location||'校内门店'}}</small><span class="merchant-chip"><span class="merchant-chip-dot"></span> 可自提</span>
       </button></div>
       <div v-if="merchant" class="merchant-filter-bar">当前：{{shopName(merchant)}}<button @click="merchant='';page=1;loadSearch()">清除筛选 <Icon name="x" :size="13" /></button></div>

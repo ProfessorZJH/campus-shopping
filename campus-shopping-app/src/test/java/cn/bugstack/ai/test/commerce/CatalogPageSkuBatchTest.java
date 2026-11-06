@@ -45,7 +45,9 @@ class CatalogPageSkuBatchTest {
         ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(catalog, inventory, merchants, mock(IAccessService.class), images));
         when(catalog.searchSorted(null, "", null, true, 1, 100, "NEWEST", null, null)).thenReturn(products);
         when(catalog.count(null, "", null, true, null, null)).thenReturn(51L);
-        when(merchants.findAll(List.of("m1"))).thenReturn(List.of(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园")));
+        when(merchants.findAll(List.of("m1"))).thenReturn(
+            List.of(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园", "", "", ""))
+        );
         when(inventory.stocks(anyList())).thenAnswer(invocation -> {
             List<String> ids = invocation.getArgument(0);
             if (ids.size() > 1000) throw new IllegalArgumentException("库存查询不得超过1000 SKU");

@@ -42,6 +42,9 @@ public final class ApiViews {
             .storeId(m.storeId())
             .storeName(m.storeName())
             .location(m.location())
+            .description(m.description())
+            .businessHours(m.businessHours())
+            .imageUrl(m.imageUrl())
             .build();
     }
 
@@ -146,6 +149,8 @@ public final class ApiViews {
             .buyerId(model.buyerId())
             .merchantId(model.merchantId())
             .storeId(model.storeId())
+            .pickupStoreName(model.pickupStoreName())
+            .pickupLocation(model.pickupLocation())
             .status(model.status())
             .totalCent(model.totalCent())
             .deadline(model.deadline())
@@ -167,6 +172,21 @@ public final class ApiViews {
                     .toList()
             )
             .pickup(p == null ? null : PickupResponseDTO.builder().status(p.status()).expiresAt(p.expiresAt()).build())
+            .events(
+                model
+                    .events()
+                    .stream()
+                    .map(e ->
+                        cn.bugstack.ai.api.dto.OrderEventResponseDTO.builder()
+                            .eventId(e.id())
+                            .type(e.type())
+                            .occurredAt(e.occurredAt())
+                            .actorRole(e.actorRole())
+                            .reason(e.reason())
+                            .build()
+                    )
+                    .toList()
+            )
             .afterSale(afterSale(a))
             .build();
     }

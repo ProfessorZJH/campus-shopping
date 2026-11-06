@@ -46,7 +46,7 @@ class CatalogCartReadModelTest {
     private final IProductImageRepository images = mock(IProductImageRepository.class);
 
     private MerchantVO merchant(String id, String state) {
-        return new MerchantVO(id, null, "商户" + id, "文具", state, "store", "门店", "校园");
+        return new MerchantVO(id, null, "商户" + id, "文具", state, "store", "门店", "校园", "", "", "");
     }
 
     @Test

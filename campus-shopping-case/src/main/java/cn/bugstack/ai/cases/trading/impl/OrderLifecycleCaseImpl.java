@@ -17,6 +17,7 @@ import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleStatusEnumVO;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
 import cn.bugstack.ai.domain.trading.model.valobj.OrderStatusEnumVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleService;
+import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Clock;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
 
     private final IOrderService trading;
+    private final IOrderEventService events;
     private final IAfterSaleService afterSales;
     private final IFulfillmentService fulfillment;
     private final IInventoryService inventory;
@@ -39,6 +41,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
 
     public OrderLifecycleCaseImpl(
         IOrderService trading,
+        IOrderEventService events,
         IAfterSaleService afterSales,
         IFulfillmentService fulfillment,
         IInventoryService inventory,
@@ -49,6 +52,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         Clock clock
     ) {
         this.trading = trading;
+        this.events = events;
         this.afterSales = afterSales;
         this.fulfillment = fulfillment;
         this.inventory = inventory;
@@ -69,6 +73,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             trading.recordPayment(o);
             fulfillment.create(id, o.getMerchantId(), o.getStoreId(), buyer);
             trading.save(o);
+            events.record(id, null, "PAYMENT_SUCCEEDED", buyer, "BUYER", "");
         }
         return query.view(o);
     }
@@ -81,6 +86,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         if (o.cancel()) {
             inventory.release(id);
             trading.save(o);
+            events.record(id, null, "CANCELED", buyer, "BUYER", "");
         }
         return query.view(o);
     }
@@ -91,6 +97,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         if (o.expire(clock.instant())) {
             inventory.release(id);
             trading.save(o);
+            events.record(id, null, "EXPIRED", null, "SYSTEM", "");
         }
     }
 
@@ -111,6 +118,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.ORDER_STATE_INVALID);
         if (ready) fulfillment.markReady(id);
         else fulfillment.startPreparing(id);
+        events.record(id, null, ready ? "READY" : "PREPARING", actor, "MERCHANT", "");
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -135,6 +143,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             o.complete();
             trading.save(o);
             access.audit(actor, "PICKUP_COMPLETED", id, merchant, "凭证核销成功");
+            events.record(id, null, "PICKED_UP", actor, "MERCHANT", "");
         }
         return query.view(o);
     }
@@ -147,14 +156,17 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     public AfterSaleVO requestRefund(String buyer, String id, String reason) {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
-        return afterSales.requestAfterSale(o, buyer, reason);
+        AfterSaleVO result = afterSales.requestAfterSale(o, buyer, reason);
+        events.record(id, result.id(), "REFUND_REQUESTED", buyer, "BUYER", result.reason());
+        return result;
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void appeal(String buyer, String id) {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
-        afterSales.appeal(o, buyer);
+        AfterSaleVO result = afterSales.appeal(o, buyer);
+        events.record(id, result.id(), "REFUND_DISPUTED", buyer, "BUYER", "");
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -204,7 +216,12 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             trading.recordRefund(o);
             o.refund();
             trading.save(o);
+            events.record(id, a.id(), platform ? "PLATFORM_APPROVED" : "MERCHANT_APPROVED", actor, platform ? "PLATFORM" : "MERCHANT", reason);
+            events.record(id, a.id(), "REFUND_COMPLETED", actor, "SYSTEM", "");
         } else if (!afterSales.rejectAfterSale(id, reason)) return;
+        else {
+            events.record(id, a.id(), platform ? "PLATFORM_REJECTED" : "MERCHANT_REJECTED", actor, platform ? "PLATFORM" : "MERCHANT", reason);
+        }
         access.audit(actor, approved ? "REFUND_APPROVED" : "REFUND_REJECTED", id, o.getMerchantId(), text(reason, "审核意见", 500));
     }
 }

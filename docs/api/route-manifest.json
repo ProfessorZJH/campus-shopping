@@ -2020,6 +2020,29 @@
       "csrf": true
     },
     {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/store/images",
+      "controller": "MerchantApplicationController.java",
+      "handler": "storeImage",
+      "responseType": "ProductImageUploadDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "FileUploadRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
       "method": "GET",
       "path": "/api/v1/orders",
       "controller": "OrderController.java",

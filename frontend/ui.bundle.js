@@ -12164,6 +12164,22 @@
     COMPLETED: "已核销"
   });
   const membershipStatusLabel = statusLabel({ ACTIVE: "有效成员", REVOKED: "已撤销" });
+  const orderEventLabel = statusLabel({
+    ORDER_CREATED: "已下单",
+    PAYMENT_SUCCEEDED: "已付款",
+    PREPARING: "商户备货中",
+    READY: "备货完成，待自提",
+    PICKED_UP: "已核销",
+    CANCELED: "已取消",
+    EXPIRED: "已过期",
+    REFUND_REQUESTED: "申请退款",
+    MERCHANT_REJECTED: "商户驳回退款",
+    MERCHANT_APPROVED: "商户同意退款",
+    REFUND_DISPUTED: "申请平台介入",
+    PLATFORM_APPROVED: "平台裁决同意退款",
+    PLATFORM_REJECTED: "平台裁决驳回退款",
+    REFUND_COMPLETED: "模拟退款完成"
+  });
   const invitationStatusLabel = statusLabel({
     PENDING: "待接受",
     ACCEPTED: "已接受",
@@ -13039,9 +13055,9 @@
                           class: _normalizeClass(["merchant-logo", "store-" + idx])
                         },
                         [
-                          m.image ? (_openBlock(), _createElementBlock("img", {
+                          m.imageUrl ? (_openBlock(), _createElementBlock("img", {
                             key: 0,
-                            src: m.image,
+                            src: m.imageUrl,
                             alt: m.name
                           }, null, 8, ["src", "alt"])) : (_openBlock(), _createBlock(_component_Icon, {
                             key: 1,
@@ -16984,7 +17000,7 @@
       return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createBlock: _createBlock, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -17016,12 +17032,20 @@
               { key: 1 },
               [
                 _createElementVNode("section", { class: "shop-hero" }, [
-                  _createElementVNode("span", { class: "merchant-logo" }, [
+                  _ctx.merchant.imageUrl ? (_openBlock(), _createBlock(_component_ProductImage, {
+                    key: 0,
+                    class: "shop-hero-image",
+                    src: _ctx.merchant.imageUrl,
+                    alt: _ctx.merchant.name + "门店图片"
+                  }, null, 8, ["src", "alt"])) : (_openBlock(), _createElementBlock("span", {
+                    key: 1,
+                    class: "merchant-logo"
+                  }, [
                     _createVNode2(_component_Icon, {
                       name: "store",
                       size: 28
                     })
-                  ]),
+                  ])),
                   _createElementVNode("div", null, [
                     _createElementVNode(
                       "h1",
@@ -17038,6 +17062,31 @@
                       /* TEXT */
                     )
                   ])
+                ]),
+                _createElementVNode("section", { class: "detail-card shop-intro" }, [
+                  _createElementVNode("h2", null, "门店介绍"),
+                  _ctx.merchant.description ? (_openBlock(), _createElementBlock(
+                    "p",
+                    { key: 0 },
+                    _toDisplayString(_ctx.merchant.description),
+                    1
+                    /* TEXT */
+                  )) : (_openBlock(), _createElementBlock("p", {
+                    key: 1,
+                    class: "muted-short"
+                  }, "未填写")),
+                  _createElementVNode("h2", null, "营业时间"),
+                  _ctx.merchant.businessHours ? (_openBlock(), _createElementBlock("p", { key: 2 }, [
+                    _createTextVNode(
+                      _toDisplayString(_ctx.merchant.businessHours) + " ",
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("small", null, "（北京时间）")
+                  ])) : (_openBlock(), _createElementBlock("p", {
+                    key: 3,
+                    class: "muted-short"
+                  }, "未填写"))
                 ]),
                 _createElementVNode("div", { class: "section-heading" }, [
                   _createElementVNode("h2", null, "在售商品")
@@ -17366,10 +17415,11 @@
   const { ref: ref$7, computed: computed$7, onMounted: onMounted$7 } = Vue;
   const Cart = {
     name: "Cart",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7("");
+      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7(""), confirmOpen = ref$7(false), confirmLoading = ref$7(false), confirmError = ref$7(""), confirmItems = ref$7([]), confirmMerchant = ref$7({}), confirmTotal = ref$7(0);
+      let confirmVersion = 0;
       const groups = computed$7(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
@@ -17434,7 +17484,7 @@
           if (current()) busy.value = false;
         }
       }
-      async function checkout() {
+      function checkout() {
         if (preview || busy.value || loading.value || !selected.value.length) return;
         if (selected.value.length > 20) {
           notify("每笔订单最多支持20个SKU行，请减少商品规格后结算");
@@ -17444,9 +17494,59 @@
           notify("请先调整失效或库存不足的商品");
           return;
         }
+        confirmOpen.value = true;
+        loadConfirmation();
+      }
+      async function loadConfirmation() {
+        const stamp = ++confirmVersion, merchant = merchantId.value;
+        confirmLoading.value = true;
+        confirmError.value = "";
+        confirmItems.value = [];
+        confirmTotal.value = 0;
+        try {
+          const [cart, shop] = await Promise.all([
+            api("/cart"),
+            api("/merchants/public/" + pathId(merchant))
+          ]);
+          if (stamp !== confirmVersion) return;
+          const rows = (cart || []).filter((i) => i.merchantId === merchant);
+          confirmMerchant.value = shop || {};
+          confirmItems.value = rows;
+          confirmTotal.value = rows.reduce(
+            (sum, i) => sum + Number(i.priceCent) * Number(i.quantity),
+            0
+          );
+          if (!rows.length) confirmError.value = "购物车中已没有该商户的商品，请返回调整";
+          else if (rows.some((i) => !i.sellable || i.available < i.quantity))
+            confirmError.value = "部分商品库存不足或已失效，请返回调整后重新确认";
+        } catch (e) {
+          if (stamp === confirmVersion) confirmError.value = e.message;
+        } finally {
+          if (stamp === confirmVersion) confirmLoading.value = false;
+        }
+      }
+      function closeConfirm() {
+        if (busy.value) return;
+        ++confirmVersion;
+        confirmOpen.value = false;
+        confirmLoading.value = false;
+        confirmError.value = "";
+        confirmItems.value = [];
+        confirmMerchant.value = {};
+        confirmTotal.value = 0;
+      }
+      async function confirmCheckout() {
+        if (preview || busy.value || confirmLoading.value || confirmError.value) return;
+        if (!confirmItems.value.length || confirmItems.value.length > 20) return;
+        if (confirmItems.value.some(
+          (i) => !i.sellable || !positiveInt(i.quantity, 99) || i.quantity > i.available
+        )) {
+          confirmError.value = "部分商品库存不足或已失效，请刷新确认信息";
+          return;
+        }
         const body = {
           merchantId: merchantId.value,
-          items: selected.value.map((i) => ({
+          items: confirmItems.value.map((i) => ({
             skuId: i.skuId,
             quantity: Number(i.quantity),
             expectedPriceCent: Number(i.priceCent),
@@ -17465,10 +17565,11 @@
           if (!current()) return;
           orderKey.value = "";
           fingerprint.value = "";
+          confirmOpen.value = false;
           notify("订单已创建");
           go("/orders/" + pathId(created.orderId));
         } catch (e) {
-          if (current()) notify(e.message);
+          if (current()) confirmError.value = e.message;
         } finally {
           if (current()) busy.value = false;
         }
@@ -17488,16 +17589,28 @@
         merchantName,
         quantity,
         remove: (i) => quantity(i, -Number(i.quantity)),
+        orderKey,
+        confirmOpen,
+        confirmLoading,
+        confirmError,
+        confirmItems,
+        confirmMerchant,
+        confirmTotal,
+        loadConfirmation,
+        closeConfirm,
+        confirmCheckout,
         checkout,
         load
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withDirectives: _withDirectives, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
+        const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "cart" }, {
           default: _withCtx(() => [
             _createElementVNode("div", { class: "mobile-page-top" }, [
@@ -17732,7 +17845,152 @@
                 disabled: _ctx.preview || _ctx.busy || _ctx.loading || !_ctx.selected.length,
                 onClick: _ctx.checkout
               }, _toDisplayString(_ctx.busy ? "提交中" : "提交订单"), 9, ["disabled", "onClick"])
-            ])) : _createCommentVNode("v-if", true)
+            ])) : _createCommentVNode("v-if", true),
+            _ctx.confirmOpen ? _withDirectives((_openBlock(), _createElementBlock("div", {
+              key: 6,
+              class: "ui-overlay",
+              onClick: _withModifiers(_ctx.closeConfirm, ["self"])
+            }, [
+              _createElementVNode("section", {
+                class: "product-sheet checkout-confirm",
+                role: "dialog",
+                "aria-modal": "true",
+                "aria-label": "确认订单"
+              }, [
+                _createElementVNode("button", {
+                  class: "sheet-close",
+                  onClick: _ctx.closeConfirm,
+                  "aria-label": "关闭"
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "x",
+                    size: 19
+                  })
+                ], 8, ["onClick"]),
+                _createElementVNode("h3", null, "确认订单"),
+                _createElementVNode("p", { class: "checkout-note" }, "模拟支付：提交后生成待付款订单，不会发生真实扣款。"),
+                _ctx.confirmLoading ? (_openBlock(), _createBlock(_component_StatusPanel, {
+                  key: 0,
+                  state: "loading",
+                  message: "正在核对最新购物车与门店信息…"
+                })) : _ctx.confirmError && !_ctx.confirmItems.length ? (_openBlock(), _createElementBlock(
+                  _Fragment,
+                  { key: 1 },
+                  [
+                    _createVNode2(_component_StatusPanel, {
+                      state: "error",
+                      message: _ctx.confirmError,
+                      "action-label": "重新加载",
+                      busy: _ctx.confirmLoading,
+                      onRetry: _ctx.loadConfirmation
+                    }, null, 8, ["message", "busy", "onRetry"]),
+                    _createElementVNode("button", {
+                      class: "outline-button checkout-back",
+                      onClick: _ctx.closeConfirm
+                    }, "返回调整", 8, ["onClick"])
+                  ],
+                  64
+                  /* STABLE_FRAGMENT */
+                )) : (_openBlock(), _createElementBlock(
+                  _Fragment,
+                  { key: 2 },
+                  [
+                    _createElementVNode("section", { class: "checkout-shop" }, [
+                      _createElementVNode(
+                        "strong",
+                        null,
+                        _toDisplayString(_ctx.confirmMerchant.name || "校内商户"),
+                        1
+                        /* TEXT */
+                      ),
+                      _createElementVNode(
+                        "span",
+                        null,
+                        _toDisplayString(_ctx.confirmMerchant.storeName || "门店") + " · " + _toDisplayString(_ctx.confirmMerchant.location || "地点未填写"),
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _createElementVNode("div", { class: "checkout-lines" }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.confirmItems, (i) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            key: i.skuId,
+                            class: "checkout-line"
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(i.title),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(i.specKey) + " × " + _toDisplayString(i.quantity) + " · " + _toDisplayString(_ctx.money(i.priceCent)) + "/件",
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.money(Number(i.priceCent) * Number(i.quantity))),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ]),
+                    _createElementVNode("div", { class: "checkout-total" }, [
+                      _createElementVNode("span", null, "应付合计"),
+                      _createElementVNode(
+                        "b",
+                        null,
+                        _toDisplayString(_ctx.money(_ctx.confirmTotal)),
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _ctx.confirmError ? (_openBlock(), _createElementBlock("div", {
+                      key: 0,
+                      class: "inline-error",
+                      role: "alert"
+                    }, [
+                      _createTextVNode(
+                        _toDisplayString(_ctx.confirmError) + " ",
+                        1
+                        /* TEXT */
+                      ),
+                      _createElementVNode("button", { onClick: _ctx.loadConfirmation }, "刷新确认信息", 8, ["onClick"])
+                    ])) : _createCommentVNode("v-if", true),
+                    _createElementVNode("div", { class: "checkout-actions" }, [
+                      _createElementVNode("button", {
+                        class: "outline-button",
+                        onClick: _ctx.closeConfirm,
+                        disabled: _ctx.busy
+                      }, "返回调整", 8, ["onClick", "disabled"]),
+                      _createElementVNode("button", {
+                        class: "teal-button",
+                        disabled: _ctx.busy || _ctx.confirmLoading || !!_ctx.confirmError,
+                        onClick: _ctx.confirmCheckout
+                      }, _toDisplayString(_ctx.busy ? "提交中…" : "确认下单（模拟支付）"), 9, ["disabled", "onClick"])
+                    ])
+                  ],
+                  64
+                  /* STABLE_FRAGMENT */
+                ))
+              ])
+            ], 8, ["onClick"])), [
+              [_directive_modal, _ctx.closeConfirm]
+            ]) : _createCommentVNode("v-if", true)
           ]),
           _: 1
           /* STABLE */
@@ -17752,6 +18010,12 @@
       );
       const filtered = computed$6(
         () => orders.value.filter((o) => tab.value === "ALL" || o.status === tab.value)
+      );
+      const refundPending = computed$6(
+        () => {
+          var _a;
+          return !!((_a = detail.value) == null ? void 0 : _a.afterSale) && ["REQUESTED", "DISPUTED", "APPROVED"].includes(detail.value.afterSale.status);
+        }
       );
       const merchantName = (id2, record) => {
         var _a;
@@ -17875,6 +18139,8 @@
         submitRefund,
         statusClass,
         allowToken,
+        refundPending,
+        eventLabel: orderEventLabel,
         load
       };
     },
@@ -17887,7 +18153,7 @@
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "orders" }, {
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e;
+            var _a, _b, _c, _d, _e, _f;
             return [
               _createElementVNode("div", { class: "mobile-page-top" }, [
                 _createElementVNode("button", {
@@ -17953,7 +18219,7 @@
                     _Fragment,
                     null,
                     _renderList(_ctx.filtered, (o) => {
-                      var _a2, _b2, _c2, _d2, _e2, _f, _g;
+                      var _a2, _b2, _c2, _d2, _e2, _f2, _g;
                       return _openBlock(), _createElementBlock("button", {
                         class: "consumer-order-card",
                         key: o.orderId,
@@ -17992,7 +18258,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_f = (_e2 = o.items) == null ? void 0 : _e2[0]) == null ? void 0 : _f.title) || "校园订单"),
+                              _toDisplayString(((_f2 = (_e2 = o.items) == null ? void 0 : _e2[0]) == null ? void 0 : _f2.title) || "校园订单"),
                               1
                               /* TEXT */
                             ),
@@ -18120,16 +18386,26 @@
                         name: "pin",
                         size: 19
                       }),
-                      _createElementVNode(
+                      _ctx.detail.pickupStoreName || _ctx.detail.pickupLocation ? (_openBlock(), _createElementBlock(
                         "span",
-                        null,
-                        _toDisplayString(((_b = _ctx.store.merchants.find((m) => m.merchantId === _ctx.detail.merchantId)) == null ? void 0 : _b.location) || "校内自提门店"),
+                        { key: 0 },
+                        _toDisplayString(_ctx.detail.pickupStoreName || "自提门店") + " · " + _toDisplayString(_ctx.detail.pickupLocation || "地点未记录"),
                         1
                         /* TEXT */
-                      )
-                    ])
+                      )) : (_openBlock(), _createElementBlock("span", { key: 1 }, "历史自提地点未记录"))
+                    ]),
+                    !_ctx.detail.pickupStoreName && !_ctx.detail.pickupLocation ? (_openBlock(), _createElementBlock(
+                      "small",
+                      {
+                        key: 0,
+                        class: "muted-short"
+                      },
+                      "当前门店：" + _toDisplayString(((_b = _ctx.store.merchants.find((m) => m.merchantId === _ctx.detail.merchantId)) == null ? void 0 : _b.location) || "未提供") + "（仅供参考，非下单时快照）",
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
                   ]),
-                  _ctx.detail.status === "PAID" ? (_openBlock(), _createElementBlock("section", {
+                  _ctx.detail.status === "PAID" && !_ctx.refundPending ? (_openBlock(), _createElementBlock("section", {
                     key: 0,
                     class: "detail-card token-card"
                   }, [
@@ -18177,6 +18453,13 @@
                       disabled: _ctx.preview || _ctx.busy || _ctx.loading || !!_ctx.error || !_ctx.allowToken,
                       onClick: ($event) => _ctx.action("/pickup-token")
                     }, _toDisplayString(_ctx.token ? "重新签发自提凭证" : "领取自提凭证"), 9, ["disabled", "onClick"])
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.detail.status === "PAID" && _ctx.refundPending ? (_openBlock(), _createElementBlock("section", {
+                    key: 1,
+                    class: "detail-card token-card"
+                  }, [
+                    _createElementVNode("h2", null, "退款处理中"),
+                    _createElementVNode("p", { class: "muted-short" }, "自提凭证暂停使用，请以退款进度为准。")
                   ])) : _createCommentVNode("v-if", true),
                   _createElementVNode("section", { class: "detail-card" }, [
                     _createElementVNode("h2", { class: "card-title-inline" }, [
@@ -18284,8 +18567,58 @@
                       )
                     ])) : _createCommentVNode("v-if", true)
                   ]),
+                  _createElementVNode("section", { class: "detail-card order-timeline" }, [
+                    _createElementVNode("h2", { class: "card-title-inline" }, "订单进度"),
+                    ((_e = _ctx.detail.events) == null ? void 0 : _e.length) ? (_openBlock(), _createElementBlock("ol", { key: 0 }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.detail.events, (e, i) => {
+                          return _openBlock(), _createElementBlock("li", {
+                            key: e.eventId || i
+                          }, [
+                            _createElementVNode("span", { class: "timeline-dot" }),
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(_ctx.eventLabel(e.type)),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("small", null, [
+                                _createTextVNode(
+                                  _toDisplayString(_ctx.dateTime(e.occurredAt)),
+                                  1
+                                  /* TEXT */
+                                ),
+                                e.reason ? (_openBlock(), _createElementBlock(
+                                  _Fragment,
+                                  { key: 0 },
+                                  [
+                                    _createTextVNode(
+                                      " · " + _toDisplayString(e.reason),
+                                      1
+                                      /* TEXT */
+                                    )
+                                  ],
+                                  64
+                                  /* STABLE_FRAGMENT */
+                                )) : _createCommentVNode("v-if", true)
+                              ])
+                            ])
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : (_openBlock(), _createElementBlock("p", {
+                      key: 1,
+                      class: "muted-short"
+                    }, "历史进度未记录"))
+                  ]),
                   !_ctx.preview ? (_openBlock(), _createElementBlock("section", {
-                    key: 1,
+                    key: 2,
                     class: "order-actions"
                   }, [
                     _ctx.detail.status === "PENDING_PAYMENT" ? (_openBlock(), _createElementBlock("button", {
@@ -18306,7 +18639,7 @@
                       disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
                       onClick: ($event) => _ctx.refundOpen = !_ctx.refundOpen
                     }, "申请退款", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
-                    _ctx.detail.status === "PAID" && ((_e = _ctx.detail.afterSale) == null ? void 0 : _e.status) === "REJECTED" ? (_openBlock(), _createElementBlock("button", {
+                    _ctx.detail.status === "PAID" && ((_f = _ctx.detail.afterSale) == null ? void 0 : _f.status) === "REJECTED" ? (_openBlock(), _createElementBlock("button", {
                       key: 3,
                       class: "outline-button",
                       disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
@@ -18314,7 +18647,7 @@
                     }, "申请平台介入", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                   ])) : _createCommentVNode("v-if", true),
                   _ctx.refundOpen && !_ctx.preview ? (_openBlock(), _createElementBlock("form", {
-                    key: 2,
+                    key: 3,
                     class: "detail-card",
                     onSubmit: _withModifiers(_ctx.submitRefund, ["prevent"])
                   }, [
@@ -19160,8 +19493,15 @@
       const title = computed$3(() => names[route.value] || "经营概览");
       const filter = ref$3("");
       const q = ref$3("");
-      const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), loading = ref$3(false), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3("");
-      const page = ref$3(1), pageInfo = ref$3({ total: 0, hasNext: false }), amount = ref$3(1), sku2 = ref$3(""), inviteUser = ref$3(""), profile = ref$3({ name: "", storeName: "", location: "" });
+      const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), loading = ref$3(false), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3(""), historyEvents = ref$3([]), historyLoading = ref$3(false), historyError = ref$3("");
+      const page = ref$3(1), pageInfo = ref$3({ total: 0, hasNext: false }), amount = ref$3(1), sku2 = ref$3(""), inviteUser = ref$3(""), profile = ref$3({
+        name: "",
+        storeName: "",
+        location: "",
+        description: "",
+        businessHours: "",
+        imageUrl: ""
+      });
       const replenishKey = ref$3(""), replenishFingerprint = ref$3("");
       const merchant = computed$3(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || {}
@@ -19295,7 +19635,10 @@
             profile.value = {
               name: merchant.value.name || "",
               storeName: merchant.value.storeName || "",
-              location: merchant.value.location || ""
+              location: merchant.value.location || "",
+              description: merchant.value.description || "",
+              businessHours: merchant.value.businessHours || "",
+              imageUrl: merchant.value.imageUrl || ""
             };
         } catch (e) {
           if (current()) error.value = e.message;
@@ -19417,12 +19760,71 @@
           const index = store.merchants.findIndex((m) => m.merchantId === saved.merchantId);
           if (index >= 0) store.merchants[index] = saved;
           if (store.workspace) store.workspace.merchants = store.merchants;
-          profile.value = { name: saved.name, storeName: saved.storeName, location: saved.location };
+          profile.value = {
+            name: saved.name,
+            storeName: saved.storeName,
+            location: saved.location,
+            description: saved.description || "",
+            businessHours: saved.businessHours || "",
+            imageUrl: saved.imageUrl || ""
+          };
           notify("门店资料已保存");
         } catch (e) {
           if (current()) notify(e.message);
         } finally {
           if (current()) busy.value = false;
+        }
+      }
+      async function uploadStoreImage(event) {
+        var _a;
+        if (!canOwner.value || !canAct.value || busy.value) return;
+        const input = event.target;
+        const file = (_a = input.files) == null ? void 0 : _a[0];
+        input.value = "";
+        if (!file) return;
+        if (!file.type.startsWith("image/") || file.size > 2e6) {
+          notify("请选择 2MB 以内的图片");
+          return;
+        }
+        const current = scope.capture();
+        busy.value = true;
+        try {
+          const base64 = await new Promise((resolve2, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve2(String(reader.result || "").split(",")[1] || "");
+            reader.onerror = () => reject(new Error("图片读取失败"));
+            reader.readAsDataURL(file);
+          });
+          if (!current()) return;
+          const uploaded = await api(midPath() + "/store/images", {
+            method: "POST",
+            body: { filename: file.name, contentType: file.type, base64 }
+          });
+          if (!current()) return;
+          profile.value.imageUrl = uploaded.url;
+          notify("门店图片已上传，保存设置后生效");
+        } catch (e) {
+          if (current()) notify(e.message);
+        } finally {
+          if (current()) busy.value = false;
+        }
+      }
+      async function openAfterSaleDecision(orderId) {
+        decision.value = orderId;
+        reason.value = "";
+        historyEvents.value = [];
+        historyError.value = "";
+        if (preview) return;
+        historyLoading.value = true;
+        try {
+          const detail = await api("/orders/" + pathId(orderId));
+          historyEvents.value = (detail.events || []).filter(
+            (e) => e.type.startsWith("REFUND_") || e.type.startsWith("MERCHANT_") || e.type.startsWith("PLATFORM_")
+          );
+        } catch (e) {
+          historyError.value = e.message;
+        } finally {
+          historyLoading.value = false;
         }
       }
       async function decisionAction(s, approved) {
@@ -19470,6 +19872,11 @@
         token,
         decision,
         reason,
+        historyEvents,
+        historyLoading,
+        historyError,
+        orderEventLabel,
+        openAfterSaleDecision,
         amount,
         sku: sku2,
         skuRows,
@@ -19500,6 +19907,7 @@
         invite,
         revoke,
         saveProfile,
+        uploadStoreImage,
         decisionAction
       };
     },
@@ -20231,10 +20639,7 @@
                       _ctx.can("aftersale.review") && s.status === "REQUESTED" ? (_openBlock(), _createElementBlock("button", {
                         key: 0,
                         class: "outline-button small",
-                        onClick: ($event) => {
-                          _ctx.decision = s.orderId;
-                          _ctx.reason = "";
-                        }
+                        onClick: ($event) => _ctx.openAfterSaleDecision(s.orderId)
                       }, "审核", 8, ["onClick"])) : _createCommentVNode("v-if", true)
                     ]);
                   }),
@@ -20257,6 +20662,62 @@
                     1
                     /* TEXT */
                   ),
+                  _createElementVNode("div", { class: "review-history" }, [
+                    _createElementVNode("strong", null, "处理历程"),
+                    _ctx.historyEvents.length ? (_openBlock(), _createElementBlock("ol", { key: 0 }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.historyEvents, (e, i) => {
+                          return _openBlock(), _createElementBlock("li", {
+                            key: e.eventId || i
+                          }, [
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.orderEventLabel(e.type)),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("small", null, [
+                              _createTextVNode(
+                                _toDisplayString(_ctx.dateTime(e.occurredAt)),
+                                1
+                                /* TEXT */
+                              ),
+                              e.reason ? (_openBlock(), _createElementBlock(
+                                _Fragment,
+                                { key: 0 },
+                                [
+                                  _createTextVNode(
+                                    " · " + _toDisplayString(e.reason),
+                                    1
+                                    /* TEXT */
+                                  )
+                                ],
+                                64
+                                /* STABLE_FRAGMENT */
+                              )) : _createCommentVNode("v-if", true)
+                            ])
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : _ctx.historyLoading ? (_openBlock(), _createElementBlock("p", {
+                      key: 1,
+                      class: "muted-short"
+                    }, "正在加载处理历程…")) : (_openBlock(), _createElementBlock(
+                      "p",
+                      {
+                        key: 2,
+                        class: "muted-short"
+                      },
+                      _toDisplayString(_ctx.historyError || "历史记录不完整，仅显示当前状态"),
+                      1
+                      /* TEXT */
+                    ))
+                  ]),
                   _withDirectives(_createElementVNode("textarea", {
                     class: "admin-input",
                     rows: "3",
@@ -20427,9 +20888,52 @@
                       [_vModelText, _ctx.profile.location]
                     ])
                   ]),
+                  _createElementVNode("label", null, [
+                    _createTextVNode("门店介绍"),
+                    _withDirectives(_createElementVNode("textarea", {
+                      class: "admin-input",
+                      "onUpdate:modelValue": ($event) => _ctx.profile.description = $event,
+                      maxlength: "2000",
+                      rows: "4",
+                      placeholder: "未填写"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.profile.description]
+                    ])
+                  ]),
+                  _createElementVNode("label", null, [
+                    _createTextVNode("营业时间"),
+                    _withDirectives(_createElementVNode("input", {
+                      class: "admin-input",
+                      "onUpdate:modelValue": ($event) => _ctx.profile.businessHours = $event,
+                      maxlength: "200",
+                      placeholder: "如：周一至周五 08:00-20:00（北京时间）"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.profile.businessHours]
+                    ])
+                  ]),
+                  _createElementVNode("div", { class: "store-image-field" }, [
+                    _createElementVNode("span", null, "门店图片"),
+                    _createVNode2(_component_ProductImage, {
+                      src: _ctx.profile.imageUrl,
+                      alt: "门店图片"
+                    }, null, 8, ["src"]),
+                    _createElementVNode("input", {
+                      type: "file",
+                      accept: "image/png,image/jpeg,image/webp",
+                      onChange: _ctx.uploadStoreImage,
+                      disabled: !_ctx.canAct || !_ctx.canOwner || _ctx.busy
+                    }, null, 40, ["onChange", "disabled"]),
+                    _createElementVNode("small", null, "只接受本商户上传的门店图片，未上传时显示未填写"),
+                    _ctx.profile.imageUrl ? (_openBlock(), _createElementBlock("button", {
+                      key: 0,
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.profile.imageUrl = ""
+                    }, "移除图片", 8, ["onClick"])) : _createCommentVNode("v-if", true)
+                  ]),
                   _createElementVNode("button", {
                     class: "teal-button",
-                    disabled: !_ctx.canAct || !_ctx.canOwner,
+                    disabled: !_ctx.canAct || !_ctx.canOwner || _ctx.busy,
                     type: "submit"
                   }, "保存设置", 8, ["disabled"])
                 ], 40, ["onSubmit"])
@@ -21252,7 +21756,7 @@
       const scope = requestScope();
       const route = computed$1(() => store.route), title = computed$1(() => titles[route.value] || "平台总览");
       const stats = ref$1(null), applications = ref$1([]), merchants = ref$1([]), products = ref$1([]), orders = ref$1([]), aftersales = ref$1([]), categories = ref$1([]);
-      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
       const pickedApplication = computed$1(
         () => applications.value.find((a) => a.applicationId === selectedId.value) || applications.value[0] || null
       );
@@ -21437,6 +21941,24 @@
         if (!window.confirm("确定强制下架商品“" + p2.title + "”？")) return;
         perform("/admin/products/" + pathId(p2.productId) + "/unpublish");
       }
+      async function openDispute(afterSale) {
+        selectedId.value = afterSale.id;
+        reason.value = "";
+        historyEvents.value = [];
+        historyError.value = "";
+        if (preview) return;
+        historyLoading.value = true;
+        try {
+          const detail = await api("/orders/" + pathId(afterSale.orderId));
+          historyEvents.value = (detail.events || []).filter(
+            (e) => e.type.startsWith("REFUND_") || e.type.startsWith("MERCHANT_") || e.type.startsWith("PLATFORM_")
+          );
+        } catch (e) {
+          historyError.value = e.message;
+        } finally {
+          historyLoading.value = false;
+        }
+      }
       function decideRefund(a, approved) {
         var _a;
         if (((_a = aftersales.value.find((row) => row.id === (a == null ? void 0 : a.id))) == null ? void 0 : _a.status) !== "DISPUTED") {
@@ -21485,6 +22007,11 @@
         page,
         pageInfo,
         reason,
+        historyEvents,
+        historyLoading,
+        historyError,
+        orderEventLabel,
+        openDispute,
         category,
         busy,
         loading,
@@ -22315,10 +22842,7 @@
                       a.status === "DISPUTED" ? (_openBlock(), _createElementBlock("button", {
                         key: 0,
                         class: "outline-button small",
-                        onClick: ($event) => {
-                          _ctx.selectedId = a.id;
-                          _ctx.reason = "";
-                        }
+                        onClick: ($event) => _ctx.openDispute(a)
                       }, "查看处理", 8, ["onClick"])) : _createCommentVNode("v-if", true)
                     ]);
                   }),
@@ -22340,6 +22864,62 @@
                     1
                     /* TEXT */
                   ),
+                  _createElementVNode("div", { class: "review-history" }, [
+                    _createElementVNode("strong", null, "处理历程"),
+                    _ctx.historyEvents.length ? (_openBlock(), _createElementBlock("ol", { key: 0 }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.historyEvents, (e, i) => {
+                          return _openBlock(), _createElementBlock("li", {
+                            key: e.eventId || i
+                          }, [
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.orderEventLabel(e.type)),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("small", null, [
+                              _createTextVNode(
+                                _toDisplayString(_ctx.dateTime(e.occurredAt)),
+                                1
+                                /* TEXT */
+                              ),
+                              e.reason ? (_openBlock(), _createElementBlock(
+                                _Fragment,
+                                { key: 0 },
+                                [
+                                  _createTextVNode(
+                                    " · " + _toDisplayString(e.reason),
+                                    1
+                                    /* TEXT */
+                                  )
+                                ],
+                                64
+                                /* STABLE_FRAGMENT */
+                              )) : _createCommentVNode("v-if", true)
+                            ])
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : _ctx.historyLoading ? (_openBlock(), _createElementBlock("p", {
+                      key: 1,
+                      class: "muted-short"
+                    }, "正在加载处理历程…")) : (_openBlock(), _createElementBlock(
+                      "p",
+                      {
+                        key: 2,
+                        class: "muted-short"
+                      },
+                      _toDisplayString(_ctx.historyError || "历史记录不完整，仅显示当前状态"),
+                      1
+                      /* TEXT */
+                    ))
+                  ]),
                   _createElementVNode("label", {
                     class: "field-label",
                     for: "platform-field-2"

@@ -57,6 +57,12 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 
 **商品价格筛选**：`GET /products` 与 `GET /products/page` 支持可选 `minPriceCent`/`maxPriceCent`（整数分，闭区间）。条件在 LIMIT/OFFSET 前与 `q`、`category`、`merchantId`、`sort` 一起作用于完整公开结果；商品至少有一个当前 `ACTIVE` SKU 的价格命中才返回。负数、非整数或下限大于上限返回参数错误，不静默截断或退回无条件结果。卡片展示命中区间的最低有效 SKU 价格。
 
+**门店公开资料**：`GET /merchants/public/{merchantId}` 仅返回营业中商户，包含门店介绍、营业时段和门店图片。未填写字段为空字符串，页面显示“未填写”。营业时段是商户维护的展示文本，固定按北京时间（Asia/Shanghai）解释，不因浏览者设备时区改变，也不替代服务端经营资格判断。门店图片只能引用本商户通过 `POST /merchants/{merchantId}/store/images`（需要 `store.manage`）按 `STORE` 用途上传的对象；保存资料时再次核验对象归属，跨商户、商品用途或未登记 URL 返回 `A0006`。旧客户端未提交新字段时保留原值，显式空串才清空。
+
+**订单自提快照**：新订单在下单事务内从锁定门店保存 `pickupStoreName`/`pickupLocation`；响应字段为空表示历史订单未记录，客户端不得用当前门店资料回填。商户后续修改门店资料不影响历史订单快照。
+
+**履约与售后事件**：订单创建、付款、备货、备货完成、核销、取消/过期及售后阶段在对应成功事务内追加到 `trd_order_event`，按订单和业务去重键保证幂等重放不产生重复记录；事务回滚不留下成功事件。订单详情只投影已记录事件，未发生阶段不显示为完成。
+
 **SDD-05 全局排序**：`GET /products/page` 与 `GET /merchants/{mid}/products/page` 支持 `sort=NEWEST|PRICE_ASC|STOCK_DESC`（默认 `NEWEST`），由 MySQL 在 LIMIT/OFFSET 前统一排序；`PRICE_ASC` 使用商品有效 SKU 最低价，`STOCK_DESC` 使用所有有效 SKU 的可售库存总和。前端“全局价格/库存”发送相同枚举，不再只对本页本地排序；COUNT 的过滤条件不变。无效 sort 返回参数错误。见 [SDD-05](../specs/SDD-RBAC-05.md)。
 
 ### 3.1 SDD-05 商户 RBAC 权限与角色管理

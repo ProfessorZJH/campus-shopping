@@ -45,7 +45,9 @@ REQUEST_RULES = {
         'merchantName': text(100), 'category': text(50), 'contactName': text(50),
         'contactPhone': text(30), 'storeName': text(100), 'location': text(200)}, MERCHANT),
     'MerchantProfileRequestDTO': rule('name storeName location', {
-        'name': text(100), 'storeName': text(100), 'location': text(200)},
+        'name': text(100), 'storeName': text(100), 'location': text(200),
+        'description': optional_text(2000), 'businessHours': optional_text(200),
+        'imageUrl': optional_text(255, pattern=OPTIONAL_IMAGE_URL)},
         'domain/merchant/service/impl/MerchantServiceImpl.java'),
     'CategoryRequestDTO': rule('code name active', {
         'code': text(32, pattern='^[a-z0-9_-]+$'), 'name': text(50), 'active': {}},

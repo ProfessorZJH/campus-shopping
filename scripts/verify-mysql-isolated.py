@@ -97,6 +97,17 @@ def migration_checks(connection, report):
     for constraint in CHECKS.values():
         old, count = re.subn(r',\s*CONSTRAINT ' + constraint + r' CHECK\([^)]*\)', '', old)
         assert count == 1, constraint
+    # 新增的门店/订单快照列与事件表必须由迁移真实补齐，旧库夹具不能预先包含。
+    old = old.replace(
+        " description VARCHAR(2000) NOT NULL DEFAULT '', business_hours VARCHAR(200) NOT NULL DEFAULT '', image_url VARCHAR(255) NOT NULL DEFAULT '',",
+        '',
+    )
+    old = old.replace(" pickup_store_name VARCHAR(100) NOT NULL DEFAULT '', pickup_location VARCHAR(200) NOT NULL DEFAULT '',", '')
+    old = old.replace(" usage_type VARCHAR(16) NOT NULL DEFAULT 'PRODUCT', ", '')
+    old, count = re.subn(r",\s*CONSTRAINT ck_product_image_upload_usage CHECK \(usage_type IN \('PRODUCT','STORE'\)\)", '', old)
+    assert count == 1, '旧库夹具不应包含图片用途约束'
+    old, count = re.subn(r'CREATE TABLE IF NOT EXISTS trd_order_event \(.*?;\n', '', old, count=1, flags=re.S)
+    assert count == 1, '旧库夹具应缺少订单事件表'
     old = old.replace(" image_url VARCHAR(255) NOT NULL DEFAULT '',", '')
     for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL'):
         old, count = re.subn(r' ' + re.escape(column) + ',', '', old)
@@ -359,6 +370,16 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         browser = json.loads((source/'results.json').read_text('utf-8'))
         report['browser'] = {'status': browser['status'], 'checks': len(browser['checks']), 'apiMockUsed': False}
         assert completed.returncode == 0 and browser['status'] == 'PASS', '真实浏览器验收失败'
+        live_m2 = build_root/'frontend/tests/live_m2_fulfillment.py'
+        shutil.copy2(ROOT/'frontend/tests/live_m2_fulfillment.py', live_m2)
+        completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live_m2), '--base-url', base],
+                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=300)
+        source_m2 = build_root/'docs/testing/evidence/frontend-live-m2'
+        if source_m2.exists():
+            shutil.copytree(source_m2, args.output.parent/'frontend-live-m2', dirs_exist_ok=True)
+        browser_m2 = json.loads((source_m2/'results.json').read_text('utf-8'))
+        report['browserM2'] = {'status': browser_m2['status'], 'checks': len(browser_m2['checks']), 'apiMockUsed': False}
+        assert completed.returncode == 0 and browser_m2['status'] == 'PASS', 'M2 真实履约浏览器验收失败'
     finally:
         for process in reversed(processes):
             process.terminate()

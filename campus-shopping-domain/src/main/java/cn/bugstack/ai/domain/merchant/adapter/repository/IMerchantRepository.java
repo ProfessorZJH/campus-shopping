@@ -14,5 +14,5 @@ public interface IMerchantRepository {
     List<MerchantVO> list(int offset, int limit, boolean activeOnly);
     List<MerchantVO> list(int offset, int limit, boolean activeOnly, String q);
     void setStatus(String id, String status);
-    void updateProfile(String id, String name, String storeName, String location);
+    void updateProfile(String id, String name, String storeName, String location, String description, String businessHours, String imageUrl);
 }

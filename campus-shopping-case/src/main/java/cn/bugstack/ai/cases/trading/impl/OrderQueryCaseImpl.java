@@ -12,6 +12,7 @@ import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
 import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleQueryService;
+import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderQueryService;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
     private final IOrderQueryService orders;
     private final IAfterSaleQueryService afterSales;
     private final IFulfillmentService fulfillment;
+    private final IOrderEventService events;
     private final IMerchantService merchants;
     private final IAccessService access;
     private final IUserAccountService accounts;
@@ -34,6 +36,7 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         IOrderQueryService orders,
         IAfterSaleQueryService afterSales,
         IFulfillmentService fulfillment,
+        IOrderEventService events,
         IMerchantService merchants,
         IAccessService access,
         IUserAccountService accounts
@@ -41,6 +44,7 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         this.orders = orders;
         this.afterSales = afterSales;
         this.fulfillment = fulfillment;
+        this.events = events;
         this.merchants = merchants;
         this.access = access;
         this.accounts = accounts;
@@ -121,12 +125,13 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
             .findAll(page.stream().map(OrderAggregate::getMerchantId).distinct().toList())
             .stream()
             .collect(Collectors.toMap(MerchantVO::id, MerchantVO::name));
+        var timelines = events.eventsByOrders(ids);
         return page
             .stream()
             .map(o -> {
                 String name = names.get(o.getMerchantId());
                 if (name == null) throw new IllegalStateException("订单所属商户丢失");
-                return new OrderReadModel(o, name, pickups.get(o.getId()), refunds.get(o.getId()));
+                return new OrderReadModel(o, name, pickups.get(o.getId()), refunds.get(o.getId()), timelines.getOrDefault(o.getId(), List.of()));
             })
             .toList();
     }

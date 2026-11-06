@@ -90,9 +90,10 @@ def main():
                     {'code':'0000','info':'成功','data':{}}, {'code':'0000','info':'成功','data':{'orderId':'o','items':None}}):
         check(order, payload, False, 'incomplete success response is rejected: '+str(payload))
     valid_order = {'orderId':'o','buyerId':'b','merchantId':'m','merchantName':'店铺','storeId':'s',
-                   'status':'PAID','totalCent':100,'deadline':'2026-10-29T00:00:00Z','createdAt':'2026-10-29T00:00:00Z',
+                   'pickupStoreName':'校园店','pickupLocation':'图书馆一层','status':'PAID','totalCent':100,
+                   'deadline':'2026-10-29T00:00:00Z','createdAt':'2026-10-29T00:00:00Z',
                    'items':[{'skuId':'sku','title':'笔','specKey':'黑色','imageUrl':'','unitPriceCent':100,'quantity':1}],
-                   'pickup':None,'afterSale':None}
+                   'events':[],'pickup':None,'afterSale':None}
     check(order, {'code':'0000','info':'成功','data':valid_order}, True, 'complete order with optional pickup/refund is accepted')
     for field in SPEC['components']['schemas']['OrderResponseDTO']['required']:
         damaged = dict(valid_order); del damaged[field]

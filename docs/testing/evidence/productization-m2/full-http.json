@@ -1,0 +1,1560 @@
+{
+  "startedAt": "2026-11-06T09:57:52.689665+00:00",
+  "finishedAt": "2026-11-06T09:58:08.470961+00:00",
+  "mode": "REAL_HTTP",
+  "status": "PASS",
+  "error": null,
+  "checks": [
+    {
+      "request": "GET /merchants/public/page?page=1&size=10",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "匿名公开商户分页 HTTP 200 且具有 items/total",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchants/page",
+      "http": 401,
+      "businessCode": "A0004",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/login",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "登录后替换会话ID",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /workspace",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "管理员是数据库中的真实平台角色",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/register",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/login",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "登录后替换会话ID",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "注册账号可以通过数据库登录：owner",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/register",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/login",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "登录后替换会话ID",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "注册账号可以通过数据库登录：second",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/register",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/register",
+      "http": 200,
+      "businessCode": "A0001",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/login",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "登录后替换会话ID",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "注册账号可以通过数据库登录：buyer",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/register",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/login",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "登录后替换会话ID",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/csrf",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "注册账号可以通过数据库登录：clerk",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchant-applications",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchant-applications",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchant-applications",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "相同入驻请求返回同一申请",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/merchant-applications/bfb6457f-fd76-4775-9938-b28689f07f4a/review",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/merchant-applications/bfb6457f-fd76-4775-9938-b28689f07f4a/review",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "审核开通幂等",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /workspace",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "开通后得到对应商户Owner",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchant-applications",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchant-applications",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "相同入驻请求返回同一申请",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/merchant-applications/6cf9b6eb-9112-459d-a3c8-cc45445ab5e6/review",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/merchant-applications/6cf9b6eb-9112-459d-a3c8-cc45445ab5e6/review",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "审核开通幂等",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /workspace",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "开通后得到对应商户Owner",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/public/ed6c7e32-21ee-4e51-98a9-471bfb523c0f",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "匿名可访问 ACTIVE 商户详情，Security 规则有效",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchant-applications?state=UNKNOWN",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchant-applications/page?state=UNKNOWN",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchant-applications/page?state=APPROVED&page=1&size=5&q=%E9%AA%8C%E6%94%B6%E6%96%87%E5%85%B7%E5%BA%97",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "平台审核申请筛选 响应包含完整分页协议",
+      "status": "PASS"
+    },
+    {
+      "check": "平台审核申请筛选 total 不使用当前页长度冒充",
+      "status": "PASS"
+    },
+    {
+      "check": "入驻申请 q 在真实数据库过滤成功",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchants/page?page=1&size=5&q=%E9%AA%8C%E6%94%B6%E6%96%87%E5%85%B7%E5%BA%97",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "平台商户筛选 响应包含完整分页协议",
+      "status": "PASS"
+    },
+    {
+      "check": "平台商户筛选 total 不使用当前页长度冒充",
+      "status": "PASS"
+    },
+    {
+      "check": "商户 q 在真实数据库过滤成功",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/profile",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/merchants/page?page=1&size=2&q=%E9%AA%8C%E6%94%B6%E6%A0%A1%E5%9B%AD%E6%96%87%E5%85%B7%E5%BA%97",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "平台商户改名后搜索 响应包含完整分页协议",
+      "status": "PASS"
+    },
+    {
+      "check": "平台商户改名后搜索 total 不使用当前页长度冒充",
+      "status": "PASS"
+    },
+    {
+      "check": "商户名称变更后 COUNT/分页一致",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/profile",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks/894b6bd5-dbb8-4ece-983c-32105d14958d/replenish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks/894b6bd5-dbb8-4ece-983c-32105d14958d/replenish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks/894b6bd5-dbb8-4ece-983c-32105d14958d/replenish",
+      "http": 200,
+      "businessCode": "G0003",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks/page?page=1&size=1&q=%E5%8D%95%E6%94%AF%E9%BB%91%E8%89%B2",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "库存规格名称搜索 响应包含完整分页协议",
+      "status": "PASS"
+    },
+    {
+      "check": "库存规格名称搜索 total 不使用当前页长度冒充",
+      "status": "PASS"
+    },
+    {
+      "check": "库存 q 先匹配后分页",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/publish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复补货不增加两次库存",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/images",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/images",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "真实上传返回不同 /media 对象地址",
+      "status": "PASS"
+    },
+    {
+      "check": "/media 返回真实 PNG 字节而不是 base64 Json",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "多图保存后首图兼容字段与有序 images 一致",
+      "status": "PASS"
+    },
+    {
+      "check": "图片顺序按提交的 sortOrder 返回",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/c8efd86c-1993-43c5-b78a-f9cf23361821/products",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/c8efd86c-1993-43c5-b78a-f9cf23361821/products/31c6e25d-8d33-40ac-a34f-242d7137d129",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/page?page=1&size=20",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "跨商户引用被拒绝且原商品仍在",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "G0001",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "非法图片写入不推进商品版本",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "清空相册同步清空兼容 imageUrl",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "SKU 同目标重放不更新版本",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "G0002",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/status",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /cart",
+      "http": 200,
+      "businessCode": "I0001",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "超库存 PUT 回滚并保留原购物车数量",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /cart",
+      "http": 200,
+      "businessCode": "I0001",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /cart",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /cart",
+      "http": 200,
+      "businessCode": "0002",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "POST 增量累计并在超库存/非法参数时保留原数量",
+      "status": "PASS"
+    },
+    {
+      "request": "DELETE /cart/894b6bd5-dbb8-4ece-983c-32105d14958d",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/price",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/invitations",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /invitations/0c7f3696-9f1b-4546-b70e-402e68acdf79/accept",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /invitations/0c7f3696-9f1b-4546-b70e-402e68acdf79/accept",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/skus/894b6bd5-dbb8-4ece-983c-32105d14958d/price",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "PUT /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "购物车由后端返回商户名，前端无需缓存反查",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复下单返回同一订单",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/orders/page?page=1&size=1&q=81801522",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "平台订单号搜索 响应包含完整分页协议",
+      "status": "PASS"
+    },
+    {
+      "check": "平台订单号搜索 total 不使用当前页长度冒充",
+      "status": "PASS"
+    },
+    {
+      "check": "订单号 q 服务端搜索可命中当前订单",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/page?page=1&size=5&q=%E8%80%83%E8%AF%95%E9%BB%91%E8%89%B2%E7%AD%BE%E5%AD%97%E7%AC%94",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "商户订单商品名搜索 响应包含完整分页协议",
+      "status": "PASS"
+    },
+    {
+      "check": "商户订单商品名搜索 total 不使用当前页长度冒充",
+      "status": "PASS"
+    },
+    {
+      "check": "订单商品名 q 查询命中真实订单",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "结算成功消费对应购物车数量",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/pay",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/pay",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/prepare",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/ready",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/pickup-token",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/pickup-token",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/verify",
+      "http": 200,
+      "businessCode": "F0001",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/verify",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/81801522-9d0a-4a69-9c2e-e2c88a941c3c/verify",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "真实HTTP支付、备货、核销闭环完成",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复核销没有重复出库",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复下单返回同一订单",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/24cc20d1-fda4-4df6-abd2-bfea131ae8d8/pay",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/24cc20d1-fda4-4df6-abd2-bfea131ae8d8/refunds",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/24cc20d1-fda4-4df6-abd2-bfea131ae8d8/refund-decision",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/24cc20d1-fda4-4df6-abd2-bfea131ae8d8/refund-decision",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /orders/24cc20d1-fda4-4df6-abd2-bfea131ae8d8",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "未提货退款完成",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复下单返回同一订单",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/pay",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refunds",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "T0004",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "T0004",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "T0004",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/appeal",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb/refund-decision",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /orders/821ebc9b-8644-4b80-ae6d-4c88d2bc43fb",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "申诉后平台裁决及重复请求完成",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复退款只释放一次预占",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复下单返回同一订单",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/29315184-2399-4dea-9a29-81f5fb78fec8/cancel",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /orders/29315184-2399-4dea-9a29-81f5fb78fec8",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "未付款取消完成",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks/23f7e1e8-7432-4eac-93ab-2e9fd8b27e2f/replenish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/products/524b0409-600b-4e29-b946-3c079e4efbd4/publish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/524b0409-600b-4e29-b946-3c079e4efbd4",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders",
+      "http": 200,
+      "businessCode": "I0001",
+      "status": "PASS"
+    },
+    {
+      "check": "最后一件库存只有一位真实用户下单成功",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /orders/38a97bb1-42f7-489b-92e4-939f43a1e531/cancel",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/f423b628-6792-4097-bc47-bb086ec75c60/documents",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "文档经真实Python接口建立索引",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/78562765-0607-4435-8373-8a081f3ecbb2/publish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/3ce6d60b-3608-4363-8b15-0c33e0e3d2f1/documents",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "文档经真实Python接口建立索引",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/publish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/d04f42c7-4d86-4c72-a6a1-4a90738f4ee2/documents",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/4edab38c-02d8-41c0-8bb4-ffee991a6e20/documents",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/78d1c61c-ec65-4db9-8301-614b164df618/publish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/78d1c61c-ec65-4db9-8301-614b164df618/withdraw",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/bases",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "平台管理列表仅含平台自有库",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/bases/3ce6d60b-3608-4363-8b15-0c33e0e3d2f1/documents/page",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/3ce6d60b-3608-4363-8b15-0c33e0e3d2f1/documents",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/index",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/publish",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/withdraw",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/bases/3ce6d60b-3608-4363-8b15-0c33e0e3d2f1/documents/page",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/3ce6d60b-3608-4363-8b15-0c33e0e3d2f1/documents",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/index",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/publish",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6/withdraw",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/bases/d04f42c7-4d86-4c72-a6a1-4a90738f4ee2/documents/page",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/d04f42c7-4d86-4c72-a6a1-4a90738f4ee2/documents",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2/index",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2/publish",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2/withdraw",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/bases/d04f42c7-4d86-4c72-a6a1-4a90738f4ee2/documents/page",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/d04f42c7-4d86-4c72-a6a1-4a90738f4ee2/documents",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2/index",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2/publish",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2/withdraw",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/6a7c2a47-c861-4958-809a-0e73352aaff6",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /knowledge/documents/8682041e-5d24-48da-b77f-dbc4021eead2",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/bases/80d61c48-7c5a-44ba-9c5d-feb3bbf19c8d/documents",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "文档经真实Python接口建立索引",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/22486654-6bf3-4d4b-8d55-ddc73ac9ee23/publish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /ai/chat",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "真实Java/Python组合规格不能忽略未知大杯",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /ai/chat",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "真实退款知识问答不会因商品召回创建提案",
+      "status": "PASS"
+    },
+    {
+      "check": "真实Java/Python退款知识正文和引用未被报价覆盖",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /ai/chat",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "导购明确声明实际运行模式",
+      "status": "PASS"
+    },
+    {
+      "check": "普通买家回答及引用不包含商户内部资料",
+      "status": "PASS"
+    },
+    {
+      "check": "有真实商品的待确认提案",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /ai/proposals/23f31896-2e57-452e-9266-44b92609a225/confirm",
+      "http": 200,
+      "businessCode": "G0001",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /ai/proposals/23f31896-2e57-452e-9266-44b92609a225/confirm",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /ai/proposals/23f31896-2e57-452e-9266-44b92609a225/confirm",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /cart",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复确认提案不会重复加购",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /knowledge/documents/78562765-0607-4435-8373-8a081f3ecbb2/withdraw",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /ai/conversations/6f740ebf-21b9-4dac-ae94-accd27e645fa/messages",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "撤回文档后相关历史回答被隐藏",
+      "status": "PASS"
+    },
+    {
+      "request": "DELETE /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/members/0d01ac31-3828-4162-a738-e834415b8437",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "DELETE /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/members/0d01ac31-3828-4162-a738-e834415b8437",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/invitations",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "DELETE /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/members/0d01ac31-3828-4162-a738-e834415b8437",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /invitations",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "重复撤权仍可取消新邀请",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /merchants/ed6c7e32-21ee-4e51-98a9-471bfb523c0f/stocks",
+      "http": 200,
+      "businessCode": "A0006",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /admin/products?size=100",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "check": "平台监管列表可查看商品",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /admin/products/4279feb6-af96-4d1f-866f-dae5048a6ba1/unpublish",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /products/4279feb6-af96-4d1f-866f-dae5048a6ba1",
+      "http": 200,
+      "businessCode": "C0001",
+      "status": "PASS"
+    },
+    {
+      "request": "POST /auth/logout",
+      "http": 200,
+      "businessCode": "0000",
+      "status": "PASS"
+    },
+    {
+      "request": "GET /auth/me",
+      "http": 401,
+      "businessCode": "A0004",
+      "status": "PASS"
+    }
+  ],
+  "realJavaMySqlTested": true,
+  "externalLlmConfigured": "由实际响应 mode 判断，不从本报告推断",
+  "contractValidation": {
+    "enabled": true,
+    "responsesChecked": 208,
+    "openapiSha256": "bc6c7bc6b85a3d2cd9f20e0d084710c73506757eaea2a426db75f1039066f7cf"
+  }
+}

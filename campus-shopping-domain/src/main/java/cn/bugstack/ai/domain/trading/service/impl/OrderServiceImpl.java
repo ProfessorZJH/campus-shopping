@@ -41,7 +41,20 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public OrderAggregate create(String id, String buyer, String merchant, String store, List<OrderItemEntity> items, Instant deadline) {
-        OrderAggregate o = new OrderAggregate(id, buyer, merchant, store, items, "PENDING_PAYMENT", deadline, clock.instant());
+        return create(id, buyer, merchant, store, "", "", items, deadline);
+    }
+
+    public OrderAggregate create(
+        String id,
+        String buyer,
+        String merchant,
+        String store,
+        String pickupStoreName,
+        String pickupLocation,
+        List<OrderItemEntity> items,
+        Instant deadline
+    ) {
+        OrderAggregate o = new OrderAggregate(id, buyer, merchant, store, pickupStoreName, pickupLocation, items, "PENDING_PAYMENT", deadline, clock.instant());
         repository.insert(o);
         return o;
     }

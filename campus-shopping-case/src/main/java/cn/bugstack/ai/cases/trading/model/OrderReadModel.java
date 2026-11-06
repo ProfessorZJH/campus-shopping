@@ -4,6 +4,7 @@ import cn.bugstack.ai.domain.fulfillment.model.valobj.PickupVO;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
+import cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -14,6 +15,8 @@ public record OrderReadModel(
     String buyerId,
     String merchantId,
     String storeId,
+    String pickupStoreName,
+    String pickupLocation,
     String status,
     long totalCent,
     Instant deadline,
@@ -21,14 +24,21 @@ public record OrderReadModel(
     List<OrderItemEntity> items,
     String merchantName,
     PickupVO pickup,
-    AfterSaleVO afterSale
+    AfterSaleVO afterSale,
+    List<OrderEventVO> events
 ) {
     public OrderReadModel(OrderAggregate order, String merchantName, PickupVO pickup, AfterSaleVO afterSale) {
+        this(order, merchantName, pickup, afterSale, List.of());
+    }
+
+    public OrderReadModel(OrderAggregate order, String merchantName, PickupVO pickup, AfterSaleVO afterSale, List<OrderEventVO> events) {
         this(
             order.getId(),
             order.getBuyerId(),
             order.getMerchantId(),
             order.getStoreId(),
+            order.getPickupStoreName(),
+            order.getPickupLocation(),
             order.getStatus(),
             order.getTotalCent(),
             order.getDeadline(),
@@ -36,13 +46,15 @@ public record OrderReadModel(
             List.copyOf(order.getItems()),
             merchantName,
             pickup,
-            afterSale
+            afterSale,
+            List.copyOf(events)
         );
     }
 
     public OrderReadModel {
         Objects.requireNonNull(orderId);
         items = List.copyOf(items);
+        events = List.copyOf(events);
         Objects.requireNonNull(merchantName);
         if (merchantName.isBlank()) throw new IllegalArgumentException("订单商户名不能为空");
     }

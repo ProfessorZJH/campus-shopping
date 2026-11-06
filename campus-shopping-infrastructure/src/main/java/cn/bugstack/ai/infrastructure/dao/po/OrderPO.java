@@ -15,6 +15,8 @@ public class OrderPO {
     private String buyerId;
     private String merchantId;
     private String storeId;
+    private String pickupStoreName;
+    private String pickupLocation;
     private Long totalCent;
     private String status;
     private Instant deadline;

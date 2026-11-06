@@ -32,6 +32,7 @@ import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.CheckoutItemEntity;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.infrastructure.adapter.repository.AccessRepository;
+import cn.bugstack.ai.infrastructure.adapter.repository.ProductImageRepository;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.infrastructure.dao.ICatalogDao;
 import cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway;
@@ -101,6 +102,9 @@ class CommerceMySqlIntegrationTest {
 
     @Autowired
     IProductImageRepository productImages;
+
+    @Autowired
+    ProductImageRepository storeImages;
 
     @Autowired
     ICatalogService catalogSearch;
@@ -1539,6 +1543,8 @@ class CommerceMySqlIntegrationTest {
         assertEquals(1, scalar("SELECT COUNT(*) FROM trd_payment"));
         assertEquals(1, scalar("SELECT COUNT(*) FROM ful_pickup_task"));
         assertEquals("PAID", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='PAYMENT_SUCCEEDED'", o.getId()));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='ORDER_CREATED'", o.getId()));
     }
 
     @Test
@@ -1549,6 +1555,7 @@ class CommerceMySqlIntegrationTest {
         assertEquals(2, scalar("SELECT SUM(on_hand) FROM inv_stock_balance"));
         assertEquals("CANCELED", jdbc.queryForObject("SELECT status FROM trd_order WHERE id=?", String.class, o.getId()));
         assertEquals(1, scalar("SELECT COUNT(*) FROM inv_stock_movement WHERE type='RELEASE'"));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='CANCELED'", o.getId()));
     }
 
     @Test
@@ -1558,6 +1565,31 @@ class CommerceMySqlIntegrationTest {
         assertEquals(List.of("0000", "0000"), race(() -> life.requestRefund(buyer, o.getId(), "退款"), () -> life.requestRefund(buyer, o.getId(), "退款")));
         assertEquals(1, scalar("SELECT COUNT(*) FROM trd_after_sale WHERE status='REQUESTED'"));
         assertEquals(0, scalar("SELECT COUNT(*) FROM trd_refund"));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='REFUND_REQUESTED'", o.getId()));
+    }
+
+    @Test
+    void failedTransitionsDoNotRecordSuccessEvents() {
+        var pending = order(product(2));
+        assertEquals("T0001", code(() -> life.startPreparing(owner, merchant.id(), pending.getId())));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='PREPARING'", pending.getId()));
+        var paid = order(product(2));
+        life.pay(buyer, paid.getId());
+        assertEquals("G0001", code(() -> life.merchantRejectRefund(owner, merchant.id(), paid.getId(), "无售后单")));
+        assertEquals(0, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='MERCHANT_REJECTED'", paid.getId()));
+    }
+
+    @Test
+    void storeProfileImageRequiresSameMerchantAndStoreUsage() {
+        product(1);
+        String uuid = UUID.randomUUID().toString(),
+            key = "qiniu/" + uuid + ".png",
+            url = "/media/qiniu/" + uuid + ".png";
+        jdbc.update("INSERT INTO cat_product_image_upload(object_key,merchant_id,usage_type) VALUES(?,?,?)", key, merchant.id(), "PRODUCT");
+        assertEquals("A0006", code(() -> storeImages.requireOwnedStoreImage(merchant.id(), url)));
+        jdbc.update("UPDATE cat_product_image_upload SET usage_type='STORE' WHERE object_key=? AND merchant_id=?", key, merchant.id());
+        storeImages.requireOwnedStoreImage(merchant.id(), url);
+        assertEquals("A0006", code(() -> storeImages.requireOwnedStoreImage("another-merchant", url)));
     }
 
     @Test
@@ -2088,6 +2120,7 @@ class CommerceMySqlIntegrationTest {
         assertEquals(0, scalar("SELECT reserved FROM inv_stock_balance"));
         assertEquals(1, scalar("SELECT COUNT(*) FROM inv_stock_movement WHERE type='RELEASE'"));
         assertEquals("T0001", code(() -> life.pay(buyer, o.getId())));
+        assertEquals(1, scalar("SELECT COUNT(*) FROM trd_order_event WHERE order_id=? AND event_type='EXPIRED'", o.getId()));
     }
 
     @Test
@@ -2350,6 +2383,93 @@ class CommerceMySqlIntegrationTest {
         assertEquals("A0006", code(() -> catalogQuery.adminProducts(other, null, "", 1, 20)));
         catalog.forceUnpublishProduct(admin, p.getId());
         assertEquals("C0001", code(() -> catalogQuery.detail(p.getId())));
+    }
+
+    @Test
+    void storeProfilePersistsPublicFieldsAndRequiresStoreImageOwnership() throws Exception {
+        String productUsageImage = productImages.storeImage(pngBytes(), merchant.id());
+        assertThrows(AppException.class, () ->
+            admission.updateProfile(
+                owner,
+                merchant.id(),
+                "更新商户",
+                "校园新店",
+                "西门三楼",
+                "公开介绍",
+                "周一至周五 08:00-20:00（北京时间）",
+                productUsageImage
+            )
+        );
+        String storeImage = merchantService.storeImage(merchant.id(), pngBytes());
+        admission.updateProfile(owner, merchant.id(), "更新商户", "校园新店", "西门三楼", "公开介绍", "周一至周五 08:00-20:00（北京时间）", storeImage);
+        MerchantVO saved = merchantService.find(merchant.id());
+        assertEquals("公开介绍", saved.description());
+        assertEquals("周一至周五 08:00-20:00（北京时间）", saved.businessHours());
+        assertEquals(storeImage, saved.imageUrl());
+        assertEquals(storeImage, merchantService.publicDisplay(merchant.id()).imageUrl());
+        // 旧四参数调用保留新增字段，避免旧客户端保存时清空门店介绍。
+        admission.updateProfile(owner, merchant.id(), "更新商户", "校园新店", "西门三楼");
+        assertEquals("公开介绍", merchantService.find(merchant.id()).description());
+        assertEquals(storeImage, merchantService.find(merchant.id()).imageUrl());
+    }
+
+    @Test
+    void orderPickupSnapshotIsStoredAtCheckoutAndSurvivesMerchantProfileChange() {
+        var p = product(2);
+        var order = checkout.checkout(buyer, merchant.id(), List.of(item(p)), "pickup-snapshot");
+        assertEquals(merchant.storeName(), order.pickupStoreName());
+        assertEquals(merchant.location(), order.pickupLocation());
+        admission.updateProfile(owner, merchant.id(), "更新商户", "改名门店", "新地点");
+        var reloaded = orderQueries.detail(buyer, order.orderId());
+        assertEquals(merchant.storeName(), reloaded.pickupStoreName());
+        assertEquals(merchant.location(), reloaded.pickupLocation());
+        assertEquals("改名门店", merchantService.find(merchant.id()).storeName());
+        assertEquals("新地点", merchantService.find(merchant.id()).location());
+    }
+
+    @Test
+    void fulfillmentEventsFollowSuccessfulTransitionsAndIgnoreReplays() {
+        var p = product(2);
+        var order = checkout.checkout(buyer, merchant.id(), List.of(item(p)), "event-key");
+        life.pay(buyer, order.orderId());
+        life.pay(buyer, order.orderId());
+        life.startPreparing(owner, merchant.id(), order.orderId());
+        life.startPreparing(owner, merchant.id(), order.orderId());
+        life.markReady(owner, merchant.id(), order.orderId());
+        var token = life.issuePickupToken(buyer, order.orderId());
+        life.verifyPickup(owner, merchant.id(), order.orderId(), token.token());
+        var detail = orderQueries.detail(buyer, order.orderId());
+        assertEquals(
+            List.of("ORDER_CREATED", "PAYMENT_SUCCEEDED", "PREPARING", "READY", "PICKED_UP"),
+            detail
+                .events()
+                .stream()
+                .map(e -> e.type())
+                .toList()
+        );
+        assertEquals(5, jdbc.queryForObject("SELECT COUNT(*) FROM trd_order_event WHERE order_id=?", Integer.class, order.orderId()));
+    }
+
+    @Test
+    void afterSaleEventsKeepMerchantAndPlatformDecisionsWithoutDuplicates() {
+        var p = product(2);
+        var order = checkout.checkout(buyer, merchant.id(), List.of(item(p)), "after-sale-events");
+        life.pay(buyer, order.orderId());
+        life.requestRefund(buyer, order.orderId(), "未提货");
+        life.merchantRejectRefund(owner, merchant.id(), order.orderId(), "请到店处理");
+        life.appeal(buyer, order.orderId());
+        life.platformApproveRefund(admin, order.orderId(), "平台同意模拟退款");
+        life.platformApproveRefund(admin, order.orderId(), "平台同意模拟退款");
+        var detail = orderQueries.detail(buyer, order.orderId());
+        assertEquals(
+            List.of("ORDER_CREATED", "PAYMENT_SUCCEEDED", "REFUND_REQUESTED", "MERCHANT_REJECTED", "REFUND_DISPUTED", "PLATFORM_APPROVED", "REFUND_COMPLETED"),
+            detail
+                .events()
+                .stream()
+                .map(e -> e.type())
+                .toList()
+        );
+        assertEquals(7, detail.events().size());
     }
 
     @Test

@@ -15111,6 +15111,185 @@
         }
       }
     },
+    "/api/v1/merchants/{merchantId}/store/images": {
+      "post": {
+        "tags": [
+          "MerchantApplication"
+        ],
+        "operationId": "MerchantApplicationController_storeImage",
+        "x-java-controller": "MerchantApplicationController.java",
+        "x-java-method": "storeImage",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "merchantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "由 GET /api/v1/auth/csrf 的 data.headerName 和 data.token 动态确定；本工程默认为该名称"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ProductImageUploadDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-maxRequestBodyBytes": 3000000,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileUploadRequestDTO"
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/orders": {
       "get": {
         "tags": [
@@ -18464,6 +18643,28 @@
             "minLength": 1,
             "maxLength": 200,
             "pattern": "\\S"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "businessHours": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255,
+            "pattern": "^\\s*$|^/media/(?:[a-f0-9-]+|qiniu/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\\.png$"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/MerchantProfileRequestDTO.java（字段类型来自源码；必填以领域规则为准）；业务约束经专项核对，未知属性忽略，身份/角色不从附加字段读取。",
@@ -18502,6 +18703,15 @@
           },
           "location": {
             "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "businessHours": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/MerchantResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
@@ -18512,7 +18722,10 @@
           "status",
           "storeId",
           "storeName",
-          "location"
+          "location",
+          "description",
+          "businessHours",
+          "imageUrl"
         ],
         "x-nullable-fields": []
       },
@@ -18543,6 +18756,36 @@
           "role",
           "content",
           "createdAt"
+        ],
+        "x-nullable-fields": []
+      },
+      "OrderEventResponseDTO": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorRole": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/OrderEventResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "eventId",
+          "type",
+          "occurredAt",
+          "actorRole",
+          "reason"
         ],
         "x-nullable-fields": []
       },
@@ -18599,6 +18842,12 @@
           "storeId": {
             "type": "string"
           },
+          "pickupStoreName": {
+            "type": "string"
+          },
+          "pickupLocation": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -18628,6 +18877,12 @@
             },
             "minItems": 1
           },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderEventResponseDTO"
+            }
+          },
           "pickup": {
             "anyOf": [
               {
@@ -18656,11 +18911,14 @@
           "merchantId",
           "merchantName",
           "storeId",
+          "pickupStoreName",
+          "pickupLocation",
           "status",
           "totalCent",
           "deadline",
           "createdAt",
           "items",
+          "events",
           "pickup",
           "afterSale"
         ],

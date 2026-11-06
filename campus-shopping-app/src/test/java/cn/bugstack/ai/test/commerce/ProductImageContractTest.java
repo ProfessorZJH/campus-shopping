@@ -316,7 +316,7 @@ class ProductImageContractTest {
 
         verify(dao).deleteProductImages("p");
         verify(dao, times(2)).insertProductImage(any(ProductImagePO.class));
-        verify(dao, never()).registerProductImageUpload(anyString(), anyString());
+        verify(dao, never()).registerProductImageUpload(anyString(), anyString(), anyString());
     }
 
     @Test
@@ -335,13 +335,13 @@ class ProductImageContractTest {
     @Test
     void uploadedObjectIsRegisteredForMerchantAndInvalidBytesAreRejected() throws Exception {
         var dao = mock(ICatalogDao.class);
-        when(dao.registerProductImageUpload(anyString(), eq("m"))).thenReturn(1);
+        when(dao.registerProductImageUpload(anyString(), eq("m"), eq("PRODUCT"))).thenReturn(1);
         var repository = repository(dao);
 
         String url = repository.storeImage(png(), "m");
         assertTrue(url.matches("/media/[a-f0-9-]+\\.png"));
         assertTrue(Files.isRegularFile(uploadDir.resolve(url.substring("/media/".length()))));
-        verify(dao).registerProductImageUpload(eq(url.substring("/media/".length())), eq("m"));
+        verify(dao).registerProductImageUpload(eq(url.substring("/media/".length())), eq("m"), eq("PRODUCT"));
 
         assertEquals("AI0004", assertThrows(AppException.class, () -> repository.storeImage("not-an-image".getBytes(), "m")).getCode());
         assertEquals("0002", assertThrows(AppException.class, () -> repository.storeImage(png(), " ")).getCode());
@@ -351,7 +351,7 @@ class ProductImageContractTest {
     @Test
     void uploadedObjectRequiresOwnershipRegistration() throws Exception {
         var dao = mock(ICatalogDao.class);
-        when(dao.registerProductImageUpload(anyString(), eq("m"))).thenReturn(0);
+        when(dao.registerProductImageUpload(anyString(), eq("m"), eq("PRODUCT"))).thenReturn(0);
         var repository = repository(dao);
 
         assertThrows(IllegalStateException.class, () -> repository.storeImage(png(), "m"));
