@@ -5,7 +5,10 @@ import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -13,6 +16,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.function.LongConsumer;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -57,6 +61,91 @@ public class AiGatewayService {
 
     public AiGatewayDTO.Answer query(AiGatewayDTO.Query request) {
         return post("/v1/query", request, AiGatewayDTO.Answer.class);
+    }
+
+    /**
+     * 读取 Python 流式桥接的 SSE 协议；只把最终完整答案交给上层，进度回调不包含模型正文。
+     * 连接和共享 AI 准入在整个响应体读取完成前保持有效，避免客户端断开后提前释放执行槽。
+     */
+    public AiGatewayDTO.Answer queryStream(AiGatewayDTO.Query request, LongConsumer progress) {
+        if (key == null || key.length() < 24) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        String requestId = MDC.get("requestId");
+        if (requestId == null) requestId = UUID.randomUUID().toString();
+        int timeout = Math.max(5, Math.min(timeoutSeconds, 120));
+        try (var permit = resources.acquire()) {
+            HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(url.replaceAll("/$", "") + "/v1/query/stream"))
+                .timeout(Duration.ofSeconds(timeout))
+                .header("Content-Type", "application/json")
+                .header("Accept", "text/event-stream")
+                .header("X-Service-Key", key)
+                .header("X-Request-ID", requestId)
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(request), StandardCharsets.UTF_8))
+                .build();
+            HttpResponse<InputStream> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
+            try (InputStream body = response.body()) {
+                if (response.statusCode() / 100 != 2) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
+                    String event = null;
+                    String data = null;
+                    String line;
+                    while ((line = readBoundedLine(reader, 65536)) != null) {
+                        if (line.isEmpty()) {
+                            AiGatewayDTO.Answer answer = consumeStreamEvent(event, data, progress);
+                            if (answer != null) return answer;
+                            event = null;
+                            data = null;
+                        } else if (line.startsWith("event:")) {
+                            event = line.substring("event:".length()).trim();
+                        } else if (line.startsWith("data:")) {
+                            String value = line.substring("data:".length()).trim();
+                            data = data == null ? value : data + "\n" + value;
+                            if (data.length() > 1_000_000) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+                        }
+                    }
+                    AiGatewayDTO.Answer answer = consumeStreamEvent(event, data, progress);
+                    if (answer != null) return answer;
+                }
+            }
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw unavailable(e);
+        } catch (IOException | IllegalArgumentException e) {
+            throw unavailable(e);
+        }
+    }
+
+    private AiGatewayDTO.Answer consumeStreamEvent(String event, String data, LongConsumer progress) throws IOException {
+        if (event == null || data == null || data.isBlank()) return null;
+        var node = mapper.readTree(data);
+        if (node == null || !node.isObject()) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        return switch (event) {
+            case "started" -> null;
+            case "progress" -> {
+                long bytes = node.path("bytes").asLong(-1);
+                if (bytes < 0) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+                if (progress != null) progress.accept(bytes);
+                yield null;
+            }
+            case "completed" -> {
+                AiGatewayDTO.Answer answer = mapper.treeToValue(node, AiGatewayDTO.Answer.class);
+                if (answer == null || answer.answer() == null || answer.answer().isBlank()) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+                yield answer;
+            }
+            case "failed" -> throw new AppException(ResponseCode.AI_UNAVAILABLE);
+            default -> null;
+        };
+    }
+
+    private String readBoundedLine(BufferedReader reader, int maxLength) throws IOException {
+        StringBuilder line = new StringBuilder(Math.min(maxLength, 256));
+        int value;
+        while ((value = reader.read()) != -1) {
+            if (value == '\n') return line.toString().endsWith("\r") ? line.substring(0, line.length() - 1) : line.toString();
+            if (line.length() >= maxLength) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+            line.append((char) value);
+        }
+        return line.isEmpty() ? null : line.toString();
     }
 
     public AiGatewayDTO.ProductSearchResult semanticProducts(AiGatewayDTO.ProductSearch request) {

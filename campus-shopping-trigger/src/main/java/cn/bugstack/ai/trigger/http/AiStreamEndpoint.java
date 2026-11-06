@@ -15,6 +15,7 @@ import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -64,7 +65,16 @@ public class AiStreamEndpoint {
 
     private void run(SseEmitter emitter, String actor, ChatRequestDTO request) {
         try {
-            ChatResult result = shopping.chat(actor, request.getConversationId(), request.getQuestion());
+            ChatResult result = shopping.chatStream(
+                actor,
+                request.getConversationId(),
+                request.getQuestion(),
+                bytes -> send(
+                    emitter,
+                    "progress",
+                    envelope(request.getConversationId(), "FULL_RESPONSE", Map.of("bytes", bytes), null)
+                )
+            );
             send(emitter, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
         } catch (AppException failure) {
             send(emitter, "failed", envelope(request.getConversationId(), "FULL_RESPONSE", null, failure.getCode()));

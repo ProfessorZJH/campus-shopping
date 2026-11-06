@@ -18,6 +18,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import org.springframework.stereotype.Component;
 
 /** 远程协议防腐适配，不访问 MySQL 或业务 DAO。 */
@@ -49,25 +50,34 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public AiAnswerVO query(AiQueryEntity query) {
-        var response = gateway.query(
-            new AiGatewayDTO.Query(
-                query.question(),
-                query.allowedDocumentIds(),
-                query
-                    .offers()
-                    .stream()
-                    .map(o -> new AiGatewayDTO.Offer(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.description(), o.priceCent(), o.available()))
-                    .toList(),
-                query
-                    .history()
-                    .stream()
-                    .map(m -> new AiGatewayDTO.History(m.role(), m.content()))
-                    .toList(),
-                query.retrievalQuery(),
-                query.semanticSkuIds(),
-                query.externalDocumentIds()
-            )
+        return toAnswer(gateway.query(toRequest(query)));
+    }
+
+    public AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
+        return toAnswer(gateway.queryStream(toRequest(query), progress));
+    }
+
+    private AiGatewayDTO.Query toRequest(AiQueryEntity query) {
+        return new AiGatewayDTO.Query(
+            query.question(),
+            query.allowedDocumentIds(),
+            query
+                .offers()
+                .stream()
+                .map(o -> new AiGatewayDTO.Offer(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.description(), o.priceCent(), o.available()))
+                .toList(),
+            query
+                .history()
+                .stream()
+                .map(m -> new AiGatewayDTO.History(m.role(), m.content()))
+                .toList(),
+            query.retrievalQuery(),
+            query.semanticSkuIds(),
+            query.externalDocumentIds()
         );
+    }
+
+    private AiAnswerVO toAnswer(AiGatewayDTO.Answer response) {
         require(
             response != null &&
                 text(response.answer(), 10000) &&

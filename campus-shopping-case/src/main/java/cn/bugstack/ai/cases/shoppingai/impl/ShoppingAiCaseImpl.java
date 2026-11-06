@@ -40,6 +40,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -101,9 +102,31 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         String q = text(question, "问题", 2000);
         var turn = state.beginTurn(actor, conversationId, q);
         try {
-            return answer(actor, turn, q);
+            return answer(actor, turn, q, null);
         } catch (RuntimeException failure) {
             // 成功提交已经在短事务中释放租约；失败才做 token 条件释放，不能误清除后继请求。
+            try {
+                state.releaseTurn(turn);
+            } catch (RuntimeException releaseFailure) {
+                failure.addSuppressed(releaseFailure);
+                log.error(
+                    "会话租约释放失败 conversationId={} diagnostic={}",
+                    turn.conversationId(),
+                    cn.bugstack.ai.types.common.FailureDiagnostics.describe(releaseFailure)
+                );
+            }
+            throw failure;
+        }
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
+    public ChatResult chatStream(String actor, String conversationId, String question, LongConsumer progress) {
+        accounts.requireActive(actor);
+        String q = text(question, "问题", 2000);
+        var turn = state.beginTurn(actor, conversationId, q);
+        try {
+            return answer(actor, turn, q, progress);
+        } catch (RuntimeException failure) {
             try {
                 state.releaseTurn(turn);
             } catch (RuntimeException releaseFailure) {
@@ -128,7 +151,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         return state.requestTurnCancel(actor, conversation);
     }
 
-    private ChatResult answer(String actor, ConversationTurnVO turn, String question) {
+    private ChatResult answer(String actor, ConversationTurnVO turn, String question, LongConsumer progress) {
         String conversation = turn.conversationId();
         var documents = knowledge.readableScope(actor);
         String fingerprint = scope(documents);
@@ -201,8 +224,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .filter(o -> semanticProductIds.contains(o.productId()))
             .map(SkuOfferVO::skuId)
             .toList();
-        AiAnswerVO answer = engine.query(
-            new AiQueryEntity(
+        AiQueryEntity aiQuery = new AiQueryEntity(
                 question,
                 documents.stream().map(KnowledgeScopeVO::id).toList(),
                 candidates,
@@ -214,8 +236,8 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                     .filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId()))
                     .map(KnowledgeScopeVO::id)
                     .toList()
-            )
         );
+        AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, progress);
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
         var current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
