@@ -19,7 +19,7 @@
     "prettier": "3.9.10",
     "prettier-plugin-java": "2.11.0",
     "typescript": "5.8.3",
-    "vite": "6.4.5",
+    "vite": "8.3.5",
     "vue-tsc": "3.3.14"
   },
   "dependencies": {
