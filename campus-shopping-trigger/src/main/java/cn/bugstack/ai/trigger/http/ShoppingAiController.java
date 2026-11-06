@@ -9,6 +9,7 @@ import cn.bugstack.ai.api.dto.ChatResponseDTO;
 import cn.bugstack.ai.api.dto.CitationResponseDTO;
 import cn.bugstack.ai.api.dto.ConfirmProposalRequestDTO;
 import cn.bugstack.ai.api.dto.ConversationResponseDTO;
+import cn.bugstack.ai.api.dto.ConversationTurnStatusResponseDTO;
 import cn.bugstack.ai.api.dto.MessageResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalItemResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalResponseDTO;
@@ -112,6 +113,28 @@ public class ShoppingAiController implements IShoppingAiApi {
                 )
                 .toList();
         });
+    }
+
+    /** 查询本人当前会话轮次状态；租约令牌只留在服务端。 */
+    @Override
+    @GetMapping("/ai/conversations/{conversationId}/turn/status")
+    public Response<ConversationTurnStatusResponseDTO> turnStatus(@PathVariable("conversationId") String conversationId, Principal principal) {
+        return execute(() -> turnStatus(shopping.turnStatus(actor(principal), conversationId)));
+    }
+
+    /** 请求取消当前轮次；下游尚未结束时仍返回 CANCEL_REQUESTED。 */
+    @Override
+    @PostMapping("/ai/conversations/{conversationId}/turn/cancel")
+    public Response<ConversationTurnStatusResponseDTO> cancelTurn(@PathVariable("conversationId") String conversationId, Principal principal) {
+        return execute(() -> turnStatus(shopping.requestTurnCancel(actor(principal), conversationId)));
+    }
+
+    private ConversationTurnStatusResponseDTO turnStatus(cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO status) {
+        return ConversationTurnStatusResponseDTO.builder()
+            .conversationId(status.conversationId())
+            .status(status.status())
+            .cancelRequestedAt(status.cancelRequestedAt())
+            .build();
     }
 
     private String citationStatus(cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO message) {

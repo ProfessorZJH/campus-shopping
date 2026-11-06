@@ -2,7 +2,7 @@
 
 > 本文件由 `python scripts/generate-api-contract.py` 从当前 Controller/DTO **生成**；禁止手工追加旧版路由。
 > 路由/字段来自源码；必填、范围、枚举由 `scripts/api_contract_rules.py` 显式核对合并。业务规则见 [行为契约](behavior-v1.1.md)，
-> 机器可读的 97 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
+> 机器可读的 99 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
 
 ## 统一约定
 
@@ -17,7 +17,7 @@
 - 字段约束描述规范化后的输入，Java 字符长度按 UTF-16 单元；商品创建必填 skus，编辑必填 expectedVersion，退款审核必填 reason。
 - 本文件是契约，运行证据另见 docs/testing/CONTRACT-DATABASE-API-AUDIT-09.md。
 
-## 全量路由（共 97 条）
+## 全量路由（共 99 条）
 
 | 方法 | 路径 | 请求参数 / 主体 | data 类型 | 访问控制 | 实现类 |
 |---|---|---|---|---|---|
@@ -41,6 +41,8 @@
 | `GET` | `/api/v1/ai/conversations` | page?:int、size?:int | `List<ConversationResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations/{conversationId}/messages` | conversationId:String | `List<MessageResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations/{conversationId}/proposals` | conversationId:String | `List<ProposalResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
+| `POST` | `/api/v1/ai/conversations/{conversationId}/turn/cancel` | conversationId:String | `ConversationTurnStatusResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
+| `GET` | `/api/v1/ai/conversations/{conversationId}/turn/status` | conversationId:String | `ConversationTurnStatusResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `POST` | `/api/v1/ai/proposals/{proposalId}/confirm` | proposalId:String、body:ConfirmProposalRequestDTO | `ProposalResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `POST` | `/api/v1/ai/proposals/{proposalId}/reject` | proposalId:String | `Void` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/auth/csrf` | — | `CsrfTokenResponseDTO` | anonymous | `AuthController.java` |
@@ -178,6 +180,10 @@
 ### `ConversationResponseDTO`
 
 `id`、`title`、`createdAt`、`lastActiveAt`、`summary`
+
+### `ConversationTurnStatusResponseDTO`
+
+`conversationId`、`status`、`cancelRequestedAt`
 
 ### `CsrfTokenResponseDTO`
 

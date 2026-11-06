@@ -70,6 +70,11 @@
       "version": "V20261107_02",
       "file": "V20261107_02__message_citations.sql",
       "sha256": "ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1"
+    },
+    {
+      "version": "V20261107_03",
+      "file": "V20261107_03__conversation_turn_runtime.sql",
+      "sha256": "464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937"
     }
   ]
 }

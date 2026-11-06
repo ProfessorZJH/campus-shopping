@@ -152,6 +152,36 @@ class AiConversationBoundaryTest {
     }
 
     @Test
+    void cancellationIsBoundToTheCurrentPersistedTurnState() {
+        var repository = mock(IConversationRepository.class);
+        String id = "conversation";
+        when(repository.conversation(id)).thenReturn(new ConversationVO(id, "buyer", "题目", clock.instant()));
+        var requested = new ConversationTurnStatusVO(id, "CANCEL_REQUESTED", clock.instant());
+        when(repository.turnStatus(id, "buyer")).thenReturn(requested);
+        var service = new ConversationServiceImpl(repository, clock);
+
+        assertEquals(requested, service.requestTurnCancel("buyer", id));
+        verify(repository).requestTurnCancel(id, "buyer");
+        verify(repository, times(1)).turnStatus(id, "buyer");
+        verify(repository, never()).releaseTurn(any());
+    }
+
+    @Test
+    void statusReadDoesNotExposeLeaseToken() {
+        var repository = mock(IConversationRepository.class);
+        String id = "conversation";
+        when(repository.conversation(id)).thenReturn(new ConversationVO(id, "buyer", "题目", clock.instant()));
+        when(repository.turnStatus(id, "buyer")).thenReturn(new ConversationTurnStatusVO(id, "RUNNING", null));
+
+        var status = new ConversationServiceImpl(repository, clock).turnStatus("buyer", id);
+
+        assertEquals(id, status.conversationId());
+        assertEquals("RUNNING", status.status());
+        assertNull(status.cancelRequestedAt());
+        assertFalse(status.toString().contains("token"));
+    }
+
+    @Test
     void historicalCitationsAreRevalidatedAndOldMessagesRemainExplicitlyMissing() {
         var state = mock(IConversationService.class);
         var knowledge = mock(IKnowledgeCase.class);

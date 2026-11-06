@@ -3,6 +3,7 @@ package cn.bugstack.ai.infrastructure.adapter.repository;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
@@ -119,6 +120,15 @@ public class ConversationRepository implements IConversationRepository {
 
     public void releaseTurn(ConversationTurnVO turn) {
         dao.releaseTurn(turn.conversationId(), turn.userId(), turn.token());
+    }
+
+    public ConversationTurnStatusVO turnStatus(String id, String actor) {
+        var status = dao.turnStatus(id, actor);
+        return status == null ? null : new ConversationTurnStatusVO(status.getConversationId(), status.getStatus(), status.getCancelRequestedAt());
+    }
+
+    public boolean requestTurnCancel(String id, String actor) {
+        return dao.requestTurnCancel(id, actor) == 1;
     }
 
     private ConversationVO conversation(ConversationPO p) {

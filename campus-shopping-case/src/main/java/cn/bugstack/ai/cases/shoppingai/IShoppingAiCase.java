@@ -3,6 +3,7 @@ package cn.bugstack.ai.cases.shoppingai;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import java.util.List;
@@ -12,6 +13,8 @@ public interface IShoppingAiCase {
     ChatResult chat(String actor, String conversation, String question);
     List<MessageVO> history(String actor, String conversation);
     List<ConversationVO> conversations(String actor, int page, int size);
+    ConversationTurnStatusVO turnStatus(String actor, String conversation);
+    ConversationTurnStatusVO requestTurnCancel(String actor, String conversation);
     List<ProposalVO> proposals(String actor, String conversation);
     List<ProposalView> proposalViews(String actor, String conversation);
     ProposalVO confirm(String actor, String proposal, List<String> selectedSkus);

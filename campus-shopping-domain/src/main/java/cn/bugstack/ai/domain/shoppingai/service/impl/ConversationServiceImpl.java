@@ -5,6 +5,7 @@ import static cn.bugstack.ai.types.common.Checks.*;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
@@ -89,6 +90,17 @@ public class ConversationServiceImpl implements IConversationService {
 
     public void releaseTurn(ConversationTurnVO turn) {
         repository.releaseTurn(turn);
+    }
+
+    public ConversationTurnStatusVO turnStatus(String actor, String id) {
+        conversation(actor, id, "会话状态");
+        return repository.turnStatus(id, actor);
+    }
+
+    public ConversationTurnStatusVO requestTurnCancel(String actor, String id) {
+        conversation(actor, id, "取消会话轮次");
+        repository.requestTurnCancel(id, actor);
+        return repository.turnStatus(id, actor);
     }
 
     private String summary(String question) {

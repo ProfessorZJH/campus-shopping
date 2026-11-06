@@ -1,6 +1,7 @@
 package cn.bugstack.ai.infrastructure.dao;
 
 import cn.bugstack.ai.infrastructure.dao.po.ConversationPO;
+import cn.bugstack.ai.infrastructure.dao.po.ConversationTurnStatusPO;
 import cn.bugstack.ai.infrastructure.dao.po.DocumentRootPO;
 import cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO;
 import cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO;
@@ -59,6 +60,8 @@ public interface IAiDao {
     int claimTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int finishTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int releaseTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
+    ConversationTurnStatusPO turnStatus(@Param("id") String id, @Param("actor") String actor);
+    int requestTurnCancel(@Param("id") String id, @Param("actor") String actor);
     int messageInsert(@Param("p") MessagePO p);
     int messageCitationsInsert(@Param("rows") List<MessageCitationPO> rows);
     int proposalInsert(@Param("p") ProposalPO p);

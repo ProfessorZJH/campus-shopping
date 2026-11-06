@@ -1,6 +1,7 @@
 package cn.bugstack.ai.domain.shoppingai.adapter.repository;
 
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import java.time.Instant;
@@ -17,4 +18,6 @@ public interface IConversationRepository {
     boolean claimTurn(String id, String actor, String token);
     boolean finishTurn(ConversationTurnVO turn);
     void releaseTurn(ConversationTurnVO turn);
+    ConversationTurnStatusVO turnStatus(String id, String actor);
+    boolean requestTurnCancel(String id, String actor);
 }

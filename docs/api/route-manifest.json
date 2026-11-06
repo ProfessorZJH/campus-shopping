@@ -525,6 +525,40 @@
     },
     {
       "method": "POST",
+      "path": "/api/v1/ai/conversations/{conversationId}/turn/cancel",
+      "controller": "ShoppingAiController.java",
+      "handler": "cancelTurn",
+      "responseType": "ConversationTurnStatusResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "conversationId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/conversations/{conversationId}/turn/status",
+      "controller": "ShoppingAiController.java",
+      "handler": "turnStatus",
+      "responseType": "ConversationTurnStatusResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "conversationId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
       "path": "/api/v1/ai/proposals/{proposalId}/confirm",
       "controller": "ShoppingAiController.java",
       "handler": "confirm",

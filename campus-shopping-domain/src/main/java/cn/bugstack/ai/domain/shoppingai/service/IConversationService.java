@@ -1,6 +1,7 @@
 package cn.bugstack.ai.domain.shoppingai.service;
 
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import java.util.List;
@@ -24,4 +25,6 @@ public interface IConversationService {
         String accessFingerprint
     );
     void releaseTurn(ConversationTurnVO turn);
+    ConversationTurnStatusVO turnStatus(String actor, String conversation);
+    ConversationTurnStatusVO requestTurnCancel(String actor, String conversation);
 }

@@ -21,6 +21,7 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.AiOfferVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecallVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecommendationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
@@ -115,6 +116,16 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             }
             throw failure;
         }
+    }
+
+    public ConversationTurnStatusVO turnStatus(String actor, String conversation) {
+        accounts.requireActive(actor);
+        return state.turnStatus(actor, conversation);
+    }
+
+    public ConversationTurnStatusVO requestTurnCancel(String actor, String conversation) {
+        accounts.requireActive(actor);
+        return state.requestTurnCancel(actor, conversation);
     }
 
     private ChatResult answer(String actor, ConversationTurnVO turn, String question) {

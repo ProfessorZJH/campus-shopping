@@ -13,6 +13,10 @@ public interface IShoppingAiApi {
     Response<List<ConversationResponseDTO>> conversations(int page, int size, Principal principal);
     /** 加载已重新核验知识权限的历史回答。 */
     Response<List<MessageResponseDTO>> history(String conversationId, Principal principal);
+    /** 查询本人当前会话轮次状态，不返回内部租约令牌。 */
+    Response<ConversationTurnStatusResponseDTO> turnStatus(String conversationId, Principal principal);
+    /** 请求停止当前轮次；下游实际结束前状态保持取消处理中。 */
+    Response<ConversationTurnStatusResponseDTO> cancelTurn(String conversationId, Principal principal);
     /** 本人会话产生的提案。 */
     Response<List<ProposalResponseDTO>> proposals(String conversationId, Principal principal);
     /** 明确确认后，复核价格版本并单次加购。 */

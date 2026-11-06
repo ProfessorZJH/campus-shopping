@@ -89,15 +89,23 @@ SELECT message_id,ordinal,document_id,root_id,document_version,chunk_id,title,sn
 UPDATE ai_conversation SET last_active_at=#{lastActiveAt},summary=#{summary} WHERE id=#{id} AND user_id=#{actor}
     </update>
     <update id="claimTurn">
-UPDATE ai_conversation SET turn_token=#{token},turn_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3))
+UPDATE ai_conversation SET turn_token=#{token},turn_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3)),turn_status='RUNNING',turn_cancel_requested_at=NULL
 WHERE id=#{id} AND user_id=#{actor} AND (turn_token IS NULL OR turn_expires_at &lt;= CURRENT_TIMESTAMP(3))
     </update>
     <update id="finishTurn">
-UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL
-WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token} AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
+UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL,turn_status='IDLE',turn_cancel_requested_at=NULL
+WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token} AND turn_status='RUNNING' AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
     </update>
     <update id="releaseTurn">
-UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token}
+UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL,turn_status='IDLE',turn_cancel_requested_at=NULL WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token}
+    </update>
+    <select id="turnStatus" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationTurnStatusPO">
+SELECT id AS conversation_id,CASE WHEN turn_token IS NULL OR turn_expires_at &lt;= CURRENT_TIMESTAMP(3) THEN 'IDLE' ELSE COALESCE(turn_status,'RUNNING') END AS status,
+turn_cancel_requested_at FROM ai_conversation WHERE id=#{id} AND user_id=#{actor}
+    </select>
+    <update id="requestTurnCancel">
+UPDATE ai_conversation SET turn_status='CANCEL_REQUESTED',turn_cancel_requested_at=CURRENT_TIMESTAMP(3)
+WHERE id=#{id} AND user_id=#{actor} AND turn_token IS NOT NULL AND turn_status='RUNNING' AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
     </update>
     <insert id="messageInsert">
 INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint,citation_recorded) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint},#{p.citationsRecorded})
