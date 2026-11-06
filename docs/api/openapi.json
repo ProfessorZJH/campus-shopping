@@ -10547,6 +10547,23 @@
               "default": "",
               "maxLength": 100
             }
+          },
+          {
+            "name": "pickupState",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "WAIT_PREP",
+                "PREPARING",
+                "READY",
+                "COMPLETED",
+                "CANCELED"
+              ]
+            }
           }
         ],
         "responses": {

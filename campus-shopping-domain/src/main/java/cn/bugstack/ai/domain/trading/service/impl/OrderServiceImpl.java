@@ -98,6 +98,30 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
         return repository.countOrders(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100));
     }
 
+    @Override
+    public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int page, int size, String q, String pickupState) {
+        return repository.ordersByPickupState(
+            buyer,
+            merchant,
+            OrderStatusEnumVO.filter(status),
+            offset(page, size),
+            size,
+            optional(q, 100),
+            cn.bugstack.ai.domain.fulfillment.model.valobj.PickupStatusEnumVO.filter(pickupState)
+        );
+    }
+
+    @Override
+    public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
+        return repository.countOrdersByPickupState(
+            buyer,
+            merchant,
+            OrderStatusEnumVO.filter(status),
+            optional(q, 100),
+            cn.bugstack.ai.domain.fulfillment.model.valobj.PickupStatusEnumVO.filter(pickupState)
+        );
+    }
+
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordPayment(OrderAggregate o) {
         repository.payment(o.getId(), o.getTotalCent());

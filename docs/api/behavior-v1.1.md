@@ -1,5 +1,9 @@
 # API 行为契约 v1.1（当前版本）
 
+### 商户订单待办筛选（M4.1）
+
+`GET /api/v1/merchants/{merchantId}/orders/page` 保留订单 `state` 筛选，并支持可选的 `pickupState`：`WAIT_PREP`（待备货）、`PREPARING`（备货中）、`READY`（待自提）或 `COMPLETED`（已核销）。服务端在同一商户权限范围内按 `ful_pickup_task.status` 过滤，并对 `items` 与 `total` 使用相同条件；不把客户端已加载页面的局部筛选当作待办总数。备货、备货完成或核销成功后，调用方应保留原筛选与搜索条件并刷新当前有效页。
+
 > 适用范围：`campus-shopping` R1 及截至 2026-10-30 的 SDD 增量。HTTP 路由、字段名和 DTO 结构以[自动生成路由表](http-api.md)及[OpenAPI](openapi.json)为准；本文件补充静态提取无法准确表达的授权、数据语义与业务不变量。**源码已实现不等于真实联调通过**。
 
 ## 1. 优先级与来源

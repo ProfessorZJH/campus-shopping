@@ -141,6 +141,33 @@ class OrderBatchQueryTest {
     }
 
     @Test
+    void merchantPickupStateFilterUsesTheSameConditionForRowsAndCount() {
+        var orders = mock(IOrderQueryService.class);
+        var refunds = mock(IAfterSaleQueryService.class);
+        var pickup = mock(IFulfillmentService.class);
+        var events = mock(IOrderEventService.class);
+        var merchants = mock(IMerchantService.class);
+        var access = mock(IAccessService.class);
+        var accounts = mock(IUserAccountService.class);
+        var useCase = new OrderQueryCaseImpl(orders, refunds, pickup, events, merchants, access, accounts);
+        var page = List.of(order("o-ready"));
+        when(orders.ordersByPickupState(null, "m", null, 1, 10, "", "READY")).thenReturn(page);
+        when(orders.countOrdersByPickupState(null, "m", null, "", "READY")).thenReturn(1L);
+        when(merchants.findAll(List.of("m"))).thenReturn(List.of(new MerchantVO("m", null, "商户", "文具", "ACTIVE", "s", "店铺", "校园", "", "", "")));
+        when(pickup.pickupsByOrders(List.of("o-ready"))).thenReturn(List.of(new PickupVO("task", "o-ready", "m", "s", "buyer", "READY", null, null)));
+        when(refunds.afterSalesByOrders(List.of("o-ready"))).thenReturn(List.of());
+        when(events.eventsByOrders(List.of("o-ready"))).thenReturn(Map.of());
+
+        var result = useCase.merchant("merchant-user", "m", null, 1, 10, "", "READY");
+
+        assertEquals(1L, result.total());
+        assertEquals("READY", result.items().get(0).pickup().status());
+        verify(orders).ordersByPickupState(null, "m", null, 1, 10, "", "READY");
+        verify(orders).countOrdersByPickupState(null, "m", null, "", "READY");
+        verify(access).requirePermission("merchant-user", "m", "order.read");
+    }
+
+    @Test
     void emptyPageDoesNotIssueEmptyInQueries() {
         var dao = mock(ITradingDao.class);
         var repository = new OrderRepository();

@@ -93,6 +93,20 @@ public class OrderRepository implements IOrderRepository {
         return dao.countOrders(buyer, merchant, status, q);
     }
 
+    public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int offset, int size, String q, String pickupState) {
+        var rows = dao.ordersByPickupState(buyer, merchant, status, offset, size, q, pickupState);
+        if (rows.isEmpty()) return List.of();
+        var items = dao
+            .itemsByOrders(rows.stream().map(OrderPO::getId).toList())
+            .stream()
+            .collect(java.util.stream.Collectors.groupingBy(OrderItemPO::getOrderId));
+        return rows.stream().map(p -> convert(p, items.getOrDefault(p.getId(), List.of()))).toList();
+    }
+
+    public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
+        return dao.countOrdersByPickupState(buyer, merchant, status, q, pickupState);
+    }
+
     public List<String> expired(Instant now) {
         return dao.expired(now);
     }

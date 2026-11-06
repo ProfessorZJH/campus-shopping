@@ -19815,6 +19815,7 @@
       const route = computed$3(() => store.route);
       const title = computed$3(() => names[route.value] || "经营概览");
       const filter = ref$3("");
+      const pickupState = ref$3(route.value === "/merchant/pickup" ? "READY" : "");
       const q = ref$3("");
       const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), loading = ref$3(false), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3(""), historyEvents = ref$3([]), historyLoading = ref$3(false), historyError = ref$3("");
       let historyVersion = 0;
@@ -19846,8 +19847,8 @@
       const visibleOrders = computed$3(
         () => !preview ? orders.value : orders.value.filter(
           (o) => {
-            var _a, _b;
-            return (!filter.value || o.status === filter.value) && (!q.value || ((_a = o.orderId) == null ? void 0 : _a.toLowerCase().includes(q.value.toLowerCase())) || ((_b = o.items) == null ? void 0 : _b.some((i) => {
+            var _a, _b, _c;
+            return (!filter.value || o.status === filter.value) && (!pickupState.value || ((_a = o.pickup) == null ? void 0 : _a.status) === pickupState.value) && (!q.value || ((_b = o.orderId) == null ? void 0 : _b.toLowerCase().includes(q.value.toLowerCase())) || ((_c = o.items) == null ? void 0 : _c.some((i) => {
               var _a2;
               return (_a2 = i.title) == null ? void 0 : _a2.includes(q.value);
             })));
@@ -19877,7 +19878,7 @@
       );
       let loadVersion = 0;
       async function load() {
-        var _a;
+        var _a, _b;
         const request2 = scope.begin();
         const read = (path) => api(path, { signal: request2.signal });
         const stamp = ++loadVersion;
@@ -19925,9 +19926,19 @@
           }
           if (section === "/merchant/orders" || section === "/merchant/pickup") {
             const result = await read(
-              base + "/orders/page" + query({ page: page.value, size: 10, state: filter.value, q: q.value })
+              base + "/orders/page" + query({
+                page: page.value,
+                size: 10,
+                state: filter.value,
+                pickupState: pickupState.value,
+                q: q.value
+              })
             );
             if (!current()) return;
+            if (((_b = result.items) == null ? void 0 : _b.length) === 0 && page.value > 1 && result.total > 0) {
+              page.value = Math.max(1, Math.ceil(result.total / 10));
+              return;
+            }
             orders.value = result.items || [];
             pageInfo.value = result;
           }
@@ -19978,7 +19989,7 @@
       let searchDelay;
       let resettingPage = false;
       watch$3(
-        [page, q, filter],
+        [page, q, filter, pickupState],
         (next, previous) => {
           if (resettingPage) return;
           clearTimeout(searchDelay);
@@ -20014,6 +20025,19 @@
       }
       function midPath() {
         return "/merchants/" + pathId(store.merchantId);
+      }
+      function orderReminder(o) {
+        var _a, _b;
+        const now = Date.now();
+        const deadline = (o == null ? void 0 : o.deadline) ? Date.parse(o.deadline) : NaN;
+        if ((o == null ? void 0 : o.status) === "PENDING_PAYMENT" && Number.isFinite(deadline)) {
+          if (deadline <= now) return "付款已超时";
+          if (deadline - now <= 15 * 60 * 1e3) return "付款即将超时";
+        }
+        const pickupExpires = ((_a = o == null ? void 0 : o.pickup) == null ? void 0 : _a.expiresAt) ? Date.parse(o.pickup.expiresAt) : NaN;
+        if (((_b = o == null ? void 0 : o.pickup) == null ? void 0 : _b.status) === "READY" && Number.isFinite(pickupExpires) && pickupExpires <= now)
+          return "自提凭证已过期";
+        return "";
       }
       async function prepare(o, ready) {
         await perform(midPath() + "/orders/" + pathId(o.orderId) + (ready ? "/ready" : "/prepare"));
@@ -20180,6 +20204,7 @@
         route,
         title,
         filter,
+        pickupState,
         q,
         page,
         pageInfo,
@@ -20224,6 +20249,7 @@
         membershipStatusLabel,
         orderStatusLabel,
         pickupStatusLabel,
+        orderReminder,
         dateTime,
         coverSku,
         load,
@@ -20682,27 +20708,52 @@
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
-                  _createElementVNode(
-                    "h2",
-                    null,
-                    _toDisplayString(_ctx.route === "/merchant/pickup" ? "交付核销" : "订单列表"),
-                    1
-                    /* TEXT */
-                  ),
+                  _createElementVNode("div", null, [
+                    _createElementVNode(
+                      "h2",
+                      null,
+                      _toDisplayString(_ctx.route === "/merchant/pickup" ? "交付核销" : "订单列表"),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("small", null, "待办筛选由服务端按履约任务状态计算")
+                  ]),
                   _createElementVNode("div", { class: "filter-pills" }, [
                     _createElementVNode("button", {
-                      class: _normalizeClass({ active: _ctx.filter === "" }),
-                      onClick: ($event) => _ctx.filter = ""
+                      class: _normalizeClass({ active: _ctx.pickupState === "" }),
+                      onClick: ($event) => _ctx.pickupState = ""
                     }, "全部", 10, ["onClick"]),
                     _createElementVNode("button", {
-                      class: _normalizeClass({ active: _ctx.filter === "PAID" }),
-                      onClick: ($event) => _ctx.filter = "PAID"
-                    }, "已支付", 10, ["onClick"]),
+                      class: _normalizeClass({ active: _ctx.pickupState === "WAIT_PREP" }),
+                      onClick: ($event) => _ctx.pickupState = "WAIT_PREP"
+                    }, "待备货", 10, ["onClick"]),
                     _createElementVNode("button", {
-                      class: _normalizeClass({ active: _ctx.filter === "COMPLETED" }),
-                      onClick: ($event) => _ctx.filter = "COMPLETED"
-                    }, "已完成", 10, ["onClick"])
+                      class: _normalizeClass({ active: _ctx.pickupState === "PREPARING" }),
+                      onClick: ($event) => _ctx.pickupState = "PREPARING"
+                    }, "备货中", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.pickupState === "READY" }),
+                      onClick: ($event) => _ctx.pickupState = "READY"
+                    }, "待核销", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.pickupState === "COMPLETED" }),
+                      onClick: ($event) => _ctx.pickupState = "COMPLETED"
+                    }, "已核销", 10, ["onClick"])
                   ])
+                ]),
+                _createElementVNode("div", { class: "filter-pills secondary-pills" }, [
+                  _createElementVNode("button", {
+                    class: _normalizeClass({ active: _ctx.filter === "" }),
+                    onClick: ($event) => _ctx.filter = ""
+                  }, "所有订单状态", 10, ["onClick"]),
+                  _createElementVNode("button", {
+                    class: _normalizeClass({ active: _ctx.filter === "PAID" }),
+                    onClick: ($event) => _ctx.filter = "PAID"
+                  }, "已支付", 10, ["onClick"]),
+                  _createElementVNode("button", {
+                    class: _normalizeClass({ active: _ctx.filter === "COMPLETED" }),
+                    onClick: ($event) => _ctx.filter = "COMPLETED"
+                  }, "已完成", 10, ["onClick"])
                 ]),
                 _createElementVNode("label", { class: "ops-search" }, [
                   _createVNode2(_component_Icon, {
@@ -20776,7 +20827,24 @@
                                   _toDisplayString(_ctx.orderStatusLabel(o.status)),
                                   3
                                   /* TEXT, CLASS */
-                                )
+                                ),
+                                o.pickup ? (_openBlock(), _createElementBlock(
+                                  "small",
+                                  { key: 0 },
+                                  _toDisplayString(_ctx.pickupStatusLabel(o.pickup.status)),
+                                  1
+                                  /* TEXT */
+                                )) : _createCommentVNode("v-if", true),
+                                _ctx.orderReminder(o) ? (_openBlock(), _createElementBlock(
+                                  "small",
+                                  {
+                                    key: 1,
+                                    class: "red-text"
+                                  },
+                                  _toDisplayString(_ctx.orderReminder(o)),
+                                  1
+                                  /* TEXT */
+                                )) : _createCommentVNode("v-if", true)
                               ]),
                               _createElementVNode("td", null, [
                                 _createVNode2(_component_Icon, {
@@ -20794,7 +20862,7 @@
                     !_ctx.visibleOrders.length ? (_openBlock(), _createElementBlock("div", {
                       key: 0,
                       class: "admin-empty"
-                    }, "暂无订单")) : _createCommentVNode("v-if", true)
+                    }, "暂无符合条件的订单")) : _createCommentVNode("v-if", true)
                   ]),
                   _ctx.selectedOrder ? (_openBlock(), _createElementBlock("aside", {
                     key: 0,
@@ -20831,6 +20899,16 @@
                         /* TEXT */
                       )
                     ]),
+                    _ctx.orderReminder(_ctx.selectedOrder) ? (_openBlock(), _createElementBlock(
+                      "div",
+                      {
+                        key: 0,
+                        class: "inline-error"
+                      },
+                      _toDisplayString(_ctx.orderReminder(_ctx.selectedOrder)),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true),
                     _createElementVNode("div", { class: "inspector-row" }, [
                       _createElementVNode("span", null, "金额"),
                       _createElementVNode(
@@ -20888,7 +20966,7 @@
                       }, "备货完成", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                     ]),
                     _ctx.can("pickup.verify") && _ctx.selectedOrder.status === "PAID" && ((_d = _ctx.selectedOrder.pickup) == null ? void 0 : _d.status) === "READY" ? (_openBlock(), _createElementBlock("form", {
-                      key: 0,
+                      key: 1,
                       class: "verify-form",
                       onSubmit: _withModifiers(($event) => _ctx.verify(_ctx.selectedOrder), ["prevent"])
                     }, [

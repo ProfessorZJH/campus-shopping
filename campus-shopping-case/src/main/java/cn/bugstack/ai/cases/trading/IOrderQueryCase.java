@@ -8,6 +8,9 @@ import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 public interface IOrderQueryCase {
     OrderPage mine(String actor, String state, int page, int size);
     OrderPage merchant(String actor, String merchant, String state, int page, int size, String q);
+    default OrderPage merchant(String actor, String merchant, String state, int page, int size, String q, String pickupState) {
+        return merchant(actor, merchant, state, page, size, q);
+    }
     OrderPage platform(String actor, String state, int page, int size, String q);
     OrderReadModel detail(String actor, String id);
     /** 仅用于已授权写用例返回的订单事实。 */

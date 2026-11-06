@@ -118,10 +118,11 @@ public class OrderController implements IOrderApi {
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "") String q,
+        @RequestParam(defaultValue = "") String pickupState,
         Principal principal
     ) {
         return execute(() -> {
-            var result = query.merchant(actor(principal), merchantId, state, page, size, q);
+            var result = query.merchant(actor(principal), merchantId, state, page, size, q, pickupState);
             return PageResponseDTO.of(result.items().stream().map(this::readView).toList(), page, size, result.total());
         });
     }

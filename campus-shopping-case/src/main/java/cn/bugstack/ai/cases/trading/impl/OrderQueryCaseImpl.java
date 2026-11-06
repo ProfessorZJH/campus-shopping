@@ -63,13 +63,29 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         return page(null, merchant, state, page, size, q);
     }
 
+    @Override
+    public OrderPage merchant(String actor, String merchant, String state, int page, int size, String q, String pickupState) {
+        access.requirePermission(actor, merchant, "order.read");
+        return page(null, merchant, state, page, size, q, pickupState);
+    }
+
     public OrderPage platform(String actor, String state, int page, int size, String q) {
         access.requireAdmin(actor);
         return page(null, null, state, page, size, q);
     }
 
     private OrderPage page(String buyer, String merchant, String state, int page, int size, String q) {
-        return new OrderPage(views(orders.orders(buyer, merchant, state, page, size, q)), orders.countOrders(buyer, merchant, state, q));
+        return page(buyer, merchant, state, page, size, q, "");
+    }
+
+    private OrderPage page(String buyer, String merchant, String state, int page, int size, String q, String pickupState) {
+        if (pickupState == null || pickupState.isBlank()) {
+            return new OrderPage(views(orders.orders(buyer, merchant, state, page, size, q)), orders.countOrders(buyer, merchant, state, q));
+        }
+        return new OrderPage(
+            views(orders.ordersByPickupState(buyer, merchant, state, page, size, q, pickupState)),
+            orders.countOrdersByPickupState(buyer, merchant, state, q, pickupState)
+        );
     }
 
     public OrderReadModel detail(String actor, String id) {

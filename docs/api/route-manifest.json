@@ -1331,6 +1331,13 @@
           "type": "String",
           "required": false,
           "default": ""
+        },
+        {
+          "in": "query",
+          "name": "pickupState",
+          "type": "String",
+          "required": false,
+          "default": ""
         }
       ],
       "access": "authenticated + domain ACL",

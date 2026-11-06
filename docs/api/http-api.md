@@ -79,7 +79,7 @@
 | `GET` | `/api/v1/merchants/{merchantId}/members` | merchantId:String | `List<MembershipResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
 | `DELETE` | `/api/v1/merchants/{merchantId}/members/{userId}` | merchantId:String、userId:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/orders` | merchantId:String、state?:String、page?:int、size?:int | `List<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/orders/page` | merchantId:String、state?:String、page?:int、size?:int、q?:String | `PageResponseDTO<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/orders/page` | merchantId:String、state?:String、page?:int、size?:int、q?:String、pickupState?:String | `PageResponseDTO<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history` | merchantId:String、orderId:String | `List<OrderEventResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/prepare` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/ready` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |

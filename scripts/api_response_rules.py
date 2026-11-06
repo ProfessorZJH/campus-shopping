@@ -102,9 +102,11 @@ def success_data(row, schema):
 
 
 def query_enum(root, row, name):
-    if name not in {'state', 'status'}:
+    if name not in {'state', 'status', 'pickupState'}:
         return None
     controller = row['controller']
+    if name == 'pickupState':
+        return ['', *enum_codes(root, 'fulfillment/model/valobj/PickupStatusEnumVO')]
     source = {'OrderController.java': 'trading/model/valobj/OrderStatusEnumVO',
               'AfterSaleController.java': 'trading/model/valobj/AfterSaleStatusEnumVO',
               'FulfillmentController.java': 'fulfillment/model/valobj/PickupStatusEnumVO',
