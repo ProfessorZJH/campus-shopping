@@ -14,7 +14,7 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "5.2.4",
     "@vue/compiler-dom": "3.5.45",
-    "acorn": "8.14.1",
+    "acorn": "8.19.0",
     "magic-string": "0.30.17",
     "prettier": "3.9.10",
     "prettier-plugin-java": "2.11.0",
