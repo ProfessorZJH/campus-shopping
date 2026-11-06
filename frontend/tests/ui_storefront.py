@@ -65,6 +65,7 @@ def main():
         backend = StorefrontBackend()
 
         page = browser_page(browser, '/shops/m1', backend)
+        media_routes(page)
         expect(page.locator('.shop-intro')).to_contain_text('校园文具与打印服务')
         expect(page.locator('.shop-intro')).to_contain_text('08:00-20:00（北京时间）')
         expect(page.locator('.shop-hero-image')).to_have_count(1)
@@ -83,6 +84,7 @@ def main():
         close_page(page)
 
         page = browser_page(browser, '/merchant/settings', backend)
+        media_routes(page)
         expect(page.locator('.ops-settings textarea')).to_have_value('校园文具与打印服务，支持到店自提。')
         page.locator('.ops-settings textarea').fill('新的门店介绍')
         page.get_by_label('营业时间').fill('每日 09:00-21:00（北京时间）')
