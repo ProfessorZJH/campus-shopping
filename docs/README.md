@@ -57,3 +57,4 @@
 - [前端整改真实后端联调（用户指定单 Redis）](testing/UI-REMEDIATION-LIVE-20261101.md)
 - [PR #48 审查修复：匿名后台登录与首页加载边界](testing/PR48-REVIEW-FOLLOWUP-20261101.md)
 - [M4.2 低可售库存与流水定位实施记录](testing/PRODUCTIZATION-M4-INVENTORY-20261107.md)
+- [M4.4 账号、入驻、成员与角色工作区实施记录](testing/PRODUCTIZATION-M4-IDENTITY-20261107.md)
