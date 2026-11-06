@@ -1348,6 +1348,19 @@ button {
   display: block;
   margin-top: 2px;
 }
+.rec-detail-link {
+  border: 0;
+  padding: 0;
+  margin-top: 5px;
+  background: transparent;
+  color: #1689c9;
+  font-size: 9.5px;
+  cursor: pointer;
+}
+.rec-detail-link:disabled {
+  color: #aeb9c5;
+  cursor: default;
+}
 .rec-price {
   display: flex;
   justify-content: space-between;

@@ -1,6 +1,7 @@
 package cn.bugstack.ai.cases.shoppingai;
 
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
+import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
@@ -12,6 +13,7 @@ public interface IShoppingAiCase {
     List<MessageVO> history(String actor, String conversation);
     List<ConversationVO> conversations(String actor, int page, int size);
     List<ProposalVO> proposals(String actor, String conversation);
+    List<ProposalView> proposalViews(String actor, String conversation);
     ProposalVO confirm(String actor, String proposal, List<String> selectedSkus);
     void reject(String actor, String proposal);
 }

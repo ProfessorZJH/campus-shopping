@@ -28,7 +28,7 @@ FIELDS = {
     'PickupResponseDTO': ('status', 'expiresAt'),
     'ProductImageUploadDTO': ('url', ''),
     'ProductResponseDTO': ('productId merchantId merchantName storeId title description categoryCode imageUrl status version skus images', ''),
-    'ProposalItemResponseDTO': ('skuId merchantId title specKey imageUrl priceCent quoteVersion quantity', ''),
+    'ProposalItemResponseDTO': ('skuId merchantId title specKey imageUrl priceCent quoteVersion quantity detailAvailable', 'productId detailUnavailableReason'),
     'ProposalResponseDTO': ('id status items expiresAt', ''),
     'RegisterResponseDTO': ('userId', ''),
     'RoleResponseDTO': ('code name permissions builtin', ''),

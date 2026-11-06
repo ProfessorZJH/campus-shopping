@@ -36,17 +36,16 @@ export default {
       preview
         ? examples.value.map((p) => ({
             skuId: skuOf(p).skuId,
+            productId: p.productId,
             product: p,
             title: p.title,
             specKey: skuOf(p).specKey,
             priceCent: skuOf(p).priceCent,
             quantity: 1,
             merchantId: p.merchantId,
+            detailAvailable: true,
           }))
-        : (proposal.value?.items || []).map((i) => ({
-            ...i,
-            product: store.products.find((p) => p.skus.some((s) => s.skuId === i.skuId)),
-          })),
+        : (proposal.value?.items || []).map((i) => ({ ...i })),
     );
     const total = computed(() =>
       items.value
@@ -208,6 +207,17 @@ export default {
         selectedIds.value = selectedIds.value.filter((x) => x !== id);
       else selectedIds.value = [...selectedIds.value, id];
     }
+    function openDetail(item) {
+      if (preview) {
+        if (item?.productId) go('/product/' + encodeURIComponent(item.productId));
+        return;
+      }
+      if (!item?.detailAvailable || !item?.productId) {
+        notify('该商品详情暂不可用，请重新咨询');
+        return;
+      }
+      go('/product/' + encodeURIComponent(item.productId));
+    }
     async function confirm() {
       if (previewGuard() || !proposal.value?.id || thinking.value) return;
       const stamp = conversationEpoch,
@@ -274,6 +284,7 @@ export default {
       mode,
       ask,
       toggle,
+      openDetail,
       confirm,
       reject,
       historyOpen,
@@ -311,7 +322,7 @@ export default {
           <article class="rec-item" v-for="(item,index) in items" :key="item.skuId">
             <button class="rec-check" :class="{checked:selectedIds.includes(item.skuId)}" @click="toggle(item.skuId)" :aria-label="'选择'+item.title"><Icon name="check" :size="13"/></button>
             <div class="rec-photo"><ProductImage :src="item.imageUrl||item.product?.imageUrl" :alt="item.title"/></div>
-            <div class="rec-card-content"><div class="rec-item-tag">{{index===0?'HOT PICK':index===1?'DAILY':'GOOD VALUE'}}</div><strong>{{item.title}}</strong><small>{{item.specKey}}</small><div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini"><Icon name="plus" :size="15"/></span></div></div>
+            <div class="rec-card-content"><div class="rec-item-tag">{{index===0?'HOT PICK':index===1?'DAILY':'GOOD VALUE'}}</div><strong>{{item.title}}</strong><small>{{item.specKey}}</small><button class="rec-detail-link" type="button" @click="openDetail(item)" :disabled="!item.detailAvailable||!item.productId">{{item.detailAvailable?'查看详情':'详情暂不可用'}}</button><div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini"><Icon name="plus" :size="15"/></span></div></div>
           </article>
         </div>
         <div class="proposal-footer"><div class="proposal-total"><span>已选 {{selectedIds.length}} 件</span><strong>{{money(total)}}</strong></div><div class="proposal-actions"><button v-if="!preview&&proposal?.status==='PENDING'" class="ghost-decline" @click="reject">放弃</button><button class="confirm-button" @click="confirm" :disabled="preview||thinking||!selectedIds.length||(!preview&&proposal?.status!=='PENDING')"><Icon name="check" :size="17"/>{{proposal?.status==='CONFIRMED'?'已确认':'确认加购'}}</button></div></div>

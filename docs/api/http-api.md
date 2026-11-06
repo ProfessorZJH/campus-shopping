@@ -281,7 +281,7 @@
 
 ### `ProposalItemResponseDTO`
 
-`skuId`、`merchantId`、`title`、`specKey`、`imageUrl`、`priceCent`、`quoteVersion`、`quantity`
+`skuId`、`productId`、`merchantId`、`title`、`specKey`、`imageUrl`、`priceCent`、`quoteVersion`、`quantity`、`detailAvailable`、`detailUnavailableReason`
 
 ### `ProposalResponseDTO`
 

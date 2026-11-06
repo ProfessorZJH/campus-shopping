@@ -7,6 +7,7 @@ import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
 import cn.bugstack.ai.cases.shoppingai.IProposalConfirmationCase;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
+import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
@@ -210,7 +211,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         List<AiCitationVO> citations = verifyCitations(actor, answer.citations(), current);
         List<ProposalItemVO> quotes = offers
             .stream()
-            .map(o -> new ProposalItemVO(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.priceCent(), o.version(), 1, o.imageUrl()))
+            .map(o -> new ProposalItemVO(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.priceCent(), o.version(), 1, o.imageUrl(), o.productId()))
             .toList();
         Map<String, Long> available = new HashMap<>();
         stocks.forEach((id, s) -> available.put(id, s.onHand() - s.reserved()));
@@ -334,6 +335,11 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     public List<ProposalVO> proposals(String actor, String conversation) {
         accounts.requireActive(actor);
         return proposals.proposals(actor, conversation);
+    }
+
+    public List<ProposalView> proposalViews(String actor, String conversation) {
+        accounts.requireActive(actor);
+        return ProposalViewAssembler.assemble(proposals.proposals(actor, conversation), catalog);
     }
 
     public ProposalVO confirm(String actor, String id, List<String> selected) {

@@ -13471,16 +13471,15 @@
           var _a;
           return preview ? examples.value.map((p2) => ({
             skuId: skuOf(p2).skuId,
+            productId: p2.productId,
             product: p2,
             title: p2.title,
             specKey: skuOf(p2).specKey,
             priceCent: skuOf(p2).priceCent,
             quantity: 1,
-            merchantId: p2.merchantId
-          })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({
-            ...i,
-            product: store.products.find((p2) => p2.skus.some((s) => s.skuId === i.skuId))
-          }));
+            merchantId: p2.merchantId,
+            detailAvailable: true
+          })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({ ...i }));
         }
       );
       const total = computed$d(
@@ -13644,6 +13643,17 @@
           selectedIds.value = selectedIds.value.filter((x) => x !== id);
         else selectedIds.value = [...selectedIds.value, id];
       }
+      function openDetail(item) {
+        if (preview) {
+          if (item == null ? void 0 : item.productId) go("/product/" + encodeURIComponent(item.productId));
+          return;
+        }
+        if (!(item == null ? void 0 : item.detailAvailable) || !(item == null ? void 0 : item.productId)) {
+          notify("该商品详情暂不可用，请重新咨询");
+          return;
+        }
+        go("/product/" + encodeURIComponent(item.productId));
+      }
       async function confirm() {
         var _a, _b, _c, _d, _e;
         if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
@@ -13710,6 +13720,7 @@
         mode,
         ask,
         toggle,
+        openDetail,
         confirm,
         reject,
         historyOpen,
@@ -14054,6 +14065,12 @@
                             1
                             /* TEXT */
                           ),
+                          _createElementVNode("button", {
+                            class: "rec-detail-link",
+                            type: "button",
+                            onClick: ($event) => _ctx.openDetail(item),
+                            disabled: !item.detailAvailable || !item.productId
+                          }, _toDisplayString(item.detailAvailable ? "查看详情" : "详情暂不可用"), 9, ["onClick", "disabled"]),
                           _createElementVNode("div", { class: "rec-price" }, [
                             _createElementVNode(
                               "span",

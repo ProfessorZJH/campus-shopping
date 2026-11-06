@@ -14,6 +14,7 @@ import cn.bugstack.ai.api.dto.ProposalItemResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalResponseDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
+import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
@@ -95,7 +96,7 @@ public class ShoppingAiController implements IShoppingAiApi {
     @GetMapping("/ai/conversations/{conversationId}/proposals")
     public Response<List<ProposalResponseDTO>> proposals(@PathVariable("conversationId") String conversationId, Principal principal) {
         return execute(() -> {
-            return shopping.proposals(actor(principal), conversationId).stream().map(this::proposal).toList();
+            return shopping.proposalViews(actor(principal), conversationId).stream().map(this::proposal).toList();
         });
     }
 
@@ -133,21 +134,41 @@ public class ShoppingAiController implements IShoppingAiApi {
                       p
                           .items()
                           .stream()
-                          .map(i ->
-                              ProposalItemResponseDTO.builder()
-                                  .skuId(i.skuId())
-                                  .merchantId(i.merchantId())
-                                  .title(i.title())
-                                  .specKey(i.specKey())
-                                  .imageUrl(i.imageUrl())
-                                  .priceCent(i.priceCent())
-                                  .quoteVersion(i.quoteVersion())
-                                  .quantity(i.quantity())
-                                  .build()
-                          )
+                          .map(i -> item(i, i.productId(), i.hasProductId(), i.hasProductId() ? null : "PRODUCT_UNAVAILABLE"))
                           .toList()
                   )
                   .build();
+    }
+
+    private ProposalResponseDTO proposal(ProposalView p) {
+        return ProposalResponseDTO.builder()
+            .id(p.id())
+            .status(p.status())
+            .expiresAt(p.expiresAt())
+            .items(
+                p
+                    .items()
+                    .stream()
+                    .map(i -> item(i.snapshot(), i.productId(), i.detailAvailable(), i.detailUnavailableReason()))
+                    .toList()
+            )
+            .build();
+    }
+
+    private ProposalItemResponseDTO item(cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO i, String productId, boolean available, String reason) {
+        return ProposalItemResponseDTO.builder()
+            .skuId(i.skuId())
+            .productId(productId)
+            .merchantId(i.merchantId())
+            .title(i.title())
+            .specKey(i.specKey())
+            .imageUrl(i.imageUrl())
+            .priceCent(i.priceCent())
+            .quoteVersion(i.quoteVersion())
+            .quantity(i.quantity())
+            .detailAvailable(available)
+            .detailUnavailableReason(reason)
+            .build();
     }
 
     private <T> Response<T> execute(Supplier<T> action) {

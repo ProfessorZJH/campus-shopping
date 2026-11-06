@@ -54,6 +54,12 @@ public interface ICatalogService {
     long countManaged(String merchant, String query, String category, String status);
     /** 展示与校验使用普通报价；不在读取阶段锁定 SKU。 */
     List<SkuOfferVO> offers(List<String> skuIds);
+
+    /** 只读恢复 SKU 与商品的当前关联；允许历史 SKU 缺失并返回部分结果。 */
+    default List<SkuOfferVO> resolveOffers(List<String> skuIds) {
+        return offers(skuIds);
+    }
+
     /** 仅返回当前可销售报价。 */
     List<SkuOfferVO> saleOffers(List<String> skuIds);
     /** 事务内锁定并验证可销售报价，用于结算与提案确认。 */

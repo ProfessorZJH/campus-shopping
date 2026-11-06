@@ -19366,6 +19366,16 @@
           "skuId": {
             "type": "string"
           },
+          "productId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "merchantId": {
             "type": "string"
           },
@@ -19389,20 +19399,39 @@
           "quantity": {
             "type": "integer",
             "format": "int32"
+          },
+          "detailAvailable": {
+            "type": "boolean"
+          },
+          "detailUnavailableReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ProposalItemResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
         "required": [
           "skuId",
+          "productId",
           "merchantId",
           "title",
           "specKey",
           "imageUrl",
           "priceCent",
           "quoteVersion",
-          "quantity"
+          "quantity",
+          "detailAvailable",
+          "detailUnavailableReason"
         ],
-        "x-nullable-fields": []
+        "x-nullable-fields": [
+          "productId",
+          "detailUnavailableReason"
+        ]
       },
       "ProposalResponseDTO": {
         "type": "object",
