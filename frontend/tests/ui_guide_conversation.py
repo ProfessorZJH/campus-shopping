@@ -19,11 +19,15 @@ ERRORS = []
 
 FETCH_DOUBLE = """(holdChat) => {
   window.__pendingChats = [];
+  window.__pendingConfirms = [];
   window.__holdChat = holdChat;
   window.fetch = async (url, options = {}) => {
     const address = String(url);
     if (window.__holdChat && address.includes('/ai/chat')) {
       return new Promise((resolve) => window.__pendingChats.push({ url: address, resolve }));
+    }
+    if (window.__holdConfirm && address.includes('/ai/proposals/') && address.endsWith('/confirm')) {
+      return new Promise((resolve) => window.__pendingConfirms.push({ url: address, options, resolve }));
     }
     const reply = await window.__contractApi({
       url: address,
@@ -42,6 +46,22 @@ FETCH_DOUBLE = """(holdChat) => {
     entry.resolve(
       new Response(JSON.stringify(payload), {
         status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+  };
+  window.__releaseConfirm = async () => {
+    const [entry] = window.__pendingConfirms.splice(0, 1);
+    if (!entry) throw new Error('没有挂起的提案确认请求');
+    const reply = await window.__contractApi({
+      url: entry.url,
+      method: entry.options.method || 'POST',
+      headers: entry.options.headers || {},
+      body: entry.options.body,
+    });
+    entry.resolve(
+      new Response(reply.body, {
+        status: reply.status,
         headers: { 'Content-Type': 'application/json' },
       }),
     );
@@ -138,6 +158,14 @@ def main():
         expect(page.locator('.chat-bubble').last).to_contain_text('这是明确标注的本地检索演示')
         assert '旧回答不应出现' not in page.locator('.chat-thread').inner_text()
         checks.append('新对话后可以继续提问')
+        expect(page.locator('.recommendation-panel')).to_be_visible()
+        page.evaluate('window.__holdConfirm = true')
+        page.get_by_role('button', name='确认加购', exact=True).click()
+        new_chat = page.get_by_role('button', name='新对话')
+        expect(new_chat).to_be_disabled()
+        page.evaluate('window.__releaseConfirm()')
+        expect(new_chat).to_be_enabled(timeout=15000)
+        checks.append('提案确认请求未完成时禁止新对话，完成后恢复')
         close_page(page)
 
         # 3. 引用保留标题和片段，展开可见，且不生成文档直链。

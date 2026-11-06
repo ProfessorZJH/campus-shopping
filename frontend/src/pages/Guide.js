@@ -28,6 +28,7 @@ export default {
     const historyHasMore = ref(false);
     const loadingHistory = ref(false);
     const openingConversation = ref(false);
+    const confirmingProposal = ref(false);
     let conversationEpoch = 0,
       historyEpoch = 0;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
@@ -184,6 +185,7 @@ export default {
     }
     /** 新对话只切换前端会话代次；旧请求仍可能在服务端完成，但不得写回当前页面。 */
     function newConversation() {
+      if (confirmingProposal.value) return;
       ++conversationEpoch;
       store.conversationId = '';
       messages.value = [];
@@ -214,6 +216,7 @@ export default {
         return;
       }
       thinking.value = true;
+      confirmingProposal.value = true;
       try {
         const updated = await api(
           '/ai/proposals/' + encodeURIComponent(proposal.value.id) + '/confirm',
@@ -226,7 +229,10 @@ export default {
       } catch (err) {
         if (stamp === conversationEpoch && actor === store.user?.userId) notify(err.message);
       } finally {
-        if (stamp === conversationEpoch && actor === store.user?.userId) thinking.value = false;
+        if (stamp === conversationEpoch && actor === store.user?.userId) {
+          thinking.value = false;
+          confirmingProposal.value = false;
+        }
       }
     }
     async function reject() {
@@ -274,6 +280,7 @@ export default {
       historyHasMore,
       loadingHistory,
       openingConversation,
+      confirmingProposal,
       loadHistory,
       openConversation,
       newConversation,
@@ -286,7 +293,7 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
+      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation||confirmingProposal"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <section class="chat-thread" aria-label="AI对话">
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>

@@ -13324,6 +13324,7 @@
       const historyHasMore = ref$d(false);
       const loadingHistory = ref$d(false);
       const openingConversation = ref$d(false);
+      const confirmingProposal = ref$d(false);
       let conversationEpoch = 0, historyEpoch = 0;
       const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$d(
@@ -13481,6 +13482,7 @@
         }
       }
       function newConversation() {
+        if (confirmingProposal.value) return;
         ++conversationEpoch;
         store.conversationId = "";
         messages.value = [];
@@ -13511,6 +13513,7 @@
           return;
         }
         thinking.value = true;
+        confirmingProposal.value = true;
         try {
           const updated = await api(
             "/ai/proposals/" + encodeURIComponent(proposal.value.id) + "/confirm",
@@ -13523,7 +13526,10 @@
         } catch (err) {
           if (stamp === conversationEpoch && actor === ((_d = store.user) == null ? void 0 : _d.userId)) notify(err.message);
         } finally {
-          if (stamp === conversationEpoch && actor === ((_e = store.user) == null ? void 0 : _e.userId)) thinking.value = false;
+          if (stamp === conversationEpoch && actor === ((_e = store.user) == null ? void 0 : _e.userId)) {
+            thinking.value = false;
+            confirmingProposal.value = false;
+          }
         }
       }
       async function reject() {
@@ -13571,6 +13577,7 @@
         historyHasMore,
         loadingHistory,
         openingConversation,
+        confirmingProposal,
         loadHistory,
         openConversation,
         newConversation
@@ -13609,7 +13616,7 @@
                 _createElementVNode("button", {
                   class: "ai-new-chat",
                   onClick: _ctx.newConversation,
-                  disabled: _ctx.openingConversation
+                  disabled: _ctx.openingConversation || _ctx.confirmingProposal
                 }, [
                   _createVNode2(_component_Icon, {
                     name: "plus",
