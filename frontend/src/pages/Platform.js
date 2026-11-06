@@ -17,6 +17,7 @@ import {
   applicationStatusLabel,
   merchantStatusLabel,
   orderStatusLabel,
+  orderEventLabel,
   productStatusLabel,
   dateTime,
   pathId,
@@ -47,15 +48,19 @@ export default {
       categories = ref([]);
     const selectedId = ref(''),
       search = ref(''),
-      state = ref(store.route === '/admin/disputes' ? 'DISPUTED' : ''),
+      state = ref(''),
       page = ref(1),
       pageInfo = ref({ total: 0, hasNext: false }),
       reason = ref(''),
+      historyEvents = ref([]),
+      historyLoading = ref(false),
+      historyError = ref(''),
       category = ref({ code: '', name: '', active: true }),
       loading = ref(false),
       busy = ref(false),
       error = ref(''),
       allowed = ref(preview);
+    let disputeVersion = 0;
     const pickedApplication = computed(
       () =>
         applications.value.find((a) => a.applicationId === selectedId.value) ||
@@ -263,6 +268,29 @@ export default {
       if (!window.confirm('确定强制下架商品“' + p.title + '”？')) return;
       perform('/admin/products/' + pathId(p.productId) + '/unpublish');
     }
+    async function openDispute(afterSale) {
+      const version = ++disputeVersion;
+      selectedId.value = afterSale.id;
+      reason.value = '';
+      historyEvents.value = [];
+      historyError.value = '';
+      if (preview) return;
+      historyLoading.value = true;
+      try {
+        const detail = await api('/orders/' + pathId(afterSale.orderId));
+        if (version !== disputeVersion || selectedId.value !== afterSale.id) return;
+        historyEvents.value = (detail.events || []).filter(
+          (e) =>
+            e.type.startsWith('REFUND_') ||
+            e.type.startsWith('MERCHANT_') ||
+            e.type.startsWith('PLATFORM_'),
+        );
+      } catch (e) {
+        if (version === disputeVersion) historyError.value = e.message;
+      } finally {
+        if (version === disputeVersion) historyLoading.value = false;
+      }
+    }
     function decideRefund(a, approved) {
       if (aftersales.value.find((row) => row.id === a?.id)?.status !== 'DISPUTED') {
         notify('该售后已不处于争议状态，请刷新列表');
@@ -308,6 +336,11 @@ export default {
       page,
       pageInfo,
       reason,
+      historyEvents,
+      historyLoading,
+      historyError,
+      orderEventLabel,
+      openDispute,
       category,
       busy,
       loading,
@@ -341,7 +374,7 @@ export default {
  <template v-else-if="route==='/admin/merchants'"><section class="ops-card"><div class="ops-card-header"><h2>商户列表</h2><span>{{preview?merchants.length:pageInfo.total}} 家</span></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="search" placeholder="搜索经营名称"/></label><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>商户</th><th>品类</th><th>首个门店</th><th>自提位置</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="m in filtered" :key="m.merchantId"><td><strong>{{m.name}}</strong><small>{{m.merchantId}}</small></td><td>{{m.category}}</td><td>{{m.storeName}}</td><td>{{m.location}}</td><td><span class="status-tag" :class="m.status==='ACTIVE'?'published':'draft'">{{merchantStatusLabel(m.status)}}</span></td><td><button class="row-link" :disabled="loading||!!error||preview||busy" @click="stateMerchant(m)">{{m.status==='ACTIVE'?'停用':'恢复'}}</button></td></tr></tbody></table></div></section></template>
  <template v-else-if="route==='/admin/products'"><section class="ops-card"><div class="ops-card-header"><h2>商品监管</h2><span>{{preview?products.length:pageInfo.total}} 件</span></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="search" placeholder="搜索商品 / 商户"/></label><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>商品</th><th>商户</th><th>分类</th><th>售价</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="p in filtered" :key="p.productId"><td><div class="table-product-cell"><ProductImage :src="p.imageUrl" :alt="p.title"/><div><strong>{{p.title}}</strong><span>{{p.productId}}</span></div></div></td><td>{{merchantName(p.merchantId,p)}}</td><td>{{p.categoryCode}}</td><td>{{priceSku(p) ? money(priceSku(p).priceCent)+' 起' : '暂无有效规格'}}</td><td><span class="status-tag">{{productStatusLabel(p.status)}}</span></td><td><button class="row-link" :disabled="loading||!!error||preview||busy||p.status!=='PUBLISHED'" @click="forceProduct(p)">强制下架</button></td></tr></tbody></table></div></section></template>
  <template v-else-if="route==='/admin/orders'"><section class="ops-card"><div class="ops-card-header"><h2>订单监管</h2><span>{{preview?orders.length:pageInfo.total}} 笔</span></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="search" placeholder="订单号"/></label><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>订单</th><th>商户</th><th>实付金额</th><th>状态</th><th>创建时间</th></tr></thead><tbody><tr v-for="o in filtered" :key="o.orderId"><td><strong>{{o.orderId}}</strong><small>{{o.items?.[0]?.title||'—'}}</small></td><td>{{merchantName(o.merchantId,o)}}</td><td>{{money(o.totalCent)}}</td><td><span class="status-tag">{{orderStatusLabel(o.status)}}</span></td><td>{{dateTime(o.createdAt)}}</td></tr></tbody></table></div></section></template>
- <template v-else-if="route==='/admin/disputes'"><section class="ops-card"><div class="ops-card-header"><h2>售后争议</h2><span>{{aftersales.length}} 条</span></div><div class="ops-list-line dispute-line" v-for="a in aftersales" :key="a.id"><span class="mini-icon"><Icon name="shield"/></span><div><strong>{{a.orderId}}</strong><small>{{a.reason}}</small></div><span class="status-tag">{{afterSaleStatusLabel(a.status)}}</span><button v-if="a.status==='DISPUTED'" class="outline-button small" @click="selectedId=a.id;reason=''">查看处理</button></div><div v-if="!aftersales.length" class="admin-empty">暂无争议</div><div class="review-inline" v-if="selectedId&&aftersales.find(a=>a.id===selectedId)?.status==='DISPUTED'"><h3>裁决 · {{aftersales.find(a=>a.id===selectedId).orderId}}</h3><label class="field-label" for="platform-field-2">裁决说明</label><textarea id="platform-field-2" class="admin-input" v-model="reason" rows="3" maxlength="500" placeholder="审核说明（必填）"></textarea><div class="form-buttons"><button class="outline-button" :disabled="loading||!!error||preview||busy||!reason.trim()" @click="decideRefund(aftersales.find(a=>a.id===selectedId),false)">驳回</button><button class="teal-button" :disabled="loading||!!error||preview||busy||!reason.trim()" @click="decideRefund(aftersales.find(a=>a.id===selectedId),true)">批准退款</button></div></div></section></template>
+ <template v-else-if="route==='/admin/disputes'"><section class="ops-card"><div class="ops-card-header"><h2>售后争议</h2><span>{{aftersales.length}} 条</span></div><div class="ops-toolbar"><select class="admin-input compact-select" v-model="state" @change="page=1;load()"><option value="">全部状态</option><option value="REQUESTED">待商户审核</option><option value="DISPUTED">待平台裁决</option><option value="REFUNDED">已退款</option><option value="REJECTED">已驳回</option></select></div><div class="ops-list-line dispute-line" v-for="a in aftersales" :key="a.id"><span class="mini-icon"><Icon name="shield"/></span><div><strong>{{a.orderId}}</strong><small>{{a.reason}}</small></div><span class="status-tag">{{afterSaleStatusLabel(a.status)}}</span><button class="outline-button small" @click="openDispute(a)">{{a.status==='DISPUTED'?'查看处理':'查看历程'}}</button></div><div v-if="!aftersales.length" class="admin-empty">暂无争议</div><div class="review-inline" v-if="selectedId&&aftersales.find(a=>a.id===selectedId)"><h3>{{aftersales.find(a=>a.id===selectedId).status==='DISPUTED'?'裁决':'处理历程'}} · {{aftersales.find(a=>a.id===selectedId).orderId}}</h3><div class="review-history"><strong>处理历程</strong><ol v-if="historyEvents.length"><li v-for="(e,i) in historyEvents" :key="e.eventId||i"><b>{{orderEventLabel(e.type)}}</b><small>{{dateTime(e.occurredAt)}}<template v-if="e.reason"> · {{e.reason}}</template></small></li></ol><p v-else-if="historyLoading" class="muted-short">正在加载处理历程…</p><p v-else class="muted-short">{{historyError||'历史记录不完整，仅显示当前状态'}}</p></div><template v-if="aftersales.find(a=>a.id===selectedId).status==='DISPUTED'"><label class="field-label" for="platform-field-2">裁决说明</label><textarea id="platform-field-2" class="admin-input" v-model="reason" rows="3" maxlength="500" placeholder="审核说明（必填）"></textarea><div class="form-buttons"><button class="outline-button" :disabled="loading||!!error||preview||busy||!reason.trim()" @click="decideRefund(aftersales.find(a=>a.id===selectedId),false)">驳回</button><button class="teal-button" :disabled="loading||!!error||preview||busy||!reason.trim()" @click="decideRefund(aftersales.find(a=>a.id===selectedId),true)">批准退款</button></div></template></div></section></template>
  <template v-else-if="route==='/admin/categories'"><div class="ops-grid"><section class="ops-card"><div class="ops-card-header"><h2>类目</h2><span>{{categories.length}} 个</span></div><div class="ops-list-line" v-for="c in categories" :key="c.code"><span class="mini-icon"><Icon name="grid"/></span><div><strong>{{c.name}}</strong><small>{{c.code}}</small></div><span class="status-tag" :class="c.active?'published':'draft'">{{c.active?'启用':'停用'}}</span><button class="row-link" @click="category={code:c.code,name:c.name,active:!c.active}" :disabled="preview">{{c.active?'停用':'恢复'}}</button></div></section><form class="ops-card ops-sideform" @submit.prevent="saveCategory"><h2>编辑分类</h2><label class="field-label" for="platform-field-3">编码</label><input id="platform-field-3" class="admin-input" v-model.trim="category.code" required maxlength="32"/><label class="field-label" for="platform-field-4">名称</label><input id="platform-field-4" class="admin-input" v-model.trim="category.name" required maxlength="50"/><label class="field-label" for="platform-field-5">状态</label><select id="platform-field-5" class="admin-input" v-model="category.active"><option :value="true">启用</option><option :value="false">停用</option></select><button type="submit" class="teal-button" :disabled="loading||!!error||preview||busy">{{preview?'设计预览':'保存分类'}}</button></form></div></template>
  <div v-if="!preview&&route!=='/admin'&&route!=='/admin/categories'&&pageInfo.total>0" class="sdd-pager"><span>共 {{pageInfo.total}} 条</span><button :disabled="page<=1" @click="page--">上一页</button><span>{{page}}</span><button :disabled="!pageInfo.hasNext" @click="page++">下一页</button></div></BackofficeShell>`,
 };

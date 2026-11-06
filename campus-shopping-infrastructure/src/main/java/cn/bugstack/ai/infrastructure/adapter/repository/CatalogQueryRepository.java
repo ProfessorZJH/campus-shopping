@@ -21,8 +21,17 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
         return dao.scanIdsAfter(after, limit);
     }
 
-    public List<ProductAggregate> search(String merchant, String q, String category, boolean publicOnly, int offset, int limit) {
-        List<ProductPO> ps = dao.search(merchant, q, category, publicOnly, offset, limit, "NEWEST");
+    public List<ProductAggregate> search(
+        String merchant,
+        String q,
+        String category,
+        boolean publicOnly,
+        int offset,
+        int limit,
+        Long minPriceCent,
+        Long maxPriceCent
+    ) {
+        List<ProductPO> ps = dao.search(merchant, q, category, publicOnly, offset, limit, "NEWEST", minPriceCent, maxPriceCent);
         if (ps.isEmpty()) return List.of();
         List<SkuPO> ss = dao.skus(ps.stream().map(ProductPO::getId).toList());
         return ps
@@ -47,8 +56,18 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
         return ids.isEmpty() ? List.of() : fromProducts(dao.publicByIds(ids));
     }
 
-    public List<ProductAggregate> searchSorted(String m, String q, String cat, boolean pub, int offset, int limit, String sort) {
-        List<ProductPO> ps = dao.search(m, q, cat, pub, offset, limit, sort);
+    public List<ProductAggregate> searchSorted(
+        String m,
+        String q,
+        String cat,
+        boolean pub,
+        int offset,
+        int limit,
+        String sort,
+        Long minPriceCent,
+        Long maxPriceCent
+    ) {
+        List<ProductPO> ps = dao.search(m, q, cat, pub, offset, limit, sort, minPriceCent, maxPriceCent);
         return fromProducts(ps);
     }
 
@@ -74,8 +93,8 @@ public class CatalogQueryRepository implements ICatalogQueryRepository {
             .toList();
     }
 
-    public long count(String m, String q, String cat, boolean pub) {
-        return dao.count(m, q, cat, pub);
+    public long count(String m, String q, String cat, boolean pub, Long minPriceCent, Long maxPriceCent) {
+        return dao.count(m, q, cat, pub, minPriceCent, maxPriceCent);
     }
 
     public List<ProductAggregate> searchManaged(String merchant, String q, String category, String status, int offset, int limit) {

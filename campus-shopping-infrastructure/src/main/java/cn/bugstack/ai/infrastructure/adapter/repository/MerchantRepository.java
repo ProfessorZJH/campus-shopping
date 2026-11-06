@@ -22,18 +22,50 @@ public class MerchantRepository implements IMerchantRepository {
     @Resource
     private cn.bugstack.ai.infrastructure.redis.DisplayCache cache;
 
-    public record PublicDisplay(String name, String category, String storeId, String storeName, String location) {}
+    public record PublicDisplay(
+        String name,
+        String category,
+        String storeId,
+        String storeName,
+        String location,
+        String description,
+        String businessHours,
+        String imageUrl
+    ) {}
 
     public MerchantVO publicDisplay(String id) {
         MerchantPO facts = dao.displayFacts(id);
         if (facts == null) return null;
-        var data = cache.read("merchant:" + id + ":" + facts.getVersion(), 90, new com.fasterxml.jackson.core.type.TypeReference<PublicDisplay>() {}, () -> {
+        var data = cache.read("merchant:v2:" + id + ":" + facts.getVersion(), 90, new com.fasterxml.jackson.core.type.TypeReference<PublicDisplay>() {}, () -> {
             var p = dao.find(id, false);
-            return p == null ? null : new PublicDisplay(p.getName(), p.getCategory(), p.getStoreId(), p.getStoreName(), p.getLocation());
+            return p == null
+                ? null
+                : new PublicDisplay(
+                      p.getName(),
+                      p.getCategory(),
+                      p.getStoreId(),
+                      p.getStoreName(),
+                      p.getLocation(),
+                      p.getDescription(),
+                      p.getBusinessHours(),
+                      p.getImageUrl()
+                  );
         });
         return data == null
             ? null
-            : new MerchantVO(id, null, data.name(), data.category(), facts.getStatus(), data.storeId(), data.storeName(), data.location());
+            : new MerchantVO(
+                  id,
+                  null,
+                  data.name(),
+                  data.category(),
+                  facts.getStatus(),
+                  data.storeId(),
+                  data.storeName(),
+                  data.location(),
+                  data.description(),
+                  data.businessHours(),
+                  data.imageUrl()
+              );
     }
 
     public MerchantVO find(String id, boolean lock) {
@@ -50,6 +82,9 @@ public class MerchantRepository implements IMerchantRepository {
             .storeId(m.storeId())
             .storeName(m.storeName())
             .location(m.location())
+            .description(m.description() == null ? "" : m.description())
+            .businessHours(m.businessHours() == null ? "" : m.businessHours())
+            .imageUrl(m.imageUrl() == null ? "" : m.imageUrl())
             .build();
         dao.insertMerchant(p);
         dao.insertStore(p);
@@ -78,11 +113,23 @@ public class MerchantRepository implements IMerchantRepository {
     private MerchantVO fromPO(MerchantPO p) {
         return p == null
             ? null
-            : new MerchantVO(p.getId(), p.getApplicationId(), p.getName(), p.getCategory(), p.getStatus(), p.getStoreId(), p.getStoreName(), p.getLocation());
+            : new MerchantVO(
+                  p.getId(),
+                  p.getApplicationId(),
+                  p.getName(),
+                  p.getCategory(),
+                  p.getStatus(),
+                  p.getStoreId(),
+                  p.getStoreName(),
+                  p.getLocation(),
+                  p.getDescription(),
+                  p.getBusinessHours(),
+                  p.getImageUrl()
+              );
     }
 
-    public void updateProfile(String id, String name, String storeName, String location) {
+    public void updateProfile(String id, String name, String storeName, String location, String description, String businessHours, String imageUrl) {
         dao.updateProfile(id, name);
-        dao.updateStore(id, storeName, location);
+        dao.updateStore(id, storeName, location, description, businessHours, imageUrl);
     }
 }

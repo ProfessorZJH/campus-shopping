@@ -14,6 +14,7 @@ public interface IOrderQueryCase {
     OrderReadModel view(OrderAggregate order);
     TradingStatsVO statistics(String actor, String merchant);
     java.util.List<cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO> merchantAfterSales(String actor, String merchant, String state, int page, int size);
+    java.util.List<cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO> merchantAfterSaleHistory(String actor, String merchant, String orderId);
     long countMerchantAfterSales(String actor, String merchant, String state);
     java.util.List<cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO> platformAfterSales(String actor, String state, int page, int size);
     long countPlatformAfterSales(String actor, String state);

@@ -10,9 +10,13 @@ import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
+import cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO;
 import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleQueryService;
+import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderQueryService;
+import cn.bugstack.ai.types.common.Checks;
+import cn.bugstack.ai.types.enums.ResponseCode;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -26,6 +30,7 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
     private final IOrderQueryService orders;
     private final IAfterSaleQueryService afterSales;
     private final IFulfillmentService fulfillment;
+    private final IOrderEventService events;
     private final IMerchantService merchants;
     private final IAccessService access;
     private final IUserAccountService accounts;
@@ -34,6 +39,7 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         IOrderQueryService orders,
         IAfterSaleQueryService afterSales,
         IFulfillmentService fulfillment,
+        IOrderEventService events,
         IMerchantService merchants,
         IAccessService access,
         IUserAccountService accounts
@@ -41,6 +47,7 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         this.orders = orders;
         this.afterSales = afterSales;
         this.fulfillment = fulfillment;
+        this.events = events;
         this.merchants = merchants;
         this.access = access;
         this.accounts = accounts;
@@ -94,6 +101,16 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         return afterSales.countAfterSales(null, merchant, state);
     }
 
+    /** 售后审阅者只需 aftersale.read 即可读取该订单的真实处理历程，不扩大到订单详情。 */
+    @Override
+    public List<OrderEventVO> merchantAfterSaleHistory(String actor, String merchant, String orderId) {
+        access.requirePermission(actor, merchant, "aftersale.read");
+        OrderAggregate order = orders.order(orderId);
+        Checks.require(order != null && merchant.equals(order.getMerchantId()), ResponseCode.NOT_FOUND);
+        Checks.require(!afterSales.afterSalesByOrders(List.of(orderId)).isEmpty(), ResponseCode.NOT_FOUND);
+        return events.events(orderId);
+    }
+
     @Override
     public List<AfterSaleVO> platformAfterSales(String actor, String state, int page, int size) {
         access.requireAdmin(actor);
@@ -121,12 +138,13 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
             .findAll(page.stream().map(OrderAggregate::getMerchantId).distinct().toList())
             .stream()
             .collect(Collectors.toMap(MerchantVO::id, MerchantVO::name));
+        var timelines = events.eventsByOrders(ids);
         return page
             .stream()
             .map(o -> {
                 String name = names.get(o.getMerchantId());
                 if (name == null) throw new IllegalStateException("订单所属商户丢失");
-                return new OrderReadModel(o, name, pickups.get(o.getId()), refunds.get(o.getId()));
+                return new OrderReadModel(o, name, pickups.get(o.getId()), refunds.get(o.getId()), timelines.getOrDefault(o.getId(), List.of()));
             })
             .toList();
     }

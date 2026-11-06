@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS mer_merchant (
 
 CREATE TABLE IF NOT EXISTS mer_store (
  id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL, location VARCHAR(200) NOT NULL,
+ description VARCHAR(2000) NOT NULL DEFAULT '', business_hours VARCHAR(200) NOT NULL DEFAULT '', image_url VARCHAR(255) NOT NULL DEFAULT '',
  UNIQUE KEY uk_store_merchant(merchant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -65,9 +66,10 @@ CREATE TABLE IF NOT EXISTS cat_product_image (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_product_image_upload (
- object_key VARCHAR(512) NOT NULL, merchant_id VARCHAR(36) NOT NULL, product_id VARCHAR(36),
+ object_key VARCHAR(512) NOT NULL, merchant_id VARCHAR(36) NOT NULL, usage_type VARCHAR(16) NOT NULL DEFAULT 'PRODUCT', product_id VARCHAR(36),
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), PRIMARY KEY (object_key,merchant_id),
- KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id)
+ KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id),
+ CONSTRAINT ck_product_image_upload_usage CHECK (usage_type IN ('PRODUCT','STORE'))
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_sku (
@@ -104,8 +106,25 @@ CREATE TABLE IF NOT EXISTS trd_checkout_request (
 
 CREATE TABLE IF NOT EXISTS trd_order (
  id VARCHAR(36) PRIMARY KEY, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
+ pickup_store_name VARCHAR(100) NOT NULL DEFAULT '', pickup_location VARCHAR(200) NOT NULL DEFAULT '',
  total_cent BIGINT NOT NULL, status VARCHAR(24) NOT NULL, deadline DATETIME(3) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_merchant(merchant_id,status), KEY ix_order_expiry(status,deadline), CONSTRAINT ck_order_total CHECK(total_cent>0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS trd_order_event (
+ id VARCHAR(36) PRIMARY KEY,
+ event_seq BIGINT NOT NULL AUTO_INCREMENT,
+ order_id VARCHAR(36) NOT NULL,
+ after_sale_id VARCHAR(36) NULL,
+ event_type VARCHAR(32) NOT NULL,
+ event_time DATETIME(3) NOT NULL,
+ actor_id VARCHAR(36) NULL,
+ actor_role VARCHAR(24) NULL,
+ reason VARCHAR(500) NOT NULL DEFAULT '',
+ dedupe_key VARCHAR(80) NOT NULL,
+ UNIQUE KEY uk_order_event_dedupe(order_id,dedupe_key),
+ UNIQUE KEY uk_order_event_seq(event_seq),
+ KEY ix_order_event_time(order_id,event_time,event_seq)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_order_item (
@@ -212,3 +231,6 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261104_01','1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_01','fcc1851f8933857c4531d126ba46d4a49754310693c006589f3b9363f033e977' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_02','338723eaf6a7f12ce1ecd11aca2cba58d7c0c01d2050d8f75999502694076c5a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_03','044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

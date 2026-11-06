@@ -1,6 +1,6 @@
 {
   "type": "Chromium真实Vue + Spring API契约替身；不是MySQL、Spring端到端",
-  "timestamp": "2026-11-05T14:52:39.599514+00:00",
+  "timestamp": "2026-11-06T06:41:18.985424+00:00",
   "passed": [
     "首页视觉内容与商品卡渲染",
     "移动首页没有横向溢出",

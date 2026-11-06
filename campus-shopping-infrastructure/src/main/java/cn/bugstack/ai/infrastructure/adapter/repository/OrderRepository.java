@@ -38,6 +38,8 @@ public class OrderRepository implements IOrderRepository {
                 .buyerId(o.getBuyerId())
                 .merchantId(o.getMerchantId())
                 .storeId(o.getStoreId())
+                .pickupStoreName(o.getPickupStoreName())
+                .pickupLocation(o.getPickupLocation())
                 .totalCent(o.getTotalCent())
                 .status(o.getStatus())
                 .deadline(o.getDeadline())
@@ -151,6 +153,8 @@ public class OrderRepository implements IOrderRepository {
             p.getBuyerId(),
             p.getMerchantId(),
             p.getStoreId(),
+            p.getPickupStoreName() == null ? "" : p.getPickupStoreName(),
+            p.getPickupLocation() == null ? "" : p.getPickupLocation(),
             items,
             p.getStatus(),
             p.getDeadline(),

@@ -5,9 +5,11 @@ import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.api.IMerchantApplicationApi;
 import cn.bugstack.ai.api.dto.AdmissionResponseDTO;
+import cn.bugstack.ai.api.dto.FileUploadRequestDTO;
 import cn.bugstack.ai.api.dto.MerchantProfileRequestDTO;
 import cn.bugstack.ai.api.dto.MerchantResponseDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
+import cn.bugstack.ai.api.dto.ProductImageUploadDTO;
 import cn.bugstack.ai.api.dto.ReviewRequestDTO;
 import cn.bugstack.ai.api.dto.StateRequestDTO;
 import cn.bugstack.ai.api.dto.SubmitMerchantApplicationRequestDTO;
@@ -233,7 +235,33 @@ public class MerchantApplicationController implements IMerchantApplicationApi {
     ) {
         return execute(() -> {
             required(request);
-            return ApiViews.merchant(admission.updateProfile(actor(principal), merchantId, request.getName(), request.getStoreName(), request.getLocation()));
+            return ApiViews.merchant(
+                admission.updateProfile(
+                    actor(principal),
+                    merchantId,
+                    request.getName(),
+                    request.getStoreName(),
+                    request.getLocation(),
+                    request.getDescription(),
+                    request.getBusinessHours(),
+                    request.getImageUrl()
+                )
+            );
+        });
+    }
+
+    /** 门店图片上传要求 store.manage；上传对象按 STORE 用途登记，保存资料时再次核验归属。 */
+    @PostMapping("/merchants/{merchantId}/store/images")
+    public Response<ProductImageUploadDTO> storeImage(
+        @PathVariable("merchantId") String merchantId,
+        @RequestBody FileUploadRequestDTO request,
+        Principal principal
+    ) {
+        return execute(() -> {
+            required(request);
+            return ProductImageUploadDTO.builder()
+                .url(admission.uploadStoreImage(actor(principal), merchantId, file(required(request).getBase64())))
+                .build();
         });
     }
 

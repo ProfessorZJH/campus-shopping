@@ -2,7 +2,7 @@
 
 ## 结论与范围
 
-本报告记录产品化规划 M1（任务 2.1～2.8）在当前工作树的实现和验证。**2.1～2.7 已完成并通过本地定向回归；2.8 的格式、UI 生成和 Chromium 检查通过，但真实后端页面验收尚未完成（隔离环境缺少 Redis，见下文）。** 工作树为 `G:/develop/campus-shopping-worktrees/productization-m1`，分支 `codex/productization-m1`，基于 `origin/main` `45ccbd1`。代码尚未提交、推送或合并。
+本报告记录产品化规划 M1（任务 2.1～2.8）在当前工作树的实现和验证。**2.1～2.8 已完成；2.8 的格式、UI 生成和 Chromium 检查通过，真实后端页面验收随后在 M2 分支的隔离运行中补齐（372 tests / 0 skipped，live_ui 21 项真实 Spring/MySQL 页面检查通过，见 [M2 报告](PRODUCTIZATION-M2-20261106.md)）。** 工作树为 `G:/develop/campus-shopping-worktrees/productization-m1`，分支 `codex/productization-m1`，基于 `origin/main` `45ccbd1`；代码已提交 `fb00263`、推送 `codex/productization-m1` 并创建 PR #56，未合并。
 
 本阶段没有修改 Java/DTO、HTTP 契约、数据库迁移或权限规则；没有启动、迁移或清理既有业务库，没有复用既有 Redis，没有调用真实外部模型。浏览器契约测试使用显式命名的 API 替身，不能据此宣称 Spring/MySQL 端到端通过；隔离验收结果单独标注。
 
@@ -79,7 +79,7 @@
 | `python scripts/verify-release.py` | PASS，363 Java sources / 163 SQL statements；拒绝夹具全部被拒 |
 | `npm audit --prefix frontend` | 0 vulnerabilities |
 | Vite dev（`node frontend/node_modules/vite/bin/vite.js frontend --host 127.0.0.1 --port 5177`） | 页面挂载，`window.Vue` 为 3.5.45，无 vendor 请求；API 替身下仅有预期的 401 控制台记录 |
-| 隔离 MySQL/Maven/HTTP/Chromium（`verify-mysql-isolated.py --http-smoke`） | **Maven BUILD SUCCESS，361 tests / 0 failures / 9 skipped**；脚本要求 skipped=0，在启动 HTTP/浏览器阶段前中止。跳过项为 1 个 MySQL 集成用例和 8 个 Redis 用例；本机无隔离 Redis，未复用既有 6379。真实后端页面验收 **NOT_RUN**。 |
+| 隔离 MySQL/Maven/HTTP/Chromium（`verify-mysql-isolated.py --http-smoke`） | M1 分支首次运行因本机无隔离 Redis 在 9 个跳过用例处中止；M2 分支使用两个独立隔离 Redis 与 `REDIS_TEST_SERVER_COMMAND` 重跑：**372 tests / 0 failures / 0 skipped**，真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项和 M2 履约 5 项 PASS。证据见 [M2 报告](PRODUCTIZATION-M2-20261106.md) 与 `docs/testing/evidence/productization-m2/isolated.json`。 |
 
 补充说明：
 
@@ -90,9 +90,9 @@
 
 ## 明确未验证 / 未完成
 
-- **提交、推送、PR、CI、合并**：未执行；本报告不代表远端门禁或最终业务验收。
-- **真实后端页面验收**：`verify-mysql-isolated.py --http-smoke` 已用新建临时 MySQL 执行完整 Maven，BUILD SUCCESS（361 tests，0 failures，9 skipped）；因为脚本要求 0 skipped，且在未配置隔离 Redis 时 8 个 Redis 用例和 1 个 MySQL 用例被跳过，脚本在启动 HTTP/浏览器阶段前失败。**没有复用本机已有 Redis，也没有把该结果写成浏览器验收通过。** 需要在具备隔离 Redis 的环境重跑后，才能勾选 2.8。
+- **提交、推送、PR、CI、合并**：已提交 `fb00263`、推送 `codex/productization-m1` 并创建 PR #56；未合并，报告不代表远端门禁或最终业务验收。
+- **真实后端页面验收**：M1 分支首次运行在隔离 Redis 缺失处中止（361 tests，9 skipped）；M2 分支使用两个独立测试 Redis 重跑后，`verify-mysql-isolated.py --http-smoke` 为 372 tests、0 failures、0 skipped，真实 HTTP 282 项、`live_ui` 21 项和 M2 履约 5 项 PASS。**没有复用本机既有 Redis，也没有把替身结果写成端到端通过。**
 - **真实外部 AI/模型**：未调用；AI 契约替身只验证请求/渲染路径。
 - **生产部署、真实域名 HTTPS、性能与多实例**：未验证，按规划后续阶段或独立条件处理。
 - **图片能力**：已运行 `ui_product_images.py`（24 项）及 23 项 Node 图片组件测试，均通过；真实对象存储上传、七牛联通和真实媒体服务不在本阶段范围。
-- 隔离验收的具体日志/失败项见 `docs/testing/evidence/productization-m1/isolated.json` 及 Maven/Browser 未启动说明；未用替身结果替代真实后端。
+- 隔离验收通过证据见 `docs/testing/evidence/productization-m2/isolated.json` 与 M2 报告；M1 分支早期失败记录保留在提交 `fb00263` 的 evidence 目录，不覆盖为通过。

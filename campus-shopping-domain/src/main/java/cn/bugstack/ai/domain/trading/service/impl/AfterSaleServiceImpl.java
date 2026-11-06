@@ -58,10 +58,11 @@ public class AfterSaleServiceImpl implements IAfterSaleService, IAfterSaleQueryS
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void appeal(OrderAggregate order, String buyer) {
+    public AfterSaleVO appeal(OrderAggregate order, String buyer) {
         AfterSaleAggregate aggregate = requireAfterSale(order.getId());
         aggregate.appeal(order, buyer);
         saveAfterSale(aggregate);
+        return aggregate.view();
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

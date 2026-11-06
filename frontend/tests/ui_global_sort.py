@@ -2,6 +2,7 @@ from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 """全局排序前端契约测试：真实打包的 Vue + 可控分页 API 替身（非 MySQL 验证）。"""
 import json
+import os
 import shutil
 from urllib.parse import urlparse,parse_qs
 from playwright.sync_api import sync_playwright,expect
@@ -34,7 +35,7 @@ class SortedBackend(TwoMerchantBackend):
 def main():
     checks=[]
     with sync_playwright() as p:
-        browser=p.chromium.launch(headless=True,executable_path=shutil.which('chromium'),args=['--no-sandbox'])
+        browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])
         f=SortedBackend();page=browser_page(browser,'/',f)
         expect(page.locator('.home-product')).to_have_count(20,timeout=12000)
         page.get_by_role('button',name='全局价格').click()

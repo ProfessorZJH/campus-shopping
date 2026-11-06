@@ -16,11 +16,14 @@ public class OrderResponseDTO {
     private String merchantId;
     private String merchantName;
     private String storeId;
+    private String pickupStoreName;
+    private String pickupLocation;
     private String status;
     private Long totalCent;
     private Instant deadline;
     private Instant createdAt;
     private List<OrderItemResponseDTO> items;
+    private List<OrderEventResponseDTO> events;
     private PickupResponseDTO pickup;
     private AfterSaleResponseDTO afterSale;
 }

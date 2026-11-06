@@ -1303,6 +1303,29 @@
       "csrf": false
     },
     {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history",
+      "controller": "AfterSaleController.java",
+      "handler": "merchantAfterSaleHistory",
+      "responseType": "List<OrderEventResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
       "method": "POST",
       "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/prepare",
       "controller": "FulfillmentController.java",
@@ -2020,6 +2043,29 @@
       "csrf": true
     },
     {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/store/images",
+      "controller": "MerchantApplicationController.java",
+      "handler": "storeImage",
+      "responseType": "ProductImageUploadDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "FileUploadRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
       "method": "GET",
       "path": "/api/v1/orders",
       "controller": "OrderController.java",
@@ -2241,6 +2287,18 @@
         },
         {
           "in": "query",
+          "name": "minPriceCent",
+          "type": "Long",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "maxPriceCent",
+          "type": "Long",
+          "required": false
+        },
+        {
+          "in": "query",
           "name": "page",
           "type": "int",
           "required": false,
@@ -2281,6 +2339,18 @@
           "in": "query",
           "name": "category",
           "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "minPriceCent",
+          "type": "Long",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "maxPriceCent",
+          "type": "Long",
           "required": false
         },
         {

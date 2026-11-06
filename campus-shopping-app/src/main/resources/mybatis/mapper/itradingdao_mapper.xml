@@ -11,7 +11,7 @@ SELECT * FROM trd_checkout_request WHERE user_id=#{user} AND request_key=#{key} 
 UPDATE trd_checkout_request SET order_id=#{order} WHERE user_id=#{user} AND request_key=#{key} AND order_id IS NULL
     </update>
     <insert id="insertOrder">
-INSERT INTO trd_order(id,buyer_id,merchant_id,store_id,total_cent,status,deadline,version,created_at) VALUES(#{p.id},#{p.buyerId},#{p.merchantId},#{p.storeId},#{p.totalCent},#{p.status},#{p.deadline},0,#{p.createdAt})
+INSERT INTO trd_order(id,buyer_id,merchant_id,store_id,pickup_store_name,pickup_location,total_cent,status,deadline,version,created_at) VALUES(#{p.id},#{p.buyerId},#{p.merchantId},#{p.storeId},#{p.pickupStoreName},#{p.pickupLocation},#{p.totalCent},#{p.status},#{p.deadline},0,#{p.createdAt})
     </insert>
     <insert id="insertItem">
 INSERT INTO trd_order_item(order_id,sku_id,title,spec_key,image_url,unit_price_cent,quantity) VALUES(#{p.orderId},#{p.skuId},#{p.title},#{p.specKey},#{p.imageUrl},#{p.unitPriceCent},#{p.quantity})

@@ -41,5 +41,8 @@ CREATE TABLE IF NOT EXISTS mer_store (
     id VARCHAR(36) PRIMARY KEY,
     merchant_id VARCHAR(36) NOT NULL,
     name VARCHAR(100) NOT NULL,
-    location VARCHAR(255)
+    location VARCHAR(255),
+    description VARCHAR(2000) NOT NULL DEFAULT '',
+    business_hours VARCHAR(200) NOT NULL DEFAULT '',
+    image_url VARCHAR(255) NOT NULL DEFAULT ''
 );

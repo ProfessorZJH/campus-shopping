@@ -2,7 +2,7 @@
 
 > 本文件由 `python scripts/generate-api-contract.py` 从当前 Controller/DTO **生成**；禁止手工追加旧版路由。
 > 路由/字段来自源码；必填、范围、枚举由 `scripts/api_contract_rules.py` 显式核对合并。业务规则见 [行为契约](behavior-v1.1.md)，
-> 机器可读的 95 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
+> 机器可读的 97 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
 
 ## 统一约定
 
@@ -17,7 +17,7 @@
 - 字段约束描述规范化后的输入，Java 字符长度按 UTF-16 单元；商品创建必填 skus，编辑必填 expectedVersion，退款审核必填 reason。
 - 本文件是契约，运行证据另见 docs/testing/CONTRACT-DATABASE-API-AUDIT-09.md。
 
-## 全量路由（共 95 条）
+## 全量路由（共 97 条）
 
 | 方法 | 路径 | 请求参数 / 主体 | data 类型 | 访问控制 | 实现类 |
 |---|---|---|---|---|---|
@@ -78,6 +78,7 @@
 | `DELETE` | `/api/v1/merchants/{merchantId}/members/{userId}` | merchantId:String、userId:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/orders` | merchantId:String、state?:String、page?:int、size?:int | `List<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/orders/page` | merchantId:String、state?:String、page?:int、size?:int、q?:String | `PageResponseDTO<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history` | merchantId:String、orderId:String | `List<OrderEventResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/prepare` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/ready` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/refund-decision` | merchantId:String、orderId:String、body:ReviewRequestDTO | `Void` | authenticated + domain ACL | `AfterSaleController.java` |
@@ -103,6 +104,7 @@
 | `GET` | `/api/v1/merchants/{merchantId}/stocks` | merchantId:String、page?:int、size?:int | `List<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/stocks/page` | merchantId:String、page?:int、size?:int、q?:String | `PageResponseDTO<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/stocks/{skuId}/replenish` | merchantId:String、skuId:String、body:ReplenishRequestDTO、Idempotency-Key:String | `Void` | authenticated + domain ACL | `InventoryController.java` |
+| `POST` | `/api/v1/merchants/{merchantId}/store/images` | merchantId:String、body:FileUploadRequestDTO | `ProductImageUploadDTO` | authenticated + domain ACL | `MerchantApplicationController.java` |
 | `GET` | `/api/v1/orders` | state?:String、page?:int、size?:int | `List<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
 | `POST` | `/api/v1/orders` | body:CheckoutRequestDTO、Idempotency-Key:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
 | `GET` | `/api/v1/orders/page` | state?:String、page?:int、size?:int | `PageResponseDTO<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
@@ -112,8 +114,8 @@
 | `POST` | `/api/v1/orders/{orderId}/pay` | orderId:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
 | `POST` | `/api/v1/orders/{orderId}/pickup-token` | orderId:String | `TokenResponseDTO` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/orders/{orderId}/refunds` | orderId:String、body:RefundRequestDTO | `AfterSaleResponseDTO` | authenticated + domain ACL | `AfterSaleController.java` |
-| `GET` | `/api/v1/products` | merchantId?:String、q?:String、category?:String、page?:int、size?:int | `List<ProductResponseDTO>` | anonymous | `CatalogController.java` |
-| `GET` | `/api/v1/products/page` | merchantId?:String、q?:String、category?:String、page?:int、size?:int、sort?:String | `PageResponseDTO<ProductResponseDTO>` | anonymous | `CatalogController.java` |
+| `GET` | `/api/v1/products` | merchantId?:String、q?:String、category?:String、minPriceCent?:Long、maxPriceCent?:Long、page?:int、size?:int | `List<ProductResponseDTO>` | anonymous | `CatalogController.java` |
+| `GET` | `/api/v1/products/page` | merchantId?:String、q?:String、category?:String、minPriceCent?:Long、maxPriceCent?:Long、page?:int、size?:int、sort?:String | `PageResponseDTO<ProductResponseDTO>` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/products/{productId}` | productId:String | `ProductResponseDTO` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/workspace` | — | `WorkspaceResponseDTO` | authenticated + domain ACL | `WorkspaceController.java` |
 
@@ -227,15 +229,19 @@
 
 ### `MerchantProfileRequestDTO`
 
-`name`、`storeName`、`location`
+`name`、`storeName`、`location`、`description`、`businessHours`、`imageUrl`
 
 ### `MerchantResponseDTO`
 
-`merchantId`、`name`、`category`、`status`、`storeId`、`storeName`、`location`
+`merchantId`、`name`、`category`、`status`、`storeId`、`storeName`、`location`、`description`、`businessHours`、`imageUrl`
 
 ### `MessageResponseDTO`
 
 `id`、`role`、`content`、`createdAt`
+
+### `OrderEventResponseDTO`
+
+`eventId`、`type`、`occurredAt`、`actorRole`、`reason`
 
 ### `OrderItemResponseDTO`
 
@@ -243,7 +249,7 @@
 
 ### `OrderResponseDTO`
 
-`orderId`、`buyerId`、`merchantId`、`merchantName`、`storeId`、`status`、`totalCent`、`deadline`、`createdAt`、`items`、`pickup`、`afterSale`
+`orderId`、`buyerId`、`merchantId`、`merchantName`、`storeId`、`pickupStoreName`、`pickupLocation`、`status`、`totalCent`、`deadline`、`createdAt`、`items`、`events`、`pickup`、`afterSale`
 
 ### `PageResponseDTO`
 

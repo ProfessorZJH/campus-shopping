@@ -53,14 +53,14 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
-    public List<ProductReadModel> publicProducts(String merchant, String query, String category, int page, int size) {
-        return views(catalogService.search(merchant, query, category, true, page, size));
+    public List<ProductReadModel> publicProducts(String merchant, String query, String category, Long minPriceCent, Long maxPriceCent, int page, int size) {
+        return views(catalogService.search(merchant, query, category, true, page, size, minPriceCent, maxPriceCent));
     }
 
     @Override
-    public ProductPage publicPage(String merchant, String query, String category, int page, int size, String sort) {
-        List<ProductReadModel> items = views(catalogService.searchSorted(merchant, query, category, true, page, size, sort));
-        return new ProductPage(items, catalogService.count(merchant, query, category, true));
+    public ProductPage publicPage(String merchant, String query, String category, Long minPriceCent, Long maxPriceCent, int page, int size, String sort) {
+        List<ProductReadModel> items = views(catalogService.searchSorted(merchant, query, category, true, page, size, sort, minPriceCent, maxPriceCent));
+        return new ProductPage(items, catalogService.count(merchant, query, category, true, minPriceCent, maxPriceCent));
     }
 
     @Override
