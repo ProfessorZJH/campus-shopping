@@ -47,7 +47,7 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 {"code":"0000","info":"成功","data":{"items":[],"page":1,"size":20,"total":0,"hasNext":false}}
 ```
 
-会话 `GET /ai/conversations` 与邀请 `GET /invitations` 保留 `List<T>` 响应，支持 `page=1`、`size=100` 默认值，范围同上；按 `created_at DESC,id ASC` 稳定排序。前端每次取 20 条并提供继续加载/翻页；返回少于 size 条表示末页，满页后允许下一页为空。这两个接口不提供 total。页码最大 10000，越界返回 `0002`。
+会话 `GET /ai/conversations` 与邀请 `GET /invitations` 保留 `List<T>` 响应，支持 `page=1`、`size=100` 默认值，范围同上；会话按最近一次成功保存消息的 `lastActiveAt DESC,id ASC` 稳定排序，邀请按既有创建时间规则排序。会话没有消息时 `lastActiveAt` 使用创建时间，`summary` 只展示用户自己的问题摘要并遵守长度限制。前端每次取 20 条并提供继续加载/翻页；返回少于 size 条表示末页，满页后允许下一页为空。这两个接口不提供 total。页码最大 10000，越界返回 `0002`。
 
 `total` 必须是与当前 `state`、`status`、`category`、`merchantId`、`q` **同一过滤条件**下的数据库 `COUNT`，不能使用当前页 `items.length`。`hasNext` 基于 `page*size<total`。查询过滤在 SQL 分页之前生效，列表与 COUNT 保持等价条件。旧 `List<T>` 路由保留兼容；已提供 `/page` 的列表由新前端优先使用 `/page`。
 

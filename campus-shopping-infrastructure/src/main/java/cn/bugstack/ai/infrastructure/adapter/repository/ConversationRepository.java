@@ -8,6 +8,7 @@ import cn.bugstack.ai.infrastructure.dao.IAiDao;
 import cn.bugstack.ai.infrastructure.dao.po.ConversationPO;
 import cn.bugstack.ai.infrastructure.dao.po.MessagePO;
 import jakarta.annotation.Resource;
+import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Repository;
 
@@ -19,7 +20,16 @@ public class ConversationRepository implements IConversationRepository {
     private IAiDao dao;
 
     public void createConversation(ConversationVO c) {
-        dao.conversationInsert(ConversationPO.builder().id(c.id()).userId(c.userId()).title(c.title()).createdAt(c.createdAt()).build());
+        dao.conversationInsert(
+            ConversationPO.builder()
+                .id(c.id())
+                .userId(c.userId())
+                .title(c.title())
+                .createdAt(c.createdAt())
+                .lastActiveAt(c.lastActiveAt())
+                .summary(c.summary())
+                .build()
+        );
     }
 
     public ConversationVO conversation(String id) {
@@ -51,6 +61,10 @@ public class ConversationRepository implements IConversationRepository {
         );
     }
 
+    public boolean updateActivity(String id, String actor, Instant lastActiveAt, String summary) {
+        return dao.conversationActivity(id, actor, lastActiveAt, summary) == 1;
+    }
+
     public boolean claimTurn(String id, String actor, String token) {
         return dao.claimTurn(id, actor, token) == 1;
     }
@@ -64,6 +78,6 @@ public class ConversationRepository implements IConversationRepository {
     }
 
     private ConversationVO conversation(ConversationPO p) {
-        return p == null ? null : new ConversationVO(p.getId(), p.getUserId(), p.getTitle(), p.getCreatedAt());
+        return p == null ? null : new ConversationVO(p.getId(), p.getUserId(), p.getTitle(), p.getCreatedAt(), p.getLastActiveAt(), p.getSummary());
     }
 }

@@ -180,7 +180,7 @@ def main():
         close_page(page)
 
         # 4. 历史消息没有引用记录：不拼造引用卡片。
-        fixture.conversations = [{'id': 'conv-old', 'title': '旧会话', 'createdAt': NOW}]
+        fixture.conversations = [{'id': 'conv-old', 'title': '旧会话', 'createdAt': NOW, 'lastActiveAt': NOW, 'summary': '旧会话摘要'}]
         fixture.messages = [{'id': 'm1', 'role': 'assistant', 'content': '旧会话回答'}]
         fixture.proposals = []
         page = open_guide(browser, fixture)

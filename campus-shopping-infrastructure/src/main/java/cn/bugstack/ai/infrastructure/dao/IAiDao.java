@@ -6,6 +6,7 @@ import cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO;
 import cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO;
 import cn.bugstack.ai.infrastructure.dao.po.MessagePO;
 import cn.bugstack.ai.infrastructure.dao.po.ProposalPO;
+import java.time.Instant;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -47,6 +48,12 @@ public interface IAiDao {
     ConversationPO conversation(@Param("id") String id);
     List<ConversationPO> conversations(@Param("user") String user, @Param("offset") int offset, @Param("size") int size);
     List<MessagePO> messages(@Param("conversation") String conversation, @Param("limit") int limit);
+    int conversationActivity(
+        @Param("id") String id,
+        @Param("actor") String actor,
+        @Param("lastActiveAt") Instant lastActiveAt,
+        @Param("summary") String summary
+    );
     int claimTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int finishTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int releaseTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);

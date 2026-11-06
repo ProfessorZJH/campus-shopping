@@ -4137,6 +4137,27 @@ button {
   padding: 11px 8px;
   border-bottom: 1px solid #edf2f5;
 }
+.ai-history-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-history-copy strong,
+.ai-history-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-history-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.ai-history-copy small {
+  color: #9aadb9;
+  font-size: 10px;
+}
 .ai-history-list button svg:last-child {
   margin-left: auto;
 }

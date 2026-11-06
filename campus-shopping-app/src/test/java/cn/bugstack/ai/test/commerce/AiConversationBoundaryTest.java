@@ -20,6 +20,7 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.ArgumentCaptor;
 
 /** 测试规则和能力边界；数据库 CAS/原子提交另由真实 MySQL 测试覆盖。 */
 class AiConversationBoundaryTest {
@@ -130,6 +131,21 @@ class AiConversationBoundaryTest {
         when(repository.claimTurn(eq(first), eq("buyer"), anyString())).thenReturn(false);
         assertThrows(AppException.class, () -> instanceB.beginTurn("buyer", first, "并发问题"));
         assertNotNull(one.token());
+    }
+
+    @Test
+    void newConversationDoesNotTreatUncommittedQuestionAsSavedSummary() {
+        var repository = mock(IConversationRepository.class);
+        when(repository.claimTurn(anyString(), eq("buyer"), anyString())).thenReturn(true);
+        var service = new ConversationServiceImpl(repository, clock);
+
+        service.beginTurn("buyer", null, "尚未成功保存的问题");
+
+        var created = ArgumentCaptor.forClass(ConversationVO.class);
+        verify(repository).createConversation(created.capture());
+        assertEquals(clock.instant(), created.getValue().lastActiveAt());
+        assertEquals("", created.getValue().summary());
+        verify(repository, never()).updateActivity(anyString(), anyString(), any(), anyString());
     }
 
     @Test

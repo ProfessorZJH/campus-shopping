@@ -55,6 +55,19 @@ export default {
     const showProposal = computed(() => preview || !!proposal.value?.items?.length);
     const formatTime = () =>
       new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const formatHistoryTime = (value) => {
+      if (!value) return '暂无时间';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? '暂无时间'
+        : date.toLocaleString('zh-CN', {
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+    };
     // 同一 AI 页面内退出/切换账号时，不能保留上一身份的本地会话与回答。
     watch(
       () => store.user?.userId,
@@ -289,6 +302,7 @@ export default {
       reject,
       historyOpen,
       conversations,
+      formatHistoryTime,
       historyHasMore,
       loadingHistory,
       openingConversation,
@@ -305,7 +319,7 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation||confirmingProposal"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
+      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation||confirmingProposal"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> <span class="ai-history-copy"><strong>{{c.summary||c.title||'对话'}}</strong><small>{{formatHistoryTime(c.lastActiveAt||c.createdAt)}}</small></span> <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <section class="chat-thread" aria-label="AI对话">
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>

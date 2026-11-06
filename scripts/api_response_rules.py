@@ -10,7 +10,7 @@ FIELDS = {
     'CategoryResponseDTO': ('code name active', ''),
     'ChatResponseDTO': ('conversationId answer mode retrievalMode citations latencyMs', 'warning proposal'),
     'CitationResponseDTO': ('documentId title snippet', ''),
-    'ConversationResponseDTO': ('id title createdAt', ''),
+    'ConversationResponseDTO': ('id title createdAt lastActiveAt summary', ''),
     'CsrfTokenResponseDTO': ('headerName token', ''),
     'CurrentUserResponseDTO': ('userId username displayName status', ''),
     'ImageResponseDTO': ('url imageId provider sortOrder', ''),

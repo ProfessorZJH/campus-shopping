@@ -71,17 +71,20 @@ UPDATE ai_document SET status=#{status} WHERE id=#{id}
 UPDATE ai_document_root SET active_document_id=#{id} WHERE id=#{root}
     </update>
     <insert id="conversationInsert">
-INSERT INTO ai_conversation(id,user_id,title,created_at) VALUES(#{p.id},#{p.userId},#{p.title},#{p.createdAt})
+INSERT INTO ai_conversation(id,user_id,title,created_at,last_active_at,summary) VALUES(#{p.id},#{p.userId},#{p.title},#{p.createdAt},#{p.lastActiveAt},#{p.summary})
     </insert>
     <select id="conversation" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationPO">
 SELECT * FROM ai_conversation WHERE id=#{id}
     </select>
     <select id="conversations" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationPO">
-SELECT * FROM ai_conversation WHERE user_id=#{user} ORDER BY created_at DESC,id LIMIT #{size} OFFSET #{offset}
+SELECT id,user_id,title,created_at,last_active_at,summary FROM ai_conversation WHERE user_id=#{user} ORDER BY last_active_at DESC,id ASC LIMIT #{size} OFFSET #{offset}
     </select>
     <select id="messages" resultType="cn.bugstack.ai.infrastructure.dao.po.MessagePO">
 SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
     </select>
+    <update id="conversationActivity">
+UPDATE ai_conversation SET last_active_at=#{lastActiveAt},summary=#{summary} WHERE id=#{id} AND user_id=#{actor}
+    </update>
     <update id="claimTurn">
 UPDATE ai_conversation SET turn_token=#{token},turn_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3))
 WHERE id=#{id} AND user_id=#{actor} AND (turn_token IS NULL OR turn_expires_at &lt;= CURRENT_TIMESTAMP(3))

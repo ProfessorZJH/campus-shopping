@@ -73,7 +73,15 @@ public class ShoppingAiController implements IShoppingAiApi {
             return shopping
                 .conversations(actor(principal), page, size)
                 .stream()
-                .map(c -> ConversationResponseDTO.builder().id(c.id()).title(c.title()).createdAt(c.createdAt()).build())
+                .map(c ->
+                    ConversationResponseDTO.builder()
+                        .id(c.id())
+                        .title(c.title())
+                        .createdAt(c.createdAt())
+                        .lastActiveAt(c.lastActiveAt())
+                        .summary(c.summary())
+                        .build()
+                )
                 .toList();
         });
     }

@@ -177,7 +177,7 @@
 
 ### `ConversationResponseDTO`
 
-`id`、`title`、`createdAt`
+`id`、`title`、`createdAt`、`lastActiveAt`、`summary`
 
 ### `CsrfTokenResponseDTO`
 

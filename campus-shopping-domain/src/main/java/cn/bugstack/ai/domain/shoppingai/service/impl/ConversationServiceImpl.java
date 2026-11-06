@@ -9,6 +9,7 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -60,13 +61,21 @@ public class ConversationServiceImpl implements IConversationService {
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void appendTurn(ConversationTurnVO turn, String question, String answer, String accessFingerprint) {
         require(repository.finishTurn(turn), ResponseCode.STATE_CONFLICT);
-        repository.append(new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "user", text(question, "问题", 2000), clock.instant(), null));
+        String safeQuestion = text(question, "问题", 2000);
+        Instant activeAt = clock.instant();
+        repository.append(new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "user", safeQuestion, activeAt, null));
         repository.append(
-            new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "assistant", text(answer, "回答", 10000), clock.instant(), accessFingerprint)
+            new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "assistant", text(answer, "回答", 10000), activeAt, accessFingerprint)
         );
+        require(repository.updateActivity(turn.conversationId(), turn.userId(), activeAt, summary(safeQuestion)), ResponseCode.STATE_CONFLICT);
     }
 
     public void releaseTurn(ConversationTurnVO turn) {
         repository.releaseTurn(turn);
+    }
+
+    private String summary(String question) {
+        String normalized = question.replaceAll("\\s+", " ").trim();
+        return normalized.length() <= 200 ? normalized : normalized.substring(0, 199) + "…";
     }
 }

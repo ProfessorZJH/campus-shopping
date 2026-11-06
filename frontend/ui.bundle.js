@@ -13490,6 +13490,17 @@
         return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
       });
       const formatTime = () => (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+      const formatHistoryTime = (value) => {
+        if (!value) return "暂无时间";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "暂无时间" : date.toLocaleString("zh-CN", {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        });
+      };
       watch$c(
         () => {
           var _a;
@@ -13725,6 +13736,7 @@
         reject,
         historyOpen,
         conversations,
+        formatHistoryTime,
         historyHasMore,
         loadingHistory,
         openingConversation,
@@ -13809,11 +13821,24 @@
                         name: "order",
                         size: 16
                       }),
-                      _createTextVNode(
-                        " " + _toDisplayString(c.title || "对话") + " ",
-                        1
-                        /* TEXT */
-                      ),
+                      _createTextVNode(),
+                      _createElementVNode("span", { class: "ai-history-copy" }, [
+                        _createElementVNode(
+                          "strong",
+                          null,
+                          _toDisplayString(c.summary || c.title || "对话"),
+                          1
+                          /* TEXT */
+                        ),
+                        _createElementVNode(
+                          "small",
+                          null,
+                          _toDisplayString(_ctx.formatHistoryTime(c.lastActiveAt || c.createdAt)),
+                          1
+                          /* TEXT */
+                        )
+                      ]),
+                      _createTextVNode(),
                       _createVNode2(_component_Icon, {
                         name: "chevronRight",
                         size: 14

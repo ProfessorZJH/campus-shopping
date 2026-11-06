@@ -18377,13 +18377,22 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "lastActiveAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ConversationResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
         "required": [
           "id",
           "title",
-          "createdAt"
+          "createdAt",
+          "lastActiveAt",
+          "summary"
         ],
         "x-nullable-fields": []
       },

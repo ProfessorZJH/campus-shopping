@@ -60,6 +60,11 @@
       "version": "V20261106_03",
       "file": "V20261106_03__order_events.sql",
       "sha256": "044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e"
+    },
+    {
+      "version": "V20261107_01",
+      "file": "V20261107_01__conversation_activity.sql",
+      "sha256": "d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd"
     }
   ]
 }
