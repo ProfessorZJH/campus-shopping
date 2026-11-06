@@ -54,7 +54,6 @@ public class AiStreamEndpoint {
         required(request);
         String actor = actor(principal);
         SseEmitter emitter = new SseEmitter(120_000L);
-        send(emitter, "started", envelope(request.getConversationId(), "FULL_RESPONSE", null, null));
         try {
             EXECUTOR.execute(() -> run(emitter, actor, request));
         } catch (RuntimeException rejected) {
@@ -70,6 +69,7 @@ public class AiStreamEndpoint {
                 actor,
                 request.getConversationId(),
                 request.getQuestion(),
+                conversationId -> send(emitter, "started", envelope(conversationId, "FULL_RESPONSE", null, null)),
                 bytes -> send(
                     emitter,
                     "progress",

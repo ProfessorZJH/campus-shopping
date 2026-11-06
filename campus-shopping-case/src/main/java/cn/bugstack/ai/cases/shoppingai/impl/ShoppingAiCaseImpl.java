@@ -42,6 +42,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.LongConsumer;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,10 +122,17 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
-    public ChatResult chatStream(String actor, String conversationId, String question, LongConsumer progress) {
+    public ChatResult chatStream(
+        String actor,
+        String conversationId,
+        String question,
+        Consumer<String> conversationReady,
+        LongConsumer progress
+    ) {
         accounts.requireActive(actor);
         String q = text(question, "问题", 2000);
         var turn = state.beginTurn(actor, conversationId, q);
+        if (conversationReady != null) conversationReady.accept(turn.conversationId());
         try {
             return answer(actor, turn, q, progress);
         } catch (RuntimeException failure) {

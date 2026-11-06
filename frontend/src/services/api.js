@@ -50,6 +50,97 @@ export async function api(path, options = {}) {
     options.signal?.removeEventListener('abort', abort);
   }
 }
+
+/** 读取独立 SSE 协议；事件数据始终是 JSON，断线由调用方决定是否恢复原会话。 */
+export async function stream(path, { body, signal, onEvent, retry = true } = {}) {
+  const stamp = generation;
+  const token = csrf || (await getCsrf());
+  requireIdentity(stamp);
+  const headers = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json',
+    [token.headerName]: token.token,
+  };
+  let response;
+  try {
+    response = await fetch(PREFIX + path, {
+      method: 'POST',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    throw fail('服务连接失败，请确认 Java 后端已启动', 'NETWORK', 0);
+  }
+  if (response.status === 403 && retry) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {}
+    if (payload?.code === 'A0005') {
+      csrf = null;
+      await getCsrf();
+      requireIdentity(stamp);
+      return stream(path, { body, signal, onEvent, retry: false });
+    }
+  }
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {}
+    if (response.status === 401 || payload?.code === 'A0004') unauthorized();
+    throw fail(payload?.info || '请求失败', payload?.code || 'HTTP', response.status);
+  }
+  if (!response.body) throw fail('服务器没有返回流式响应', 'RESPONSE', response.status);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let eventName = '';
+  let data = [];
+  const dispatch = async () => {
+    if (!eventName && !data.length) return;
+    const raw = data.join('\n');
+    const name = eventName || 'message';
+    eventName = '';
+    data = [];
+    if (!raw) return;
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      throw fail('服务器响应格式异常', 'RESPONSE', response.status);
+    }
+    requireIdentity(stamp);
+    if (onEvent) await onEvent(name, payload);
+  };
+  const consume = async (line) => {
+    if (line.length > 65536) throw fail('流式响应超过大小限制', 'RESPONSE', response.status);
+    if (!line) return dispatch();
+    if (line.startsWith('event:')) eventName = line.slice(6).trim();
+    else if (line.startsWith('data:')) {
+      data.push(line.slice(5).trim());
+      if (data.join('\n').length > 1_000_000)
+        throw fail('流式响应超过大小限制', 'RESPONSE', response.status);
+    }
+  };
+  while (true) {
+    const chunk = await reader.read();
+    buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+    let end;
+    while ((end = buffer.indexOf('\n')) >= 0) {
+      const line = buffer.slice(0, end).replace(/\r$/, '');
+      buffer = buffer.slice(end + 1);
+      await consume(line);
+    }
+    if (chunk.done) break;
+  }
+  if (buffer) await consume(buffer.replace(/\r$/, ''));
+  await dispatch();
+}
 async function request(path, { method = 'GET', body, signal, key, retry = true } = {}) {
   const stamp = generation;
   const payload = body === undefined ? undefined : JSON.stringify(body);

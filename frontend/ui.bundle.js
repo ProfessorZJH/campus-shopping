@@ -11502,6 +11502,97 @@
       (_c = options.signal) == null ? void 0 : _c.removeEventListener("abort", abort);
     }
   }
+  async function stream(path, { body, signal, onEvent, retry = true } = {}) {
+    const stamp = generation;
+    const token = csrf || await getCsrf();
+    requireIdentity(stamp);
+    const headers = {
+      Accept: "text/event-stream",
+      "Content-Type": "application/json",
+      [token.headerName]: token.token
+    };
+    let response;
+    try {
+      response = await fetch(PREFIX + path, {
+        method: "POST",
+        headers,
+        body: body === void 0 ? void 0 : JSON.stringify(body),
+        signal,
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      throw fail("服务连接失败，请确认 Java 后端已启动", "NETWORK", 0);
+    }
+    if (response.status === 403 && retry) {
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+      }
+      if ((payload == null ? void 0 : payload.code) === "A0005") {
+        csrf = null;
+        await getCsrf();
+        requireIdentity(stamp);
+        return stream(path, { body, signal, onEvent, retry: false });
+      }
+    }
+    if (!response.ok) {
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+      }
+      if (response.status === 401 || (payload == null ? void 0 : payload.code) === "A0004") unauthorized();
+      throw fail((payload == null ? void 0 : payload.info) || "请求失败", (payload == null ? void 0 : payload.code) || "HTTP", response.status);
+    }
+    if (!response.body) throw fail("服务器没有返回流式响应", "RESPONSE", response.status);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer2 = "";
+    let eventName = "";
+    let data = [];
+    const dispatch = async () => {
+      if (!eventName && !data.length) return;
+      const raw = data.join("\n");
+      const name = eventName || "message";
+      eventName = "";
+      data = [];
+      if (!raw) return;
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        throw fail("服务器响应格式异常", "RESPONSE", response.status);
+      }
+      requireIdentity(stamp);
+      if (onEvent) await onEvent(name, payload);
+    };
+    const consume = async (line) => {
+      if (line.length > 65536) throw fail("流式响应超过大小限制", "RESPONSE", response.status);
+      if (!line) return dispatch();
+      if (line.startsWith("event:")) eventName = line.slice(6).trim();
+      else if (line.startsWith("data:")) {
+        data.push(line.slice(5).trim());
+        if (data.join("\n").length > 1e6)
+          throw fail("流式响应超过大小限制", "RESPONSE", response.status);
+      }
+    };
+    while (true) {
+      const chunk = await reader.read();
+      buffer2 += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+      let end;
+      while ((end = buffer2.indexOf("\n")) >= 0) {
+        const line = buffer2.slice(0, end).replace(/\r$/, "");
+        buffer2 = buffer2.slice(end + 1);
+        await consume(line);
+      }
+      if (chunk.done) break;
+    }
+    if (buffer2) await consume(buffer2.replace(/\r$/, ""));
+    await dispatch();
+  }
   async function request(path, { method = "GET", body, signal, key, retry = true } = {}) {
     const stamp = generation;
     const payload = body === void 0 ? void 0 : JSON.stringify(body);
@@ -13465,7 +13556,10 @@
       const openingConversation = ref$d(false);
       const confirmingProposal = ref$d(false);
       const proposalFeedback = ref$d("");
-      let conversationEpoch = 0, historyEpoch = 0;
+      const streamProgress = ref$d(0);
+      const reconnecting = ref$d(false);
+      const cancelRequested = ref$d(false);
+      let conversationEpoch = 0, historyEpoch = 0, activeStreamController = null;
       const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$d(
         () => {
@@ -13509,6 +13603,7 @@
         },
         (now, was) => {
           if (preview || now === was) return;
+          stopActiveStream();
           ++conversationEpoch;
           ++historyEpoch;
           store.conversationId = "";
@@ -13537,6 +13632,81 @@
           selectedIds.value = examples.value.map((p2) => skuOf(p2).skuId);
         }
       });
+      function stopActiveStream() {
+        activeStreamController == null ? void 0 : activeStreamController.abort();
+        activeStreamController = null;
+      }
+      function applyChatAnswer(answer, stamp) {
+        var _a;
+        if (stamp !== conversationEpoch || !answer) return;
+        store.conversationId = answer.conversationId || store.conversationId;
+        mode.value = answer.mode || "";
+        messages.value.push({
+          role: "assistant",
+          content: answer.answer || "暂时没有找到合适答案",
+          warning: answer.warning,
+          citations: citationsOf(answer),
+          time: formatTime()
+        });
+        proposal.value = answer.proposal || null;
+        selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+        proposalFeedback.value = "";
+      }
+      async function loadConversationSnapshot(id, stamp) {
+        var _a;
+        const encoded = encodeURIComponent(id);
+        const [history, proposals] = await Promise.all([
+          api("/ai/conversations/" + encoded + "/messages"),
+          api("/ai/conversations/" + encoded + "/proposals")
+        ]);
+        if (stamp !== conversationEpoch) return false;
+        store.conversationId = id;
+        messages.value = (history || []).map((m) => ({
+          role: m.role,
+          content: m.content,
+          citations: citationsOf(m),
+          citationStatus: m.citationStatus || "MISSING",
+          time: "历史消息"
+        }));
+        proposal.value = (proposals || []).find((p2) => p2.status === "PENDING") || null;
+        selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+        return true;
+      }
+      async function recoverAfterDisconnect(stamp, actor, id) {
+        var _a, _b;
+        if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
+        reconnecting.value = true;
+        try {
+          for (let attempt = 0; attempt < 10; attempt += 1) {
+            if (stamp !== conversationEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return true;
+            const status = await api("/ai/conversations/" + encodeURIComponent(id) + "/turn/status", {
+              timeoutMs: 5e3
+            });
+            if ((status == null ? void 0 : status.status) === "CANCEL_REQUESTED") {
+              cancelRequested.value = true;
+              return true;
+            }
+            if ((status == null ? void 0 : status.status) === "IDLE") return loadConversationSnapshot(id, stamp);
+            await new Promise((resolve2) => setTimeout(resolve2, 500));
+          }
+        } finally {
+          reconnecting.value = false;
+        }
+        return false;
+      }
+      async function cancelTurn() {
+        const id = store.conversationId;
+        if (preview || !thinking.value || !id || cancelRequested.value) return;
+        cancelRequested.value = true;
+        try {
+          await api("/ai/conversations/" + encodeURIComponent(id) + "/turn/cancel", {
+            method: "POST"
+          });
+        } catch (err) {
+          cancelRequested.value = false;
+          notify((err == null ? void 0 : err.message) || "取消请求未完成，请稍后重试");
+        }
+      }
       async function ask(question = input.value) {
         var _a;
         const text = String(question || "").trim();
@@ -13561,31 +13731,57 @@
           return;
         }
         thinking.value = true;
+        streamProgress.value = 0;
+        reconnecting.value = false;
+        cancelRequested.value = false;
+        activeStreamController = new AbortController();
+        const controller = activeStreamController;
+        const actor = (_a = store.user) == null ? void 0 : _a.userId;
+        let streamConversationId = store.conversationId || null;
+        let completed = false;
+        let cancelled = false;
         try {
-          const answer = await api("/ai/chat", {
-            method: "POST",
-            body: { question: text, conversationId: store.conversationId || null }
+          await stream("/ai/chat/stream", {
+            signal: controller.signal,
+            body: { question: text, conversationId: store.conversationId || null },
+            onEvent: async (event, payload) => {
+              var _a2, _b, _c;
+              if (stamp !== conversationEpoch) return;
+              const id = (payload == null ? void 0 : payload.conversationId) || ((_a2 = payload == null ? void 0 : payload.data) == null ? void 0 : _a2.conversationId);
+              if (id) {
+                streamConversationId = id;
+                store.conversationId = id;
+              }
+              if (event === "progress") {
+                streamProgress.value = Number(((_b = payload == null ? void 0 : payload.data) == null ? void 0 : _b.bytes) || (payload == null ? void 0 : payload.bytes) || 0);
+              } else if (event === "completed") {
+                completed = true;
+                applyChatAnswer(payload == null ? void 0 : payload.data, stamp);
+              } else if (event === "cancelled") {
+                cancelled = true;
+                cancelRequested.value = true;
+              } else if (event === "failed") {
+                const code = (payload == null ? void 0 : payload.errorCode) || ((_c = payload == null ? void 0 : payload.data) == null ? void 0 : _c.errorCode) || "AI0001";
+                throw Object.assign(new Error("智能服务暂不可用，请稍后重试"), { code });
+              }
+            }
           });
-          if (stamp !== conversationEpoch) return;
-          store.conversationId = answer.conversationId || store.conversationId;
-          mode.value = answer.mode || "";
-          messages.value.push({
-            role: "assistant",
-            content: answer.answer || "暂时没有找到合适答案",
-            warning: answer.warning,
-            citations: citationsOf(answer),
-            time: formatTime()
-          });
-          proposal.value = answer.proposal || null;
-          selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
-          proposalFeedback.value = "";
+          if (!completed && !cancelled)
+            throw Object.assign(new Error("流式响应未完成"), { code: "RESPONSE" });
         } catch (err) {
-          if (stamp === conversationEpoch) {
+          if ((err == null ? void 0 : err.name) === "AbortError" && (cancelRequested.value || stamp !== conversationEpoch))
+            return;
+          if ((err == null ? void 0 : err.code) === "NETWORK" && streamConversationId) {
+            const recovered = await recoverAfterDisconnect(stamp, actor, streamConversationId);
+            if (recovered) return;
+          }
+          if (stamp === conversationEpoch && !cancelled) {
             error.value = err.status === 401 ? "请先登录账号再使用 AI 导购" : err.message;
             messages.value.pop();
             input.value = text;
           }
         } finally {
+          if (activeStreamController === controller) activeStreamController = null;
           if (stamp === conversationEpoch) thinking.value = false;
         }
       }
@@ -13609,27 +13805,11 @@
         }
       }
       async function openConversation(c) {
-        var _a;
         if (preview || thinking.value || !(c == null ? void 0 : c.id)) return;
         const stamp = ++conversationEpoch;
         openingConversation.value = true;
         try {
-          const id = encodeURIComponent(c.id);
-          const [history, proposals] = await Promise.all([
-            api("/ai/conversations/" + id + "/messages"),
-            api("/ai/conversations/" + id + "/proposals")
-          ]);
-          if (stamp !== conversationEpoch) return;
-          store.conversationId = c.id;
-          messages.value = (history || []).map((m) => ({
-            role: m.role,
-            content: m.content,
-            citations: citationsOf(m),
-            citationStatus: m.citationStatus || "MISSING",
-            time: "历史消息"
-          }));
-          proposal.value = (proposals || []).find((p2) => p2.status === "PENDING") || null;
-          selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          await loadConversationSnapshot(c.id, stamp);
           proposalFeedback.value = "";
           historyOpen.value = false;
         } catch (e) {
@@ -13640,6 +13820,7 @@
       }
       function newConversation() {
         if (confirmingProposal.value) return;
+        stopActiveStream();
         ++conversationEpoch;
         store.conversationId = "";
         messages.value = [];
@@ -13654,6 +13835,7 @@
         historyOpen.value = false;
       }
       onUnmounted$8(() => {
+        stopActiveStream();
         ++conversationEpoch;
         ++historyEpoch;
       });
@@ -13780,6 +13962,10 @@
         openingConversation,
         confirmingProposal,
         proposalFeedback,
+        streamProgress,
+        reconnecting,
+        cancelRequested,
+        cancelTurn,
         loadHistory,
         openConversation,
         newConversation
@@ -14052,7 +14238,14 @@
                   _createElementVNode("div", { class: "typing-bubble" }, [
                     _createElementVNode("i"),
                     _createElementVNode("i"),
-                    _createElementVNode("i")
+                    _createElementVNode("i"),
+                    _ctx.reconnecting ? (_openBlock(), _createElementBlock("small", { key: 0 }, "连接已断开，正在恢复原会话…")) : _ctx.cancelRequested ? (_openBlock(), _createElementBlock("small", { key: 1 }, "正在停止本轮生成…")) : _ctx.streamProgress ? (_openBlock(), _createElementBlock(
+                      "small",
+                      { key: 2 },
+                      "已读取 " + _toDisplayString(_ctx.streamProgress) + " 字节",
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
                   ])
                 ])) : _createCommentVNode("v-if", true),
                 _ctx.error ? (_openBlock(), _createElementBlock("div", {
@@ -14234,16 +14427,23 @@
                 }, null, 8, ["onUpdate:modelValue", "disabled"]), [
                   [_vModelText, _ctx.input]
                 ]),
-                _createElementVNode("button", {
+                _ctx.thinking ? (_openBlock(), _createElementBlock("button", {
+                  key: 0,
+                  type: "button",
+                  class: "stream-cancel",
+                  onClick: _ctx.cancelTurn,
+                  disabled: _ctx.cancelRequested || !_ctx.store.conversationId
+                }, _toDisplayString(_ctx.cancelRequested ? "停止中…" : "停止生成"), 9, ["onClick", "disabled"])) : (_openBlock(), _createElementBlock("button", {
+                  key: 1,
                   type: "submit",
-                  disabled: _ctx.thinking || _ctx.openingConversation || !_ctx.input.trim(),
+                  disabled: _ctx.openingConversation || !_ctx.input.trim(),
                   "aria-label": "发送问题"
                 }, [
                   _createVNode2(_component_Icon, {
                     name: "send",
                     size: 20
                   })
-                ], 8, ["disabled"])
+                ], 8, ["disabled"]))
               ], 40, ["onSubmit"])
             ];
           }),

@@ -1,6 +1,6 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
-import { api, query } from '../services/api.js';
+import { api, query, stream } from '../services/api.js';
 import { citationsOf } from '../services/ai-citations';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
@@ -30,8 +30,12 @@ export default {
     const openingConversation = ref(false);
     const confirmingProposal = ref(false);
     const proposalFeedback = ref('');
+    const streamProgress = ref(0);
+    const reconnecting = ref(false);
+    const cancelRequested = ref(false);
     let conversationEpoch = 0,
-      historyEpoch = 0;
+      historyEpoch = 0,
+      activeStreamController = null;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
     const items = computed(() =>
       preview
@@ -74,6 +78,7 @@ export default {
       () => store.user?.userId,
       (now, was) => {
         if (preview || now === was) return;
+        stopActiveStream();
         ++conversationEpoch;
         ++historyEpoch;
         store.conversationId = '';
@@ -102,6 +107,84 @@ export default {
         selectedIds.value = examples.value.map((p) => skuOf(p).skuId);
       }
     });
+
+    function stopActiveStream() {
+      activeStreamController?.abort();
+      activeStreamController = null;
+    }
+
+    function applyChatAnswer(answer, stamp) {
+      if (stamp !== conversationEpoch || !answer) return;
+      store.conversationId = answer.conversationId || store.conversationId;
+      mode.value = answer.mode || '';
+      messages.value.push({
+        role: 'assistant',
+        content: answer.answer || '暂时没有找到合适答案',
+        warning: answer.warning,
+        citations: citationsOf(answer),
+        time: formatTime(),
+      });
+      proposal.value = answer.proposal || null;
+      selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+      proposalFeedback.value = '';
+    }
+
+    async function loadConversationSnapshot(id, stamp) {
+      const encoded = encodeURIComponent(id);
+      const [history, proposals] = await Promise.all([
+        api('/ai/conversations/' + encoded + '/messages'),
+        api('/ai/conversations/' + encoded + '/proposals'),
+      ]);
+      if (stamp !== conversationEpoch) return false;
+      store.conversationId = id;
+      messages.value = (history || []).map((m) => ({
+        role: m.role,
+        content: m.content,
+        citations: citationsOf(m),
+        citationStatus: m.citationStatus || 'MISSING',
+        time: '历史消息',
+      }));
+      proposal.value = (proposals || []).find((p) => p.status === 'PENDING') || null;
+      selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+      return true;
+    }
+
+    async function recoverAfterDisconnect(stamp, actor, id) {
+      if (!id || actor !== store.user?.userId) return false;
+      reconnecting.value = true;
+      try {
+        for (let attempt = 0; attempt < 10; attempt += 1) {
+          if (stamp !== conversationEpoch || actor !== store.user?.userId) return true;
+          const status = await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/status', {
+            timeoutMs: 5000,
+          });
+          if (status?.status === 'CANCEL_REQUESTED') {
+            cancelRequested.value = true;
+            return true;
+          }
+          if (status?.status === 'IDLE') return loadConversationSnapshot(id, stamp);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      } finally {
+        reconnecting.value = false;
+      }
+      return false;
+    }
+
+    async function cancelTurn() {
+      const id = store.conversationId;
+      if (preview || !thinking.value || !id || cancelRequested.value) return;
+      cancelRequested.value = true;
+      try {
+        await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/cancel', {
+          method: 'POST',
+        });
+      } catch (err) {
+        cancelRequested.value = false;
+        notify(err?.message || '取消请求未完成，请稍后重试');
+      }
+    }
+
     async function ask(question = input.value) {
       const text = String(question || '').trim();
       if (!text || thinking.value || openingConversation.value) return;
@@ -125,31 +208,56 @@ export default {
         return;
       }
       thinking.value = true;
+      streamProgress.value = 0;
+      reconnecting.value = false;
+      cancelRequested.value = false;
+      activeStreamController = new AbortController();
+      const controller = activeStreamController;
+      const actor = store.user?.userId;
+      let streamConversationId = store.conversationId || null;
+      let completed = false;
+      let cancelled = false;
       try {
-        const answer = await api('/ai/chat', {
-          method: 'POST',
+        await stream('/ai/chat/stream', {
+          signal: controller.signal,
           body: { question: text, conversationId: store.conversationId || null },
+          onEvent: async (event, payload) => {
+            if (stamp !== conversationEpoch) return;
+            const id = payload?.conversationId || payload?.data?.conversationId;
+            if (id) {
+              streamConversationId = id;
+              store.conversationId = id;
+            }
+            if (event === 'progress') {
+              streamProgress.value = Number(payload?.data?.bytes || payload?.bytes || 0);
+            } else if (event === 'completed') {
+              completed = true;
+              applyChatAnswer(payload?.data, stamp);
+            } else if (event === 'cancelled') {
+              cancelled = true;
+              cancelRequested.value = true;
+            } else if (event === 'failed') {
+              const code = payload?.errorCode || payload?.data?.errorCode || 'AI0001';
+              throw Object.assign(new Error('智能服务暂不可用，请稍后重试'), { code });
+            }
+          },
         });
-        if (stamp !== conversationEpoch) return;
-        store.conversationId = answer.conversationId || store.conversationId;
-        mode.value = answer.mode || '';
-        messages.value.push({
-          role: 'assistant',
-          content: answer.answer || '暂时没有找到合适答案',
-          warning: answer.warning,
-          citations: citationsOf(answer),
-          time: formatTime(),
-        });
-        proposal.value = answer.proposal || null;
-        selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
-        proposalFeedback.value = '';
+        if (!completed && !cancelled)
+          throw Object.assign(new Error('流式响应未完成'), { code: 'RESPONSE' });
       } catch (err) {
-        if (stamp === conversationEpoch) {
+        if (err?.name === 'AbortError' && (cancelRequested.value || stamp !== conversationEpoch))
+          return;
+        if (err?.code === 'NETWORK' && streamConversationId) {
+          const recovered = await recoverAfterDisconnect(stamp, actor, streamConversationId);
+          if (recovered) return;
+        }
+        if (stamp === conversationEpoch && !cancelled) {
           error.value = err.status === 401 ? '请先登录账号再使用 AI 导购' : err.message;
           messages.value.pop();
           input.value = text;
         }
       } finally {
+        if (activeStreamController === controller) activeStreamController = null;
         if (stamp === conversationEpoch) thinking.value = false;
       }
     }
@@ -179,22 +287,7 @@ export default {
       const stamp = ++conversationEpoch;
       openingConversation.value = true;
       try {
-        const id = encodeURIComponent(c.id);
-        const [history, proposals] = await Promise.all([
-          api('/ai/conversations/' + id + '/messages'),
-          api('/ai/conversations/' + id + '/proposals'),
-        ]);
-        if (stamp !== conversationEpoch) return;
-        store.conversationId = c.id;
-        messages.value = (history || []).map((m) => ({
-          role: m.role,
-          content: m.content,
-          citations: citationsOf(m),
-          citationStatus: m.citationStatus || 'MISSING',
-          time: '历史消息',
-        }));
-        proposal.value = (proposals || []).find((p) => p.status === 'PENDING') || null;
-        selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+        await loadConversationSnapshot(c.id, stamp);
         proposalFeedback.value = '';
         historyOpen.value = false;
       } catch (e) {
@@ -206,6 +299,7 @@ export default {
     /** 新对话只切换前端会话代次；旧请求仍可能在服务端完成，但不得写回当前页面。 */
     function newConversation() {
       if (confirmingProposal.value) return;
+      stopActiveStream();
       ++conversationEpoch;
       store.conversationId = '';
       messages.value = [];
@@ -220,6 +314,7 @@ export default {
       historyOpen.value = false;
     }
     onUnmounted(() => {
+      stopActiveStream();
       ++conversationEpoch;
       ++historyEpoch;
     });
@@ -351,6 +446,10 @@ export default {
       openingConversation,
       confirmingProposal,
       proposalFeedback,
+      streamProgress,
+      reconnecting,
+      cancelRequested,
+      cancelTurn,
       loadHistory,
       openConversation,
       newConversation,
@@ -371,7 +470,7 @@ export default {
           <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
           <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><details class="citation-chip" v-for="(c,ci) in message.citations" :key="c.documentId||ci"><summary><Icon name="book" :size="12"/>{{c.title||'参考资料'}}</summary><p v-if="c.snippet">{{c.snippet}}</p></details></div><div v-if="message.role==='assistant' && message.citationStatus==='MISSING'" class="message-warning">历史消息没有可恢复的引用记录</div><div v-if="message.role==='assistant' && message.citationStatus==='HIDDEN'" class="message-warning">当前无法核验这条历史引用，来源已隐藏</div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
         </div>
-        <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
+        <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i><small v-if="reconnecting">连接已断开，正在恢复原会话…</small><small v-else-if="cancelRequested">正在停止本轮生成…</small><small v-else-if="streamProgress">已读取 {{streamProgress}} 字节</small></div></div>
         <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>
       </section>
       <section v-if="showProposal" class="recommendation-panel">
@@ -386,6 +485,6 @@ export default {
         <div v-if="proposalFeedback" class="proposal-feedback" role="alert">{{proposalFeedback}}</div><div class="proposal-footer"><div class="proposal-total"><span>已选 {{selectedIds.length}} 件</span><strong>{{money(total)}}</strong></div><div class="proposal-actions"><button v-if="!preview&&proposal?.status==='PENDING'" class="ghost-decline" @click="reject">放弃</button><button class="confirm-button" @click="confirm" :disabled="preview||thinking||!selectedIds.length||(!preview&&proposal?.status!=='PENDING')"><Icon name="check" :size="17"/>{{proposal?.status==='CONFIRMED'?'已确认':confirmingProposal?'确认中…':'确认加购'}}</button></div></div>
       </section>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
-      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button type="submit" :disabled="thinking||openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
+      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
     </ConsumerShell>`,
 };
