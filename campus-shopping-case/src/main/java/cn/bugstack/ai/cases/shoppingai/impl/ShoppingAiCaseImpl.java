@@ -8,6 +8,7 @@ import cn.bugstack.ai.cases.shoppingai.IProposalConfirmationCase;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
+import cn.bugstack.ai.cases.shoppingai.model.KnowledgeDebugResult;
 import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
@@ -41,6 +42,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.time.Duration;
 import java.util.function.LongConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -96,6 +98,42 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         this.clock = clock;
         this.turns = turns;
         this.confirmation = confirmation;
+    }
+
+    /** 复用正式 AI 检索入口的只读调试链路；不创建会话、不产生提案。 */
+    @Override
+    public KnowledgeDebugResult debugRetrieval(String actor, String question, boolean answerPreview) {
+        accounts.requireActive(actor);
+        require(question != null && !question.isBlank() && question.length() <= 1000, ResponseCode.ILLEGAL_PARAMETER);
+        long started = System.nanoTime();
+        List<KnowledgeScopeVO> readable = knowledge.readableScope(actor);
+        String fingerprint = scope(readable);
+        AiRecallVO recall = engine.recall(question.trim(), List.of());
+        AiQueryEntity query = new AiQueryEntity(
+            question.trim(),
+            readable.stream().map(KnowledgeScopeVO::id).toList(),
+            List.of(),
+            List.of(),
+            recall.query(),
+            List.of(),
+            readable.stream().filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId())).map(KnowledgeScopeVO::id).toList()
+        );
+        AiAnswerVO answer = engine.query(query);
+        List<KnowledgeScopeVO> current = knowledge.readableScope(actor);
+        require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
+        List<AiCitationVO> citations = verifyCitations(actor, answer.citations(), current);
+        String preview = answerPreview ? answer.answer() : null;
+        String warning = answer.warning();
+        if (!answerPreview) warning = warning == null || warning.isBlank() ? "未请求回答预览；排名仅用于检索调试，不代表答案正确性。" : warning;
+        return new KnowledgeDebugResult(
+            recall.query(),
+            answer.retrievalMode(),
+            answer.mode(),
+            preview,
+            warning,
+            citations,
+            Duration.ofNanos(System.nanoTime() - started).toMillis()
+        );
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)

@@ -11,6 +11,9 @@ import cn.bugstack.ai.api.dto.ConfirmProposalRequestDTO;
 import cn.bugstack.ai.api.dto.ConversationResponseDTO;
 import cn.bugstack.ai.api.dto.ConversationTurnStatusResponseDTO;
 import cn.bugstack.ai.api.dto.MessageResponseDTO;
+import cn.bugstack.ai.api.dto.KnowledgeDebugRequestDTO;
+import cn.bugstack.ai.api.dto.KnowledgeDebugResponseDTO;
+import cn.bugstack.ai.api.dto.KnowledgeDebugHitResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalItemResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalResponseDTO;
 import cn.bugstack.ai.api.response.Response;
@@ -60,6 +63,50 @@ public class ShoppingAiController implements IShoppingAiApi {
                 .latencyMs(answer.latencyMs())
                 .build();
         });
+    }
+
+    /** 只读 RAG 命中调试；不创建会话、不产生提案。 */
+    @Override
+    @PostMapping("/ai/debug/retrieval")
+    public Response<KnowledgeDebugResponseDTO> debugRetrieval(@RequestBody KnowledgeDebugRequestDTO request, Principal principal) {
+        return execute(() -> {
+            required(request);
+            var result = shopping.debugRetrieval(actor(principal), request.getQuestion(), Boolean.TRUE.equals(request.getAnswerPreview()));
+            return KnowledgeDebugResponseDTO.builder()
+                .query(result.query())
+                .retrievalMode(result.retrievalMode())
+                .answerMode(result.answerMode())
+                .answerPreview(result.answerPreview())
+                .warning(result.warning())
+                .latencyMs(result.latencyMs())
+                .hits(
+                    java.util.stream.IntStream.range(0, result.hits().size())
+                        .mapToObj(i -> {
+                            var c = result.hits().get(i);
+                            return KnowledgeDebugHitResponseDTO.builder()
+                                .documentId(c.documentId())
+                                .title(c.title())
+                                .rootId(c.rootId())
+                                .version(c.documentVersion())
+                                .snippet(c.snippet())
+                                .rank(i + 1)
+                                .score(c.score())
+                                .scoreType(scoreType(result.retrievalMode()))
+                                .build();
+                        })
+                        .toList()
+                )
+                .build();
+        });
+    }
+
+    private String scoreType(String retrievalMode) {
+        return switch (retrievalMode) {
+            case "REMOTE_EMBEDDING" -> "VECTOR_SIMILARITY";
+            case "BM25_DEGRADED" -> "BM25";
+            case "LOCAL_CHAR_NGRAM_DEMO" -> "CHAR_NGRAM";
+            default -> "UNKNOWN";
+        };
     }
 
     /** 本人会话列表。 */

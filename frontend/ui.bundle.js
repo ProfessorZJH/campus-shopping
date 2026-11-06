@@ -1651,7 +1651,7 @@
     return r ? r["__v_isRef"] === true : false;
   }
   // @__NO_SIDE_EFFECTS__
-  function ref$i(value) {
+  function ref$j(value) {
     return createRef(value, false);
   }
   // @__NO_SIDE_EFFECTS__
@@ -1805,7 +1805,7 @@
     } else if (isObject(source) && arguments.length > 1) {
       return propertyToRef(source, key, defaultValue);
     } else {
-      return /* @__PURE__ */ ref$i(source);
+      return /* @__PURE__ */ ref$j(source);
     }
   }
   function propertyToRef(source, key, defaultValue) {
@@ -1853,7 +1853,7 @@
     }
   }
   // @__NO_SIDE_EFFECTS__
-  function computed$h(getterOrOptions, debugOptions, isSSR = false) {
+  function computed$i(getterOrOptions, debugOptions, isSSR = false) {
     let getter;
     let setter;
     if (isFunction(getterOrOptions)) {
@@ -4424,9 +4424,9 @@
             }) : null;
           });
         }
-        const loaded = /* @__PURE__ */ ref$i(false);
-        const error = /* @__PURE__ */ ref$i();
-        const delayed = /* @__PURE__ */ ref$i(!!delay);
+        const loaded = /* @__PURE__ */ ref$j(false);
+        const error = /* @__PURE__ */ ref$j();
+        const delayed = /* @__PURE__ */ ref$j(!!delay);
         let timeoutTimer;
         let delayTimer;
         onScopeDispose(() => {
@@ -5292,7 +5292,7 @@
         const opt = computedOptions[key];
         const get = isFunction(opt) ? opt.bind(publicThis, publicThis) : isFunction(opt.get) ? opt.get.bind(publicThis, publicThis) : NOOP;
         const set = !isFunction(opt) && isFunction(opt.set) ? opt.set.bind(publicThis) : NOOP;
-        const c = computed$g({
+        const c = computed$h({
           get,
           set
         });
@@ -9265,8 +9265,8 @@
   function isClassComponent(value) {
     return isFunction(value) && "__vccOpts" in value;
   }
-  const computed$g = (getterOrOptions, debugOptions) => {
-    const c = /* @__PURE__ */ computed$h(getterOrOptions, debugOptions, isInSSRComponentSetup);
+  const computed$h = (getterOrOptions, debugOptions) => {
+    const c = /* @__PURE__ */ computed$i(getterOrOptions, debugOptions, isInSSRComponentSetup);
     return c;
   };
   function h(type, propsOrChildren, children) {
@@ -11303,7 +11303,7 @@
     cloneVNode,
     compatUtils,
     compile,
-    computed: computed$g,
+    computed: computed$h,
     createApp,
     createBlock,
     createCommentVNode,
@@ -11387,7 +11387,7 @@
     queuePostFlushCb,
     reactive: reactive$1,
     readonly,
-    ref: ref$i,
+    ref: ref$j,
     registerRuntimeCompiler,
     render,
     renderList,
@@ -12354,17 +12354,17 @@
   function positiveInt(v, max = 99) {
     return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
-  const { ref: ref$h } = Vue;
+  const { ref: ref$i } = Vue;
   const AuthDialog = {
     name: "AuthDialog",
     emits: ["close", "success"],
     setup(props, { emit: emit2 }) {
-      const mode = ref$h("login");
-      const username = ref$h("");
-      const password = ref$h("");
-      const displayName = ref$h("");
-      const busy = ref$h(false);
-      const error = ref$h("");
+      const mode = ref$i("login");
+      const username = ref$i("");
+      const password = ref$i("");
+      const displayName = ref$i("");
+      const busy = ref$i(false);
+      const error = ref$i("");
       async function submit() {
         if (busy.value) return;
         error.value = "";
@@ -12528,13 +12528,13 @@
       };
     })()
   };
-  const { ref: ref$g } = Vue;
+  const { ref: ref$h } = Vue;
   const ConsumerShell = {
     name: "ConsumerShell",
     components: { AuthDialog },
     props: { active: { type: String, default: "home" } },
     setup() {
-      const loginOpen = ref$g(false);
+      const loginOpen = ref$h(false);
       async function logout() {
         try {
           await api("/auth/logout", { method: "POST" });
@@ -12666,7 +12666,7 @@
       };
     })()
   };
-  const { computed: computed$f, ref: ref$f, watch: watch$d } = Vue;
+  const { computed: computed$g, ref: ref$g, watch: watch$d } = Vue;
   const ProductImage = {
     name: "ProductImage",
     props: {
@@ -12675,14 +12675,14 @@
       loading: { type: String, default: "lazy" }
     },
     setup(props) {
-      const broken = ref$f(false);
+      const broken = ref$g(false);
       watch$d(
         () => props.src,
         () => {
           broken.value = false;
         }
       );
-      const url = computed$f(
+      const url = computed$g(
         () => {
           var _a;
           return !broken.value && ((_a = props.src) == null ? void 0 : _a.trim()) ? props.src : "./images/product-placeholder.svg";
@@ -12705,7 +12705,7 @@
       };
     })()
   };
-  const { ref: ref$e, computed: computed$e, onMounted: onMounted$c } = Vue;
+  const { ref: ref$f, computed: computed$f, onMounted: onMounted$c } = Vue;
   const staticCategoryArt = {
     food: "./images/category-snacks.webp",
     drink: "./images/category-drinks.webp",
@@ -12720,23 +12720,23 @@
       const scope = requestScope();
       const initialScope = requestScope();
       const keywords = ["泡面", "牛奶", "水果", "文具", "纸巾", "零食"];
-      const search = ref$e("");
-      const category = ref$e("");
-      const merchant = ref$e("");
-      const sort = ref$e("popular");
-      const page = ref$e(1);
-      const priceMin = ref$e("");
-      const priceMax = ref$e("");
-      const appliedMin = ref$e(null);
-      const appliedMax = ref$e(null);
-      const priceError = ref$e("");
-      const selected = ref$e(null);
-      const chosenSku = ref$e("");
-      const count = ref$e(1);
-      const saving = ref$e(false);
-      const categories = computed$e(() => store.categories.filter((c) => c.active).slice(0, 5));
-      const shops = computed$e(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
-      const shown = computed$e(() => {
+      const search = ref$f("");
+      const category = ref$f("");
+      const merchant = ref$f("");
+      const sort = ref$f("popular");
+      const page = ref$f(1);
+      const priceMin = ref$f("");
+      const priceMax = ref$f("");
+      const appliedMin = ref$f(null);
+      const appliedMax = ref$f(null);
+      const priceError = ref$f("");
+      const selected = ref$f(null);
+      const chosenSku = ref$f("");
+      const count = ref$f(1);
+      const saving = ref$f(false);
+      const categories = computed$f(() => store.categories.filter((c) => c.active).slice(0, 5));
+      const shops = computed$f(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
+      const shown = computed$f(() => {
         let arr = store.products.filter((p2) => p2.status === "PUBLISHED");
         if (preview) {
           const q = search.value.trim().toLowerCase();
@@ -12759,9 +12759,9 @@
         return arr;
       });
       onMounted$c(() => loadPublic({ signal: initialScope.begin().signal }));
-      const pageInfo = computed$e(() => store.publicPage);
-      const priceActive = computed$e(() => appliedMin.value != null || appliedMax.value != null);
-      const chosen = computed$e(
+      const pageInfo = computed$f(() => store.publicPage);
+      const priceActive = computed$f(() => appliedMin.value != null || appliedMax.value != null);
+      const chosen = computed$f(
         () => {
           var _a, _b;
           return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosenSku.value)) || skuOf(selected.value);
@@ -12877,7 +12877,7 @@
         chosenSku.value = ((_b = (_a = p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available) > 0)) == null ? void 0 : _b.skuId) || "";
         count.value = 1;
       }
-      const canAdd = computed$e(
+      const canAdd = computed$f(
         () => {
           var _a;
           return ((_a = chosen.value) == null ? void 0 : _a.status) === "ACTIVE" && positiveInt(count.value, 99) && Number(count.value) <= Number(chosen.value.available);
@@ -13530,7 +13530,7 @@
       snippet: (citation == null ? void 0 : citation.snippet) || ""
     }));
   }
-  const { ref: ref$d, computed: computed$d, onMounted: onMounted$b, onUnmounted: onUnmounted$8, watch: watch$c } = Vue;
+  const { ref: ref$e, computed: computed$e, onMounted: onMounted$b, onUnmounted: onUnmounted$8, watch: watch$c } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
     { label: "高蛋白零食", icon: "sparkles", query: "想买点高蛋白的零食，有什么推荐？" },
@@ -13541,27 +13541,27 @@
     name: "Guide",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const input = ref$d("");
-      const thinking = ref$d(false);
-      const selectedIds = ref$d([]);
-      const messages = ref$d([]);
-      const proposal = ref$d(null);
-      const mode = ref$d("");
-      const error = ref$d("");
-      const historyOpen = ref$d(false);
-      const conversations = ref$d([]);
-      const historyPage = ref$d(1);
-      const historyHasMore = ref$d(false);
-      const loadingHistory = ref$d(false);
-      const openingConversation = ref$d(false);
-      const confirmingProposal = ref$d(false);
-      const proposalFeedback = ref$d("");
-      const streamProgress = ref$d(0);
-      const reconnecting = ref$d(false);
-      const cancelRequested = ref$d(false);
+      const input = ref$e("");
+      const thinking = ref$e(false);
+      const selectedIds = ref$e([]);
+      const messages = ref$e([]);
+      const proposal = ref$e(null);
+      const mode = ref$e("");
+      const error = ref$e("");
+      const historyOpen = ref$e(false);
+      const conversations = ref$e([]);
+      const historyPage = ref$e(1);
+      const historyHasMore = ref$e(false);
+      const loadingHistory = ref$e(false);
+      const openingConversation = ref$e(false);
+      const confirmingProposal = ref$e(false);
+      const proposalFeedback = ref$e("");
+      const streamProgress = ref$e(0);
+      const reconnecting = ref$e(false);
+      const cancelRequested = ref$e(false);
       let conversationEpoch = 0, historyEpoch = 0, activeStreamController = null;
-      const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
-      const items2 = computed$d(
+      const examples = computed$e(() => DEMO_PRODUCTS.slice(0, 3));
+      const items2 = computed$e(
         () => {
           var _a;
           return preview ? examples.value.map((p2) => ({
@@ -13577,10 +13577,10 @@
           })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({ ...i }));
         }
       );
-      const total = computed$d(
+      const total = computed$e(
         () => items2.value.filter((i) => selectedIds.value.includes(i.skuId)).reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity || 1), 0)
       );
-      const showProposal = computed$d(() => {
+      const showProposal = computed$e(() => {
         var _a, _b;
         return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
       });
@@ -14459,7 +14459,7 @@
     if (typeof value !== "string" || value !== value.trim()) return "";
     return LOCAL_UPLOAD.test(value) || QINIU_UPLOAD.test(value) ? value : "";
   }
-  const { ref: ref$c, computed: computed$c, onBeforeUnmount: onBeforeUnmount$1, watch: watch$b } = Vue;
+  const { ref: ref$d, computed: computed$d, onBeforeUnmount: onBeforeUnmount$1, watch: watch$b } = Vue;
   const VALID_TYPES$1 = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES$1 = 2e6;
   const ProductImageField = {
@@ -14474,7 +14474,7 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit: emit2 }) {
-      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), localUrl = ref$c("");
+      const busy = ref$d(false), error = ref$d(""), notice = ref$d(""), localUrl = ref$d("");
       const scope = requestScope();
       let alive = true, epoch = 0;
       watch$b(
@@ -14507,7 +14507,7 @@
           if (!busy.value) release();
         }
       );
-      const displayed = computed$c(() => localUrl.value || props.modelValue || "");
+      const displayed = computed$d(() => localUrl.value || props.modelValue || "");
       function clear() {
         if (props.disabled || busy.value) return;
         release();
@@ -14655,7 +14655,7 @@
       };
     })()
   };
-  const { ref: ref$b, computed: computed$b, watch: watch$a, onBeforeUnmount } = Vue;
+  const { ref: ref$c, computed: computed$c, watch: watch$a, onBeforeUnmount } = Vue;
   const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES = 2e6;
   const MAX_IMAGES = 8;
@@ -14676,8 +14676,8 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit: emit2 }) {
-      const busy = ref$b(false), error = ref$b(""), notice = ref$b(""), demoValues = ref$b(null), failures = ref$b([]), blocked = ref$b(Boolean(props.invalid));
-      const values = computed$b(
+      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), demoValues = ref$c(null), failures = ref$c([]), blocked = ref$c(Boolean(props.invalid));
+      const values = computed$c(
         () => props.demo && demoValues.value ? demoValues.value : props.modelValue || []
       );
       const scope = requestScope(), localUrls = /* @__PURE__ */ new Set();
@@ -15018,7 +15018,7 @@
       };
     })()
   };
-  const { ref: ref$a, computed: computed$a, watch: watch$9, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
+  const { ref: ref$b, computed: computed$b, watch: watch$9, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
   const MENU = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
@@ -15036,23 +15036,23 @@
     components: { AuthDialog, ProductImage, ProductImageField, ProductImageListField },
     setup() {
       const scope = requestScope();
-      const search = ref$a("");
-      const category = ref$a("");
-      const status = ref$a("");
-      const sort = ref$a("NEWEST");
-      const page = ref$a(1);
-      const selectedId = ref$a("");
-      const selectedSkuId = ref$a("");
-      const drawerTab = ref$a("stock");
-      const loginOpen = ref$a(false);
-      const adjustment = ref$a(1);
-      const pendingReplenishKey = ref$a("");
-      const pendingReplenishPayload = ref$a("");
-      const saving = ref$a(false);
-      const modal2 = ref$a("");
-      const activePriceSku = ref$a(null);
-      const newPrice = ref$a("");
-      const form = ref$a({
+      const search = ref$b("");
+      const category = ref$b("");
+      const status = ref$b("");
+      const sort = ref$b("NEWEST");
+      const page = ref$b(1);
+      const selectedId = ref$b("");
+      const selectedSkuId = ref$b("");
+      const drawerTab = ref$b("stock");
+      const loginOpen = ref$b(false);
+      const adjustment = ref$b(1);
+      const pendingReplenishKey = ref$b("");
+      const pendingReplenishPayload = ref$b("");
+      const saving = ref$b(false);
+      const modal2 = ref$b("");
+      const activePriceSku = ref$b(null);
+      const newPrice = ref$b("");
+      const form = ref$b({
         title: "",
         description: "",
         categoryCode: "food",
@@ -15060,20 +15060,20 @@
         imageUrls: [],
         skus: [{ specKey: "默认规格", price: "4.50" }]
       });
-      const skuForm = ref$a({ specKey: "", price: "" });
-      const info = ref$a({
+      const skuForm = ref$b({ specKey: "", price: "" });
+      const info = ref$b({
         title: "",
         description: "",
         categoryCode: "food",
         imageUrl: "",
         imageUrls: []
       });
-      const createImageUploading = ref$a(false), editImageUploading = ref$a(false);
-      const createImageInvalid = ref$a(false), editImageInvalid = ref$a(false);
-      const merchant = computed$a(
+      const createImageUploading = ref$b(false), editImageUploading = ref$b(false);
+      const createImageInvalid = ref$b(false), editImageInvalid = ref$b(false);
+      const merchant = computed$b(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {}
       );
-      const owned = computed$a(() => hasPermission("product.write"));
+      const owned = computed$b(() => hasPermission("product.write"));
       const required = {
         "/merchant": "order.read",
         "/merchant/products": "product.read",
@@ -15086,8 +15086,8 @@
         "/merchant/knowledge": "knowledge.read",
         "/merchant/settings": "store.manage"
       };
-      const visibleMenu = computed$a(() => MENU.filter(([, , path]) => hasPermission(required[path])));
-      const mobileNav = ref$a(null);
+      const visibleMenu = computed$b(() => MENU.filter(([, , path]) => hasPermission(required[path])));
+      const mobileNav = ref$b(null);
       const alignMobileNav = () => {
         var _a;
         const nav = mobileNav.value;
@@ -15104,19 +15104,19 @@
       );
       onMounted$a(() => window.addEventListener("resize", alignMobileNav));
       onUnmounted$7(() => window.removeEventListener("resize", alignMobileNav));
-      const canReplenish = computed$a(() => hasPermission("stock.replenish"));
-      const canRead = computed$a(() => hasPermission("product.read"));
-      const items2 = computed$a(() => store.products.filter((p2) => p2.merchantId === store.merchantId));
-      const selected = computed$a(
+      const canReplenish = computed$b(() => hasPermission("stock.replenish"));
+      const canRead = computed$b(() => hasPermission("product.read"));
+      const items2 = computed$b(() => store.products.filter((p2) => p2.merchantId === store.merchantId));
+      const selected = computed$b(
         () => items2.value.find((p2) => p2.productId === selectedId.value) || items2.value[0] || null
       );
-      const selectedSku = computed$a(
+      const selectedSku = computed$b(
         () => {
           var _a, _b;
           return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === selectedSkuId.value)) || skuOf(selected.value);
         }
       );
-      const stock = computed$a(
+      const stock = computed$b(
         () => store.stocks.find((s) => {
           var _a;
           return s.skuId === ((_a = selectedSku.value) == null ? void 0 : _a.skuId);
@@ -15125,13 +15125,13 @@
       const activeSkuCount = (p2) => ((p2 == null ? void 0 : p2.skus) || []).filter((s) => s.status === "ACTIVE").length;
       const skuStatusReason = (p2, s) => (p2 == null ? void 0 : p2.status) === "PUBLISHED" && s.status === "ACTIVE" && activeSkuCount(p2) <= 1 ? "已上架商品须保留至少一个有效规格" : "";
       const publishReason = (p2) => (p2 == null ? void 0 : p2.status) !== "PUBLISHED" && !activeSkuCount(p2) ? "请先启用至少一个规格再上架" : "";
-      const count = computed$a(() => ({
+      const count = computed$b(() => ({
         all: items2.value.length,
         published: items2.value.filter((p2) => p2.status === "PUBLISHED").length,
         unpublished: items2.value.filter((p2) => p2.status !== "PUBLISHED").length,
         low: items2.value.filter((p2) => p2.status === "PUBLISHED" && available(p2) < 20).length
       }));
-      const filtered = computed$a(() => {
+      const filtered = computed$b(() => {
         if (!preview) return items2.value;
         const q = search.value.trim().toLowerCase();
         return items2.value.filter(
@@ -15140,13 +15140,13 @@
           )) && (!category.value || p2.categoryCode === category.value) && (!status.value || (status.value === "low" ? p2.status === "PUBLISHED" && available(p2) < 20 : p2.status === status.value))
         );
       });
-      const totalPages = computed$a(
+      const totalPages = computed$b(
         () => Math.max(1, Math.ceil((preview ? filtered.value.length : store.merchantPage.total) / 9))
       );
-      const pageRows = computed$a(
+      const pageRows = computed$b(
         () => preview ? filtered.value.slice((page.value - 1) * 9, page.value * 9) : filtered.value
       );
-      const inventoryPercent = computed$a(
+      const inventoryPercent = computed$b(
         () => {
           var _a, _b;
           return Math.min(
@@ -16890,33 +16890,33 @@
       };
     }
   });
-  const { ref: ref$9, computed: computed$9, onMounted: onMounted$9, watch: watch$8 } = Vue;
+  const { ref: ref$a, computed: computed$a, onMounted: onMounted$9, watch: watch$8 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
-      const id = computed$9(() => safeDecodeId(store.route.split("/")[2] || ""));
-      const sku2 = computed$9(
+      const product = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), loading = ref$a(true), error = ref$a(""), errorCode = ref$a(""), imageIndex = ref$a(0), touchStartX = ref$a(null);
+      const id = computed$a(() => safeDecodeId(store.route.split("/")[2] || ""));
+      const sku2 = computed$a(
         () => {
           var _a, _b;
           return ((_b = (_a = product.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosen.value)) || skuOf(product.value);
         }
       );
-      const merchant = computed$9(
+      const merchant = computed$a(
         () => store.merchants.find((m) => {
           var _a;
           return m.merchantId === ((_a = product.value) == null ? void 0 : _a.merchantId);
         }) || {}
       );
-      const detailImages = computed$9(
+      const detailImages = computed$a(
         () => {
           var _a, _b, _c;
           return ((_b = (_a = product.value) == null ? void 0 : _a.images) == null ? void 0 : _b.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
         }
       );
-      const errorText = computed$9(() => {
+      const errorText = computed$a(() => {
         if (errorCode.value === "C0001") return "该商品已下架或暂不可售";
         if (errorCode.value === "G0001") return "商品不存在或已删除";
         if (!errorCode.value || ["NETWORK", "TIMEOUT", "RESPONSE"].includes(errorCode.value))
@@ -17259,13 +17259,13 @@
       };
     })()
   };
-  const { ref: ref$8, computed: computed$8, onMounted: onMounted$8, onUnmounted: onUnmounted$6, watch: watch$7 } = Vue;
+  const { ref: ref$9, computed: computed$9, onMounted: onMounted$8, onUnmounted: onUnmounted$6, watch: watch$7 } = Vue;
   const Shop = {
     name: "Shop",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
-      const id = computed$8(
+      const merchant = ref$9(null), products = ref$9([]), error = ref$9(""), loading = ref$9(false), page = ref$9(1), hasNext = ref$9(false);
+      const id = computed$9(
         () => safeDecodeId(store.route.slice("/shops/".length).split("/")[0] || "")
       );
       let loadVersion = 0;
@@ -17720,15 +17720,15 @@
       permissions: ["product.read", "product.write", "stock.read"]
     }
   ];
-  const { ref: ref$7, computed: computed$7, onMounted: onMounted$7 } = Vue;
+  const { ref: ref$8, computed: computed$8, onMounted: onMounted$7 } = Vue;
   const Cart = {
     name: "Cart",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7(""), confirmOpen = ref$7(false), confirmLoading = ref$7(false), confirmError = ref$7(""), confirmRetryable = ref$7(false), confirmItems = ref$7([]), confirmMerchant = ref$7({}), confirmTotal = ref$7(0);
+      const items2 = ref$8([]), merchantId = ref$8(""), busy = ref$8(false), loading = ref$8(true), error = ref$8(""), orderKey = ref$8(""), fingerprint = ref$8(""), confirmOpen = ref$8(false), confirmLoading = ref$8(false), confirmError = ref$8(""), confirmRetryable = ref$8(false), confirmItems = ref$8([]), confirmMerchant = ref$8({}), confirmTotal = ref$8(0);
       let confirmVersion = 0;
-      const groups = computed$7(
+      const groups = computed$8(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
             var _a;
@@ -17741,8 +17741,8 @@
           total: rows.reduce((s, i) => s + Number(i.priceCent) * Number(i.quantity), 0)
         }))
       );
-      const selected = computed$7(() => items2.value.filter((i) => i.merchantId === merchantId.value));
-      const total = computed$7(
+      const selected = computed$8(() => items2.value.filter((i) => i.merchantId === merchantId.value));
+      const total = computed$8(
         () => selected.value.reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity), 0)
       );
       const merchantName = (id) => {
@@ -18321,20 +18321,20 @@
       };
     })()
   };
-  const { ref: ref$6, computed: computed$6, onMounted: onMounted$6, watch: watch$6 } = Vue;
+  const { ref: ref$7, computed: computed$7, onMounted: onMounted$6, watch: watch$6 } = Vue;
   const Orders = {
     name: "Orders",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
-      const id = computed$6(
+      const orders = ref$7([]), detail = ref$7(null), token = ref$7(null), error = ref$7(""), busy = ref$7(false), loading = ref$7(true), tab = ref$7("ALL"), page = ref$7(1), pageInfo = ref$7({ total: 0, hasNext: false }), refundOpen = ref$7(false), reason = ref$7("");
+      const id = computed$7(
         () => store.route.startsWith("/orders/") ? safeDecodeId(store.route.slice("/orders/".length)) : null
       );
-      const filtered = computed$6(
+      const filtered = computed$7(
         () => orders.value.filter((o) => tab.value === "ALL" || o.status === tab.value)
       );
-      const refundPending = computed$6(
+      const refundPending = computed$7(
         () => {
           var _a;
           return !!((_a = detail.value) == null ? void 0 : _a.afterSale) && ["REQUESTED", "DISPUTED", "APPROVED"].includes(detail.value.afterSale.status);
@@ -18429,7 +18429,7 @@
       function statusClass(s) {
         return ["PAID", "COMPLETED"].includes(s) ? "ok" : ["CANCELED", "REFUNDED"].includes(s) ? "muted" : "warn";
       }
-      const allowToken = computed$6(
+      const allowToken = computed$7(
         () => {
           var _a, _b, _c, _d, _e;
           return ((_a = detail.value) == null ? void 0 : _a.status) === "PAID" && ((_c = (_b = detail.value) == null ? void 0 : _b.pickup) == null ? void 0 : _c.status) === "READY" && !["REQUESTED", "DISPUTED", "APPROVED"].includes((_e = (_d = detail.value) == null ? void 0 : _d.afterSale) == null ? void 0 : _e.status);
@@ -19010,16 +19010,16 @@
       };
     })()
   };
-  const { ref: ref$5, computed: computed$5, onMounted: onMounted$5, onUnmounted: onUnmounted$5, watch: watch$5 } = Vue;
+  const { ref: ref$6, computed: computed$6, onMounted: onMounted$5, onUnmounted: onUnmounted$5, watch: watch$5 } = Vue;
   const Account = {
     name: "Account",
     components: { ConsumerShell, AuthDialog },
     setup() {
       const scope = requestScope();
-      const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
-      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5(""), fingerprint = ref$5("");
+      const page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false });
+      const login = ref$6(false), apps = ref$6([]), invitations = ref$6([]), invitePage = ref$6(1), error = ref$6(""), busy = ref$6(false), loading = ref$6(false), key = ref$6(""), fingerprint = ref$6("");
       let loadEpoch = 0;
-      const form = ref$5({
+      const form = ref$6({
         merchantName: "",
         category: "便利零售",
         contactName: "",
@@ -19027,8 +19027,8 @@
         storeName: "",
         location: ""
       });
-      const isApply = computed$5(() => store.route === "/apply");
-      const isInvite = computed$5(() => store.route === "/invitations");
+      const isApply = computed$6(() => store.route === "/apply");
+      const isInvite = computed$6(() => store.route === "/invitations");
       async function load() {
         var _a, _b;
         const stamp = ++loadEpoch;
@@ -19516,7 +19516,7 @@
       };
     })()
   };
-  const { ref: ref$4, computed: computed$4, watch: watch$4, nextTick, onMounted: onMounted$4, onUnmounted: onUnmounted$4 } = Vue;
+  const { ref: ref$5, computed: computed$5, watch: watch$4, nextTick, onMounted: onMounted$4, onUnmounted: onUnmounted$4 } = Vue;
   const merchantNav = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
@@ -19527,6 +19527,7 @@
     ["users", "店员管理", "/merchant/team"],
     ["shield", "角色权限", "/merchant/roles"],
     ["book", "知识库", "/merchant/knowledge"],
+    ["search", "RAG 调试", "/merchant/knowledge/debug"],
     ["settings", "门店设置", "/merchant/settings"]
   ];
   const adminNav = [
@@ -19537,6 +19538,7 @@
     ["order", "订单监管", "/admin/orders"],
     ["shield", "争议处理", "/admin/disputes"],
     ["book", "知识库", "/admin/knowledge"],
+    ["search", "RAG 调试", "/admin/knowledge/debug"],
     ["grid", "分类管理", "/admin/categories"]
   ];
   const BackofficeShell = {
@@ -19544,7 +19546,7 @@
     props: { role: { type: String, default: "merchant" }, title: String },
     components: { AuthDialog },
     setup() {
-      const loginOpen = ref$4(false), mobileNav = ref$4(null);
+      const loginOpen = ref$5(false), mobileNav = ref$5(null);
       const required = {
         "/merchant": "order.read",
         "/merchant/products": "product.read",
@@ -19555,9 +19557,10 @@
         "/merchant/team": "team.manage",
         "/merchant/roles": "role.manage",
         "/merchant/knowledge": "knowledge.read",
+        "/merchant/knowledge/debug": "knowledge.read",
         "/merchant/settings": "store.manage"
       };
-      const visibleMerchantNav = computed$4(
+      const visibleMerchantNav = computed$5(
         () => merchantNav.filter(([, , path]) => hasPermission(required[path]))
       );
       const alignMobileNav = () => {
@@ -19797,7 +19800,7 @@
       };
     })()
   };
-  const { ref: ref$3, computed: computed$3, onMounted: onMounted$3, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
+  const { ref: ref$4, computed: computed$4, onMounted: onMounted$3, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
   const names = {
     "/merchant": "经营概览",
     "/merchant/inventory": "库存管理",
@@ -19812,18 +19815,19 @@
     components: { BackofficeShell, ProductImage },
     setup() {
       const scope = requestScope();
-      const route = computed$3(() => store.route);
-      const title = computed$3(() => names[route.value] || "经营概览");
-      const filter = ref$3("");
-      const pickupState = ref$3(route.value === "/merchant/pickup" ? "READY" : "");
-      const q = ref$3("");
-      const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), loading = ref$3(false), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3(""), historyEvents = ref$3([]), historyLoading = ref$3(false), historyError = ref$3("");
-      const availableBelow = ref$3(null);
-      const movementQ = ref$3("");
-      const movementPage = ref$3(1);
-      const movementPageInfo = ref$3({ total: 0, hasNext: false });
+      const route = computed$4(() => store.route);
+      const title = computed$4(() => names[route.value] || "经营概览");
+      const filter = ref$4("");
+      const pickupState = ref$4(route.value === "/merchant/pickup" ? "READY" : "");
+      const q = ref$4("");
+      const statsPeriod = ref$4(7);
+      const stats = ref$4(null), orders = ref$4([]), afterSales = ref$4([]), members = ref$4([]), moves = ref$4([]), stockRows = ref$4([]), error = ref$4(""), loading = ref$4(false), busy = ref$4(false), picked = ref$4(null), token = ref$4(""), decision = ref$4(""), reason = ref$4(""), historyEvents = ref$4([]), historyLoading = ref$4(false), historyError = ref$4("");
+      const availableBelow = ref$4(null);
+      const movementQ = ref$4("");
+      const movementPage = ref$4(1);
+      const movementPageInfo = ref$4({ total: 0, hasNext: false });
       let historyVersion = 0;
-      const page = ref$3(1), pageInfo = ref$3({ total: 0, hasNext: false }), amount = ref$3(1), sku2 = ref$3(""), inviteUser = ref$3(""), profile = ref$3({
+      const page = ref$4(1), pageInfo = ref$4({ total: 0, hasNext: false }), amount = ref$4(1), sku2 = ref$4(""), inviteUser = ref$4(""), profile = ref$4({
         name: "",
         storeName: "",
         location: "",
@@ -19831,11 +19835,11 @@
         businessHours: "",
         imageUrl: ""
       });
-      const replenishKey = ref$3(""), replenishFingerprint = ref$3("");
-      const merchant = computed$3(
+      const replenishKey = ref$4(""), replenishFingerprint = ref$4("");
+      const merchant = computed$4(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || {}
       );
-      const skuRows = computed$3(
+      const skuRows = computed$4(
         () => !preview && route.value === "/merchant/inventory" ? stockRows.value.map((s) => ({
           product: { title: s.productTitle || s.skuId, imageUrl: s.imageUrl || "" },
           sku: { skuId: s.skuId, specKey: s.specKey || "规格" },
@@ -19848,7 +19852,7 @@
           }))
         )
       );
-      const visibleOrders = computed$3(
+      const visibleOrders = computed$4(
         () => !preview ? orders.value : orders.value.filter(
           (o) => {
             var _a, _b, _c;
@@ -19859,12 +19863,12 @@
           }
         )
       );
-      const selectedOrder = computed$3(
+      const selectedOrder = computed$4(
         () => orders.value.find((o) => o.orderId === picked.value) || visibleOrders.value[0] || null
       );
-      const canOwner = computed$3(() => isOwner());
-      const can = computed$3(() => (code) => hasPermission(code));
-      const roles = ref$3([]);
+      const canOwner = computed$4(() => isOwner());
+      const can = computed$4(() => (code) => hasPermission(code));
+      const roles = ref$4([]);
       const routePermission = {
         "/merchant": "order.read",
         "/merchant/inventory": "stock.read",
@@ -19874,10 +19878,10 @@
         "/merchant/team": "team.manage",
         "/merchant/settings": "store.manage"
       };
-      const restricted = computed$3(
+      const restricted = computed$4(
         () => !preview && !hasPermission(routePermission[route.value] || "order.read")
       );
-      const canAct = computed$3(
+      const canAct = computed$4(
         () => !preview && !busy.value && !loading.value && !error.value && !!store.merchantId && !restricted.value
       );
       let loadVersion = 0;
@@ -19920,7 +19924,7 @@
         try {
           if (section === "/merchant") {
             const [s, o] = await Promise.all([
-              hasPermission("dashboard.read") ? read(base + "/statistics") : Promise.resolve(null),
+              hasPermission("dashboard.read") ? read(base + "/statistics/operations" + query({ periodDays: statsPeriod.value })) : Promise.resolve(null),
               read(base + "/orders/page" + query({ page: 1, size: 5 }))
             ]);
             if (!current()) return;
@@ -20003,7 +20007,7 @@
       let searchDelay;
       let resettingPage = false;
       watch$3(
-        [page, q, filter, pickupState, availableBelow, movementQ],
+        [page, q, filter, pickupState, availableBelow, movementQ, statsPeriod],
         (next, previous) => {
           if (resettingPage) return;
           clearTimeout(searchDelay);
@@ -20213,8 +20217,8 @@
         }))
           reason.value = "";
       }
-      const topOrders = computed$3(() => orders.value.slice(0, 5));
-      const merchantName = computed$3(() => merchant.value.name || "校内商户");
+      const topOrders = computed$4(() => orders.value.slice(0, 5));
+      const merchantName = computed$4(() => merchant.value.name || "校内商户");
       return {
         store,
         go,
@@ -20226,6 +20230,7 @@
         q,
         page,
         pageInfo,
+        statsPeriod,
         stats,
         orders,
         afterSales,
@@ -20286,7 +20291,7 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -20308,7 +20313,7 @@
             ], 8, ["onClick"])
           ]),
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e;
+            var _a, _b, _c, _d, _e, _f, _g, _h;
             return [
               _ctx.loading ? (_openBlock(), _createElementBlock("div", {
                 key: 0,
@@ -20339,6 +20344,30 @@
                 _Fragment,
                 { key: 3 },
                 [
+                  _createElementVNode("div", { class: "ops-card stats-toolbar" }, [
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "统计期间：近 " + _toDisplayString(_ctx.statsPeriod) + " 天",
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.statsPeriod === 7 }),
+                      onClick: ($event) => _ctx.statsPeriod = 7
+                    }, "7 天", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.statsPeriod === 30 }),
+                      onClick: ($event) => _ctx.statsPeriod = 30
+                    }, "30 天", 10, ["onClick"]),
+                    _ctx.stats ? (_openBlock(), _createElementBlock(
+                      "small",
+                      { key: 0 },
+                      _toDisplayString(_ctx.stats.periodStart) + " 至 " + _toDisplayString(_ctx.stats.periodEnd) + " · " + _toDisplayString(_ctx.stats.timezone) + " · 截至 " + _toDisplayString(_ctx.stats.asOf),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
+                  ]),
                   _ctx.stats ? (_openBlock(), _createElementBlock("div", {
                     key: 0,
                     class: "ops-kpis"
@@ -20354,21 +20383,21 @@
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "待处理"),
+                      _createElementVNode("span", null, "成功支付"),
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.stats.pendingCount || 0),
+                        _toDisplayString(_ctx.stats.paidOrders || 0),
                         1
                         /* TEXT */
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "已完成"),
+                      _createElementVNode("span", null, "整单退款"),
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.stats.completedCount || 0),
+                        _toDisplayString(_ctx.stats.refundedOrders || 0),
                         1
                         /* TEXT */
                       )
@@ -20382,6 +20411,153 @@
                         1
                         /* TEXT */
                       )
+                    ]),
+                    _createElementVNode("div", null, [
+                      _createElementVNode("span", null, "退款率"),
+                      _createElementVNode(
+                        "strong",
+                        null,
+                        _toDisplayString(_ctx.stats.refundRate == null ? "—" : (_ctx.stats.refundRate * 100).toFixed(1) + "%"),
+                        1
+                        /* TEXT */
+                      )
+                    ])
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.stats ? (_openBlock(), _createElementBlock("div", {
+                    key: 1,
+                    class: "ops-grid"
+                  }, [
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "订单趋势"),
+                        _createElementVNode("span", null, "新增订单")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.trend, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.day
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(item.day),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("small", null, "按创建日")
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(item.orderCount),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      )),
+                      !((_a = _ctx.stats.trend) == null ? void 0 : _a.length) ? (_openBlock(), _createElementBlock("div", {
+                        key: 0,
+                        class: "admin-empty"
+                      }, "期间暂无订单")) : _createCommentVNode("v-if", true)
+                    ]),
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "商品表现"),
+                        _createElementVNode("span", null, "已完成 SKU")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.products, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.skuId
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(item.title || item.skuId),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(item.skuId),
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(item.quantity),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      )),
+                      !((_b = _ctx.stats.products) == null ? void 0 : _b.length) ? (_openBlock(), _createElementBlock("div", {
+                        key: 0,
+                        class: "admin-empty"
+                      }, "期间暂无已完成商品")) : _createCommentVNode("v-if", true)
+                    ]),
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "状态分布"),
+                        _createElementVNode("span", null, "查询时事实")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.statuses, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.status
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(_ctx.orderStatusLabel(item.status)),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(item.orderCount) + " 单",
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.money(item.amountCent)),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      )),
+                      !((_c = _ctx.stats.statuses) == null ? void 0 : _c.length) ? (_openBlock(), _createElementBlock("div", {
+                        key: 0,
+                        class: "admin-empty"
+                      }, "期间暂无订单")) : _createCommentVNode("v-if", true)
                     ])
                   ])) : _createCommentVNode("v-if", true),
                   _createElementVNode("div", { class: "ops-grid" }, [
@@ -20985,7 +21161,7 @@
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.pickupStatusLabel((_a = _ctx.selectedOrder.pickup) == null ? void 0 : _a.status)),
+                        _toDisplayString(_ctx.pickupStatusLabel((_d = _ctx.selectedOrder.pickup) == null ? void 0 : _d.status)),
                         1
                         /* TEXT */
                       )
@@ -21043,20 +21219,20 @@
                       /* KEYED_FRAGMENT */
                     )),
                     _createElementVNode("div", { class: "form-buttons" }, [
-                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_b = _ctx.selectedOrder.pickup) == null ? void 0 : _b.status) === "WAIT_PREP" ? (_openBlock(), _createElementBlock("button", {
+                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_e = _ctx.selectedOrder.pickup) == null ? void 0 : _e.status) === "WAIT_PREP" ? (_openBlock(), _createElementBlock("button", {
                         key: 0,
                         class: "outline-button",
                         disabled: !_ctx.canAct,
                         onClick: ($event) => _ctx.prepare(_ctx.selectedOrder, false)
                       }, "开始备货", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
-                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_c = _ctx.selectedOrder.pickup) == null ? void 0 : _c.status) === "PREPARING" ? (_openBlock(), _createElementBlock("button", {
+                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_f = _ctx.selectedOrder.pickup) == null ? void 0 : _f.status) === "PREPARING" ? (_openBlock(), _createElementBlock("button", {
                         key: 1,
                         class: "teal-button",
                         disabled: !_ctx.canAct,
                         onClick: ($event) => _ctx.prepare(_ctx.selectedOrder, true)
                       }, "备货完成", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                     ]),
-                    _ctx.can("pickup.verify") && _ctx.selectedOrder.status === "PAID" && ((_d = _ctx.selectedOrder.pickup) == null ? void 0 : _d.status) === "READY" ? (_openBlock(), _createElementBlock("form", {
+                    _ctx.can("pickup.verify") && _ctx.selectedOrder.status === "PAID" && ((_g = _ctx.selectedOrder.pickup) == null ? void 0 : _g.status) === "READY" ? (_openBlock(), _createElementBlock("form", {
                       key: 1,
                       class: "verify-form",
                       onSubmit: _withModifiers(($event) => _ctx.verify(_ctx.selectedOrder), ["prevent"])
@@ -21212,7 +21388,7 @@
                       /* TEXT */
                     ))
                   ]),
-                  ((_e = _ctx.afterSales.find((s) => s.orderId === _ctx.decision)) == null ? void 0 : _e.status) === "REQUESTED" ? (_openBlock(), _createElementBlock("form", {
+                  ((_h = _ctx.afterSales.find((s) => s.orderId === _ctx.decision)) == null ? void 0 : _h.status) === "REQUESTED" ? (_openBlock(), _createElementBlock("form", {
                     key: 0,
                     onSubmit: _withModifiers(($event) => _ctx.decisionAction(_ctx.afterSales.find((s) => s.orderId === _ctx.decision), true), ["prevent"])
                   }, [
@@ -21472,7 +21648,7 @@
       };
     })()
   };
-  const { ref: ref$2, computed: computed$2, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
+  const { ref: ref$3, computed: computed$3, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
   const Knowledge = {
     name: "Knowledge",
     components: { BackofficeShell },
@@ -21480,11 +21656,11 @@
       const scope = requestScope();
       const docScope = requestScope();
       const contentScope = requestScope();
-      const role = computed$2(() => store.route.startsWith("/admin") ? "admin" : "merchant");
-      const bases = ref$2([]), docs = ref$2([]), active = ref$2(""), selected = ref$2(null), text = ref$2("");
-      const error = ref$2(""), busy = ref$2(false), newBase = ref$2(false), uploading = ref$2(false), baseName = ref$2(""), visibility = ref$2("PUBLIC"), title = ref$2(""), file = ref$2(null);
-      const docPage = ref$2(1), docInfo = ref$2({ total: 0, hasNext: false });
-      const versionRoot = ref$2(null), versionBase = ref$2(""), fileVersion = ref$2(0);
+      const role = computed$3(() => store.route.startsWith("/admin") ? "admin" : "merchant");
+      const bases = ref$3([]), docs = ref$3([]), active = ref$3(""), selected = ref$3(null), text = ref$3("");
+      const error = ref$3(""), busy = ref$3(false), newBase = ref$3(false), uploading = ref$3(false), baseName = ref$3(""), visibility = ref$3("PUBLIC"), title = ref$3(""), file = ref$3(null);
+      const docPage = ref$3(1), docInfo = ref$3({ total: 0, hasNext: false });
+      const versionRoot = ref$3(null), versionBase = ref$3(""), fileVersion = ref$3(0);
       function clearUpload() {
         versionRoot.value = null;
         versionBase.value = "";
@@ -21494,15 +21670,15 @@
         ++fileVersion.value;
       }
       watch$2(active, clearUpload);
-      const current = computed$2(() => bases.value.find((b) => b.id === active.value));
+      const current = computed$3(() => bases.value.find((b) => b.id === active.value));
       let baseEpoch2 = 0, docEpoch = 0, readEpoch = 0;
-      const canRead = computed$2(
+      const canRead = computed$3(
         () => {
           var _a;
           return preview || (role.value === "admin" ? ((_a = store.workspace) == null ? void 0 : _a.platformAdmin) === true : hasPermission("knowledge.read"));
         }
       );
-      const canManage = computed$2(
+      const canManage = computed$3(
         () => {
           var _a;
           return preview || (role.value === "admin" ? ((_a = store.workspace) == null ? void 0 : _a.platformAdmin) === true : hasPermission("knowledge.manage"));
@@ -22230,6 +22406,201 @@
                   }, "选择文档查看"))
                 ])
               ]))
+            ];
+          }),
+          _: 1
+          /* STABLE */
+        }, 8, ["role"]);
+      };
+    })()
+  };
+  const { ref: ref$2, computed: computed$2 } = Vue;
+  const KnowledgeDebug = {
+    name: "KnowledgeDebug",
+    components: { BackofficeShell },
+    setup() {
+      const question = ref$2(""), preview2 = ref$2(true), busy = ref$2(false), error = ref$2(""), result = ref$2(null);
+      const role = computed$2(() => location.hash.startsWith("#/admin") ? "admin" : "merchant");
+      async function run() {
+        const q = question.value.trim();
+        if (!q || q.length > 1e3 || busy.value) return;
+        busy.value = true;
+        error.value = "";
+        try {
+          result.value = await api("/ai/debug/retrieval", {
+            method: "POST",
+            body: { question: q, answerPreview: preview2.value }
+          });
+        } catch (e) {
+          error.value = e.message;
+        } finally {
+          busy.value = false;
+        }
+      }
+      return { question, preview: preview2, busy, error, result, role, run };
+    },
+    render: (() => {
+      const { createElementVNode: _createElementVNode, vModelText: _vModelText, withDirectives: _withDirectives, vModelCheckbox: _vModelCheckbox, createTextVNode: _createTextVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      return function render2(_ctx, _cache) {
+        const _component_BackofficeShell = _resolveComponent("BackofficeShell");
+        return _openBlock(), _createBlock(_component_BackofficeShell, {
+          role: _ctx.role,
+          title: "RAG 检索调试"
+        }, {
+          default: _withCtx(() => {
+            var _a;
+            return [
+              _createElementVNode("section", { class: "knowledge-debug-page" }, [
+                _createElementVNode("p", { class: "muted" }, "仅返回当前账号可读文档；回答预览和分数用于调试，不代表交易事实或答案正确性。"),
+                _withDirectives(_createElementVNode("textarea", {
+                  "onUpdate:modelValue": ($event) => _ctx.question = $event,
+                  maxlength: "1000",
+                  rows: "4",
+                  placeholder: "输入要调试的知识问题"
+                }, null, 8, ["onUpdate:modelValue"]), [
+                  [_vModelText, _ctx.question]
+                ]),
+                _createElementVNode("label", { class: "check-line" }, [
+                  _withDirectives(_createElementVNode("input", {
+                    type: "checkbox",
+                    "onUpdate:modelValue": ($event) => _ctx.preview = $event
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelCheckbox, _ctx.preview]
+                  ]),
+                  _createTextVNode(" 请求回答预览（会显示实际模式）")
+                ]),
+                _createElementVNode("button", {
+                  class: "teal-button",
+                  disabled: _ctx.busy || !_ctx.question.trim(),
+                  onClick: _ctx.run
+                }, _toDisplayString(_ctx.busy ? "检索中…" : "开始检索"), 9, ["disabled", "onClick"]),
+                _ctx.error ? (_openBlock(), _createElementBlock(
+                  "p",
+                  {
+                    key: 0,
+                    class: "inline-error"
+                  },
+                  _toDisplayString(_ctx.error),
+                  1
+                  /* TEXT */
+                )) : _createCommentVNode("v-if", true),
+                _ctx.result ? (_openBlock(), _createElementBlock("div", {
+                  key: 1,
+                  class: "knowledge-debug-result"
+                }, [
+                  _createElementVNode("div", { class: "stat-row" }, [
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "查询：" + _toDisplayString(_ctx.result.query),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "检索模式：" + _toDisplayString(_ctx.result.retrievalMode || "未知"),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "回答模式：" + _toDisplayString(_ctx.result.answerMode || "未知"),
+                      1
+                      /* TEXT */
+                    )
+                  ]),
+                  _ctx.result.warning ? (_openBlock(), _createElementBlock(
+                    "p",
+                    {
+                      key: 0,
+                      class: "muted"
+                    },
+                    _toDisplayString(_ctx.result.warning),
+                    1
+                    /* TEXT */
+                  )) : _createCommentVNode("v-if", true),
+                  _ctx.result.answerPreview ? (_openBlock(), _createElementBlock(
+                    "blockquote",
+                    { key: 1 },
+                    _toDisplayString(_ctx.result.answerPreview),
+                    1
+                    /* TEXT */
+                  )) : _createCommentVNode("v-if", true),
+                  ((_a = _ctx.result.hits) == null ? void 0 : _a.length) ? (_openBlock(), _createElementBlock("table", { key: 2 }, [
+                    _createElementVNode("thead", null, [
+                      _createElementVNode("tr", null, [
+                        _createElementVNode("th", null, "排名"),
+                        _createElementVNode("th", null, "文档/版本"),
+                        _createElementVNode("th", null, "片段"),
+                        _createElementVNode("th", null, "分数"),
+                        _createElementVNode("th", null, "类型")
+                      ])
+                    ]),
+                    _createElementVNode("tbody", null, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.result.hits, (hit) => {
+                          return _openBlock(), _createElementBlock("tr", {
+                            key: hit.documentId + "-" + hit.rank
+                          }, [
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.rank),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("td", null, [
+                              _createTextVNode(
+                                _toDisplayString(hit.title),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("br"),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(hit.documentId) + " · v" + _toDisplayString(hit.version),
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.snippet),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.score),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.scoreType),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])
+                  ])) : (_openBlock(), _createElementBlock("p", {
+                    key: 3,
+                    class: "muted"
+                  }, "没有返回可展示的授权命中。"))
+                ])) : _createCommentVNode("v-if", true)
+              ])
             ];
           }),
           _: 1
@@ -24035,15 +24406,18 @@
       Account,
       MerchantOps,
       Knowledge,
+      KnowledgeDebug,
       Platform,
       RoleManager
     },
     setup() {
-      const current = computed$g(() => {
+      const current = computed$h(() => {
         const r = store.route;
         if (r === "/merchant/products") return "Merchant";
         if (r === "/merchant/roles") return "RoleManager";
         if (r === "/merchant/knowledge" || r === "/admin/knowledge") return "Knowledge";
+        if (r === "/merchant/knowledge/debug" || r === "/admin/knowledge/debug")
+          return "KnowledgeDebug";
         if ([
           "/merchant",
           "/merchant/inventory",
@@ -24072,9 +24446,16 @@
         if (r === "/ai") return "Guide";
         return r === "/" ? "Home" : "NotFound";
       });
-      const ready = /* @__PURE__ */ ref$i(false), contextError = /* @__PURE__ */ ref$i(""), authRequired = /* @__PURE__ */ ref$i(false), loginOpen = /* @__PURE__ */ ref$i(false);
-      const backoffice = computed$g(
-        () => ["Merchant", "MerchantOps", "Platform", "Knowledge", "RoleManager"].includes(current.value)
+      const ready = /* @__PURE__ */ ref$j(false), contextError = /* @__PURE__ */ ref$j(""), authRequired = /* @__PURE__ */ ref$j(false), loginOpen = /* @__PURE__ */ ref$j(false);
+      const backoffice = computed$h(
+        () => [
+          "Merchant",
+          "MerchantOps",
+          "Platform",
+          "Knowledge",
+          "KnowledgeDebug",
+          "RoleManager"
+        ].includes(current.value)
       );
       let version2 = 0, restoredIdentity = -1, sessionPending;
       async function refresh() {
@@ -24134,7 +24515,7 @@
         return _openBlock(), _createElementBlock(
           "div",
           {
-            class: _normalizeClass(["application", { "admin-mode": _ctx.current === "Merchant" || _ctx.current === "MerchantOps" || _ctx.current === "Platform" || _ctx.current === "Knowledge" || _ctx.current === "RoleManager" }])
+            class: _normalizeClass(["application", { "admin-mode": _ctx.current === "Merchant" || _ctx.current === "MerchantOps" || _ctx.current === "Platform" || _ctx.current === "Knowledge" || _ctx.current === "KnowledgeDebug" || _ctx.current === "RoleManager" }])
           },
           [
             !_ctx.ready ? (_openBlock(), _createElementBlock("div", {
