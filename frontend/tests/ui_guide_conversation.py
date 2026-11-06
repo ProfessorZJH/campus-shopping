@@ -22,20 +22,36 @@ FETCH_DOUBLE = """(holdChat) => {
   window.__pendingChats = [];
   window.__pendingConfirms = [];
   window.__holdChat = holdChat;
+  window.__streamResponse = (payload) => {
+    const answer = payload.data || {};
+    const conversationId = answer.conversationId || 'conv-contract';
+    if (payload.code && payload.code !== '0000') {
+      const failed = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:payload.code};
+      const stream = 'event: failed\\ndata: ' + JSON.stringify(failed) + '\\n\\n';
+      return new Response(stream, {status:200, headers:{'Content-Type':'text/event-stream'}});
+    }
+    const started = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:null};
+    const completed = {conversationId, mode:'FULL_RESPONSE', data:answer, errorCode:null};
+    const stream = 'event: started\\ndata: ' + JSON.stringify(started) + '\\n\\n'
+      + 'event: completed\\ndata: ' + JSON.stringify(completed) + '\\n\\n';
+    return new Response(stream, {status:200, headers:{'Content-Type':'text/event-stream'}});
+  };
   window.fetch = async (url, options = {}) => {
     const address = String(url);
+    const isStream = address.includes('/ai/chat/stream');
     if (window.__holdChat && address.includes('/ai/chat')) {
-      return new Promise((resolve) => window.__pendingChats.push({ url: address, resolve }));
+      return new Promise((resolve) => window.__pendingChats.push({ url: address, resolve, isStream }));
     }
     if (window.__holdConfirm && address.includes('/ai/proposals/') && address.endsWith('/confirm')) {
       return new Promise((resolve) => window.__pendingConfirms.push({ url: address, options, resolve }));
     }
     const reply = await window.__contractApi({
-      url: address,
+      url: isStream ? address.replace('/ai/chat/stream', '/ai/chat') : address,
       method: options.method || 'GET',
       headers: options.headers || {},
       body: options.body,
     });
+    if (isStream) return window.__streamResponse(JSON.parse(reply.body));
     return new Response(reply.body, {
       status: reply.status,
       headers: { 'Content-Type': 'application/json' },
@@ -44,12 +60,10 @@ FETCH_DOUBLE = """(holdChat) => {
   window.__releaseChat = (payload) => {
     const [entry] = window.__pendingChats.splice(0, 1);
     if (!entry) throw new Error('没有挂起的导购请求');
-    entry.resolve(
-      new Response(JSON.stringify(payload), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
-    );
+    entry.resolve(entry.isStream ? window.__streamResponse(payload) : new Response(JSON.stringify(payload), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    }));
   };
   window.__releaseConfirm = async () => {
     const [entry] = window.__pendingConfirms.splice(0, 1);
