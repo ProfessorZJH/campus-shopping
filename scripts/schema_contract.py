@@ -70,6 +70,7 @@ def apply_migrations(connection, expected=None):
                 execute_script(cursor, (ROOT / "docs/database/migrations" / entry["file"]).read_text("utf-8"))
                 cursor.execute("INSERT INTO sys_schema_migration(version,checksum) VALUES(%s,%s)",
                                (entry["version"], entry["sha256"]))
+                actual[entry["version"]] = entry["sha256"]
             validate_history(cursor, expected)
         finally:
             cursor.execute("SELECT RELEASE_LOCK(%s)", ("campus_schema_" + database,))

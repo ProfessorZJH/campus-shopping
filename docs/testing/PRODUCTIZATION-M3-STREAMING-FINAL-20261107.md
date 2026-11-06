@@ -25,9 +25,9 @@ verify-release: PASS
 
 隔离验收范围：
 
-- `verify-mysql-isolated.py --skip-maven` 确实使用新临时 MySQL 实例，未连接既有数据库；在既有商品多图迁移的“升级库与新库结构一致”断言处失败，脚本随后清理临时实例。该失败发生在流式轮次检查之前，不能记为本轮 MySQL 通过。
+- `verify-mysql-isolated.py --skip-maven` 已在全新临时 MySQL 8.0.31 实例通过，覆盖旧库升级、重复迁移、脏历史 CHECK 拒绝、缺失 V30 的旧 Redis 迁移历史、图片回填和新旧结构逻辑一致性；证据见 `docs/testing/evidence/productization-m3-mysql-migration.json`。验收指纹比较字段逻辑结构，不把可安全变化的 MySQL 物理字段顺序当成契约。
 - 当前没有明确配置的隔离 Redis 测试实例，未运行 Redis 双实例验收。
 - 当前未运行真实浏览器断网重连验收；前端逻辑已通过构建、类型和 Node SSE 解析 smoke。
 - 未连接真实供应商，未宣称真实模型文本增量或性能通过。
 
-当前结论：M3 流式代码和前端恢复链路已完成，保留商品多图迁移基线失败、隔离 Redis、真实浏览器和真实供应商作为后续整合门禁项。
+当前结论：M3 流式代码、前端恢复链路和隔离 MySQL 升级路径已完成；隔离 Redis、真实 HTTP/浏览器回归、真实供应商效果仍属于 4.9 整合门禁项。

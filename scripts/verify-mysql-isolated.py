@@ -69,8 +69,10 @@ def execute_script(cursor, content):
 
 def fingerprint(cursor, database):
     queries = [
-        "SELECT TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA,COLLATION_NAME "
-        "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,ORDINAL_POSITION",
+        # 字段物理顺序不是迁移兼容契约。旧 Redis 分支可能先登记后续版本，
+        # 再补齐较早迁移，MySQL 会保留不同的 ORDINAL_POSITION，但逻辑列结构必须一致。
+        "SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA,COLLATION_NAME "
+        "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,COLUMN_NAME",
         "SELECT TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,COLLATION "
         "FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX",
         "SELECT TABLE_NAME,CONSTRAINT_NAME,CONSTRAINT_TYPE,ENFORCED FROM information_schema.TABLE_CONSTRAINTS "
@@ -109,7 +111,7 @@ def migration_checks(connection, report):
     old, count = re.subn(r'CREATE TABLE IF NOT EXISTS trd_order_event \(.*?;\n', '', old, count=1, flags=re.S)
     assert count == 1, '旧库夹具应缺少订单事件表'
     old = old.replace(" image_url VARCHAR(255) NOT NULL DEFAULT '',", '')
-    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL'):
+    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL', "summary VARCHAR(200) NOT NULL DEFAULT ''"):
         old, count = re.subn(r' ' + re.escape(column) + ',', '', old)
         assert count == 1, column
     old = re.sub(r'CREATE TABLE IF NOT EXISTS ai_knowledge_quota \(.*?;\n', '', old, flags=re.S)
