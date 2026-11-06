@@ -14,6 +14,7 @@ PNG = base64.b64decode(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Y9ZQmcAAAAASUVORK5CYII='
 )
 STORE_IMAGE = 'http://contract.local/media/store.png'
+INITIAL_IMAGE = 'data:image/png;base64,' + base64.b64encode(PNG).decode()
 
 
 class StorefrontBackend(TwoMerchantBackend):
@@ -25,7 +26,7 @@ class StorefrontBackend(TwoMerchantBackend):
             {
                 'description': '校园文具与打印服务，支持到店自提。',
                 'businessHours': '周一至周五 08:00-20:00（北京时间）',
-                'imageUrl': STORE_IMAGE,
+                'imageUrl': INITIAL_IMAGE,
             }
         )
         self.shops[1].update({'description': '', 'businessHours': '', 'imageUrl': ''})
