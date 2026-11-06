@@ -32,6 +32,13 @@ def hold(page, path):
 def pending(page):
     page.wait_for_function('window.__held.length>0')
 
+def wait_attempts(page, backend, count):
+    for _ in range(100):
+        if len(backend.attempts) >= count:
+            return
+        page.wait_for_timeout(50)
+    raise AssertionError(f'expected {count} order attempts, got {len(backend.attempts)}')
+
 def finish(page,data,status=200,code='0000'):
     page.evaluate('([d,s,c])=>window.__finish(d,s,c)',[data,status,code])
 
@@ -42,14 +49,26 @@ def main():
         f=Backend();page=browser_page(browser,'/cart',f)
         expect(page.locator('.cart-line')).to_have_count(1)
         submit=page.get_by_role('button',name='提交订单',exact=True)
-        submit.click();expect(page.locator('.toast')).to_contain_text('测试故障')
-        submit.click();page.wait_for_function("document.querySelector('.mobile-checkout-bar button').textContent==='提交订单'")
-        assert len(f.attempts)==2 and f.attempts[0]['key'] and f.attempts[0]['key']==f.attempts[1]['key']
+        submit.click()
+        dialog=page.get_by_role('dialog',name='确认订单')
+        expect(dialog).to_be_visible()
+        confirm=dialog.get_by_role('button',name='确认下单（模拟支付）')
+        confirm.click();wait_attempts(page,f,1)
+        expect(dialog.locator('.inline-error')).to_contain_text('测试故障')
+        dialog.get_by_role('button',name='刷新确认信息').click()
+        expect(confirm).to_be_enabled()
+        confirm.click();wait_attempts(page,f,2)
+        assert f.attempts[0]['key'] and f.attempts[0]['key']==f.attempts[1]['key']
+        dialog.get_by_role('button',name='返回调整').click()
+        expect(dialog).to_have_count(0)
         page.get_by_role('button',name='增加测试笔',exact=True).click();expect(page.locator('.mini-qty span')).to_have_text('2')
-        page.locator('.mini-qty button').first.click();expect(page.locator('.mini-qty span')).to_have_text('1')
-        submit.click();page.wait_for_function("document.querySelector('.mobile-checkout-bar button').textContent==='提交订单'")
-        assert len(f.attempts)==3 and f.attempts[-1]['key'] and f.attempts[-1]['key']!=f.attempts[0]['key']
-        checks.append('cart retry reuses key; edit then restore has a fresh nonempty key')
+        submit.click()
+        expect(dialog).to_be_visible()
+        dialog.get_by_role('button',name='确认下单（模拟支付）').click();wait_attempts(page,f,3)
+        assert f.attempts[-1]['key'] and f.attempts[-1]['key']!=f.attempts[0]['key']
+        dialog.get_by_role('button',name='返回调整').click()
+        expect(dialog).to_have_count(0)
+        checks.append('cart unknown-result retry reuses key; changed quantity gets a fresh nonempty key')
         hold(page,'/cart');page.get_by_role('button',name='刷新',exact=True).click();pending(page)
         expect(page.locator('.inline-loading')).to_contain_text('加载购物车');expect(page.locator('.mobile-empty')).to_have_count(0)
         page.locator('.mobile-tabbar').get_by_role('button',name='订单',exact=True).click()
