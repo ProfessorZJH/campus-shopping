@@ -24,6 +24,8 @@ def event(event_id, event_type, role='BUYER', reason=''):
 class HistoryBackend(TwoMerchantBackend):
     def __init__(self):
         super().__init__()
+        self.after_sale_status = 'REQUESTED'
+        self.admin_after_sale_status = 'DISPUTED'
         self.orders = [order()]
         self.orders[0].update(
             {
@@ -38,6 +40,24 @@ class HistoryBackend(TwoMerchantBackend):
                 ],
             }
         )
+
+    def handle(self, route):
+        path = urlparse(route.request.url).path.removeprefix('/api/v1')
+        if path in ('/merchants/m1/aftersales/page', '/admin/aftersales/page'):
+            items = [
+                {
+                    'id': 'sale-1',
+                    'orderId': 'order-1',
+                    'status': self.admin_after_sale_status if path.startswith('/admin/') else self.after_sale_status,
+                    'reason': '无法自提',
+                }
+            ]
+            route.fulfill(status=200, json=self.data({'items': items, 'page': 1, 'size': 10, 'total': 1, 'hasNext': False}))
+            return
+        if path == '/merchants/m1/orders/order-1/after-sale-history':
+            route.fulfill(status=200, json=self.data(self.orders[0]['events']))
+            return
+        return super().handle(route)
 
 
 def main():
@@ -88,6 +108,24 @@ def main():
         expect(history).to_contain_text('申请退款')
         expect(history).to_contain_text('申请平台介入')
         checks.append('平台争议详情展示共享售后历程，可追溯前序决定')
+        close_page(page)
+
+        backend = HistoryBackend()
+        backend.after_sale_status = 'REFUNDED'
+        page = browser_page(browser, '/merchant/aftersales', backend)
+        page.get_by_role('button', name='查看历程').click()
+        expect(page.locator('.review-history')).to_contain_text('商户驳回退款')
+        expect(page.get_by_role('button', name='同意退款')).to_have_count(0)
+        checks.append('商户已处理售后仍可查看只读历程，不再显示裁决按钮')
+        close_page(page)
+
+        backend = HistoryBackend()
+        backend.admin_after_sale_status = 'REFUNDED'
+        page = browser_page(browser, '/admin/disputes', backend)
+        page.get_by_role('button', name='查看历程').click()
+        expect(page.locator('.review-history')).to_contain_text('申请平台介入')
+        expect(page.get_by_role('button', name='批准退款')).to_have_count(0)
+        checks.append('平台已处理售后仍可查看只读历程，裁决按钮仅对争议中显示')
         close_page(page)
 
         assert not ERRORS, ERRORS

@@ -142,14 +142,12 @@ def main():
         assert page.locator('.checkout-actions .teal-button').is_disabled()
         first_key = page.evaluate("window.__orderPending[0].headers['Idempotency-Key']")
         page.evaluate("window.__orderPending[0].reject(new TypeError('Failed to fetch'))")
-        expect(page.locator('.checkout-confirm .inline-error')).to_contain_text('服务连接失败')
-        page.get_by_role('button', name='刷新确认信息').click()
-        expect(page.locator('.checkout-confirm')).to_contain_text('¥12')
+        expect(page.locator('.checkout-confirm .mobile-hint')).to_contain_text('提交结果未知')
         page.get_by_role('button', name='确认下单（模拟支付）').click()
         page.wait_for_function('window.__orderPending.length === 2')
         second_key = page.evaluate("window.__orderPending[1].headers['Idempotency-Key']")
         assert first_key == second_key
-        checks.append('提交中禁用确认按钮且只发出一次请求；未知结果重试沿用同一幂等键')
+        checks.append('提交中禁用确认按钮且只发出一次请求；未知结果可直接重试并沿用同一幂等键')
 
         order = {
             'orderId': 'o-checkout',

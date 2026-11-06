@@ -4,6 +4,7 @@ import static cn.bugstack.ai.trigger.http.RequestInputs.*;
 
 import cn.bugstack.ai.api.IAfterSaleApi;
 import cn.bugstack.ai.api.dto.AfterSaleResponseDTO;
+import cn.bugstack.ai.api.dto.OrderEventResponseDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
 import cn.bugstack.ai.api.dto.RefundRequestDTO;
 import cn.bugstack.ai.api.dto.ReviewRequestDTO;
@@ -81,6 +82,16 @@ public class AfterSaleController implements IAfterSaleApi {
                 query.countMerchantAfterSales(actor(principal), merchantId, state)
             );
         });
+    }
+
+    /** 商户售后处理历程只要求 aftersale.read，避免要求更宽的 order.read。 */
+    @GetMapping("/merchants/{merchantId}/orders/{orderId}/after-sale-history")
+    public Response<List<OrderEventResponseDTO>> merchantAfterSaleHistory(
+        @PathVariable("merchantId") String merchantId,
+        @PathVariable("orderId") String orderId,
+        Principal principal
+    ) {
+        return execute(() -> query.merchantAfterSaleHistory(actor(principal), merchantId, orderId).stream().map(ApiViews::orderEvent).toList());
     }
 
     /** 商户审核退款；进入争议后只允许平台处理。 */

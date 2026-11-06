@@ -10390,6 +10390,176 @@
         ]
       }
     },
+    "/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history": {
+      "get": {
+        "tags": [
+          "AfterSale"
+        ],
+        "operationId": "AfterSaleController_merchantAfterSaleHistory",
+        "x-java-controller": "AfterSaleController.java",
+        "x-java-method": "merchantAfterSaleHistory",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "merchantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/OrderEventResponseDTO"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ]
+      }
+    },
     "/api/v1/merchants/{merchantId}/orders/{orderId}/prepare": {
       "post": {
         "tags": [

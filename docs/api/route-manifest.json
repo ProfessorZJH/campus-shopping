@@ -1303,6 +1303,29 @@
       "csrf": false
     },
     {
+      "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history",
+      "controller": "AfterSaleController.java",
+      "handler": "merchantAfterSaleHistory",
+      "responseType": "List<OrderEventResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
       "method": "POST",
       "path": "/api/v1/merchants/{merchantId}/orders/{orderId}/prepare",
       "controller": "FulfillmentController.java",

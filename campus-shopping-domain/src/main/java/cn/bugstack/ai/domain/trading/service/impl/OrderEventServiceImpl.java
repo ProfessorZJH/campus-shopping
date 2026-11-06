@@ -38,7 +38,20 @@ public class OrderEventServiceImpl implements IOrderEventService {
         String role = optional(actorRole, 24);
         String detail = optional(reason, 500);
         String dedupe = (sale.isBlank() ? "" : sale + ":") + eventType;
-        repository.append(new OrderEventVO(UUID.randomUUID().toString(), order, sale.isBlank() ? null : sale, eventType, clock.instant(), actor, role, detail));
+        // 平台驳回后买家可再次介入；同一售后类型的多轮决定用轮次区分，避免 INSERT IGNORE 吞掉后续真实记录。
+        if (!sale.isBlank() && (eventType.equals("REFUND_DISPUTED") || eventType.equals("PLATFORM_REJECTED"))) {
+            long round =
+                repository
+                    .events(order)
+                    .stream()
+                    .filter(e -> sale.equals(e.afterSaleId()) && eventType.equals(e.type()))
+                    .count() + 1;
+            dedupe += ":" + round;
+        }
+        repository.append(
+            new OrderEventVO(UUID.randomUUID().toString(), order, sale.isBlank() ? null : sale, eventType, clock.instant(), actor, role, detail),
+            dedupe
+        );
     }
 
     @Override

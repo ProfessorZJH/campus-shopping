@@ -16,7 +16,7 @@ public class OrderEventRepository implements IOrderEventRepository {
     private IOrderEventDao dao;
 
     @Override
-    public void append(OrderEventVO event) {
+    public void append(OrderEventVO event, String dedupeKey) {
         dao.insert(
             OrderEventPO.builder()
                 .id(event.id())
@@ -27,7 +27,7 @@ public class OrderEventRepository implements IOrderEventRepository {
                 .actorId(event.actorId())
                 .actorRole(event.actorRole())
                 .reason(event.reason())
-                .dedupeKey((event.afterSaleId() == null ? "" : event.afterSaleId() + ":") + event.type())
+                .dedupeKey(dedupeKey)
                 .build()
         );
     }

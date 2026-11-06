@@ -9,8 +9,8 @@ public interface IFulfillmentService {
     void create(String order, String merchant, String store, String buyer);
     PickupVO pickup(String order);
     PickupVO pickupForUpdate(String order);
-    void startPreparing(String order);
-    void markReady(String order);
+    boolean startPreparing(String order);
+    boolean markReady(String order);
     PickupTokenVO issue(String order);
     boolean verify(String order, String token, String actor);
     void cancel(String order);

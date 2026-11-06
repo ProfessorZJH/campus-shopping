@@ -1289,6 +1289,18 @@ class CommerceMySqlIntegrationTest {
             )
             .product();
         catalog.setProductPublished(owner, merchant.id(), multi.getId(), true);
+        var competitor = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity("价格排序对照", "", "stationery", "", List.of(new ProductSkuEntity(null, "单规格", 4500L, "ACTIVE", 0)))
+            )
+            .product();
+        catalog.setProductPublished(owner, merchant.id(), competitor.getId(), true);
+        assertEquals(
+            List.of(competitor.getId(), multi.getId()),
+            catalogSearch.searchSorted(null, "价格", null, true, 1, 20, "PRICE_ASC", 4000L, 6000L).stream().map(ProductAggregate::getId).toList()
+        );
         assertEquals(
             List.of(multi.getId()),
             catalogSearch.searchSorted(null, "多规格价格商品", null, true, 1, 20, "NEWEST", 4000L, 6000L).stream().map(ProductAggregate::getId).toList()
@@ -2436,6 +2448,8 @@ class CommerceMySqlIntegrationTest {
         life.startPreparing(owner, merchant.id(), order.orderId());
         life.startPreparing(owner, merchant.id(), order.orderId());
         life.markReady(owner, merchant.id(), order.orderId());
+        life.markReady(owner, merchant.id(), order.orderId());
+        life.startPreparing(owner, merchant.id(), order.orderId());
         var token = life.issuePickupToken(buyer, order.orderId());
         life.verifyPickup(owner, merchant.id(), order.orderId(), token.token());
         var detail = orderQueries.detail(buyer, order.orderId());
@@ -2470,6 +2484,45 @@ class CommerceMySqlIntegrationTest {
                 .toList()
         );
         assertEquals(7, detail.events().size());
+    }
+
+    @Test
+    void repeatedDisputeCyclesArePreservedInEventHistory() {
+        var p = product(2);
+        var order = checkout.checkout(buyer, merchant.id(), List.of(item(p)), "repeat-dispute-events");
+        life.pay(buyer, order.orderId());
+        life.requestRefund(buyer, order.orderId(), "未提货");
+        life.merchantRejectRefund(owner, merchant.id(), order.orderId(), "请到店处理");
+        life.appeal(buyer, order.orderId());
+        life.platformRejectRefund(admin, order.orderId(), "首次驳回");
+        life.appeal(buyer, order.orderId());
+        life.platformRejectRefund(admin, order.orderId(), "再次驳回");
+        var detail = orderQueries.detail(buyer, order.orderId());
+        assertEquals(
+            List.of(
+                "ORDER_CREATED",
+                "PAYMENT_SUCCEEDED",
+                "REFUND_REQUESTED",
+                "MERCHANT_REJECTED",
+                "REFUND_DISPUTED",
+                "PLATFORM_REJECTED",
+                "REFUND_DISPUTED",
+                "PLATFORM_REJECTED"
+            ),
+            detail
+                .events()
+                .stream()
+                .map(e -> e.type())
+                .toList()
+        );
+        assertEquals(
+            2,
+            detail
+                .events()
+                .stream()
+                .filter(e -> e.type().equals("REFUND_DISPUTED"))
+                .count()
+        );
     }
 
     @Test
@@ -2779,5 +2832,20 @@ class CommerceMySqlIntegrationTest {
         assertThrows(AppException.class, () -> catalogQuery.managedProducts(other, merchant.id(), 1, 20));
         access.revoke(owner, merchant.id(), other);
         assertThrows(AppException.class, () -> catalogQuery.stockPage(other, merchant.id(), 1, 20, ""));
+    }
+
+    @Test
+    void aftersaleReadMemberCanReadHistoryWithoutOrderRead() {
+        var invitation = access.invite(owner, merchant.id(), accounts.requireActive(other).getUsername());
+        access.accept(other, invitation.id());
+        var role = roles.saveRole(owner, merchant.id(), null, "只读售后", Set.of("aftersale.read"));
+        roles.assignRole(owner, merchant.id(), other, role.code());
+        var p = product(2);
+        var order = checkout.checkout(buyer, merchant.id(), List.of(item(p)), "aftersale-history-role");
+        life.pay(buyer, order.orderId());
+        life.requestRefund(buyer, order.orderId(), "未提货");
+        assertThrows(AppException.class, () -> orderQueries.detail(other, order.orderId()));
+        var history = orderQueries.merchantAfterSaleHistory(other, merchant.id(), order.orderId());
+        assertTrue(history.stream().anyMatch(e -> e.type().equals("REFUND_REQUESTED")));
     }
 }

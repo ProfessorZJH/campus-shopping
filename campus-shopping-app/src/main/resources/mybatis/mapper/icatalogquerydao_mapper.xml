@@ -31,8 +31,12 @@ SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=
 <include refid="publicPriceMatch"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
-   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
-   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') ASC,p.id</when>
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
+     <if test="minPriceCent != null">AND s.price_cent &gt;= #{minPriceCent}</if>
+     <if test="maxPriceCent != null">AND s.price_cent &lt;= #{maxPriceCent}</if>) IS NULL,
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
+     <if test="minPriceCent != null">AND s.price_cent &gt;= #{minPriceCent}</if>
+     <if test="maxPriceCent != null">AND s.price_cent &lt;= #{maxPriceCent}</if>) ASC,p.id</when>
  <when test="sort == 'STOCK_DESC'">ORDER BY
    (SELECT COALESCE(SUM(GREATEST(COALESCE(b.on_hand,0)-COALESCE(b.reserved,0),0)),0)
     FROM cat_sku s LEFT JOIN inv_stock_balance b ON b.store_id=s.store_id AND b.sku_id=s.id

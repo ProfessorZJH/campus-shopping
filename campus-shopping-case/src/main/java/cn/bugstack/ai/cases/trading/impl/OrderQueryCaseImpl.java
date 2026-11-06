@@ -10,10 +10,13 @@ import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
+import cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO;
 import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleQueryService;
 import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderQueryService;
+import cn.bugstack.ai.types.common.Checks;
+import cn.bugstack.ai.types.enums.ResponseCode;
 import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
@@ -96,6 +99,16 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
     public long countMerchantAfterSales(String actor, String merchant, String state) {
         access.requirePermission(actor, merchant, "aftersale.read");
         return afterSales.countAfterSales(null, merchant, state);
+    }
+
+    /** 售后审阅者只需 aftersale.read 即可读取该订单的真实处理历程，不扩大到订单详情。 */
+    @Override
+    public List<OrderEventVO> merchantAfterSaleHistory(String actor, String merchant, String orderId) {
+        access.requirePermission(actor, merchant, "aftersale.read");
+        OrderAggregate order = orders.order(orderId);
+        Checks.require(order != null && merchant.equals(order.getMerchantId()), ResponseCode.NOT_FOUND);
+        Checks.require(!afterSales.afterSalesByOrders(List.of(orderId)).isEmpty(), ResponseCode.NOT_FOUND);
+        return events.events(orderId);
     }
 
     @Override

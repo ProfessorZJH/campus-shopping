@@ -116,9 +116,8 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         OrderAggregate o = trading.orderForUpdate(id);
         require(o.getMerchantId().equals(merchant), ResponseCode.AUTH_FORBIDDEN);
         require(o.state() == OrderStatusEnumVO.PAID, ResponseCode.ORDER_STATE_INVALID);
-        if (ready) fulfillment.markReady(id);
-        else fulfillment.startPreparing(id);
-        events.record(id, null, ready ? "READY" : "PREPARING", actor, "MERCHANT", "");
+        boolean changed = ready ? fulfillment.markReady(id) : fulfillment.startPreparing(id);
+        if (changed) events.record(id, null, ready ? "READY" : "PREPARING", actor, "MERCHANT", "");
     }
 
     @Transactional(rollbackFor = Exception.class)

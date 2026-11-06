@@ -54,9 +54,7 @@ def main():
         expect(dialog).to_be_visible()
         confirm=dialog.get_by_role('button',name='确认下单（模拟支付）')
         confirm.click();wait_attempts(page,f,1)
-        expect(dialog.locator('.inline-error')).to_contain_text('测试故障')
-        dialog.get_by_role('button',name='刷新确认信息').click()
-        expect(confirm).to_be_enabled()
+        expect(dialog.locator('.mobile-hint')).to_contain_text('提交结果未知')
         confirm.click();wait_attempts(page,f,2)
         assert f.attempts[0]['key'] and f.attempts[0]['key']==f.attempts[1]['key']
         dialog.get_by_role('button',name='返回调整').click()

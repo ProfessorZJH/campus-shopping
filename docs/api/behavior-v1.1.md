@@ -61,7 +61,7 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 
 **订单自提快照**：新订单在下单事务内从锁定门店保存 `pickupStoreName`/`pickupLocation`；响应字段为空表示历史订单未记录，客户端不得用当前门店资料回填。商户后续修改门店资料不影响历史订单快照。
 
-**履约与售后事件**：订单创建、付款、备货、备货完成、核销、取消/过期及售后阶段在对应成功事务内追加到 `trd_order_event`，按订单和业务去重键保证幂等重放不产生重复记录；事务回滚不留下成功事件。订单详情只投影已记录事件，未发生阶段不显示为完成。
+**履约与售后事件**：订单创建、付款、备货、备货完成、核销、取消/过期及售后阶段在对应成功事务内追加到 `trd_order_event`，按订单和业务去重键保证幂等重放不产生重复记录；事务回滚不留下成功事件。订单详情只投影已记录事件，未发生阶段不显示为完成。平台驳回后买家可再次介入，`REFUND_DISPUTED`/`PLATFORM_REJECTED` 按售后轮次生成去重键，后续真实决定不会被忽略。商户售后历程通过 `GET /merchants/{merchantId}/orders/{orderId}/after-sale-history` 读取，只要求 `aftersale.read`，不扩大到订单详情；已处理售后仍可按该授权读取历史，裁决按钮只在实际可处理状态显示。
 
 **SDD-05 全局排序**：`GET /products/page` 与 `GET /merchants/{mid}/products/page` 支持 `sort=NEWEST|PRICE_ASC|STOCK_DESC`（默认 `NEWEST`），由 MySQL 在 LIMIT/OFFSET 前统一排序；`PRICE_ASC` 使用商品有效 SKU 最低价，`STOCK_DESC` 使用所有有效 SKU 的可售库存总和。前端“全局价格/库存”发送相同枚举，不再只对本页本地排序；COUNT 的过滤条件不变。无效 sort 返回参数错误。见 [SDD-05](../specs/SDD-RBAC-05.md)。
 
