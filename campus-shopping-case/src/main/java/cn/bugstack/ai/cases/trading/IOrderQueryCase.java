@@ -16,6 +16,7 @@ public interface IOrderQueryCase {
     /** 仅用于已授权写用例返回的订单事实。 */
     OrderReadModel view(OrderAggregate order);
     TradingStatsVO statistics(String actor, String merchant);
+    cn.bugstack.ai.domain.trading.model.valobj.OperationsStatisticsVO operationsStatistics(String actor, String merchant, int periodDays, String to);
     java.util.List<cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO> merchantAfterSales(String actor, String merchant, String state, int page, int size);
     java.util.List<cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO> merchantAfterSaleHistory(String actor, String merchant, String orderId);
     long countMerchantAfterSales(String actor, String merchant, String state);

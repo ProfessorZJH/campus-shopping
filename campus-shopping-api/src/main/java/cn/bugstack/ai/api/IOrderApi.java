@@ -23,8 +23,10 @@ public interface IOrderApi {
     Response<OrderResponseDTO> cancel(String orderId, Principal principal);
     /** Owner 经营统计。 */
     Response<StatisticsResponseDTO> merchantStatistics(String merchantId, Principal principal);
+    Response<OperationsStatisticsResponseDTO> merchantOperationsStatistics(String merchantId, int periodDays, String to, Principal principal);
     /** 平台订单汇总。 */
     Response<StatisticsResponseDTO> platformStatistics(Principal principal);
+    Response<OperationsStatisticsResponseDTO> platformOperationsStatistics(int periodDays, String to, Principal principal);
     Response<PageResponseDTO<OrderResponseDTO>> platformOrdersPage(String state, int page, int size, String q, Principal principal);
     /** 平台受控订单监管。 */
     Response<List<OrderResponseDTO>> platformOrders(String state, int page, int size, Principal principal);

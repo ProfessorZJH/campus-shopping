@@ -8,6 +8,7 @@ import cn.bugstack.ai.api.dto.CheckoutRequestDTO;
 import cn.bugstack.ai.api.dto.OrderResponseDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
 import cn.bugstack.ai.api.dto.StatisticsResponseDTO;
+import cn.bugstack.ai.api.dto.OperationsStatisticsResponseDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.trading.ICheckoutCase;
 import cn.bugstack.ai.cases.trading.IOrderLifecycleCase;
@@ -152,11 +153,23 @@ public class OrderController implements IOrderApi {
         return execute(() -> ApiViews.statistics(query.statistics(actor(principal), merchantId)));
     }
 
+    @Override
+    @GetMapping("/merchants/{merchantId}/statistics/operations")
+    public Response<OperationsStatisticsResponseDTO> merchantOperationsStatistics(@PathVariable("merchantId") String merchantId, @RequestParam(defaultValue = "7") int periodDays, @RequestParam(required = false) String to, Principal principal) {
+        return execute(() -> ApiViews.operationsStatistics(query.operationsStatistics(actor(principal), merchantId, periodDays, to)));
+    }
+
     /** 平台订单汇总。 */
     @Override
     @GetMapping("/admin/statistics")
     public Response<StatisticsResponseDTO> platformStatistics(Principal principal) {
         return execute(() -> ApiViews.statistics(query.statistics(actor(principal), null)));
+    }
+
+    @Override
+    @GetMapping("/admin/statistics/operations")
+    public Response<OperationsStatisticsResponseDTO> platformOperationsStatistics(@RequestParam(defaultValue = "7") int periodDays, @RequestParam(required = false) String to, Principal principal) {
+        return execute(() -> ApiViews.operationsStatistics(query.operationsStatistics(actor(principal), null, periodDays, to)));
     }
 
     /** 平台受控订单监管。 */

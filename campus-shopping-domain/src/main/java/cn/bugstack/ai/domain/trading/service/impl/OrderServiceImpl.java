@@ -148,4 +148,8 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
     public TradingStatsVO statistics(String merchant) {
         return repository.statistics(merchant);
     }
+
+    public OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone) {
+        return repository.operationsStatistics(merchant, start, end, asOf, timezone);
+    }
 }

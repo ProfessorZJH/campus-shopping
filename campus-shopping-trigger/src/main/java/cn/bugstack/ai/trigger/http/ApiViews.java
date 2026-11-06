@@ -14,6 +14,7 @@ import cn.bugstack.ai.api.dto.PickupResponseDTO;
 import cn.bugstack.ai.api.dto.ProductResponseDTO;
 import cn.bugstack.ai.api.dto.SkuResponseDTO;
 import cn.bugstack.ai.api.dto.StatisticsResponseDTO;
+import cn.bugstack.ai.api.dto.*;
 import cn.bugstack.ai.api.dto.StockResponseDTO;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.cases.trading.model.CartItemReadModel;
@@ -209,6 +210,19 @@ public final class ApiViews {
             .completedCount(s.completedCount())
             .refundedCount(s.refundedCount())
             .completedAmountCent(s.completedAmountCent())
+            .build();
+    }
+
+    public static OperationsStatisticsResponseDTO operationsStatistics(cn.bugstack.ai.domain.trading.model.valobj.OperationsStatisticsVO s) {
+        return OperationsStatisticsResponseDTO.builder()
+            .periodStart(s.periodStart().toString()).periodEnd(s.periodEnd().toString()).timezone(s.timezone()).asOf(s.asOf().toString())
+            .totalOrders(s.totalOrders()).paidOrders(s.paidOrders()).refundedOrders(s.refundedOrders())
+            .completedAmountCent(s.completedAmountCent())
+            .refundRate(s.paidOrders() == 0 ? null : (double) s.refundedOrders() / s.paidOrders())
+            .trend(s.trend().stream().map(x -> StatisticsTrendDTO.builder().day(x.day()).orderCount(x.orderCount()).build()).toList())
+            .statuses(s.statuses().stream().map(x -> StatisticsStatusDTO.builder().status(x.status()).orderCount(x.orderCount()).amountCent(x.amountCent()).build()).toList())
+            .products(s.products().stream().map(x -> StatisticsProductDTO.builder().skuId(x.skuId()).title(x.title()).quantity(x.quantity()).build()).toList())
+            .metricNote("按订单创建时间分组；状态和完成金额为查询时事实；退款率仅代表模拟付款/整单退款，不代表真实资金结算")
             .build();
     }
 }

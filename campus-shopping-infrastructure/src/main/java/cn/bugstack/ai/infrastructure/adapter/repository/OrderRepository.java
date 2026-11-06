@@ -139,6 +139,25 @@ public class OrderRepository implements IOrderRepository {
         );
     }
 
+    public OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone) {
+        var w = dao.statisticsWindow(merchant, start, end);
+        return new OperationsStatisticsVO(
+            start,
+            end,
+            timezone,
+            asOf,
+            value(w.getTotalOrders()),
+            value(w.getPaidOrders()),
+            value(w.getRefundedOrders()),
+            value(w.getCompletedAmountCent()),
+            dao.statisticsTrend(merchant, start, end).stream().map(p -> new OperationsStatisticsVO.Trend(p.getDay(), value(p.getOrderCount()))).toList(),
+            dao.statisticsStatuses(merchant, start, end).stream().map(p -> new OperationsStatisticsVO.Status(p.getStatus(), value(p.getOrderCount()), value(p.getAmountCent()))).toList(),
+            dao.statisticsProducts(merchant, start, end).stream().map(p -> new OperationsStatisticsVO.Product(p.getSkuId(), p.getTitle(), value(p.getQuantity()))).toList()
+        );
+    }
+
+    private long value(Long value) { return value == null ? 0L : value; }
+
     private OrderAggregate convert(OrderPO p) {
         return convert(p, false);
     }

@@ -25,4 +25,5 @@ public interface IOrderRepository {
     void payment(String order, long amount);
     void refund(String order, long amount);
     TradingStatsVO statistics(String merchant);
+    OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
 }

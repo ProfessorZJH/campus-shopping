@@ -19,4 +19,5 @@ public interface IOrderQueryService {
     List<String> expiredAfter(String after, int limit);
     Instant oldestExpired();
     TradingStatsVO statistics(String merchant);
+    OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
 }

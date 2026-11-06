@@ -61,4 +61,8 @@ public interface ITradingDao {
         @Param("limit") int limit
     );
     TradingStatsPO statistics(@Param("merchant") String merchant);
+    StatisticsWindowPO statisticsWindow(@Param("merchant") String merchant, @Param("start") Instant start, @Param("end") Instant end);
+    List<StatisticsTrendPO> statisticsTrend(@Param("merchant") String merchant, @Param("start") Instant start, @Param("end") Instant end);
+    List<StatisticsStatusPO> statisticsStatuses(@Param("merchant") String merchant, @Param("start") Instant start, @Param("end") Instant end);
+    List<StatisticsProductPO> statisticsProducts(@Param("merchant") String merchant, @Param("start") Instant start, @Param("end") Instant end);
 }
