@@ -19,7 +19,7 @@ Run 回答“这条用户请求运行到哪里”；Action 回答“哪项业务
 | CANCELLED | 已接纳取消，禁止后续新动作；已提交效果不撤回 |
 | TIMED_OUT | 达到执行截止时间，停止接纳新步骤 |
 
-`outcome` 与 status 分开：ANSWER、NEEDS_INPUT、NEEDS_CONFIRMATION、PARTIAL。NEEDS_INPUT 对应结构化澄清记录；NEEDS_CONFIRMATION 对应持久化预览。用户回复或点击选项建立新的有界 Run/确认请求，关联原来源；**不是恢复一个一直运行着的 Task**。
+`outcome` 与 status 分开：ANSWER、NEEDS_INPUT、NEEDS_CONFIRMATION、PARTIAL。NEEDS_INPUT 的提示和选项保存在助手消息中，回复统一经消息入口建立新 Run 并关联原消息，不另建澄清状态表。NEEDS_CONFIRMATION 对应持久化预览，继续走独立确认接口；**不是恢复一个一直运行着的 Task**。
 
 之前讨论的 WAITING_INPUT/WAITING_APPROVAL 是产品逻辑，可以展示，但首期不要求保活一个服务器执行实例。未来真正引入工作流暂停恢复时再决定是否需要持久化 RunState。
 
@@ -27,11 +27,11 @@ Action 状态单独定义：PREPARED（仅需预览的动作）、SUCCEEDED、RE
 
 ## 3. 同一会话的并发与防旧请求回写
 
-推荐复用并完善已有会话轮次租约：同一 Conversation 一次只接纳一个活跃执行 Run。客户端重复提交同一 clientMessageId 返回原 Run，不算并发新消息。另一个独立新消息在有活跃 Run 时返回可理解的忙碌/取消提示，首期不做无限排队。
+复用已有 `ai_conversation.turn_token / turn_expires_at` 作为唯一执行租约：同一 Conversation 一次只接纳一个活跃 Run。Run 记录所持 token 的引用，不另设可独立续期的 Run 租约或 generation 状态机；Run deadline 仅限制本轮预算，不授予执行权。重复 clientMessageId 返回原 Run；另一个独立新消息在有活跃 Run 时返回忙碌/取消提示，首期不做无限排队。
 
-多个标签页不共享一个全局当前商户，UI 回复引用与 Conversation 所有权独立校验。前端用 runId/seq 丢弃旧 UI 回调；服务端用版本/租约代次阻止旧 Run 覆盖新状态。
+多个标签页不共享一个全局当前商户，UI 回复引用与 Conversation 所有权独立校验。前端按 runId 隔离回调，以带版本的快照收敛结果；服务端以当前 turn_token 阻止旧 Run 覆盖新状态。
 
-**仅有租约超时不够。** worker 停顿后，旧 Run 可能恢复并调用工具。Tool Gateway 必须验证 Run 状态、期限、lease generation/fencing 信息及 scope；实际写动作接纳与取消/代次变更需要形成明确原子顺序。不能只在入口查一次有效，后面无条件执行。
+worker 停顿后可能恢复调用工具。工具写入事务必须复核 token 与当前会话匹配且未过期、Run 状态/截止时间及 scope，使写入与取消/租约更换形成原子顺序。工具阶段不提前释放轮次租约；结束或取消时只释放匹配 token，不能误清后继 Run。token 承担执行有效性校验，不替代内部服务认证、capability 或业务权限。
 
 所有外部模型和 HTTP 请求均在数据库事务之外；短事务只围绕动作接纳、业务修改与回执。不得为防并发在整段 LLM 推理期间占用行锁。
 
@@ -39,19 +39,19 @@ Action 状态单独定义：PREPARED（仅需预览的动作）、SUCCEEDED、RE
 
 | 结构 | 保留/新增 | 核心字段与索引要求 |
 |---|---|---|
-| ai_conversation | 复用 | owner、标题、轮次租约/版本；不固定唯一 agentType |
+| ai_conversation | 复用 | owner、标题、turn_token/turn_expires_at（唯一执行租约）；不固定唯一 agentType |
 | ai_message | 复用并扩展 | conversation、seq、role、原文/结构化内容、runId、内容块来源/范围；同会话按 seq 查询 |
 | ai_context_state | 推荐新增或等价扩展 | conversation、version、有界实体/约束/展示引用/分范围摘要 JSON、coveredSeq、schemaVersion |
-| ai_run | 新增 | id、actor、conversation、clientMessageId、requestHash、status/outcome、deadline、lease/generation、model/prompt/toolSet版本、safeResult、timestamps |
+| ai_run | 新增 | id、actor、conversation、clientMessageId、requestHash、status/outcome、deadline、turnTokenRef、snapshotVersion、model/prompt/toolSet版本、safeResult、timestamps |
 | ai_action_execution | 新增或等价复用统一动作账本 | actionId、actor、originMessage、operation、scope、argsHash、immutableArgs、preview版本/有效期、result/status；稳定唯一约束 |
-| ai_run_event | SSE 阶段新增 | runId、seq、type、最小 payload/结果引用、visibility labels、createdAt；UNIQUE(runId,seq) |
+| ai_run_event | 可选增强：明确需要精确事件回放时新增 | runId、seq、type、最小 payload/结果引用、visibility labels、createdAt；UNIQUE(runId,seq) |
 | ai_user_memory | 长期偏好阶段新增 | owner、用途/商户范围、key/value、source、revision、status、expiresAt；可删改 |
 
-每张新增结构都对应不可替代职责；若仓库已有等价结构，先复用，不因本文名称另建。原 ai_proposal 仍服务旧推荐确认；新的通用动作账本不能随意更改旧状态语义，应通过兼容适配或明确迁移与其协作。
+逻辑职责不要求各建一张表；已有等价结构优先复用，SSE 不依赖 ai_run_event。原 ai_proposal 仍服务旧推荐确认；新的通用动作账本不能随意更改旧状态语义，应通过兼容适配或明确迁移与其协作。
 
-重要唯一性：入站去重建议 `UNIQUE(actor, conversation, clientMessageId)`；动作的稳定来源键与 actionId 都需唯一；高风险 previewId 只能消费一次；事件序列单调。NULL 商户字段的唯一键语义必须在真实 MySQL 验证，不依赖应用中“看起来没重复”。
+重要唯一性：入站去重建议 `UNIQUE(actor, conversation, clientMessageId)`；动作的稳定来源键与 actionId 都需唯一；高风险 previewId 只能消费一次。启用精确事件回放时才要求持久事件序列单调。NULL 商户字段的唯一键语义必须在真实 MySQL 验证，不依赖应用中“看起来没重复”。
 
-业务/动作写入/可重放的关键动作结果事件尽量在同库事务内完成；模型文本生成成功不是这个事务的一部分。临时进度心跳无需每个 token 落库，防止消息和事件无界增长。
+业务变化与 Action 结果必须同库事务提交；Run/Action 的持久状态组成可查询快照，对外持久状态变化时同事务递增 snapshotVersion。模型文本生成不属于业务写事务；SSE 通知丢失后补读授权快照，不要求将临时进度或每个 token 落库。
 
 ## 5. 为什么不能只靠 Redis
 
@@ -77,7 +77,7 @@ Run、Action、历史及关键上下文以 MySQL 为准。Redis 异常时遵循�
 }
 ```
 
-事件类型建议：run.accepted、run.started、tool.status、result.card、clarification.required、action.preview、action.result、message.delta、message.done、run.completed、run.failed、run.cancelled。type、seq、version 需要统一，不能前后端分别猜测。
+首期按页面需要使用 run.snapshot、tool.status、message.delta、action.result；终态、结果卡片及澄清选项由快照承载，高风险预览事件随对应阶段增加。seq 只用于当前连接内排序，不是持久回放游标；快照携带 snapshotVersion，事件结构在接口契约中统一。
 
 ### 6.1 真实流式，不伪造成功
 
@@ -87,17 +87,19 @@ Run、Action、历史及关键上下文以 MySQL 为准。Redis 异常时遵循�
 
 **SSE 事件流与模型 token 流分别验收。** 不能先生成完整答案，再拆字发送就宣称模型端真流式；也不能为了真 token 流牺牲事实校验。供应商仅工具流兼容不足时可先缓冲参数，工具执行仍须等待参数完整及校验通过。[S2]
 
-### 6.2 断线、回放与撤权
+### 6.2 断线、快照恢复与撤权
 
-SSE 断开只代表传输断开，不自动创建新 Run，不自动重跑动作。客户端凭 lastEventId/seq 续读；事件过期时用 GET Run 取授权后的快照，而不是重新 POST 一次操作。
+SSE 断开只代表传输断开，不自动创建新 Run，不自动重跑动作。首期建立/重连时通过 GET Run 或 run.snapshot 取得授权快照及已提交动作结果，按 snapshotVersion 更新界面，再接收后续通知。重连用快照替换临时展示，不拼接断线前未持久化的 token；完整正文在完成后取回。
 
-连接建立、重连和敏感事件输出均需校验可见性。撤权后不能直接重放已经保存的商户明细 payload；保存最小结果引用和范围标签可在读取时过滤。终态到达立即关闭客户端 EventSource，避免浏览器自动重连形成空转。
+通知只用于及时刷新，接入实例可通过有界状态补查保证取得终态；即使连接到另一 Java 实例、通知丢失或完成发生在重连间隙，也能从共享持久状态恢复，不依赖进程内订阅作为唯一结果来源。无需为首期引入事件存储或新消息组件。
+
+连接建立、重连、快照读取和敏感事件输出均需校验当前可见性；撤权后不再提供无权的商户明细。终态到达立即关闭客户端 EventSource，避免浏览器自动重连形成空转。只有明确需要逐事件精确续播时再增加 ai_run_event、持久游标和相应回放验收；回放仍须过滤当前无权内容。
 
 ## 7. 取消、超时与崩溃：明确定义竞态
 
 用户取消由 POST 明确发起。尚未接纳的工具/动作禁止继续；已经提交的操作显示真实成功结果。取消与写事务的竞争按服务端接纳/提交顺序裁决：取消先成功阻断新动作，动作先合法提交则不能报告“什么都没发生”。
 
-实例崩溃后，过期 Run 由恢复检查标为失效/待核验，查询已存在动作账本与关键事件。首期不自动重新跑整个模型计划，尤其禁止对未知结果的写操作发新 actionId。读取结果无需恢复模型私有推理。
+实例崩溃后，过期 Run 由恢复检查标为失效/待核验，查询 Run 快照和动作账本。首期不自动重新跑整个模型计划，尤其禁止对未知结果的写操作发新 actionId。读取结果无需恢复模型私有推理。
 
 故障后需要补偿时，补偿是独立业务命令并有权限、幂等与审计；不是让模型执行一段“反向 SQL”。购物车添加成功但回答失败，优先补展示回执，不自动删购物车。
 

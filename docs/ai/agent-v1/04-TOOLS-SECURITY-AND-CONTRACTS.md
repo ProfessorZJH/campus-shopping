@@ -102,7 +102,7 @@ Java 在入站消息下保存操作候选和来源，核对唯一 SKU、数量�
 
 ## 6. 幂等必须覆盖三层
 
-**消息层：** `clientMessageId` 绑定 actor + conversation + 请求摘要。同一消息重发返回同一 Run；同一个 key 携带不同文本/回复引用则冲突，不当作新消息。
+**消息层：** `clientMessageId` 绑定 actor + conversation + 请求摘要。同一消息重发返回同一 Run；同一个 key 携带不同文本/回复或选项引用则冲突，不当作新消息。
 
 **动作层：** actionId 由服务端绑定 origin message/UI evidence + operation + 目标 scope + canonical args + 明确动作序号；唯一约束保证 SDK retry、网络重试或模型重新生成 toolCallId 不产生第二份动作。执行前比较 argsHash，同 id 不同参数拒绝。
 
@@ -116,11 +116,10 @@ Java 在入站消息下保存操作候选和来源，核对唯一 SKU、数量�
 
 | 路由/内部能力 | 目标行为 |
 |---|---|
-| `POST /api/v1/ai/runs` | 带 Session/CSRF 和 clientMessageId 创建或取回 Run |
-| `GET /api/v1/ai/runs/{runId}` | 授权查询 Run、部分结果、动作状态 |
-| `GET /api/v1/ai/runs/{runId}/events` | 授权 SSE，支持最后事件游标 |
+| `POST /api/v1/ai/runs` | 带 Session/CSRF 和 clientMessageId 受理提问、追问或快捷选项回复，创建或取回 Run |
+| `GET /api/v1/ai/runs/{runId}` | 授权查询带版本的 Run 快照、部分结果及动作状态 |
+| `GET /api/v1/ai/runs/{runId}/events` | 授权 SSE 进度/结果通知，重连补当前快照；精确游标回放为可选增强 |
 | `POST /api/v1/ai/runs/{runId}/cancel` | 请求取消；不回滚已提交业务动作 |
-| `POST /api/v1/ai/runs/{runId}/clarifications/{id}/resolve` | 处理有限选项/文本补充，验证版本与有效期 |
 | `POST /api/v1/ai/actions/{actionId}/confirm` | 高风险预览确认，严格绑定差异 |
 | `GET /api/v1/ai/actions/{actionId}` | 查询已执行结果/待确认状态 |
 | Java→Python `run` 能力 | 输入有界上下文、scope、模型配置和内部凭据 |
@@ -141,7 +140,9 @@ Run 请求示例：
 }
 ```
 
-这些 UI 引用仍须服务器验证归属和可见性；它们提升消歧准确性，不授予权限。
+这些 UI 引用仍须服务器验证归属和可见性；它们提升消歧准确性，不授予权限。普通澄清的提示和选项保存在助手消息中；文本回复或点击选项统一调用 `POST /api/v1/ai/runs`，携带 `replyToMessageId`，选项回复另带可选的 `selectedOptionId`。Java 从原消息解析选项并验证归属、选项合法性及当前可见性，不能信任客户端自报的选项内容。
+
+普通澄清不设独立的到期/消费状态；引用的业务对象仍按本轮权限和当前状态验证，无法确定时继续追问。高风险预览继续使用独立确认接口及其期限、版本和一次性消费规则，普通选项回复不能代替确认。
 
 ## 8. 审计、注入与外发
 
