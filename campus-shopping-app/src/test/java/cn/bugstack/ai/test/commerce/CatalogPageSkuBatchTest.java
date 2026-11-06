@@ -43,8 +43,8 @@ class CatalogPageSkuBatchTest {
         when(images.findAll(anyList())).thenReturn(Map.of());
         ReflectionTestUtils.setField(c, "catalogCase", useCase);
         ReflectionTestUtils.setField(c, "catalogQuery", new CatalogQueryCaseImpl(catalog, inventory, merchants, mock(IAccessService.class), images));
-        when(catalog.searchSorted(null, "", null, true, 1, 100, "NEWEST")).thenReturn(products);
-        when(catalog.count(null, "", null, true)).thenReturn(51L);
+        when(catalog.searchSorted(null, "", null, true, 1, 100, "NEWEST", null, null)).thenReturn(products);
+        when(catalog.count(null, "", null, true, null, null)).thenReturn(51L);
         when(merchants.findAll(List.of("m1"))).thenReturn(List.of(new MerchantVO("m1", null, "测试商户", "文具", "ACTIVE", "store1", "测试店", "校园")));
         when(inventory.stocks(anyList())).thenAnswer(invocation -> {
             List<String> ids = invocation.getArgument(0);
@@ -55,7 +55,7 @@ class CatalogPageSkuBatchTest {
                 .toList();
         });
 
-        var response = c.productPage(null, "", null, 1, 100, "NEWEST");
+        var response = c.productPage(null, "", null, null, null, 1, 100, "NEWEST");
         assertEquals("0000", response.getCode());
         assertNotNull(response.getData());
         assertEquals(51, response.getData().items().size());

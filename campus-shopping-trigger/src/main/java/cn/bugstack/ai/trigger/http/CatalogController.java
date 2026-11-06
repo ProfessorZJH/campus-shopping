@@ -22,12 +22,14 @@ import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
+import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
 import java.util.List;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -36,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /** HTTP 入口只做协议转换、可信身份提取和响应封装。 */
 @Slf4j
@@ -56,27 +59,31 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(required = false) String merchantId,
         @RequestParam(defaultValue = "") String q,
         @RequestParam(required = false) String category,
+        @RequestParam(required = false) Long minPriceCent,
+        @RequestParam(required = false) Long maxPriceCent,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
         return execute(() -> {
-            return products(catalogQuery.publicProducts(merchantId, q, category, page, size));
+            return products(catalogQuery.publicProducts(merchantId, q, category, minPriceCent, maxPriceCent, page, size));
         });
     }
 
-    /** 带总数的商品搜索，供真实前端分页。 */
+    /** 带总数的商品搜索，供真实前端分页；价格条件在分页前作用于完整公开结果。 */
     @Override
     @GetMapping("/products/page")
     public Response<PageResponseDTO<ProductResponseDTO>> productPage(
         @RequestParam(required = false) String merchantId,
         @RequestParam(defaultValue = "") String q,
         @RequestParam(required = false) String category,
+        @RequestParam(required = false) Long minPriceCent,
+        @RequestParam(required = false) Long maxPriceCent,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "NEWEST") String sort
     ) {
         return execute(() -> {
-            var result = catalogQuery.publicPage(merchantId, q, category, page, size, sort);
+            var result = catalogQuery.publicPage(merchantId, q, category, minPriceCent, maxPriceCent, page, size, sort);
             return PageResponseDTO.of(products(result.items()), page, size, result.total());
         });
     }
@@ -328,6 +335,15 @@ public class CatalogController implements ICatalogApi {
             var result = catalogQuery.adminPage(actor(principal), merchantId, q, page, size);
             return PageResponseDTO.of(products(result.items()), page, size, result.total());
         });
+    }
+
+    /** 数字查询参数解析失败时仍返回统一信封，避免价格条件被静默忽略。 */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public Response<Void> invalidQueryValue(MethodArgumentTypeMismatchException failure) {
+        String name = failure.getName();
+        String info =
+            "minPriceCent".equals(name) || "maxPriceCent".equals(name) ? "价格条件必须为非负整数（单位：分）" : ResponseCode.ILLEGAL_PARAMETER.getInfo();
+        return ApiResponses.rejected(new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode(), info));
     }
 
     private <T> Response<T> execute(Supplier<T> action) {

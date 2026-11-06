@@ -112,8 +112,8 @@
 | `POST` | `/api/v1/orders/{orderId}/pay` | orderId:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
 | `POST` | `/api/v1/orders/{orderId}/pickup-token` | orderId:String | `TokenResponseDTO` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/orders/{orderId}/refunds` | orderId:String、body:RefundRequestDTO | `AfterSaleResponseDTO` | authenticated + domain ACL | `AfterSaleController.java` |
-| `GET` | `/api/v1/products` | merchantId?:String、q?:String、category?:String、page?:int、size?:int | `List<ProductResponseDTO>` | anonymous | `CatalogController.java` |
-| `GET` | `/api/v1/products/page` | merchantId?:String、q?:String、category?:String、page?:int、size?:int、sort?:String | `PageResponseDTO<ProductResponseDTO>` | anonymous | `CatalogController.java` |
+| `GET` | `/api/v1/products` | merchantId?:String、q?:String、category?:String、minPriceCent?:Long、maxPriceCent?:Long、page?:int、size?:int | `List<ProductResponseDTO>` | anonymous | `CatalogController.java` |
+| `GET` | `/api/v1/products/page` | merchantId?:String、q?:String、category?:String、minPriceCent?:Long、maxPriceCent?:Long、page?:int、size?:int、sort?:String | `PageResponseDTO<ProductResponseDTO>` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/products/{productId}` | productId:String | `ProductResponseDTO` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/workspace` | — | `WorkspaceResponseDTO` | authenticated + domain ACL | `WorkspaceController.java` |
 

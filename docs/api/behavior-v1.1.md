@@ -55,6 +55,8 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 
 **SDD-04 商品搜索语义**：公共商品 `/products/page` 和平台商品 `/admin/products/page` 的 `q` 搜索商品标题、描述、商户名称、SKU ID、规格；商户自身 `/merchants/{mid}/products/page` 搜索商品标题、描述、SKU ID、规格。公开搜索仅从有效 SKU 参与匹配，匹配多规格仍只返回一条商品记录。`%` 和 `_` 在这些商品接口中均按普通字符字面查找。商品列表/COUNT 的动态筛选必须保持一致。
 
+**商品价格筛选**：`GET /products` 与 `GET /products/page` 支持可选 `minPriceCent`/`maxPriceCent`（整数分，闭区间）。条件在 LIMIT/OFFSET 前与 `q`、`category`、`merchantId`、`sort` 一起作用于完整公开结果；商品至少有一个当前 `ACTIVE` SKU 的价格命中才返回。负数、非整数或下限大于上限返回参数错误，不静默截断或退回无条件结果。卡片展示命中区间的最低有效 SKU 价格。
+
 **SDD-05 全局排序**：`GET /products/page` 与 `GET /merchants/{mid}/products/page` 支持 `sort=NEWEST|PRICE_ASC|STOCK_DESC`（默认 `NEWEST`），由 MySQL 在 LIMIT/OFFSET 前统一排序；`PRICE_ASC` 使用商品有效 SKU 最低价，`STOCK_DESC` 使用所有有效 SKU 的可售库存总和。前端“全局价格/库存”发送相同枚举，不再只对本页本地排序；COUNT 的过滤条件不变。无效 sort 返回参数错误。见 [SDD-05](../specs/SDD-RBAC-05.md)。
 
 ### 3.1 SDD-05 商户 RBAC 权限与角色管理

@@ -7,6 +7,15 @@ SELECT * FROM cat_sku WHERE product_id IN <foreach collection="productIds" item=
 <select id="scanIdsAfter" resultType="java.lang.String">
 SELECT id FROM cat_product WHERE id &gt; #{after} ORDER BY id LIMIT #{limit}
 </select>
+<sql id="publicPriceMatch">
+<if test="minPriceCent != null or maxPriceCent != null">
+AND EXISTS (SELECT 1 FROM cat_sku price_s WHERE price_s.product_id=p.id
+  <if test="publicOnly">AND price_s.status='ACTIVE'</if>
+  <if test="minPriceCent != null">AND price_s.price_cent &gt;= #{minPriceCent}</if>
+  <if test="maxPriceCent != null">AND price_s.price_cent &lt;= #{maxPriceCent}</if>
+)
+</if>
+</sql>
 <select id="search" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
 SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
 <if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
@@ -19,6 +28,7 @@ SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=
       AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<include refid="publicPriceMatch"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
    (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
@@ -71,6 +81,7 @@ SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHE
       AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<include refid="publicPriceMatch"/>
     </select>
 <sql id="managedStatus">
 <choose>

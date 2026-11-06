@@ -2241,6 +2241,18 @@
         },
         {
           "in": "query",
+          "name": "minPriceCent",
+          "type": "Long",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "maxPriceCent",
+          "type": "Long",
+          "required": false
+        },
+        {
+          "in": "query",
           "name": "page",
           "type": "int",
           "required": false,
@@ -2281,6 +2293,18 @@
           "in": "query",
           "name": "category",
           "type": "String",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "minPriceCent",
+          "type": "Long",
+          "required": false
+        },
+        {
+          "in": "query",
+          "name": "maxPriceCent",
+          "type": "Long",
           "required": false
         },
         {

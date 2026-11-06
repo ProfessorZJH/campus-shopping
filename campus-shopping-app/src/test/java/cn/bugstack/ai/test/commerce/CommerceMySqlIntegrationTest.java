@@ -1242,6 +1242,60 @@ class CommerceMySqlIntegrationTest {
         assertThrows(AppException.class, () -> catalogSearch.searchSorted(null, "排序测试商品", null, true, 1, 20, "UNKNOWN"));
     }
 
+    /** 价格条件必须作用于完整公开结果后再分页，且只由当前有效 SKU 命中。 */
+    @Test
+    void catalogPriceRangeFiltersFullResultBeforePagingAndUsesCurrentActiveSku() {
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < 21; i++) {
+            var p = catalog
+                .createProduct(
+                    owner,
+                    merchant.id(),
+                    new ProductCreateCommandEntity(
+                        "价格筛选商品" + i,
+                        "",
+                        "stationery",
+                        "",
+                        List.of(new ProductSkuEntity(null, "单规格", 1000L + i * 100L, "ACTIVE", 0))
+                    )
+                )
+                .product();
+            catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
+            ids.add(p.getId());
+        }
+        assertEquals(21L, catalogSearch.count(null, "价格筛选商品", null, true));
+        assertEquals(20, catalogSearch.searchSorted(null, "价格筛选商品", null, true, 1, 20, "PRICE_ASC", null, null).size());
+        assertEquals(
+            List.of(ids.get(19), ids.get(20)),
+            catalogSearch.searchSorted(null, "价格筛选商品", null, true, 1, 20, "PRICE_ASC", 2900L, 3100L).stream().map(ProductAggregate::getId).toList()
+        );
+        assertEquals(2L, catalogSearch.count(null, "价格筛选商品", null, true, 2900L, 3100L));
+
+        var multi = catalog
+            .createProduct(
+                owner,
+                merchant.id(),
+                new ProductCreateCommandEntity(
+                    "多规格价格商品",
+                    "",
+                    "stationery",
+                    "",
+                    List.of(new ProductSkuEntity(null, "小份", 500L, "ACTIVE", 0), new ProductSkuEntity(null, "大份", 5000L, "ACTIVE", 0))
+                )
+            )
+            .product();
+        catalog.setProductPublished(owner, merchant.id(), multi.getId(), true);
+        assertEquals(
+            List.of(multi.getId()),
+            catalogSearch.searchSorted(null, "多规格价格商品", null, true, 1, 20, "NEWEST", 4000L, 6000L).stream().map(ProductAggregate::getId).toList()
+        );
+        catalog.changeSkuStatus(owner, merchant.id(), multi.getId(), multi.getSkus().get(1).id(), false, 1);
+        assertTrue(catalogSearch.searchSorted(null, "多规格价格商品", null, true, 1, 20, "NEWEST", 4000L, 6000L).isEmpty());
+        assertEquals(0L, catalogSearch.count(null, "多规格价格商品", null, true, 4000L, 6000L));
+        assertThrows(AppException.class, () -> catalogSearch.searchSorted(null, "", null, true, 1, 20, "NEWEST", -1L, null));
+        assertThrows(AppException.class, () -> catalogSearch.count(null, "", null, true, 3000L, 2000L));
+    }
+
     /** 商品超过 100 条时仍可召回老商品；召回只读取公开、已上架、有效 SKU。 */
     @Test
     void aiRecallSearchesWholePublishedCatalogInsteadOfNewestHundred() {

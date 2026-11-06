@@ -12618,6 +12618,11 @@
       const merchant = ref$e("");
       const sort = ref$e("popular");
       const page = ref$e(1);
+      const priceMin = ref$e("");
+      const priceMax = ref$e("");
+      const appliedMin = ref$e(null);
+      const appliedMax = ref$e(null);
+      const priceError = ref$e("");
       const selected = ref$e(null);
       const chosenSku = ref$e("");
       const count = ref$e(1);
@@ -12632,6 +12637,12 @@
         }
         if (category.value) arr = arr.filter((p2) => p2.categoryCode === category.value);
         if (merchant.value) arr = arr.filter((p2) => p2.merchantId === merchant.value);
+        if (preview && (appliedMin.value != null || appliedMax.value != null))
+          arr = arr.filter(
+            (p2) => (p2.skus || []).some(
+              (s) => s.status === "ACTIVE" && (appliedMin.value == null || Number(s.priceCent) >= appliedMin.value) && (appliedMax.value == null || Number(s.priceCent) <= appliedMax.value)
+            )
+          );
         if (preview && sort.value === "price")
           arr = [...arr].sort(
             (a, b) => Number(priceSku(a).priceCent) - Number(priceSku(b).priceCent)
@@ -12642,6 +12653,7 @@
       });
       onMounted$c(() => loadPublic({ signal: initialScope.begin().signal }));
       const pageInfo = computed$e(() => store.publicPage);
+      const priceActive = computed$e(() => appliedMin.value != null || appliedMax.value != null);
       const chosen = computed$e(
         () => {
           var _a, _b;
@@ -12662,6 +12674,8 @@
           q: search.value,
           category: category.value,
           merchantId: merchant.value,
+          minPriceCent: appliedMin.value,
+          maxPriceCent: appliedMax.value,
           page: page.value,
           size: 20,
           sort: sort.value === "price" ? "PRICE_ASC" : sort.value === "stock" ? "STOCK_DESC" : "NEWEST"
@@ -12691,6 +12705,62 @@
       }
       function applyKeyword(word) {
         search.value = word;
+        page.value = 1;
+        loadSearch();
+      }
+      function cardSku(p2) {
+        const active = ((p2 == null ? void 0 : p2.skus) || []).filter((s) => s.status === "ACTIVE");
+        const matched = active.filter(
+          (s) => (appliedMin.value == null || Number(s.priceCent) >= appliedMin.value) && (appliedMax.value == null || Number(s.priceCent) <= appliedMax.value)
+        );
+        return (matched.length ? matched : active).sort(
+          (a, b) => Number(a.priceCent) - Number(b.priceCent)
+        )[0] || priceSku(p2);
+      }
+      function yuanToCent(raw) {
+        const text = String(raw ?? "").trim();
+        if (!text) return null;
+        if (!/^\d+(\.\d{1,2})?$/.test(text)) return NaN;
+        const [whole, fraction = ""] = text.split(".");
+        if (whole.length > 9) return NaN;
+        return Number(whole) * 100 + Number((fraction + "00").slice(0, 2));
+      }
+      function applyPrice() {
+        const min = yuanToCent(priceMin.value);
+        const max = yuanToCent(priceMax.value);
+        if (Number.isNaN(min) || Number.isNaN(max)) {
+          priceError.value = "价格条件无效：请填写非负金额，最多两位小数";
+          return;
+        }
+        if (min != null && max != null && min > max) {
+          priceError.value = "价格条件无效：最低价不能高于最高价";
+          return;
+        }
+        priceError.value = "";
+        appliedMin.value = min;
+        appliedMax.value = max;
+        page.value = 1;
+        loadSearch();
+      }
+      function clearPrice() {
+        priceMin.value = "";
+        priceMax.value = "";
+        appliedMin.value = null;
+        appliedMax.value = null;
+        priceError.value = "";
+        page.value = 1;
+        loadSearch();
+      }
+      function resetFilters() {
+        search.value = "";
+        category.value = "";
+        merchant.value = "";
+        sort.value = "popular";
+        priceMin.value = "";
+        priceMax.value = "";
+        appliedMin.value = null;
+        appliedMax.value = null;
+        priceError.value = "";
         page.value = 1;
         loadSearch();
       }
@@ -12747,6 +12817,10 @@
         merchant,
         sort,
         page,
+        priceMin,
+        priceMax,
+        priceActive,
+        priceError,
         pageInfo,
         categories,
         shops,
@@ -12757,18 +12831,22 @@
         count,
         saving,
         canAdd,
+        cardSku,
         productCategory,
         currentShop,
         staticCategoryArt,
         loadSearch,
         setCategory,
         applyKeyword,
+        applyPrice,
+        clearPrice,
+        resetFilters,
         showDetail,
         addCart
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createCommentVNode: _createCommentVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -12814,7 +12892,59 @@
                   128
                   /* KEYED_FRAGMENT */
                 ))
-              ])
+              ]),
+              _createElementVNode("div", {
+                class: "price-filter",
+                "aria-label": "价格筛选"
+              }, [
+                _createElementVNode("span", { class: "price-filter-label" }, "价格（元）"),
+                _withDirectives(_createElementVNode("input", {
+                  "onUpdate:modelValue": ($event) => _ctx.priceMin = $event,
+                  inputmode: "decimal",
+                  placeholder: "最低",
+                  "aria-label": "最低价（元）",
+                  onKeydown: _withKeys(_ctx.applyPrice, ["enter"])
+                }, null, 40, ["onUpdate:modelValue", "onKeydown"]), [
+                  [_vModelText, _ctx.priceMin]
+                ]),
+                _createElementVNode("span", null, "—"),
+                _withDirectives(_createElementVNode("input", {
+                  "onUpdate:modelValue": ($event) => _ctx.priceMax = $event,
+                  inputmode: "decimal",
+                  placeholder: "最高",
+                  "aria-label": "最高价（元）",
+                  onKeydown: _withKeys(_ctx.applyPrice, ["enter"])
+                }, null, 40, ["onUpdate:modelValue", "onKeydown"]), [
+                  [_vModelText, _ctx.priceMax]
+                ]),
+                _createElementVNode("button", {
+                  class: "outline-button",
+                  onClick: _ctx.applyPrice
+                }, "应用", 8, ["onClick"]),
+                _ctx.priceActive ? (_openBlock(), _createElementBlock("button", {
+                  key: 0,
+                  onClick: _ctx.clearPrice
+                }, "清除价格", 8, ["onClick"])) : _createCommentVNode("v-if", true),
+                _createElementVNode("button", {
+                  class: "price-filter-reset",
+                  onClick: _ctx.resetFilters
+                }, "重置筛选", 8, ["onClick"])
+              ]),
+              _ctx.priceError ? (_openBlock(), _createElementBlock("div", {
+                key: 0,
+                class: "inline-error price-filter-error",
+                role: "alert"
+              }, [
+                _createVNode2(_component_Icon, {
+                  name: "alert",
+                  size: 16
+                }),
+                _createTextVNode(
+                  _toDisplayString(_ctx.priceError),
+                  1
+                  /* TEXT */
+                )
+              ])) : _createCommentVNode("v-if", true)
             ]),
             _createElementVNode("button", {
               class: "hero-shopping",
@@ -13037,21 +13167,14 @@
                   size: 22
                 }),
                 _createTextVNode("暂无相关商品"),
-                _createElementVNode("button", {
-                  onClick: ($event) => {
-                    _ctx.search = "";
-                    _ctx.category = "";
-                    _ctx.merchant = "";
-                    _ctx.page = 1;
-                    _ctx.loadSearch();
-                  }
-                }, "查看全部", 8, ["onClick"])
+                _createElementVNode("button", { onClick: _ctx.resetFilters }, "查看全部", 8, ["onClick"])
               ])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", { class: "home-product-grid" }, [
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
                   null,
                   _renderList(_ctx.shown, (p2) => {
+                    var _a, _b;
                     return _openBlock(), _createElementBlock("article", {
                       class: "home-product",
                       key: p2.productId,
@@ -13083,7 +13206,7 @@
                           _createElementVNode(
                             "span",
                             null,
-                            _toDisplayString(_ctx.priceSku(p2).specKey),
+                            _toDisplayString(((_a = _ctx.cardSku(p2)) == null ? void 0 : _a.specKey) || "暂无规格"),
                             1
                             /* TEXT */
                           ),
@@ -13099,7 +13222,7 @@
                           _createElementVNode(
                             "span",
                             { class: "price-main" },
-                            _toDisplayString(_ctx.money(_ctx.priceSku(p2).priceCent)) + " 起",
+                            _toDisplayString(_ctx.money((_b = _ctx.cardSku(p2)) == null ? void 0 : _b.priceCent)) + " 起",
                             1
                             /* TEXT */
                           ),
@@ -16392,13 +16515,64 @@
       };
     })()
   };
+  const _hoisted_1 = ["role", "aria-live"];
+  const _hoisted_2 = {
+    key: 0,
+    class: "mini-spinner",
+    "aria-hidden": "true"
+  };
+  const _hoisted_3 = { class: "status-panel-copy" };
+  const _hoisted_4 = ["disabled"];
+  const _sfc_main = /* @__PURE__ */ defineComponent({
+    __name: "StatusPanel",
+    props: {
+      state: {},
+      message: { default: "" },
+      actionLabel: { default: "" },
+      busy: { type: Boolean, default: false }
+    },
+    emits: ["retry"],
+    setup(__props, { emit: __emit }) {
+      const emit2 = __emit;
+      return (_ctx, _cache) => {
+        return openBlock(), createElementBlock("section", {
+          class: normalizeClass(["status-panel surface-card", `status-panel--${__props.state}`]),
+          role: __props.state === "error" ? "alert" : "status",
+          "aria-live": __props.state === "error" ? "assertive" : "polite"
+        }, [
+          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2)) : (openBlock(), createBlock(unref(Icon), {
+            key: 1,
+            name: __props.state === "error" ? "alert" : "order",
+            size: 26,
+            "aria-hidden": "true"
+          }, null, 8, ["name"])),
+          createBaseVNode("div", _hoisted_3, [
+            createBaseVNode(
+              "strong",
+              null,
+              toDisplayString(__props.state === "loading" ? __props.message || "正在加载…" : __props.message),
+              1
+              /* TEXT */
+            )
+          ]),
+          __props.actionLabel && __props.state !== "loading" ? (openBlock(), createElementBlock("button", {
+            key: 2,
+            type: "button",
+            class: "outline-button",
+            disabled: __props.busy,
+            onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
+          }, toDisplayString(__props.actionLabel), 9, _hoisted_4)) : createCommentVNode("v-if", true)
+        ], 10, _hoisted_1);
+      };
+    }
+  });
   const { ref: ref$9, computed: computed$9, onMounted: onMounted$9, watch: watch$8 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), error = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
+      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
       const id = computed$9(() => safeDecodeId(store.route.split("/")[2] || ""));
       const sku2 = computed$9(
         () => {
@@ -16418,21 +16592,35 @@
           return ((_b = (_a = product.value) == null ? void 0 : _a.images) == null ? void 0 : _b.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
         }
       );
+      const errorText = computed$9(() => {
+        if (errorCode.value === "C0001") return "该商品已下架或暂不可售";
+        if (errorCode.value === "G0001") return "商品不存在或已删除";
+        if (!errorCode.value || ["NETWORK", "TIMEOUT", "RESPONSE"].includes(errorCode.value))
+          return "商品加载失败，请检查网络后重试";
+        return error.value || "商品加载失败，请重试";
+      });
       async function load() {
         const request2 = scope.begin();
         const target = id.value;
         product.value = null;
         error.value = "";
-        if (preview) {
-          product.value = store.products.find((p2) => p2.productId === target) || null;
-        } else {
-          try {
+        errorCode.value = "";
+        loading.value = true;
+        try {
+          if (preview) {
+            product.value = store.products.find((p2) => p2.productId === target) || null;
+          } else {
             if (!target) throw Error("无效商品地址");
             const p2 = await api("/products/" + pathId(target), { signal: request2.signal });
             if (request2.current()) product.value = p2;
-          } catch (e) {
-            if (request2.current()) error.value = e.message;
           }
+        } catch (e) {
+          if (request2.current()) {
+            error.value = e.message;
+            errorCode.value = e.code || "";
+          }
+        } finally {
+          if (request2.current()) loading.value = false;
         }
         if (!request2.current()) return;
         chosen.value = skuOf(product.value).skuId || "";
@@ -16478,13 +16666,16 @@
         chosen,
         count,
         busy,
+        loading,
         error,
+        errorText,
         preview,
         store,
         go,
         money,
         merchant,
         add,
+        load,
         pathId,
         imageIndex,
         touchStart,
@@ -16493,9 +16684,10 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
+        const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
@@ -16515,18 +16707,20 @@
                 _createVNode2(_component_Icon, { name: "cart" })
               ], 8, ["onClick"])
             ]),
-            _ctx.error ? (_openBlock(), _createElementBlock(
-              "div",
-              {
-                key: 0,
-                class: "inline-error"
-              },
-              _toDisplayString(_ctx.error),
-              1
-              /* TEXT */
-            )) : _ctx.product ? (_openBlock(), _createElementBlock(
+            _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 0,
+              state: "loading",
+              message: "正在加载商品…"
+            })) : _ctx.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 1,
+              state: "error",
+              message: _ctx.errorText,
+              "action-label": "重新加载",
+              busy: _ctx.loading,
+              onRetry: _ctx.load
+            }, null, 8, ["message", "busy", "onRetry"])) : _ctx.product ? (_openBlock(), _createElementBlock(
               _Fragment,
-              { key: 1 },
+              { key: 2 },
               [
                 _createElementVNode("div", {
                   class: "detail-art",
@@ -16643,12 +16837,25 @@
                           key: s.skuId,
                           class: _normalizeClass({ active: _ctx.sku.skuId === s.skuId }),
                           "aria-pressed": _ctx.sku.skuId === s.skuId,
-                          disabled: _ctx.busy || s.status !== "ACTIVE" || !s.available,
+                          disabled: _ctx.busy || s.status !== "ACTIVE" || Number(s.available) <= 0,
                           onClick: ($event) => {
                             _ctx.chosen = s.skuId;
                             _ctx.count = 1;
                           }
-                        }, _toDisplayString(s.specKey), 11, ["aria-pressed", "disabled", "onClick"]);
+                        }, [
+                          _createTextVNode(
+                            _toDisplayString(s.specKey),
+                            1
+                            /* TEXT */
+                          ),
+                          s.status !== "ACTIVE" ? (_openBlock(), _createElementBlock("small", {
+                            key: 0,
+                            class: "sku-state"
+                          }, "已下架")) : Number(s.available) <= 0 ? (_openBlock(), _createElementBlock("small", {
+                            key: 1,
+                            class: "sku-state"
+                          }, "无货")) : _createCommentVNode("v-if", true)
+                        ], 10, ["aria-pressed", "disabled", "onClick"]);
                       }),
                       128
                       /* KEYED_FRAGMENT */
@@ -16709,17 +16916,18 @@
                   ], 8, ["onClick"]),
                   _createElementVNode("button", {
                     class: "teal-button",
-                    disabled: _ctx.preview || _ctx.busy || !_ctx.sku.available || _ctx.product.status !== "PUBLISHED",
+                    disabled: _ctx.preview || _ctx.busy || _ctx.sku.status !== "ACTIVE" || Number(_ctx.sku.available || 0) <= 0 || _ctx.product.status !== "PUBLISHED",
                     onClick: _ctx.add
                   }, _toDisplayString(_ctx.busy ? "加入中…" : "加入购物车"), 9, ["disabled", "onClick"])
                 ])
               ],
               64
               /* STABLE_FRAGMENT */
-            )) : (_openBlock(), _createElementBlock("div", {
-              key: 2,
-              class: "mobile-empty"
-            }, "正在加载商品…"))
+            )) : (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 3,
+              state: "empty",
+              message: "未找到商品"
+            }))
           ]),
           _: 1
           /* STABLE */
@@ -17532,57 +17740,6 @@
       };
     })()
   };
-  const _hoisted_1 = ["role", "aria-live"];
-  const _hoisted_2 = {
-    key: 0,
-    class: "mini-spinner",
-    "aria-hidden": "true"
-  };
-  const _hoisted_3 = { class: "status-panel-copy" };
-  const _hoisted_4 = ["disabled"];
-  const _sfc_main = /* @__PURE__ */ defineComponent({
-    __name: "StatusPanel",
-    props: {
-      state: {},
-      message: { default: "" },
-      actionLabel: { default: "" },
-      busy: { type: Boolean, default: false }
-    },
-    emits: ["retry"],
-    setup(__props, { emit: __emit }) {
-      const emit2 = __emit;
-      return (_ctx, _cache) => {
-        return openBlock(), createElementBlock("section", {
-          class: normalizeClass(["status-panel surface-card", `status-panel--${__props.state}`]),
-          role: __props.state === "error" ? "alert" : "status",
-          "aria-live": __props.state === "error" ? "assertive" : "polite"
-        }, [
-          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2)) : (openBlock(), createBlock(unref(Icon), {
-            key: 1,
-            name: __props.state === "error" ? "alert" : "order",
-            size: 26,
-            "aria-hidden": "true"
-          }, null, 8, ["name"])),
-          createBaseVNode("div", _hoisted_3, [
-            createBaseVNode(
-              "strong",
-              null,
-              toDisplayString(__props.state === "loading" ? __props.message || "正在加载…" : __props.message),
-              1
-              /* TEXT */
-            )
-          ]),
-          __props.actionLabel && __props.state !== "loading" ? (openBlock(), createElementBlock("button", {
-            key: 2,
-            type: "button",
-            class: "outline-button",
-            disabled: __props.busy,
-            onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
-          }, toDisplayString(__props.actionLabel), 9, _hoisted_4)) : createCommentVNode("v-if", true)
-        ], 10, _hoisted_1);
-      };
-    }
-  });
   const { ref: ref$6, computed: computed$6, onMounted: onMounted$6, watch: watch$6 } = Vue;
   const Orders = {
     name: "Orders",
