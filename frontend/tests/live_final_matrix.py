@@ -120,8 +120,13 @@ def abort_real_stream(page, base, question):
             signal: controller.signal,
           });
           const reader = response.body.getReader();
-          const first = await reader.read();
-          const text = new TextDecoder().decode(first.value || new Uint8Array());
+          const decoder = new TextDecoder();
+          let text = '';
+          for (let index = 0; index < 8 && !text.includes('conversationId'); index += 1) {
+            const part = await reader.read();
+            text += decoder.decode(part.value || new Uint8Array(), {stream: !part.done});
+            if (part.done) break;
+          }
           controller.abort();
           const match = text.match(/data:\s*(\{"conversationId".*?\})(?:\r?\n|$)/s);
           let conversationId = null;
