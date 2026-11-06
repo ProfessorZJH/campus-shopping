@@ -24,7 +24,8 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 import pymysql
-from schema_contract import apply_migrations, validate_history, HEADER, FOOTER, schema_fingerprint
+from schema_contract import (apply_migrations, validate_history, HEADER, FOOTER, schema_fingerprint,
+                             migrations, SchemaAdmissionError, SchemaDriftError)
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -75,6 +76,41 @@ def migration_checks(connection, report):
             cur.execute(f'USE {database}')
             execute_script(cur, contents)
         target_fingerprint = schema_fingerprint(cur, 'campus_shopping_it')
+        empty_db = 'campus_shopping_empty_it'
+        cur.execute(f'CREATE DATABASE IF NOT EXISTS {empty_db} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
+        cur.execute(f'USE {empty_db}')
+        apply_migrations(connection)
+        assert schema_fingerprint(cur, empty_db) == target_fingerprint, '空库初始化后结构指纹不一致'
+        cur.execute('SELECT COUNT(*) FROM sys_schema_migration')
+        assert cur.fetchone()[0] == len(migrations()), '空库初始化未登记完整迁移历史'
+        report['checks'].append('empty database initializes the complete baseline and history')
+
+        target_history_db = 'campus_shopping_target_history_repair_it'
+        cur.execute(f'CREATE DATABASE IF NOT EXISTS {target_history_db} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
+        cur.execute(f'USE {target_history_db}')
+        execute_script(cur, schema)
+        cur.execute('DELETE FROM sys_schema_migration')
+        apply_migrations(connection)
+        assert schema_fingerprint(cur, target_history_db) == target_fingerprint, '当前目标结构补历史后指纹不一致'
+        cur.execute('SELECT COUNT(*) FROM sys_schema_migration')
+        assert cur.fetchone()[0] == len(migrations()), '当前目标结构补历史未登记完整迁移历史'
+        report['checks'].append('current target fingerprint repairs missing migration history')
+
+        drift_db = 'campus_shopping_drift_it'
+        cur.execute(f'CREATE DATABASE IF NOT EXISTS {drift_db} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
+        cur.execute(f'USE {drift_db}')
+        execute_script(cur, schema)
+        cur.execute('DROP TABLE trd_cart_item')
+        try:
+            apply_migrations(connection)
+        except SchemaDriftError:
+            pass
+        else:
+            raise AssertionError('完整迁移历史下的结构漂移必须失败')
+        cur.execute("SELECT COUNT(*) FROM sys_schema_migration_drift WHERE event_type='DRIFT'")
+        assert cur.fetchone()[0] == 1, '结构漂移失败必须留下审计记录'
+        report['checks'].append('complete history with an out-of-scope table drop is audited as drift')
+
         baseline_results = []
         for item in baseline_items:
             database = 'campus_shopping_baseline_' + item['release'].replace('-', '_')
@@ -85,7 +121,43 @@ def migration_checks(connection, report):
             actual = schema_fingerprint(cur, database)
             assert actual == target_fingerprint, f"基线 {item['release']} 升级后结构指纹不一致"
             baseline_results.append({'release': item['release'], 'database': database, 'fingerprint': actual})
+        history_repair_db = 'campus_shopping_baseline_history_repair_it'
+        history_repair_item = next(item for item in baseline_items if item['release'] == 'pre-redis-7bd21e2')
+        cur.execute(f'CREATE DATABASE IF NOT EXISTS {history_repair_db} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
+        cur.execute(f'USE {history_repair_db}')
+        execute_script(cur, (ROOT / history_repair_item['file']).read_text('utf-8'))
+        cur.execute('DELETE FROM sys_schema_migration')
+        apply_migrations(connection)
+        assert schema_fingerprint(cur, history_repair_db) == target_fingerprint, '已发布基线补历史后结构指纹不一致'
+        report['checks'].append('released baseline with missing history is repaired before remaining migrations')
         report['baselineReplays'] = baseline_results
+        for name, missing_table in [('campus_shopping_missing_cart_it', 'trd_cart_item'),
+                                    ('campus_shopping_missing_pickup_it', 'ful_pickup_task')]:
+            cur.execute(f'CREATE DATABASE IF NOT EXISTS {name} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
+            cur.execute(f'USE {name}')
+            execute_script(cur, old)
+            cur.execute(f'DROP TABLE {missing_table}')
+            try:
+                apply_migrations(connection)
+            except SchemaAdmissionError:
+                pass
+            else:
+                raise AssertionError(f'{missing_table} 缺失时必须在任何 DDL 前拒绝')
+            cur.execute("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema=DATABASE() "
+                        "AND table_name='sys_schema_migration'")
+            assert cur.fetchone()[0] == 0, '准入拒绝不得创建迁移历史表'
+        accept_db = 'campus_shopping_accept_it'
+        cur.execute(f'CREATE DATABASE IF NOT EXISTS {accept_db} CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci')
+        cur.execute(f'USE {accept_db}')
+        accept_item = next(item for item in baseline_items if item['release'] == 'pre-redis-7bd21e2')
+        execute_script(cur, (ROOT / accept_item['file']).read_text('utf-8'))
+        cur.execute("DELETE FROM sys_schema_migration WHERE version='V20261030_01'")
+        apply_migrations(connection, accept_baseline=accept_item['release'],
+                         reason='验证已发布基线的历史登记修复路径', operator='isolated-verifier')
+        cur.execute("SELECT event_type,operator_name FROM sys_schema_migration_drift WHERE event_type='BASELINE_ACCEPTED'")
+        assert cur.fetchone() == ('BASELINE_ACCEPTED', 'isolated-verifier')
+        assert schema_fingerprint(cur, accept_db) == target_fingerprint
+        report['checks'].append('incomplete baselines reject before DDL and explicit audited admission completes')
         # 真正缺少多图表的旧库先执行完整版本迁移，再确认主图回填、重放与历史不变。
         cur.execute('USE campus_shopping_image_upgrade_it')
         cur.execute(
@@ -145,7 +217,7 @@ def migration_checks(connection, report):
         cur.execute("INSERT INTO ai_conversation(id,user_id,title) VALUES('historic-conversation','historic-user','历史会话')")
         cur.execute("INSERT INTO ai_message(id,conversation_id,role,content) "
                     "VALUES('historic-message','historic-conversation','assistant','历史回答')")
-        migrations = [p.read_text('utf-8') for p in sorted((ROOT/'docs/database/migrations').glob('V*.sql'))]
+        migration_contents = [p.read_text('utf-8') for p in sorted((ROOT/'docs/database/migrations').glob('V*.sql'))]
         cur.execute("USE campus_shopping_dirty_it")
         try:
             apply_migrations(connection)
@@ -158,7 +230,7 @@ def migration_checks(connection, report):
         report['checks'].append('dirty historical quantity stops migration without changing the row')
         cur.execute("USE campus_shopping_migration_it")
         for _ in range(2):
-            for migration in migrations:
+            for migration in migration_contents:
                 execute_script(cur, migration)
         cur.execute("SELECT title,unit_price_cent,quantity,image_url FROM trd_order_item WHERE order_id='historic-order'")
         assert cur.fetchone() == ('历史商品', 1200, 2, '')

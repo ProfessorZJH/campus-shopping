@@ -9,16 +9,16 @@
 
 ## P2 准入与漂移判定
 
-- [ ] 5. 新增迁移 `V20261105_02__migration_drift_audit.sql`（`sys_schema_migration_drift`，带 `information_schema` 守卫与 `CREATE TABLE IF NOT EXISTS`）；同步 `schema_contract.py` 生成物、`database-manifest.json`、Docker schema 与迁移清单。
-- [ ] 6. `apply_migrations` 改为双条件准入：空库 / 历史前缀 + 指纹匹配 / 指纹匹配但缺历史；不匹配时在任何 DDL 前抛错并输出差异明细。
-- [ ] 7. `apply_migrations` 成功路径末尾追加指纹断言与漂移审计写入；不自动回滚 DDL、不自动删除已登记行。
-- [ ] 8. `scripts/migrate-database.py` 增加 `--accept-baseline <release|fingerprint>`、`--reason`、`--operator`（必填校验），准入审计先写入再继续；`--check` 输出指纹差异。
-- [ ] 9. 回归测试：三种基线升级成功且指纹等于新库；缺 `trd_cart_item` / `ful_pickup_task` 的库被拒绝且无任何写入；无历史非空库拒绝与显式准入路径；重复升级幂等；校验和篡改、脏数据 CHECK 仍被拒绝。
+- [x] 5. 新增迁移 `V20261105_02__migration_drift_audit.sql`（`sys_schema_migration_drift`，带 `information_schema` 守卫与 `CREATE TABLE IF NOT EXISTS`）；同步 `schema_contract.py` 生成物、`database-manifest.json`、Docker schema 与迁移清单。
+- [x] 6. `apply_migrations` 改为双条件准入：空库 / 历史前缀 + 指纹匹配 / 指纹匹配但缺历史；不匹配时在任何 DDL 前抛错并输出差异明细。
+- [x] 7. `apply_migrations` 成功路径末尾追加指纹断言与漂移审计写入；不自动回滚 DDL、不自动删除已登记行。
+- [x] 8. `scripts/migrate-database.py` 增加 `--accept-baseline <release|fingerprint>`、`--reason`、`--operator`（必填校验），准入审计先写入再继续；`--check` 输出指纹差异。
+- [x] 9. 回归测试：三种基线升级成功且指纹等于新库；缺 `trd_cart_item` / `ful_pickup_task` 的库被拒绝且无任何写入；无历史非空库拒绝与显式准入路径；重复升级幂等；校验和篡改、脏数据 CHECK 仍被拒绝。
 
 ## P3 文档与登记
 
-- [ ] 10. 更新 `docs/database/migrations/README.md` 运行手册（准入判据、`--accept-baseline` 使用条件、漂移处置流程）与 `docs/specs/SDD-REDIS-12.md` 升级章节引用。
-- [ ] 11. 登记 ADR（状态 Proposed，编号顺延当前最大号；获接受后改 Accepted），并更新 `docs/README.md` 索引与 `docs/testing/` 报告。
+- [x] 10. 更新 `docs/database/migrations/README.md` 运行手册（准入判据、`--accept-baseline` 使用条件、漂移处置流程）与 `docs/specs/SDD-REDIS-12.md` 升级章节引用。
+- [x] 11. 登记 ADR（状态 Proposed，编号顺延当前最大号；获接受后改 Accepted），并更新 `docs/README.md` 索引与 `docs/testing/` 报告。
 - [ ] 12. 执行 `python scripts/schema_contract.py`、`verify-api-*`、`verify-release.py`、隔离 MySQL 复验（含 8.0.16/8.0.31/8.4 指纹一致性）与真实 MySQL/Redis 回归，记录实际结果与未验证项。
 
 ## 决策待确认

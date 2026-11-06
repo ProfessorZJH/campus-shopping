@@ -6,21 +6,27 @@
       "file": "docs/database/baselines/v1.2.3-import.sql",
       "sourceCommit": "e5cd2c1",
       "expectedHistoryPrefix": "",
-      "targetFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+      "expectedHistory": [],
+      "sourceFingerprint": "6594fcd4cff4a05c19a8d079dbc9c6dbc6d42f678b450bd16ee9c3f45be6a3f9",
+      "targetFingerprint": "1cf94db0bc62066600ef091751d7df3bacfa3410dadbfcc9d3e73a17fbc966c0"
     },
     {
       "release": "pre-redis-7bd21e2",
       "file": "docs/database/baselines/pre-redis-7bd21e2.sql",
       "sourceCommit": "7bd21e2^",
       "expectedHistoryPrefix": "V20261028_01..V20261030_01",
-      "targetFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+      "expectedHistory": ["V20261028_01", "V20261028_02", "V20261029_01", "V20261030_01"],
+      "sourceFingerprint": "0adf2987adf2b2f201599b683eb132834cbec5ee641603d5a6c8a4d1f18cb5a5",
+      "targetFingerprint": "1cf94db0bc62066600ef091751d7df3bacfa3410dadbfcc9d3e73a17fbc966c0"
     },
     {
       "release": "pre-multiimage-ab31f89",
       "file": "docs/database/baselines/pre-multiimage-ab31f89.sql",
       "sourceCommit": "ab31f89^",
       "expectedHistoryPrefix": "V20261028_01..V20261031_03",
-      "targetFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+      "expectedHistory": ["V20261028_01", "V20261028_02", "V20261029_01", "V20261030_01", "V20261031_01", "V20261031_02", "V20261031_03"],
+      "sourceFingerprint": "7fc16b68aa7356912644b302df67153e9ad87c8629972c0c4651875958d66541",
+      "targetFingerprint": "1cf94db0bc62066600ef091751d7df3bacfa3410dadbfcc9d3e73a17fbc966c0"
     }
   ]
 }

@@ -23,6 +23,7 @@
 | **Agent v1.1 Java/MySQL fact revalidation (2026-11-10)** | [Isolated verification](testing/AGENT-V1.1-JAVA-MYSQL-FACT-REVALIDATION-20261110.md); 406 Maven tests passed with 0 failures and 0 errors; Redis-only tests skipped without an explicit test instance |
 | **FR-023 智能导购评测** | [工具/指标/实验/复现](../ai-service/evaluation/README.md)、[120例草稿与人工标注](../ai-service/evaluation/datasets/campus-shopping-v1/README.md)、[最新审查修复与完整验收](testing/AI-SKU-REVIEW-20261031.md)、[前轮防御补强](testing/AI-SKU-DEFENSE-20261031.md)、[前轮规格过滤修复](testing/AI-SKU-CONSTRAINTS-20261031.md)、[前轮审查与原始失败](testing/AI-EVALUATION-REVIEW-20261031.md)、[历史实现验证](testing/AI-EVALUATION-20261031.md) |
 | **当前 SDD-12 Redis 交付** | [规格与验收矩阵](specs/SDD-REDIS-12.md)、[主线整合实际验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[配置、升级与回退](operations/REDIS-12-runbook.md) |
+| **旧库升级基线与漂移审计（P2已实施）** | [OpenSpec方案与任务](../openspec/changes/legacy-db-upgrade-baseline/proposal.md)、[真实历史库探针](testing/LEGACY-DB-UPGRADE-PROBE-20261105.md)、[P2复验报告](testing/LEGACY-DB-UPGRADE-BASELINE-20261106.md)、[本轮隔离证据](testing/evidence/legacy-db-upgrade-baseline-p2.json) |
 | **PR #11 审查收口** | [文档状态与Python资源容量修复、复现及65项回归](testing/REDIS-REVIEW-FOLLOWUP-20261031.md) |
 | 前序代码与文档整改 | [DDD 对照结论](architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)、[最终修复与复验](testing/DDD-DOC-CLOSURE-20261030.md) |
 | 本次交付什么、还缺什么 | [交付清单](DELIVERY-R1.md) |
