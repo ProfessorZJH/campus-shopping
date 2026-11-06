@@ -1,15 +1,16 @@
 """仅接受 Java 后端持有的共享密钥。ACL 白名单在 Java 构造，前端不能直接访问此服务。"""
 from __future__ import annotations
 import base64,json,secrets,subprocess,sys,threading
+from queue import Empty,Full,Queue
 from pathlib import Path
 from contextlib import asynccontextmanager
 from typing import Annotated
 from fastapi import FastAPI,Header,HTTPException,Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse,StreamingResponse
 from pydantic import BaseModel,Field,ConfigDict
 from .config import Settings
 from .retrieval import KnowledgeStore
-from .engine import answer,recall_terms
+from .engine import answer,recall_terms,StreamCancelled
 from .product_index import ProductIndex
 from .observability import RequestContext, failure, diagnostics, ExecutionGate
 
@@ -141,6 +142,39 @@ def create_app(settings: Settings|None=None):
             failure('query', error)
             raise HTTPException(503,'检索暂不可用') from None
         finally:gate.release()
+    @app.post('/v1/query/stream',dependencies=[Depends(authorized)])
+    def query_stream(request: QueryRequest):
+        if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
+        def event(name,payload):return 'event: '+name+'\ndata: '+json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\n\n'
+        def generate():
+            queue=Queue(maxsize=32);stopped=threading.Event();worker_done=threading.Event()
+            yield event('started',{'mode':'FULL_RESPONSE' if not settings.llm_key else 'UPSTREAM_STREAMING_JSON'})
+            def progress(size):
+                if stopped.is_set():return True
+                try:queue.put_nowait(('progress',{'bytes':size}))
+                except Full:return True
+                return False
+            def publish(name,payload):
+                try:queue.put_nowait((name,payload))
+                except Full:pass
+            def work():
+                try:
+                    result=answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds,_stream_progress=progress if settings.llm_key else None)
+                    publish('completed',result)
+                except StreamCancelled:publish('failed',{'errorCode':'CANCELLED'})
+                except Exception as error:
+                    failure('query.stream',error);publish('failed',{'errorCode':'AI_UNAVAILABLE'})
+                finally:
+                    worker_done.set();gate.release()
+            thread=threading.Thread(target=work,name='ai-query-stream',daemon=True);thread.start()
+            try:
+                while not worker_done.is_set() or not queue.empty():
+                    try:name,payload=queue.get(timeout=.25)
+                    except Empty:continue
+                    yield event(name,payload)
+            finally:
+                stopped.set()
+        return StreamingResponse(generate(),media_type='text/event-stream')
     @app.post('/v1/products/index',dependencies=[Depends(authorized)])
     def index_products(request: ProductIndexRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'向量索引繁忙')

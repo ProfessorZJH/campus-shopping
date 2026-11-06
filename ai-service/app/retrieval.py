@@ -95,6 +95,44 @@ class Provider:
             if not isinstance(result,dict):raise ValueError('模型应返回 JSON 对象')
             return result
 
+    def stream_complete(self,system: str,payload: dict[str,Any]):
+        """读取 OpenAI 兼容供应商的真实 SSE 分块；调用方负责消费到结束或主动关闭。"""
+        s=self.settings
+        if not s.llm_key:raise RuntimeError('未配置真实模型')
+        payload=minimized(payload)
+        data={'model':s.llm_model,'max_completion_tokens':2048,'stream':True,
+              'messages':[{'role':'system','content':system},{'role':'user','content':json.dumps(payload,ensure_ascii=False)}]}
+        if not s.llm_model.startswith('spark-'):data['response_format']={'type':'json_object'}
+        audit(s.llm_url, 'completion.stream', len(payload.get('authorizedEvidence', [])), payload)
+        total=0
+        with httpx.Client(timeout=httpx.Timeout(30.0,read=s.llm_timeout_seconds),follow_redirects=False,trust_env=False) as client:
+            with client.stream('POST',s.llm_url+'/chat/completions',headers={'Authorization':'Bearer '+s.llm_key},json=data) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if isinstance(line,bytes):line=line.decode('utf-8','replace')
+                    if len(line)>65536:raise ValueError('模型流式行超限')
+                    if not line or line.startswith(':'):continue
+                    if not line.startswith('data:'):continue
+                    body=line[5:].strip()
+                    if body=='[DONE]':break
+                    try:chunk=json.loads(body)
+                    except (TypeError,ValueError):raise ValueError('模型流式数据无效') from None
+                    choices=chunk.get('choices')
+                    if not isinstance(choices,list) or not choices:continue
+                    content=(choices[0].get('delta') or {}).get('content','')
+                    if not isinstance(content,str):raise ValueError('模型流式内容无效')
+                    total+=len(content.encode('utf-8'))
+                    if total>20000:raise ValueError('模型输出无效或超限')
+                    if content:yield content
+
+    @staticmethod
+    def parse_json_content(content: str) -> dict[str,Any]:
+        content=content.strip()
+        if content.startswith('```'):content=re.sub(r'^```(?:json)?\s*|\s*```$', '', content).strip()
+        result=json.loads(content)
+        if not isinstance(result,dict):raise ValueError('模型应返回 JSON 对象')
+        return result
+
 class KnowledgeStore:
     def __init__(self,settings: Settings):
         self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock()
