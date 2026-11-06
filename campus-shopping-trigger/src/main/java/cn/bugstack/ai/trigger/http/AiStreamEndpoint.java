@@ -8,6 +8,7 @@ import cn.bugstack.ai.api.dto.ChatResponseDTO;
 import cn.bugstack.ai.api.dto.CitationResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalItemResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalResponseDTO;
+import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
@@ -76,6 +77,8 @@ public class AiStreamEndpoint {
                 )
             );
             send(emitter, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
+        } catch (AiTurnCancelledException cancelled) {
+            send(emitter, "cancelled", envelope(request.getConversationId(), "FULL_RESPONSE", null, "CANCELLED"));
         } catch (AppException failure) {
             send(emitter, "failed", envelope(request.getConversationId(), "FULL_RESPONSE", null, failure.getCode()));
         } catch (RuntimeException failure) {

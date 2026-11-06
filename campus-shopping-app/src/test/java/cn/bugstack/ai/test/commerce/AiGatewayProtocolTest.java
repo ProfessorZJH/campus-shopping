@@ -2,6 +2,7 @@ package cn.bugstack.ai.test.commerce;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.infrastructure.gateway.AiGatewayService;
 import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.exception.AppException;
@@ -140,6 +141,30 @@ class AiGatewayProtocolTest {
             );
             assertEquals("ok", answer.answer());
             assertEquals(17, progress.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void queryStreamClosesTheResponseWhenProgressRequestsCancellation() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/query/stream", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = ("event: progress\n" + "data: {\"bytes\":1}\n\n").getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            assertThrows(
+                AiTurnCancelledException.class,
+                () -> gateway(server).queryStream(
+                    new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
+                    bytes -> { throw new AiTurnCancelledException(); }
+                )
+            );
         } finally {
             server.stop(0);
         }

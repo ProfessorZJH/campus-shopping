@@ -6,6 +6,7 @@ import cn.bugstack.ai.cases.shoppingai.IConversationTurnCase;
 import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
 import cn.bugstack.ai.cases.shoppingai.IProposalConfirmationCase;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
+import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
@@ -237,7 +238,14 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                     .map(KnowledgeScopeVO::id)
                     .toList()
         );
-        AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, progress);
+        LongConsumer guardedProgress = progress == null
+            ? null
+            : bytes -> {
+                  ensureTurnActive(actor, conversation);
+                  progress.accept(bytes);
+              };
+        AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, guardedProgress);
+        if (progress != null) ensureTurnActive(actor, conversation);
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
         var current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
@@ -299,6 +307,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             answer.latencyMs()
         );
         require(fingerprint.equals(scope(knowledge.readableScope(actor))), ResponseCode.KNOWLEDGE_NOT_READY);
+        if (progress != null) ensureTurnActive(actor, conversation);
         ProposalVO proposal = turns.complete(
             turn,
             question,
@@ -309,6 +318,11 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             fingerprint
         );
         return new ChatResult(conversation, safe, proposal);
+    }
+
+    private void ensureTurnActive(String actor, String conversation) {
+        var status = state.turnStatus(actor, conversation);
+        if (status != null && "CANCEL_REQUESTED".equals(status.status())) throw new AiTurnCancelledException();
     }
 
     /** 只返回当前授权知识范围中的可核实引用，内部文档始终隐藏原文。 */

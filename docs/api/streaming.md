@@ -8,5 +8,6 @@
 - `completed`：`data` 为现有 `ChatResponseDTO`；不会把完整文本拆成伪 `delta`。
 - `progress`：`data` 为 `{ "bytes": number }`，只表示供应商已读取的受控字节数，不包含模型正文。
 - `failed`：只返回安全的 `errorCode`，不回显下游正文、提示词或凭据。
+- `cancelled`：当前轮次已观察到 `CANCEL_REQUESTED`，不会提交消息或提案；下游 HTTP 流会随 Java 读取流关闭而结束。
 
-当前 Python 桥接会读取供应商真实 SSE 分块并发送 `progress.bytes`，但模型协议仍要求完整 JSON；这些分块不直接展示为用户文本，也不冒充 `delta`。`delta`、`cancel_requested`、`cancelled` 事件待 Java 流句柄接入和前端消费完成后启用。取消请求通过 `/api/v1/ai/conversations/{conversationId}/turn/cancel` 写入跨实例状态；断线不自动重发，恢复使用状态查询和历史结果。
+当前 Python 桥接会读取供应商真实 SSE 分块并发送 `progress.bytes`，但模型协议仍要求完整 JSON；这些分块不直接展示为用户文本，也不冒充 `delta`。`delta` 仍待供应商提供可安全展示的文本增量后启用。取消请求通过 `/api/v1/ai/conversations/{conversationId}/turn/cancel` 写入跨实例状态；Java 在供应商进度回调和提交前复核该状态，断线不自动重发，恢复使用状态查询和历史结果。
