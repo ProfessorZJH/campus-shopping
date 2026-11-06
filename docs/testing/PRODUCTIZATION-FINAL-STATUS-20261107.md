@@ -6,7 +6,7 @@
 
 - M0–M5 的功能实现、接口/Schema、迁移、静态边界和定向测试已完成。
 - M4/M5 已在隔离 MySQL、双 Redis、真实 Java/FastAPI HTTP 和 Chromium 上完成联调；汇总见 [M4/M5 真实隔离整合验收](PRODUCTIZATION-M4-M5-INTEGRATION-20261107.md)。
-- 当前分支 `codex/productization-m3-conversations` 工作树干净，最新提交 `98a2b37` 已推送。
+- 当前分支 `codex/productization-m3-conversations` 工作树干净，最新提交 `17e0434` 已推送；PR #59 的 Quick quality gates 与 legacy Chromium 已通过。
 - 隔离数据库、Redis 容器和测试进程已清理；未修改既有业务库或生产服务。
 
 ## 尚未关闭的门禁
