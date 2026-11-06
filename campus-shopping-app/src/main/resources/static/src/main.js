@@ -1,3 +1,5 @@
+import './vue-runtime.js';
+import { createApp, ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { api } from './services/api.js';
 import { modal } from './services/modal.js';
 import Icon from './components/Icon.js';
@@ -22,7 +24,6 @@ import {
   loadSession,
   preview,
 } from './services/store.js';
-const { createApp, ref, onMounted, onUnmounted, watch, computed } = Vue;
 const App = {
   name: 'CampusApp',
   components: {

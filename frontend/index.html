@@ -10,8 +10,7 @@
 </head>
 <body>
   <div id="app"></div>
-  <!-- 包含当前仓库已有的、附许可证的 Vue 3 完整浏览器版本，断网可用。 -->
-  <script src="./vendor/vue.global.prod.js"></script>
+  <!-- Vue 运行时由 src/vue-runtime.js 在旧组件前注入，避免重复加载全局副本。 -->
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

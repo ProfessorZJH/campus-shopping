@@ -182,10 +182,10 @@ def main():
             : fetch(url, options);
         }""")
         page.get_by_role('button', name='刷新', exact=True).click()
-        expect(page.locator('.inline-error')).to_contain_text('加载商品失败')
-        expect(page.get_by_role('button', name='强制下架', exact=True).first).to_be_disabled()
-        expect(page.get_by_role('button', name='重试', exact=True)).to_be_visible()
-        checks.append('workspace recovery has no forbidden flash; list error offers retry and disables writes')
+        expect(page.locator('.status-panel--error')).to_contain_text('加载商品失败')
+        expect(page.get_by_role('button', name='强制下架', exact=True)).to_have_count(0)
+        expect(page.get_by_role('button', name='重新加载', exact=True)).to_be_visible()
+        checks.append('workspace recovery has no forbidden flash; list error offers retry and hides writes')
         close_page(page)
 
         f = Backend()

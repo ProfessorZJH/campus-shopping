@@ -161,7 +161,7 @@ def main():
         close_page(page)
         # AI history belongs to the authenticated user, not a cached merchant/account view.
         page=browser_page(browser,'/ai',f)
-        page.locator('.ai-history-head button').click()
+        page.locator('.ai-history-head').get_by_role('button', name='历史会话').click()
         expect(page.locator('.ai-history-list button')).to_have_count(1,timeout=15000)
         assert '只有u2的历史会话' in page.locator('.ai-history-list').inner_text()
         assert '只有u1' not in page.locator('.ai-history-list').inner_text()
@@ -171,7 +171,7 @@ def main():
         close_page(page)
         f.user={'userId':'u1','username':'owner001','displayName':'经营者','status':'ACTIVE'}
         page=browser_page(browser,'/ai',f)
-        page.locator('.ai-history-head button').click()
+        page.locator('.ai-history-head').get_by_role('button', name='历史会话').click()
         expect(page.locator('.ai-history-list')).to_contain_text('只有u1的历史会话',timeout=15000)
         page.locator('.ai-history-list button').first.click()
         expect(page.locator('.chat-thread')).to_contain_text('u1 的私有 AI 回答')

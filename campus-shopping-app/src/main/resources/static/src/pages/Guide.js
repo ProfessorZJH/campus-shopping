@@ -1,6 +1,7 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
 import { api, query } from '../services/api.js';
+import { citationsOf } from '../services/ai-citations';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
@@ -27,6 +28,7 @@ export default {
     const historyHasMore = ref(false);
     const loadingHistory = ref(false);
     const openingConversation = ref(false);
+    const confirmingProposal = ref(false);
     let conversationEpoch = 0,
       historyEpoch = 0;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
@@ -72,6 +74,7 @@ export default {
         error.value = '';
         input.value = '';
         thinking.value = false;
+        confirmingProposal.value = false;
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
@@ -119,7 +122,7 @@ export default {
           role: 'assistant',
           content: answer.answer || '暂时没有找到合适答案',
           warning: answer.warning,
-          citations: (answer.citations || []).map((c) => c.title),
+          citations: citationsOf(answer),
           time: formatTime(),
         });
         proposal.value = answer.proposal || null;
@@ -181,6 +184,21 @@ export default {
         if (stamp === conversationEpoch) openingConversation.value = false;
       }
     }
+    /** 新对话只切换前端会话代次；旧请求仍可能在服务端完成，但不得写回当前页面。 */
+    function newConversation() {
+      if (confirmingProposal.value) return;
+      ++conversationEpoch;
+      store.conversationId = '';
+      messages.value = [];
+      proposal.value = null;
+      selectedIds.value = [];
+      mode.value = '';
+      error.value = '';
+      input.value = '';
+      thinking.value = false;
+      openingConversation.value = false;
+      historyOpen.value = false;
+    }
     onUnmounted(() => {
       ++conversationEpoch;
       ++historyEpoch;
@@ -199,6 +217,7 @@ export default {
         return;
       }
       thinking.value = true;
+      confirmingProposal.value = true;
       try {
         const updated = await api(
           '/ai/proposals/' + encodeURIComponent(proposal.value.id) + '/confirm',
@@ -209,9 +228,12 @@ export default {
           notify('已确认提案，购物车已更新');
         }
       } catch (err) {
-        notify(err.message);
+        if (stamp === conversationEpoch && actor === store.user?.userId) notify(err.message);
       } finally {
-        thinking.value = false;
+        if (stamp === conversationEpoch && actor === store.user?.userId) {
+          thinking.value = false;
+          confirmingProposal.value = false;
+        }
       }
     }
     async function reject() {
@@ -228,9 +250,9 @@ export default {
           notify('已放弃提案');
         }
       } catch (err) {
-        notify(err.message);
+        if (stamp === conversationEpoch && actor === store.user?.userId) notify(err.message);
       } finally {
-        thinking.value = false;
+        if (stamp === conversationEpoch && actor === store.user?.userId) thinking.value = false;
       }
     }
     return {
@@ -259,8 +281,10 @@ export default {
       historyHasMore,
       loadingHistory,
       openingConversation,
+      confirmingProposal,
       loadHistory,
       openConversation,
+      newConversation,
     };
   },
   template: `
@@ -270,13 +294,13 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
+      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation||confirmingProposal"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <section class="chat-thread" aria-label="AI对话">
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>
         <div class="chat-row" v-for="(message,index) in messages" :key="index" :class="message.role==='user'?'is-user':'is-assistant'">
           <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
-          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><span v-for="c in message.citations" :key="c"><Icon name="book" :size="12"/>{{c}}</span></div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
+          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><details class="citation-chip" v-for="(c,ci) in message.citations" :key="c.documentId||ci"><summary><Icon name="book" :size="12"/>{{c.title||'参考资料'}}</summary><p v-if="c.snippet">{{c.snippet}}</p></details></div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
         </div>
         <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
         <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>
