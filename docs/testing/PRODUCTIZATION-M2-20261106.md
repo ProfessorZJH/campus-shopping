@@ -60,7 +60,7 @@
 | `python scripts/build-ui-bundle.py` / `--check` | PASS，`UI source/artifacts verified` |
 | `python scripts/generate-api-contract.py`、`verify-api-contract.py`、`verify-api-schemas.py` | PASS（97 routes / 75 schema checks） |
 | `python scripts/schema_contract.py --check` | PASS（40 tables / 12 mappers） |
-| Java 单元测试（无 MySQL） | PASS；隔离真实 MySQL/Redis 运行 372 tests / 0 failures / 0 skipped |
+| Java 单元测试（无 MySQL） | PASS；CI 真实 MySQL/Redis 运行 374 tests / 0 failures / 0 skipped |
 | `python frontend/tests/ui_price_filter.py` | PASSED 7 |
 | `python frontend/tests/ui_product_detail.py` | PASSED 8 |
 | `python frontend/tests/ui_storefront.py` | PASSED 4 |

@@ -21,7 +21,7 @@
 - [x] 2.5 在新组件及 API 类型试点 TypeScript，补 JS/TS 共存配置与独立类型检查；证明类型错误能够被检查拦截、现有 JS 页面仍可构建，记录推广条件而不全仓转换。
 - [x] 2.6 给 `Guide.js` 增加新对话入口并隔离请求代次、账号、会话和提案；验证旧响应晚到、切换历史和退出再登录不会污染当前页面，补相应浏览器回归。
 - [x] 2.7 当前回答的引用保留完整结构并展示标题/授权片段；验证空引用、展开摘要和不构造内部文档直链，历史引用缺失按旧契约处理，更新展示说明。
-- [x] 2.8 对本组最终差异执行格式、UI 生成及一致性检查、相关 Chromium 和真实后端页面验证；记录原始失败及修复范围，保证业务请求契约和已有图片能力无回退。（本地格式/UI 生成/Chromium/图片回归通过；M2 分支隔离验收 372 tests、0 skipped，`live_ui` 21 项真实 Spring/MySQL 页面检查通过，证据见 [M2 报告](../../../docs/testing/PRODUCTIZATION-M2-20261106.md)）
+- [x] 2.8 对本组最终差异执行格式、UI 生成及一致性检查、相关 Chromium 和真实后端页面验证；记录原始失败及修复范围，保证业务请求契约和已有图片能力无回退。（本地格式/UI 生成/Chromium/图片回归通过；M2 分支 CI 374 tests、0 skipped，`live_ui` 21 项真实 Spring/MySQL 页面检查通过，证据见 [M2 报告](../../../docs/testing/PRODUCTIZATION-M2-20261106.md)）
 
 ## 3. M2：消费者商品、结算、履约与售后闭环
 
@@ -35,7 +35,7 @@
 - [x] 3.8 完善订单详情、自提地点与时间线，按实际凭证展示文本/适用二维码和有效期；验证旧订单、重签、过期、退款处理中及核销后的状态，二维码不外发给第三方服务。
 - [x] 3.9 完善消费者、商户及平台的售后详情与进度，复用同一真实历史读模型；验证商户拒绝后平台介入、原因可追溯、未发生阶段不伪造时间与模拟退款文案。
 - [x] 3.10 在隔离真实后端完成浏览→确认下单→模拟付款→备货→核销，以及另一笔未提货订单的退款/拒绝/介入分支；检查库存与历史一致，保存本阶段报告和适用 CI 结果。
-  - 证据：[M2 实施与验证报告](../../../docs/testing/PRODUCTIZATION-M2-20261106.md)；提交 `5c1579a`、PR #57；隔离 Maven 372 tests / 0 skipped，真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项、`live_m2_fulfillment.py` 5 项通过，证据 `docs/testing/evidence/productization-m2/isolated.json`。
+  - 证据：[M2 实施与验证报告](../../../docs/testing/PRODUCTIZATION-M2-20261106.md)；提交 `5c1579a`、PR #57；CI 374 tests / 0 skipped，真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项、`live_m2_fulfillment.py` 5 项通过；本地隔离基线证据 `docs/testing/evidence/productization-m2/isolated.json`。
 
 ## 4. M3：AI 会话、商品联动与流式体验
 
