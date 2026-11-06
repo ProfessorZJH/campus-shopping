@@ -65,6 +65,11 @@
       "version": "V20261107_01",
       "file": "V20261107_01__conversation_activity.sql",
       "sha256": "d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd"
+    },
+    {
+      "version": "V20261107_02",
+      "file": "V20261107_02__message_citations.sql",
+      "sha256": "ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1"
     }
   ]
 }

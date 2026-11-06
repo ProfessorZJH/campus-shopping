@@ -121,7 +121,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         String conversation = turn.conversationId();
         var documents = knowledge.readableScope(actor);
         String fingerprint = scope(documents);
-        List<MessageVO> history = safeHistory(actor, conversation, fingerprint, 12);
+        List<MessageVO> history = safeHistory(actor, conversation, fingerprint, 12, documents);
         AiRecallVO recall = engine.recall(question, history);
         // 词面召回 + 可选 Milvus 语义召回：RRF 合并，商品状态仍须重新由 MySQL 校验。
         List<cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate> lexical = catalog.recall(recall.terms(), 200);
@@ -271,6 +271,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             question,
             safe.answer(),
             items,
+            citations,
             clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60),
             fingerprint
         );
@@ -299,7 +300,9 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                     citation.chunkId(),
                     document.title(),
                     "PUBLIC".equals(document.visibility()) ? citation.snippet() : "内部资料来源，原文片段不公开展示",
-                    citation.score()
+                    citation.score(),
+                    document.rootId(),
+                    document.version()
                 )
             );
         }
@@ -310,21 +313,92 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         return Fingerprints.of(docs.stream().map(KnowledgeScopeVO::id).sorted().toArray());
     }
 
-    private List<MessageVO> safeHistory(String actor, String conversation, String fingerprint, int limit) {
-        return state
-            .messages(actor, conversation, limit)
+    private List<MessageVO> safeHistory(String actor, String conversation, String fingerprint, int limit, List<KnowledgeScopeVO> readable) {
+        List<MessageVO> messages = state.messages(actor, conversation, limit);
+        Set<String> allowedIds = readable.stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
+        Map<String, KnowledgeDocumentVO> currentCitations = currentCitationDocuments(actor, messages, allowedIds);
+        return messages
             .stream()
-            .map(m ->
-                "assistant".equals(m.role()) && !fingerprint.equals(m.accessFingerprint())
-                    ? new MessageVO(m.id(), m.conversationId(), m.role(), "资料权限或版本已变化，此历史回答已隐藏，请重新提问。", m.createdAt(), fingerprint)
-                    : m
-            )
+            .map(m -> {
+                if (
+                    "assistant".equals(m.role()) &&
+                    m.accessFingerprint() != null &&
+                    !m.accessFingerprint().isBlank() &&
+                    !fingerprint.equals(m.accessFingerprint())
+                ) {
+                    return new MessageVO(
+                        m.id(),
+                        m.conversationId(),
+                        m.role(),
+                        "资料权限或版本已变化，此历史回答已隐藏，请重新提问。",
+                        m.createdAt(),
+                        fingerprint,
+                        List.of(),
+                        m.citationsRecorded(),
+                        false
+                    );
+                }
+                if (!m.citationsRecorded() || m.citations().isEmpty()) return m;
+                List<AiCitationVO> valid = m
+                    .citations()
+                    .stream()
+                    .filter(c -> validCitation(c, currentCitations, allowedIds))
+                    .toList();
+                return new MessageVO(
+                    m.id(),
+                    m.conversationId(),
+                    m.role(),
+                    m.content(),
+                    m.createdAt(),
+                    m.accessFingerprint(),
+                    valid,
+                    true,
+                    valid.size() == m.citations().size()
+                );
+            })
             .toList();
+    }
+
+    private Map<String, KnowledgeDocumentVO> currentCitationDocuments(String actor, List<MessageVO> messages, Set<String> allowedIds) {
+        List<String> ids = messages
+            .stream()
+            .flatMap(m -> m.citations().stream())
+            .filter(AiCitationVO::hasDocumentSnapshot)
+            .map(AiCitationVO::documentId)
+            .filter(allowedIds::contains)
+            .distinct()
+            .toList();
+        Map<String, KnowledgeDocumentVO> current = new HashMap<>();
+        for (int start = 0; start < ids.size(); start += 20) {
+            knowledge.citationDocuments(actor, ids.subList(start, Math.min(start + 20, ids.size()))).forEach(d -> current.put(d.id(), d));
+        }
+        return current;
+    }
+
+    private boolean validCitation(AiCitationVO citation, Map<String, KnowledgeDocumentVO> current, Set<String> allowedIds) {
+        if (!allowedIds.contains(citation.documentId()) || !citation.hasDocumentSnapshot()) return false;
+        KnowledgeDocumentVO document = current.get(citation.documentId());
+        if (
+            document == null ||
+            !citation.rootId().equals(document.rootId()) ||
+            citation.documentVersion() != document.version() ||
+            !"PUBLISHED".equals(document.status()) ||
+            !"READY".equals(document.indexStatus())
+        ) return false;
+        if (!"PUBLIC".equals(document.visibility())) return "内部资料来源，原文片段不公开展示".equals(citation.snippet());
+        return (
+            citation.snippet() != null &&
+            !citation.snippet().isBlank() &&
+            citation.snippet().length() <= 500 &&
+            document.content() != null &&
+            document.content().contains(citation.snippet())
+        );
     }
 
     public List<MessageVO> history(String actor, String conversation) {
         accounts.requireActive(actor);
-        return safeHistory(actor, conversation, scope(knowledge.readableScope(actor)), 100);
+        List<KnowledgeScopeVO> readable = knowledge.readableScope(actor);
+        return safeHistory(actor, conversation, scope(readable), 100, readable);
     }
 
     public List<ConversationVO> conversations(String actor, int page, int size) {

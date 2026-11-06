@@ -88,7 +88,7 @@ class RoleBackend(TwoMerchantBackend):
         if msg:
             conversation,kind=msg.groups()
             if conversation!='conversation-'+actor:return self.answer(route,None,'A0006','无权查看会话')
-            return self.answer(route,[{'id':'msg-'+actor,'role':'assistant','content':actor+' 的私有 AI 回答'}] if kind=='messages' else [])
+            return self.answer(route,[{'id':'msg-'+actor,'role':'assistant','content':actor+' 的私有 AI 回答','citations':[],'citationStatus':'MISSING'}] if kind=='messages' else [])
         if path=='/knowledge/bases' and method=='GET':
             allowed=[m['merchantId'] for m in self.members if m['userId']==actor and m['status']=='ACTIVE' and 'knowledge.read' in self.grants(m)]
             return self.answer(route,[b for b in self.bases if b['merchantId'] in allowed])

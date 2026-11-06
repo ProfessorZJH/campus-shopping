@@ -80,7 +80,10 @@ SELECT * FROM ai_conversation WHERE id=#{id}
 SELECT id,user_id,title,created_at,last_active_at,summary FROM ai_conversation WHERE user_id=#{user} ORDER BY last_active_at DESC,id ASC LIMIT #{size} OFFSET #{offset}
     </select>
     <select id="messages" resultType="cn.bugstack.ai.infrastructure.dao.po.MessagePO">
-SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
+SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,citation_recorded,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
+    </select>
+    <select id="messageCitations" resultType="cn.bugstack.ai.infrastructure.dao.po.MessageCitationPO">
+SELECT message_id,ordinal,document_id,root_id,document_version,chunk_id,title,snippet FROM ai_message_citation WHERE message_id IN <foreach collection="messageIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY message_id,ordinal
     </select>
     <update id="conversationActivity">
 UPDATE ai_conversation SET last_active_at=#{lastActiveAt},summary=#{summary} WHERE id=#{id} AND user_id=#{actor}
@@ -97,7 +100,11 @@ WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token} AND turn_expires_at 
 UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token}
     </update>
     <insert id="messageInsert">
-INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint})
+INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint,citation_recorded) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint},#{p.citationsRecorded})
+    </insert>
+    <insert id="messageCitationsInsert">
+INSERT INTO ai_message_citation(message_id,ordinal,document_id,root_id,document_version,chunk_id,title,snippet) VALUES
+<foreach collection="rows" item="row" separator=",">(#{row.messageId},#{row.ordinal},#{row.documentId},#{row.rootId},#{row.documentVersion},#{row.chunkId},#{row.title},#{row.snippet})</foreach>
     </insert>
     <insert id="proposalInsert">
 INSERT INTO ai_proposal(id,user_id,conversation_id,status,items_json,selection_hash,expires_at) VALUES(#{p.id},#{p.userId},#{p.conversationId},#{p.status},#{p.itemsJson},#{p.selectionHash},#{p.expiresAt})

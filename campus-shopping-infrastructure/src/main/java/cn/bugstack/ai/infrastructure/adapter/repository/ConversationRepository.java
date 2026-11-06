@@ -1,15 +1,21 @@
 package cn.bugstack.ai.infrastructure.adapter.repository;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;
 import cn.bugstack.ai.infrastructure.dao.po.ConversationPO;
+import cn.bugstack.ai.infrastructure.dao.po.MessageCitationPO;
 import cn.bugstack.ai.infrastructure.dao.po.MessagePO;
 import jakarta.annotation.Resource;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.IntStream;
 import org.springframework.stereotype.Repository;
 
 /** 本地持久化适配器；业务规则由对应领域服务维护。 */
@@ -41,10 +47,28 @@ public class ConversationRepository implements IConversationRepository {
     }
 
     public List<MessageVO> messages(String id, int limit) {
-        return dao
-            .messages(id, limit)
+        List<MessagePO> rows = dao.messages(id, limit);
+        if (rows.isEmpty()) return List.of();
+        Map<String, List<AiCitationVO>> citations = new HashMap<>();
+        dao.messageCitations(rows.stream().map(MessagePO::getId).toList()).forEach(p ->
+            citations
+                .computeIfAbsent(p.getMessageId(), ignored -> new ArrayList<>())
+                .add(new AiCitationVO(p.getDocumentId(), p.getChunkId(), p.getTitle(), p.getSnippet(), 0, p.getRootId(), p.getDocumentVersion()))
+        );
+        return rows
             .stream()
-            .map(p -> new MessageVO(p.getId(), p.getConversationId(), p.getRole(), p.getContent(), p.getCreatedAt(), p.getAccessFingerprint()))
+            .map(p ->
+                new MessageVO(
+                    p.getId(),
+                    p.getConversationId(),
+                    p.getRole(),
+                    p.getContent(),
+                    p.getCreatedAt(),
+                    p.getAccessFingerprint(),
+                    citations.getOrDefault(p.getId(), List.of()),
+                    p.isCitationsRecorded()
+                )
+            )
             .toList();
     }
 
@@ -57,8 +81,28 @@ public class ConversationRepository implements IConversationRepository {
                 .content(m.content())
                 .createdAt(m.createdAt())
                 .accessFingerprint(m.accessFingerprint())
+                .citationsRecorded(m.citationsRecorded())
                 .build()
         );
+        if (!m.citations().isEmpty()) {
+            dao.messageCitationsInsert(
+                IntStream.range(0, m.citations().size())
+                    .mapToObj(ordinal -> {
+                        var c = m.citations().get(ordinal);
+                        return MessageCitationPO.builder()
+                            .messageId(m.id())
+                            .ordinal(ordinal)
+                            .documentId(c.documentId())
+                            .rootId(c.rootId())
+                            .documentVersion(c.documentVersion())
+                            .chunkId(c.chunkId())
+                            .title(c.title())
+                            .snippet(c.snippet())
+                            .build();
+                    })
+                    .toList()
+            );
+        }
     }
 
     public boolean updateActivity(String id, String actor, Instant lastActiveAt, String summary) {

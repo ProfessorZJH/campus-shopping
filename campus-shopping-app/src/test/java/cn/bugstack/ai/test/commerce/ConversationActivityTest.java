@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.service.impl.ConversationServiceImpl;
@@ -24,16 +25,19 @@ class ConversationActivityTest {
     void successfulTurnStoresUserSummaryAndActivityAfterBothMessages() {
         var repository = mock(IConversationRepository.class);
         var turn = new ConversationTurnVO("conversation", "buyer", "token");
+        var citation = new AiCitationVO("doc", "chunk-1", "公开规则", "请到店领取", 1.0, "root", 2);
         when(repository.finishTurn(turn)).thenReturn(true);
         when(repository.updateActivity("conversation", "buyer", now, "预算 20 元 买两瓶")).thenReturn(true);
 
-        new ConversationServiceImpl(repository, clock).appendTurn(turn, "  预算  20 元\n买两瓶  ", "回答", "scope-fingerprint");
+        new ConversationServiceImpl(repository, clock).appendTurn(turn, "  预算  20 元\n买两瓶  ", "回答", List.of(citation), "scope-fingerprint");
 
         var messages = ArgumentCaptor.forClass(MessageVO.class);
         verify(repository, times(2)).append(messages.capture());
         assertEquals(List.of("user", "assistant"), messages.getAllValues().stream().map(MessageVO::role).toList());
         assertEquals(now, messages.getAllValues().get(0).createdAt());
         assertEquals(now, messages.getAllValues().get(1).createdAt());
+        assertEquals(List.of(citation), messages.getAllValues().get(1).citations());
+        assertTrue(messages.getAllValues().get(1).citationsRecorded());
         verify(repository).updateActivity("conversation", "buyer", now, "预算 20 元 买两瓶");
     }
 
@@ -49,6 +53,18 @@ class ConversationActivityTest {
         );
 
         assertEquals("G0002", failure.getCode());
+    }
+
+    @Test
+    void unsnapshottedCitationCannotFinishTurn() {
+        var repository = mock(IConversationRepository.class);
+        var turn = new ConversationTurnVO("conversation", "buyer", "token");
+        var citation = new AiCitationVO("doc", "chunk-1", "规则", "片段", 1.0);
+
+        assertThrows(cn.bugstack.ai.types.exception.AppException.class, () ->
+            new ConversationServiceImpl(repository, clock).appendTurn(turn, "问题", "回答", List.of(citation), "scope")
+        );
+        verifyNoInteractions(repository);
     }
 
     @Test

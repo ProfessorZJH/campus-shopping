@@ -181,13 +181,14 @@ def main():
 
         # 4. 历史消息没有引用记录：不拼造引用卡片。
         fixture.conversations = [{'id': 'conv-old', 'title': '旧会话', 'createdAt': NOW, 'lastActiveAt': NOW, 'summary': '旧会话摘要'}]
-        fixture.messages = [{'id': 'm1', 'role': 'assistant', 'content': '旧会话回答'}]
+        fixture.messages = [{'id': 'm1', 'role': 'assistant', 'content': '旧会话回答', 'citations': [], 'citationStatus': 'MISSING'}]
         fixture.proposals = []
         page = open_guide(browser, fixture)
         page.get_by_role('button', name='历史会话', exact=False).click()
         page.get_by_role('button', name='旧会话', exact=False).click()
         expect(page.locator('.chat-thread')).to_contain_text('旧会话回答')
         expect(page.locator('.citation-chip')).to_have_count(0)
+        expect(page.locator('.chat-thread')).to_contain_text('没有可恢复的引用记录')
         checks.append('历史消息无引用时不拼造引用')
         close_page(page)
 

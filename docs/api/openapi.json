@@ -18927,6 +18927,21 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CitationResponseDTO"
+            }
+          },
+          "citationStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NONE",
+              "MISSING",
+              "HIDDEN"
+            ]
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/MessageResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
@@ -18934,7 +18949,9 @@
           "id",
           "role",
           "content",
-          "createdAt"
+          "createdAt",
+          "citations",
+          "citationStatus"
         ],
         "x-nullable-fields": []
       },

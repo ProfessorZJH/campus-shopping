@@ -14,6 +14,7 @@ import cn.bugstack.ai.domain.shoppingai.model.aggregate.ProposalAggregate;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.domain.shoppingai.service.*;
 import cn.bugstack.ai.domain.shoppingai.service.impl.ConversationServiceImpl;
+import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.exception.AppException;
 import java.time.*;
 import java.util.*;
@@ -102,6 +103,7 @@ class AiConversationBoundaryTest {
             eq(question),
             eq(ShoppingAnswerPolicy.evidenceAnswer(List.of(new AiCitationVO("used", "chunk", "引用", "允许引用", 1.0)))),
             eq(List.of()),
+            eq(List.of(new AiCitationVO("used", "chunk", "引用", "允许引用", 1.0, "root", 1))),
             any(),
             anyString()
         );
@@ -146,6 +148,140 @@ class AiConversationBoundaryTest {
         assertEquals(clock.instant(), created.getValue().lastActiveAt());
         assertEquals("", created.getValue().summary());
         verify(repository, never()).updateActivity(anyString(), anyString(), any(), anyString());
+    }
+
+    @Test
+    void historicalCitationsAreRevalidatedAndOldMessagesRemainExplicitlyMissing() {
+        var state = mock(IConversationService.class);
+        var knowledge = mock(IKnowledgeCase.class);
+        var accounts = mock(IUserAccountService.class);
+        var scope = List.of(new KnowledgeScopeVO("doc", "公开规则", "PUBLIC", "base", null));
+        var citation = new AiCitationVO("doc", "chunk-1", "公开规则", "请到店领取", 1.0, "root", 2);
+        var message = new MessageVO("message", "conversation", "assistant", "回答", clock.instant(), Fingerprints.of("doc"), List.of(citation), true);
+        when(knowledge.readableScope("buyer")).thenReturn(scope);
+        when(knowledge.citationDocuments("buyer", List.of("doc"))).thenReturn(
+            List.of(new KnowledgeDocumentVO("doc", "root", "base", "公开规则", null, "PUBLIC", 2, "PUBLISHED", "READY", "请到店领取", "", clock.instant()))
+        );
+        when(state.messages("buyer", "conversation", 100)).thenReturn(List.of(message));
+        when(accounts.requireActive("buyer")).thenReturn(null);
+        var useCase = new ShoppingAiCaseImpl(
+            state,
+            mock(IProposalService.class),
+            mock(IAiEnginePort.class),
+            knowledge,
+            mock(ICatalogService.class),
+            mock(IInventoryService.class),
+            accounts,
+            clock,
+            mock(IConversationTurnCase.class),
+            mock(IProposalConfirmationCase.class),
+            new KnowledgeEgressPolicy("", "")
+        );
+
+        var visible = useCase.history("buyer", "conversation");
+        assertEquals(List.of(citation), visible.get(0).citations());
+        assertTrue(visible.get(0).citationsVisible());
+        verify(knowledge).citationDocuments("buyer", List.of("doc"));
+
+        reset(knowledge);
+        when(knowledge.readableScope("buyer")).thenReturn(scope);
+        when(knowledge.citationDocuments("buyer", List.of("doc"))).thenReturn(
+            List.of(new KnowledgeDocumentVO("doc", "root", "base", "公开规则", null, "PUBLIC", 3, "PUBLISHED", "READY", "请到店领取", "", clock.instant()))
+        );
+        var versionChanged = useCase.history("buyer", "conversation");
+        assertEquals("回答", versionChanged.get(0).content());
+        assertTrue(versionChanged.get(0).citations().isEmpty());
+        assertFalse(versionChanged.get(0).citationsVisible());
+
+        reset(knowledge);
+        when(knowledge.readableScope("buyer")).thenReturn(List.of());
+        var hidden = useCase.history("buyer", "conversation");
+        assertEquals("资料权限或版本已变化，此历史回答已隐藏，请重新提问。", hidden.get(0).content());
+        assertTrue(hidden.get(0).citations().isEmpty());
+        assertFalse(hidden.get(0).citationsVisible());
+
+        when(knowledge.readableScope("buyer")).thenReturn(scope);
+        when(state.messages("buyer", "conversation", 100)).thenReturn(
+            List.of(new MessageVO("old", "conversation", "assistant", "旧回答", clock.instant(), null))
+        );
+        var missing = useCase.history("buyer", "conversation");
+        assertEquals("旧回答", missing.get(0).content());
+        assertFalse(missing.get(0).citationsRecorded());
+        assertTrue(missing.get(0).citations().isEmpty());
+    }
+
+    @Test
+    void protectedCitationStoresOnlySafeMarker() {
+        var state = mock(IConversationService.class);
+        var engine = mock(IAiEnginePort.class);
+        var knowledge = mock(IKnowledgeCase.class);
+        var catalog = mock(ICatalogService.class);
+        var inventory = mock(IInventoryService.class);
+        var accounts = mock(IUserAccountService.class);
+        var turns = mock(IConversationTurnCase.class);
+        var turn = new ConversationTurnVO("conversation", "buyer", "attempt");
+        var scope = List.of(new KnowledgeScopeVO("internal", "商户规则", "MERCHANT_INTERNAL", "base", "merchant"));
+        when(state.beginTurn("buyer", "conversation", "退款规则怎么处理？")).thenReturn(turn);
+        when(state.messages("buyer", "conversation", 12)).thenReturn(List.of());
+        when(knowledge.readableScope("buyer")).thenReturn(scope);
+        when(knowledge.citationDocuments("buyer", List.of("internal"))).thenReturn(
+            List.of(
+                new KnowledgeDocumentVO(
+                    "internal",
+                    "root",
+                    "base",
+                    "商户规则",
+                    "merchant",
+                    "MERCHANT_INTERNAL",
+                    1,
+                    "PUBLISHED",
+                    "READY",
+                    "内部退款正文",
+                    "",
+                    clock.instant()
+                )
+            )
+        );
+        when(engine.recall(anyString(), anyList())).thenReturn(new AiRecallVO("退款规则怎么处理？", List.of()));
+        when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
+        when(catalog.recall(anyList(), anyInt())).thenReturn(List.of());
+        when(catalog.recallByIds(anyList())).thenReturn(List.of());
+        when(catalog.availableOffers(anyList())).thenReturn(List.of());
+        when(inventory.stocks(anyList())).thenReturn(List.of());
+        when(engine.query(any())).thenReturn(
+            new AiAnswerVO(
+                "模型原文不应直接写入",
+                "LOCAL_RETRIEVAL_DEMO",
+                "LOCAL_CHAR_NGRAM_DEMO",
+                "退款规则怎么处理？",
+                "",
+                List.of(new AiCitationVO("internal", "chunk", "商户规则", "内部退款正文", 1.0)),
+                List.of(),
+                1
+            )
+        );
+        var useCase = new ShoppingAiCaseImpl(
+            state,
+            mock(IProposalService.class),
+            engine,
+            knowledge,
+            catalog,
+            inventory,
+            accounts,
+            clock,
+            turns,
+            mock(IProposalConfirmationCase.class),
+            new KnowledgeEgressPolicy("", "")
+        );
+
+        useCase.chat("buyer", "conversation", "退款规则怎么处理？");
+
+        var citations = ArgumentCaptor.forClass(List.class);
+        verify(turns).complete(eq(turn), eq("退款规则怎么处理？"), anyString(), eq(List.of()), citations.capture(), any(), anyString());
+        var saved = (List<AiCitationVO>) citations.getValue();
+        assertEquals(1, saved.size());
+        assertEquals("内部资料来源，原文片段不公开展示", saved.get(0).snippet());
+        assertFalse(saved.get(0).snippet().contains("内部退款正文"));
     }
 
     @Test

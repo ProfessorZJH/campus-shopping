@@ -13620,6 +13620,8 @@
           messages.value = (history || []).map((m) => ({
             role: m.role,
             content: m.content,
+            citations: citationsOf(m),
+            citationStatus: m.citationStatus || "MISSING",
             time: "历史消息"
           }));
           proposal.value = (proposals || []).find((p2) => p2.status === "PENDING") || null;
@@ -13975,6 +13977,14 @@
                               /* KEYED_FRAGMENT */
                             ))
                           ])) : _createCommentVNode("v-if", true),
+                          message.role === "assistant" && message.citationStatus === "MISSING" ? (_openBlock(), _createElementBlock("div", {
+                            key: 2,
+                            class: "message-warning"
+                          }, "历史消息没有可恢复的引用记录")) : _createCommentVNode("v-if", true),
+                          message.role === "assistant" && message.citationStatus === "HIDDEN" ? (_openBlock(), _createElementBlock("div", {
+                            key: 3,
+                            class: "message-warning"
+                          }, "当前无法核验这条历史引用，来源已隐藏")) : _createCommentVNode("v-if", true),
                           _createElementVNode("span", { class: "chat-timestamp" }, [
                             _createTextVNode(
                               _toDisplayString(message.time || "刚刚") + " ",

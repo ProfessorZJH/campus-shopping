@@ -94,9 +94,31 @@ public class ShoppingAiController implements IShoppingAiApi {
             return shopping
                 .history(actor(principal), conversationId)
                 .stream()
-                .map(m -> MessageResponseDTO.builder().id(m.id()).role(m.role()).content(m.content()).createdAt(m.createdAt()).build())
+                .map(m ->
+                    MessageResponseDTO.builder()
+                        .id(m.id())
+                        .role(m.role())
+                        .content(m.content())
+                        .createdAt(m.createdAt())
+                        .citations(
+                            m
+                                .citations()
+                                .stream()
+                                .map(c -> CitationResponseDTO.builder().documentId(c.documentId()).title(c.title()).snippet(c.snippet()).build())
+                                .toList()
+                        )
+                        .citationStatus(citationStatus(m))
+                        .build()
+                )
                 .toList();
         });
+    }
+
+    private String citationStatus(cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO message) {
+        if (!"assistant".equals(message.role())) return "NONE";
+        if (!message.citationsRecorded()) return "MISSING";
+        if (!message.citationsVisible()) return "HIDDEN";
+        return message.citations().isEmpty() ? "NONE" : "AVAILABLE";
     }
 
     /** 本人会话产生的提案。 */

@@ -101,6 +101,7 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 - `ProposalItemResponseDTO` 的 `imageUrl`、价格、版本和数量是生成提案时可信 Catalog 快照；新提案同时保存可信 `productId`。历史 `items_json` 缺少商品身份时，服务端按 SKU 批量恢复当前公开关联，无法恢复或商品不可访问时返回 `detailAvailable=false` 和安全原因，保留历史快照且不伪造空 ID；过期提案仍拒绝执行。
 - `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。
 - `POST /ai/chat` 首版返回完整 JSON，**不支持 SSE 流式 token**。未配置真实模型时，响应 `mode` 必须正确标识本地检索/降级；禁止用演示结果宣称真实模型评测通过。知识库有发布状态与权限范围，外部引用只显示可授权的信息。
+- `GET /ai/conversations/{conversationId}/messages` 的助手消息包含 `citations` 与 `citationStatus`。新消息只保存文档根/版本、证据定位和允许公开的片段，读取时按当前授权、发布/索引状态、版本和正文一致性复验；`AVAILABLE` 表示仍可展示，`HIDDEN` 表示回答或来源已被当前规则遮蔽，`MISSING` 表示旧消息没有保存引用记录，`NONE` 表示该消息没有引用。旧消息不会重新检索或拼接内部文档地址。
 
 知识库列表返回完整的授权元数据，授权判断不再先截取 1000 个知识库。单次知识检索白名单最多 1000 份当前 PUBLISHED + READY + 根活动版本文档；Java 查询额外检测超限，超过上限返回 `AI0005`，不调用模型、不保存本轮回答/提案。Python 对超过 1000 个 ID 的内部请求返回 422，直接检索调用也拒绝超限，不静默切片；1000 个 ID 的 SQLite 查询分批执行。历史消息接口是最近 100 条的上下文窗口，提案列表是最近 20 条；二者不承诺完整导出。
 

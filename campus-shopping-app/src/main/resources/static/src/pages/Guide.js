@@ -185,6 +185,8 @@ export default {
         messages.value = (history || []).map((m) => ({
           role: m.role,
           content: m.content,
+          citations: citationsOf(m),
+          citationStatus: m.citationStatus || 'MISSING',
           time: '历史消息',
         }));
         proposal.value = (proposals || []).find((p) => p.status === 'PENDING') || null;
@@ -325,7 +327,7 @@ export default {
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>
         <div class="chat-row" v-for="(message,index) in messages" :key="index" :class="message.role==='user'?'is-user':'is-assistant'">
           <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
-          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><details class="citation-chip" v-for="(c,ci) in message.citations" :key="c.documentId||ci"><summary><Icon name="book" :size="12"/>{{c.title||'参考资料'}}</summary><p v-if="c.snippet">{{c.snippet}}</p></details></div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
+          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><details class="citation-chip" v-for="(c,ci) in message.citations" :key="c.documentId||ci"><summary><Icon name="book" :size="12"/>{{c.title||'参考资料'}}</summary><p v-if="c.snippet">{{c.snippet}}</p></details></div><div v-if="message.role==='assistant' && message.citationStatus==='MISSING'" class="message-warning">历史消息没有可恢复的引用记录</div><div v-if="message.role==='assistant' && message.citationStatus==='HIDDEN'" class="message-warning">当前无法核验这条历史引用，来源已隐藏</div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
         </div>
         <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
         <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>

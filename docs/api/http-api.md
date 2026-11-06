@@ -237,7 +237,7 @@
 
 ### `MessageResponseDTO`
 
-`id`、`role`、`content`、`createdAt`
+`id`、`role`、`content`、`createdAt`、`citations`、`citationStatus`
 
 ### `OrderEventResponseDTO`
 

@@ -3,6 +3,7 @@ package cn.bugstack.ai.domain.shoppingai.service.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
@@ -60,12 +61,28 @@ public class ConversationServiceImpl implements IConversationService {
     /** 必须与提案创建同事务提交；过期或被新请求替换的令牌不能写入消息。 */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void appendTurn(ConversationTurnVO turn, String question, String answer, String accessFingerprint) {
+        appendTurn(turn, question, answer, List.of(), accessFingerprint);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void appendTurn(ConversationTurnVO turn, String question, String answer, List<AiCitationVO> citations, String accessFingerprint) {
+        List<AiCitationVO> safeCitations = citations == null ? List.of() : List.copyOf(citations);
+        require(safeCitations.stream().allMatch(AiCitationVO::hasDocumentSnapshot), ResponseCode.KNOWLEDGE_NOT_READY);
         require(repository.finishTurn(turn), ResponseCode.STATE_CONFLICT);
         String safeQuestion = text(question, "问题", 2000);
         Instant activeAt = clock.instant();
         repository.append(new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "user", safeQuestion, activeAt, null));
         repository.append(
-            new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "assistant", text(answer, "回答", 10000), activeAt, accessFingerprint)
+            new MessageVO(
+                UUID.randomUUID().toString(),
+                turn.conversationId(),
+                "assistant",
+                text(answer, "回答", 10000),
+                activeAt,
+                accessFingerprint,
+                safeCitations,
+                true
+            )
         );
         require(repository.updateActivity(turn.conversationId(), turn.userId(), activeAt, summary(safeQuestion)), ResponseCode.STATE_CONFLICT);
     }

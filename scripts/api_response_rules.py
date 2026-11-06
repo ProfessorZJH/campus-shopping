@@ -19,7 +19,7 @@ FIELDS = {
     'KnowledgeDocumentResponseDTO': ('id rootId baseId title version status indexStatus createdAt', 'error content'),
     'MembershipResponseDTO': ('merchantId userId role status', ''),
     'MerchantResponseDTO': ('merchantId name category status storeId storeName location description businessHours imageUrl', ''),
-    'MessageResponseDTO': ('id role content createdAt', ''),
+    'MessageResponseDTO': ('id role content createdAt citations citationStatus', ''),
     'OrderEventResponseDTO': ('eventId type occurredAt actorRole reason', ''),
     'OrderItemResponseDTO': ('skuId title specKey imageUrl unitPriceCent quantity', ''),
     'OrderResponseDTO': ('orderId buyerId merchantId merchantName storeId pickupStoreName pickupLocation status totalCent deadline createdAt items events', 'pickup afterSale'),
@@ -82,6 +82,7 @@ def merge_response_rules(schemas, root):
     for (name, field), source in ENUM_FIELDS.items():
         schemas[name]['properties'][field]['enum'] = enum_codes(root, source)
     schemas['MessageResponseDTO']['properties']['role']['enum'] = ['user', 'assistant']
+    schemas['MessageResponseDTO']['properties']['citationStatus']['enum'] = ['AVAILABLE', 'NONE', 'MISSING', 'HIDDEN']
     schemas['ChatResponseDTO']['properties']['mode']['enum'] = ['LOCAL_RETRIEVAL_DEMO', 'LLM', 'LOCAL_FALLBACK']
     schemas['ChatResponseDTO']['properties']['retrievalMode']['enum'] = ['REMOTE_EMBEDDING', 'LOCAL_CHAR_NGRAM_DEMO', 'BM25_DEGRADED']
     schemas['OrderResponseDTO']['properties']['items']['minItems'] = 1
