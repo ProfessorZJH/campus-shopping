@@ -41,7 +41,7 @@
 ## 3.7 售后历史
 
 - 售后申请、商户驳回/同意、平台介入、平台裁决和模拟退款完成写入同一事件表；后续决定不覆盖前序记录，未发生阶段不显示。
-- 商户审核和平台争议页面复用订单授权读取展示处理历程；旧记录无事件时明确“历史记录不完整，仅显示当前状态”。新增 `ui_after_sale_history.py` 4 项检查。
+- 商户审核和平台争议页面复用订单事件读模型；商户通过 `aftersale.read` 授权的售后历史端点读取，不要求更宽的 `order.read`；已处理售后仍可查看只读历程。旧记录无事件时明确“历史记录不完整，仅显示当前状态”。新增 `ui_after_sale_history.py` 6 项检查。
 
 ## 3.8 订单详情与时间线
 
@@ -58,7 +58,7 @@
 | `npm run format:check --prefix frontend` | PASS，`All matched files use Prettier code style!` |
 | `npm run typecheck --prefix frontend` | PASS |
 | `python scripts/build-ui-bundle.py` / `--check` | PASS，`UI source/artifacts verified` |
-| `python scripts/generate-api-contract.py`、`verify-api-contract.py`、`verify-api-schemas.py` | PASS（96 routes / 75 schema checks） |
+| `python scripts/generate-api-contract.py`、`verify-api-contract.py`、`verify-api-schemas.py` | PASS（97 routes / 75 schema checks） |
 | `python scripts/schema_contract.py --check` | PASS（40 tables / 12 mappers） |
 | Java 单元测试（无 MySQL） | PASS；隔离真实 MySQL/Redis 运行 372 tests / 0 failures / 0 skipped |
 | `python frontend/tests/ui_price_filter.py` | PASSED 7 |
@@ -66,12 +66,13 @@
 | `python frontend/tests/ui_storefront.py` | PASSED 4 |
 | `python frontend/tests/ui_checkout_confirmation.py` | PASSED 4 |
 | `python frontend/tests/ui_order_snapshot.py` | PASSED 2 |
-| `python frontend/tests/ui_after_sale_history.py` | PASSED 4 |
+| `python frontend/tests/ui_after_sale_history.py` | PASSED 6 |
 | `python frontend/tests/ui_refund_recovery.py` / `ui_status_panel.py` / `ui_three_pages.py` / `ui_fix_regression.py` | PASSED 5 / 5 / 23 / 11 |
 | `python frontend/tests/ui_global_sort.py` / `contract_ui.py` | PASSED 4 / 20 |
 | `python frontend/tests/ui_copy_polish.py` / `ui_product_images.py` | PASSED 4 / 24 |
 | `python frontend/tests/live_m2_fulfillment.py`（隔离真实 Spring/MySQL，无 API 替身） | PASS，5 checks；浏览→确认下单→模拟付款→备货→核销（库存 9/0/9）及未提货退款→商户拒绝→平台介入→退款（库存 14/0/14），无未捕获 JS 异常 |
-| 隔离 MySQL/Redis/HTTP/Chromium（`verify-mysql-isolated.py --http-smoke`） | **PASS**：Maven BUILD SUCCESS，372 tests / 0 failures / 0 skipped；真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项、M2 履约 5 项；证据 `docs/testing/evidence/productization-m2/isolated.json` |
+| 隔离 MySQL/Redis/HTTP/Chromium（`verify-mysql-isolated.py --http-smoke`，修复前基线） | **PASS**：Maven BUILD SUCCESS，372 tests / 0 failures / 0 skipped；真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项、M2 履约 5 项；证据 `docs/testing/evidence/productization-m2/isolated.json` |
+| GitHub Actions Maven / MySQL / FastAPI / Browser E2E（`4cc58d4`） | **PASS**：374 tests / 0 failures / 0 skipped；真实 `live_m2_fulfillment.py` 5 项通过，含新增售后授权与多轮介入测试 |
 
 结论：M2 任务 3.1～3.10 的本地实现与隔离真实后端验收完成。`live_m2_fulfillment.py` 使用真实 Spring/MySQL、真实浏览器会话和真实 HTTP，不拦截或替换 API；库存断言为核销后 9/0/9、退款后 14/0/14。该结果不包含真实支付、生产部署或远端 CI。
 
