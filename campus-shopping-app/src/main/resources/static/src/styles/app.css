@@ -1432,6 +1432,16 @@ button {
   background: #b4dcd9;
   color: #f6ffff;
 }
+.proposal-feedback {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid #f0d1c4;
+  border-radius: 9px;
+  background: #fff7f3;
+  color: #9b5b45;
+  font-size: 11px;
+  line-height: 1.5;
+}
 .chat-composer-placeholder {
   height: 56px;
 }

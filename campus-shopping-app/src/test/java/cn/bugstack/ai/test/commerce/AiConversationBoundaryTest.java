@@ -15,6 +15,7 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.*;
 import cn.bugstack.ai.domain.shoppingai.service.*;
 import cn.bugstack.ai.domain.shoppingai.service.impl.ConversationServiceImpl;
 import cn.bugstack.ai.types.common.Fingerprints;
+import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import java.time.*;
 import java.util.*;
@@ -300,5 +301,26 @@ class AiConversationBoundaryTest {
                 clock.instant()
             )
         );
+    }
+
+    @Test
+    void proposalConfirmationExpiresAndReplaysOnlyTheSameSelection() {
+        var first = new ProposalItemVO("sku-1", "merchant", "商品一", "标准", 100, 1, 1);
+        var second = new ProposalItemVO("sku-2", "merchant", "商品二", "标准", 200, 1, 1);
+        var now = clock.instant();
+        var proposal = ProposalAggregate.create("buyer", "conversation", List.of(first, second), now.plusSeconds(600), now);
+        var aggregate = new ProposalAggregate(proposal);
+
+        assertThrows(AppException.class, () -> aggregate.confirm("buyer", List.of("sku-1", "sku-1"), now));
+        assertThrows(AppException.class, () -> aggregate.confirm("buyer", List.of("sku-missing"), now));
+        assertTrue(aggregate.confirm("buyer", List.of("sku-1"), now));
+        assertFalse(aggregate.confirm("buyer", List.of("sku-1"), now.plusSeconds(601)));
+
+        var conflict = assertThrows(AppException.class, () -> aggregate.confirm("buyer", List.of("sku-2"), now.plusSeconds(601)));
+        assertEquals(ResponseCode.REQUEST_CONFLICT.getCode(), conflict.getCode());
+
+        var expired = new ProposalAggregate(ProposalAggregate.create("buyer", "conversation", List.of(first), now.plusSeconds(1), now));
+        var error = assertThrows(AppException.class, () -> expired.confirm("buyer", List.of("sku-1"), now.plusSeconds(1)));
+        assertEquals(ResponseCode.PROPOSAL_EXPIRED.getCode(), error.getCode());
     }
 }

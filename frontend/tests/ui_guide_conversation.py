@@ -6,6 +6,7 @@
 """
 import json
 import os
+import re
 import shutil
 from urllib.parse import urlparse
 
@@ -74,12 +75,17 @@ class GuideBackend(BackendContractDouble):
         super().__init__()
         self.logged = True
         self.auth_expired = False
+        self.confirm_failure = None
 
     def handle(self, route):
         path = urlparse(route.request.url).path.removeprefix('/api/v1')
         # 会话过期必须同时拒绝身份回读，否则前端会把 401 后刚清空的状态又登录回来。
         if self.auth_expired and path in ('/ai/conversations', '/auth/me'):
             route.fulfill(status=401, json=self.data(None, 'A0004', '请先登录'))
+            return
+        if self.confirm_failure and path.endswith('/confirm'):
+            code, info = self.confirm_failure
+            route.fulfill(status=409, json=self.data(None, code, info))
             return
         return super().handle(route)
 
@@ -168,7 +174,24 @@ def main():
         checks.append('提案确认请求未完成时禁止新对话，完成后恢复')
         close_page(page)
 
-        # 3. 引用保留标题和片段，展开可见，且不生成文档直链。
+        # 3. 价格变化等业务拒绝要保留选择并给出可恢复反馈，不能误标为已确认。
+        fixture.confirm_failure = ('C0002', '商品价格或版本已变化，请重新确认')
+        page = open_guide(browser, fixture)
+        ask(page, '确认失败测试')
+        expect(page.locator('.recommendation-panel')).to_be_visible()
+        page.get_by_role('button', name='确认加购', exact=True).click()
+        expect(page.locator('.proposal-feedback')).to_contain_text('价格或版本已变化')
+        expect(page.locator('.rec-check').first).to_have_class(re.compile(r'\bchecked\b'))
+        expect(page.get_by_role('button', name='确认加购', exact=True)).to_be_enabled()
+        checks.append('变价拒绝保留选择、提案未误标成功且允许重试')
+        fixture.confirm_failure = None
+        page.get_by_role('button', name='放弃', exact=True).click()
+        expect(page.locator('.recommendation-panel')).to_have_count(0)
+        expect(page.get_by_role('button', name='新对话', exact=False)).to_be_enabled()
+        checks.append('放弃提案后清理处理中状态并恢复新对话')
+        close_page(page)
+
+        # 4. 引用保留标题和片段，展开可见，且不生成文档直链。
         page = open_guide(browser, fixture)
         ask(page, '引用测试')
         chip = page.locator('.citation-chip').first
@@ -179,7 +202,7 @@ def main():
         checks.append('引用标题与片段可展开且无内部直链')
         close_page(page)
 
-        # 4. 历史消息没有引用记录：不拼造引用卡片。
+        # 5. 历史消息没有引用记录：不拼造引用卡片。
         fixture.conversations = [{'id': 'conv-old', 'title': '旧会话', 'createdAt': NOW, 'lastActiveAt': NOW, 'summary': '旧会话摘要'}]
         fixture.messages = [{'id': 'm1', 'role': 'assistant', 'content': '旧会话回答', 'citations': [], 'citationStatus': 'MISSING'}]
         fixture.proposals = []
@@ -192,7 +215,7 @@ def main():
         checks.append('历史消息无引用时不拼造引用')
         close_page(page)
 
-        # 5. 会话失效后换账号登录：原账号消息、提案和输入不得保留。
+        # 6. 会话失效后换账号登录：原账号消息、提案和输入不得保留。
         fixture.conversations = []
         fixture.messages = []
         fixture.proposals = []

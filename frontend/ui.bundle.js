@@ -13464,6 +13464,7 @@
       const loadingHistory = ref$d(false);
       const openingConversation = ref$d(false);
       const confirmingProposal = ref$d(false);
+      const proposalFeedback = ref$d("");
       let conversationEpoch = 0, historyEpoch = 0;
       const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$d(
@@ -13517,6 +13518,7 @@
           historyHasMore.value = false;
           proposal.value = null;
           selectedIds.value = [];
+          proposalFeedback.value = "";
           mode.value = "";
           error.value = "";
           input.value = "";
@@ -13546,6 +13548,7 @@
         const stamp = ++conversationEpoch;
         input.value = "";
         error.value = "";
+        proposalFeedback.value = "";
         messages.value.push({ role: "user", content: text, time: formatTime() });
         if (preview) {
           messages.value.push({
@@ -13575,6 +13578,7 @@
           });
           proposal.value = answer.proposal || null;
           selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          proposalFeedback.value = "";
         } catch (err) {
           if (stamp === conversationEpoch) {
             error.value = err.status === 401 ? "请先登录账号再使用 AI 导购" : err.message;
@@ -13626,6 +13630,7 @@
           }));
           proposal.value = (proposals || []).find((p2) => p2.status === "PENDING") || null;
           selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          proposalFeedback.value = "";
           historyOpen.value = false;
         } catch (e) {
           if (stamp === conversationEpoch) notify(e.message);
@@ -13640,6 +13645,7 @@
         messages.value = [];
         proposal.value = null;
         selectedIds.value = [];
+        proposalFeedback.value = "";
         mode.value = "";
         error.value = "";
         input.value = "";
@@ -13667,51 +13673,81 @@
         }
         go("/product/" + encodeURIComponent(item.productId));
       }
+      function proposalFailureMessage(err) {
+        const messages2 = {
+          AI0002: "这份推荐已过期，请重新咨询后再选择商品。",
+          C0001: "其中商品已下架或暂不可售，请重新咨询后选择。",
+          C0002: "商品价格或版本已变化，请重新查看推荐后确认。",
+          I0001: "其中商品库存不足，请调整选择或重新咨询。",
+          G0002: "这份推荐状态已变化，请重新打开会话后再试。",
+          G0003: "这份推荐已经用另一组选择确认，不能更换选择重复加购。",
+          NETWORK: "确认请求未完成，请稍后用相同选择重试。",
+          TIMEOUT: "确认结果暂时未知，请稍后用相同选择重试。"
+        };
+        return messages2[err == null ? void 0 : err.code] || (err == null ? void 0 : err.message) || "确认加购失败，请保留选择后重试。";
+      }
+      function currentProposal(stamp, actor, proposalId) {
+        var _a, _b;
+        return stamp === conversationEpoch && actor === ((_a = store.user) == null ? void 0 : _a.userId) && ((_b = proposal.value) == null ? void 0 : _b.id) === proposalId;
+      }
+      function currentRequest(stamp, actor) {
+        var _a;
+        return stamp === conversationEpoch && actor === ((_a = store.user) == null ? void 0 : _a.userId);
+      }
       async function confirm() {
-        var _a, _b, _c, _d, _e;
+        var _a, _b;
         if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
-        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId;
+        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id, chosen = [...selectedIds.value];
         if (!selectedIds.value.length) {
           notify("至少选择一件商品");
           return;
         }
+        proposalFeedback.value = "";
         thinking.value = true;
         confirmingProposal.value = true;
         try {
-          const updated = await api(
-            "/ai/proposals/" + encodeURIComponent(proposal.value.id) + "/confirm",
-            { method: "POST", body: { selectedSkuIds: selectedIds.value } }
-          );
-          if (stamp === conversationEpoch && actor === ((_c = store.user) == null ? void 0 : _c.userId)) {
+          const updated = await api("/ai/proposals/" + encodeURIComponent(proposalId) + "/confirm", {
+            method: "POST",
+            body: { selectedSkuIds: chosen }
+          });
+          if (currentProposal(stamp, actor, proposalId)) {
             proposal.value = updated;
+            selectedIds.value = chosen;
             notify("已确认提案，购物车已更新");
           }
         } catch (err) {
-          if (stamp === conversationEpoch && actor === ((_d = store.user) == null ? void 0 : _d.userId)) notify(err.message);
+          if (currentProposal(stamp, actor, proposalId)) {
+            proposalFeedback.value = proposalFailureMessage(err);
+            notify(proposalFeedback.value);
+          }
         } finally {
-          if (stamp === conversationEpoch && actor === ((_e = store.user) == null ? void 0 : _e.userId)) {
+          if (currentProposal(stamp, actor, proposalId)) {
             thinking.value = false;
             confirmingProposal.value = false;
           }
         }
       }
       async function reject() {
-        var _a, _b, _c, _d, _e;
+        var _a, _b;
         if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
-        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId;
+        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id;
+        proposalFeedback.value = "";
         thinking.value = true;
         try {
-          await api("/ai/proposals/" + encodeURIComponent(proposal.value.id) + "/reject", {
+          await api("/ai/proposals/" + encodeURIComponent(proposalId) + "/reject", {
             method: "POST"
           });
-          if (stamp === conversationEpoch && actor === ((_c = store.user) == null ? void 0 : _c.userId)) {
+          if (currentProposal(stamp, actor, proposalId)) {
             proposal.value = null;
             notify("已放弃提案");
           }
         } catch (err) {
-          if (stamp === conversationEpoch && actor === ((_d = store.user) == null ? void 0 : _d.userId)) notify(err.message);
+          if (currentProposal(stamp, actor, proposalId)) {
+            proposalFeedback.value = (err == null ? void 0 : err.message) || "放弃提案失败，请稍后重试。";
+            notify(proposalFeedback.value);
+          }
         } finally {
-          if (stamp === conversationEpoch && actor === ((_e = store.user) == null ? void 0 : _e.userId)) thinking.value = false;
+          if (currentRequest(stamp, actor)) thinking.value = false;
         }
       }
       return {
@@ -13743,6 +13779,7 @@
         loadingHistory,
         openingConversation,
         confirmingProposal,
+        proposalFeedback,
         loadHistory,
         openConversation,
         newConversation
@@ -14128,6 +14165,17 @@
                     /* KEYED_FRAGMENT */
                   ))
                 ]),
+                _ctx.proposalFeedback ? (_openBlock(), _createElementBlock(
+                  "div",
+                  {
+                    key: 0,
+                    class: "proposal-feedback",
+                    role: "alert"
+                  },
+                  _toDisplayString(_ctx.proposalFeedback),
+                  1
+                  /* TEXT */
+                )) : _createCommentVNode("v-if", true),
                 _createElementVNode("div", { class: "proposal-footer" }, [
                   _createElementVNode("div", { class: "proposal-total" }, [
                     _createElementVNode(
@@ -14161,7 +14209,7 @@
                         size: 17
                       }),
                       _createTextVNode(
-                        _toDisplayString(((_c = _ctx.proposal) == null ? void 0 : _c.status) === "CONFIRMED" ? "已确认" : "确认加购"),
+                        _toDisplayString(((_c = _ctx.proposal) == null ? void 0 : _c.status) === "CONFIRMED" ? "已确认" : _ctx.confirmingProposal ? "确认中…" : "确认加购"),
                         1
                         /* TEXT */
                       )
