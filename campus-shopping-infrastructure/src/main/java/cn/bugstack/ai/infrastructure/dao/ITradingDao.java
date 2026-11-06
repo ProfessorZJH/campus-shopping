@@ -38,7 +38,13 @@ public interface ITradingDao {
         @Param("q") String q,
         @Param("pickupState") String pickupState
     );
-    long countOrdersByPickupState(@Param("buyer") String buyer, @Param("merchant") String merchant, @Param("status") String status, @Param("q") String q, @Param("pickupState") String pickupState);
+    long countOrdersByPickupState(
+        @Param("buyer") String buyer,
+        @Param("merchant") String merchant,
+        @Param("status") String status,
+        @Param("q") String q,
+        @Param("pickupState") String pickupState
+    );
     java.time.Instant oldestExpired(@Param("now") Instant now);
     List<String> expired(@Param("now") Instant now);
     List<String> expiredAfter(@Param("now") Instant now, @Param("after") String after, @Param("limit") int limit);

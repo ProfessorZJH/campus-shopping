@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class KnowledgeDebugRequestDTO {
+
     private String question;
     private Boolean answerPreview;
 }

@@ -70,11 +70,7 @@ public class AiStreamEndpoint {
                 request.getConversationId(),
                 request.getQuestion(),
                 conversationId -> send(emitter, "started", envelope(conversationId, "FULL_RESPONSE", null, null)),
-                bytes -> send(
-                    emitter,
-                    "progress",
-                    envelope(request.getConversationId(), "FULL_RESPONSE", Map.of("bytes", bytes), null)
-                )
+                bytes -> send(emitter, "progress", envelope(request.getConversationId(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
             );
             send(emitter, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
         } catch (AiTurnCancelledException cancelled) {
@@ -113,7 +109,13 @@ public class AiStreamEndpoint {
             .mode(answer.mode())
             .retrievalMode(answer.retrievalMode())
             .warning(answer.warning())
-            .citations(answer.citations().stream().map(c -> CitationResponseDTO.builder().documentId(c.documentId()).title(c.title()).snippet(c.snippet()).build()).toList())
+            .citations(
+                answer
+                    .citations()
+                    .stream()
+                    .map(c -> CitationResponseDTO.builder().documentId(c.documentId()).title(c.title()).snippet(c.snippet()).build())
+                    .toList()
+            )
             .proposal(proposal(result.proposal()))
             .latencyMs(answer.latencyMs())
             .build();
@@ -125,20 +127,26 @@ public class AiStreamEndpoint {
             .id(proposal.id())
             .status(proposal.status())
             .expiresAt(proposal.expiresAt())
-            .items(proposal.items().stream().map(item ->
-                ProposalItemResponseDTO.builder()
-                    .skuId(item.skuId())
-                    .productId(item.productId())
-                    .merchantId(item.merchantId())
-                    .title(item.title())
-                    .specKey(item.specKey())
-                    .imageUrl(item.imageUrl())
-                    .priceCent(item.priceCent())
-                    .quoteVersion(item.quoteVersion())
-                    .quantity(item.quantity())
-                    .detailAvailable(true)
-                    .build()
-            ).toList())
+            .items(
+                proposal
+                    .items()
+                    .stream()
+                    .map(item ->
+                        ProposalItemResponseDTO.builder()
+                            .skuId(item.skuId())
+                            .productId(item.productId())
+                            .merchantId(item.merchantId())
+                            .title(item.title())
+                            .specKey(item.specKey())
+                            .imageUrl(item.imageUrl())
+                            .priceCent(item.priceCent())
+                            .quoteVersion(item.quoteVersion())
+                            .quantity(item.quantity())
+                            .detailAvailable(true)
+                            .build()
+                    )
+                    .toList()
+            )
             .build();
     }
 }

@@ -11,10 +11,12 @@ public interface IAiEnginePort {
         java.util.List<cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO> history
     );
     AiAnswerVO query(AiQueryEntity query);
+
     /** 受控流式查询；供应商进度只以字节数回调，最终仍返回完整且已校验的答案。 */
     default AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
         return query(query);
     }
+
     /** 只返回可能相关的商品ID，不包含价格与库存；故障时由调用者降级关键词检索。 */
     java.util.List<String> semanticProducts(String question, int limit);
     /** 从 Java 商品领域获取公开快照以构建向量索引，不接受前端商品数据。 */

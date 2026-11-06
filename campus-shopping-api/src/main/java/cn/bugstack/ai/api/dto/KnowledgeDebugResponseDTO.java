@@ -9,6 +9,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class KnowledgeDebugResponseDTO {
+
     private String query;
     private String retrievalMode;
     private String answerMode;

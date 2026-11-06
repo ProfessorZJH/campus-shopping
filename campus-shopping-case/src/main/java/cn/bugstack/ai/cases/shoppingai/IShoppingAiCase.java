@@ -1,10 +1,10 @@
 package cn.bugstack.ai.cases.shoppingai;
 
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
-import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.cases.shoppingai.model.KnowledgeDebugResult;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
+import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import java.util.List;

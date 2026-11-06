@@ -100,7 +100,10 @@ public class OrderRepository implements IOrderRepository {
             .itemsByOrders(rows.stream().map(OrderPO::getId).toList())
             .stream()
             .collect(java.util.stream.Collectors.groupingBy(OrderItemPO::getOrderId));
-        return rows.stream().map(p -> convert(p, items.getOrDefault(p.getId(), List.of()))).toList();
+        return rows
+            .stream()
+            .map(p -> convert(p, items.getOrDefault(p.getId(), List.of())))
+            .toList();
     }
 
     public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
@@ -150,13 +153,27 @@ public class OrderRepository implements IOrderRepository {
             value(w.getPaidOrders()),
             value(w.getRefundedOrders()),
             value(w.getCompletedAmountCent()),
-            dao.statisticsTrend(merchant, start, end).stream().map(p -> new OperationsStatisticsVO.Trend(p.getDay(), value(p.getOrderCount()))).toList(),
-            dao.statisticsStatuses(merchant, start, end).stream().map(p -> new OperationsStatisticsVO.Status(p.getStatus(), value(p.getOrderCount()), value(p.getAmountCent()))).toList(),
-            dao.statisticsProducts(merchant, start, end).stream().map(p -> new OperationsStatisticsVO.Product(p.getSkuId(), p.getTitle(), value(p.getQuantity()))).toList()
+            dao
+                .statisticsTrend(merchant, start, end)
+                .stream()
+                .map(p -> new OperationsStatisticsVO.Trend(p.getDay(), value(p.getOrderCount())))
+                .toList(),
+            dao
+                .statisticsStatuses(merchant, start, end)
+                .stream()
+                .map(p -> new OperationsStatisticsVO.Status(p.getStatus(), value(p.getOrderCount()), value(p.getAmountCent())))
+                .toList(),
+            dao
+                .statisticsProducts(merchant, start, end)
+                .stream()
+                .map(p -> new OperationsStatisticsVO.Product(p.getSkuId(), p.getTitle(), value(p.getQuantity())))
+                .toList()
         );
     }
 
-    private long value(Long value) { return value == null ? 0L : value; }
+    private long value(Long value) {
+        return value == null ? 0L : value;
+    }
 
     private OrderAggregate convert(OrderPO p) {
         return convert(p, false);

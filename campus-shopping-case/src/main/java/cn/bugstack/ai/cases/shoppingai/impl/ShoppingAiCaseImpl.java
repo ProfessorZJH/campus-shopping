@@ -2,11 +2,11 @@ package cn.bugstack.ai.cases.shoppingai.impl;
 
 import static cn.bugstack.ai.types.common.Checks.*;
 
+import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.cases.shoppingai.IConversationTurnCase;
 import cn.bugstack.ai.cases.shoppingai.IKnowledgeCase;
 import cn.bugstack.ai.cases.shoppingai.IProposalConfirmationCase;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
-import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.cases.shoppingai.model.KnowledgeDebugResult;
 import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
@@ -22,8 +22,8 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiOfferVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecallVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecommendationVO;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
@@ -37,14 +37,14 @@ import cn.bugstack.ai.domain.shoppingai.service.ShoppingAnswerPolicy;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.time.Duration;
-import java.util.function.LongConsumer;
 import java.util.function.Consumer;
+import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -116,7 +116,11 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             List.of(),
             recall.query(),
             List.of(),
-            readable.stream().filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId())).map(KnowledgeScopeVO::id).toList()
+            readable
+                .stream()
+                .filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId()))
+                .map(KnowledgeScopeVO::id)
+                .toList()
         );
         AiAnswerVO answer = engine.query(query);
         List<KnowledgeScopeVO> current = knowledge.readableScope(actor);
@@ -160,13 +164,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     }
 
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
-    public ChatResult chatStream(
-        String actor,
-        String conversationId,
-        String question,
-        Consumer<String> conversationReady,
-        LongConsumer progress
-    ) {
+    public ChatResult chatStream(String actor, String conversationId, String question, Consumer<String> conversationReady, LongConsumer progress) {
         accounts.requireActive(actor);
         String q = text(question, "问题", 2000);
         var turn = state.beginTurn(actor, conversationId, q);
@@ -272,24 +270,25 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .map(SkuOfferVO::skuId)
             .toList();
         AiQueryEntity aiQuery = new AiQueryEntity(
-                question,
-                documents.stream().map(KnowledgeScopeVO::id).toList(),
-                candidates,
-                history,
-                recall.query(),
-                semanticSkuIds,
-                documents
-                    .stream()
-                    .filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId()))
-                    .map(KnowledgeScopeVO::id)
-                    .toList()
+            question,
+            documents.stream().map(KnowledgeScopeVO::id).toList(),
+            candidates,
+            history,
+            recall.query(),
+            semanticSkuIds,
+            documents
+                .stream()
+                .filter(d -> egress.allows(d.visibility(), d.baseId(), d.merchantId()))
+                .map(KnowledgeScopeVO::id)
+                .toList()
         );
-        LongConsumer guardedProgress = progress == null
-            ? null
-            : bytes -> {
-                  ensureTurnActive(actor, conversation);
-                  progress.accept(bytes);
-              };
+        LongConsumer guardedProgress =
+            progress == null
+                ? null
+                : bytes -> {
+                      ensureTurnActive(actor, conversation);
+                      progress.accept(bytes);
+                  };
         AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, guardedProgress);
         if (progress != null) ensureTurnActive(actor, conversation);
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。

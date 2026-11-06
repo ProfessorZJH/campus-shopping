@@ -8,6 +8,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class KnowledgeDebugHitResponseDTO {
+
     private String documentId;
     private String title;
     private String rootId;

@@ -2,8 +2,8 @@ package cn.bugstack.ai.infrastructure.adapter.repository;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
-import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.infrastructure.dao.IAiDao;

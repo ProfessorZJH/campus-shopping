@@ -6,4 +6,8 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StatisticsTrendDTO { private String day; private Long orderCount; }
+public class StatisticsTrendDTO {
+
+    private String day;
+    private Long orderCount;
+}

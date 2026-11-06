@@ -122,7 +122,8 @@ class AiGatewayProtocolTest {
         server.createContext("/v1/query/stream", exchange -> {
             exchange.getRequestBody().readAllBytes();
             assertEquals("text/event-stream", exchange.getRequestHeaders().getFirst("Accept"));
-            String body = "event: started\n\n" +
+            String body =
+                "event: started\n\n" +
                 "event: progress\n" +
                 "data: {\"bytes\":17}\n\n" +
                 "event: completed\n" +
@@ -158,11 +159,12 @@ class AiGatewayProtocolTest {
         });
         server.start();
         try {
-            assertThrows(
-                AiTurnCancelledException.class,
-                () -> gateway(server).queryStream(
+            assertThrows(AiTurnCancelledException.class, () ->
+                gateway(server).queryStream(
                     new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
-                    bytes -> { throw new AiTurnCancelledException(); }
+                    bytes -> {
+                        throw new AiTurnCancelledException();
+                    }
                 )
             );
         } finally {

@@ -21,10 +21,14 @@ public record OperationsStatisticsVO(
         trend = List.copyOf(trend == null ? List.of() : trend);
         statuses = List.copyOf(statuses == null ? List.of() : statuses);
         products = List.copyOf(products == null ? List.of() : products);
-        if (periodStart == null || periodEnd == null || asOf == null || timezone == null || periodStart.isAfter(periodEnd)) throw new IllegalArgumentException("统计期间无效");
+        if (periodStart == null || periodEnd == null || asOf == null || timezone == null || periodStart.isAfter(periodEnd)) throw new IllegalArgumentException(
+            "统计期间无效"
+        );
     }
 
     public record Trend(String day, long orderCount) {}
+
     public record Status(String status, long orderCount, long amountCent) {}
+
     public record Product(String skuId, String title, long quantity) {}
 }

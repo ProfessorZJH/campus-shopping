@@ -4,5 +4,5 @@ package cn.bugstack.ai.domain.shoppingai.model.valobj;
 public enum ConversationTurnStatusEnumVO {
     IDLE,
     RUNNING,
-    CANCEL_REQUESTED
+    CANCEL_REQUESTED,
 }

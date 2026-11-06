@@ -113,13 +113,7 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     @Override
     public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
-        return repository.countOrdersByPickupState(
-            buyer,
-            merchant,
-            OrderStatusEnumVO.filter(status),
-            optional(q, 100),
-            pickupStateFilter(pickupState)
-        );
+        return repository.countOrdersByPickupState(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100), pickupStateFilter(pickupState));
     }
 
     private String pickupStateFilter(String value) {

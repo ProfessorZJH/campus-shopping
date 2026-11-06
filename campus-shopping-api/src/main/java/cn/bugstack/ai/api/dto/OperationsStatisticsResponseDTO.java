@@ -1,11 +1,10 @@
 package cn.bugstack.ai.api.dto;
 
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 /** 商户/平台经营统计响应，期间与截至时间由服务端返回。 */
 @Data
@@ -13,6 +12,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class OperationsStatisticsResponseDTO {
+
     private String periodStart;
     private String periodEnd;
     private String timezone;

@@ -19,10 +19,21 @@ public interface ICatalogQueryCase {
     ProductPage adminPage(String actor, String merchant, String query, int page, int size);
     List<CategoryVO> categories();
     StockPage stockPage(String actor, String merchant, int page, int size, String query, Integer availableBelow);
-    default StockPage stockPage(String actor, String merchant, int page, int size, String query) { return stockPage(actor, merchant, page, size, query, null); }
+
+    default StockPage stockPage(String actor, String merchant, int page, int size, String query) {
+        return stockPage(actor, merchant, page, size, query, null);
+    }
+
     List<StockVO> stockRows(String actor, String merchant, int page, int size);
     List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size, String query);
-    default List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size) { return stockMovements(actor, merchant, page, size, ""); }
+
+    default List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size) {
+        return stockMovements(actor, merchant, page, size, "");
+    }
+
     long countStockMovements(String actor, String merchant, String query);
-    default long countStockMovements(String actor, String merchant) { return countStockMovements(actor, merchant, ""); }
+
+    default long countStockMovements(String actor, String merchant) {
+        return countStockMovements(actor, merchant, "");
+    }
 }

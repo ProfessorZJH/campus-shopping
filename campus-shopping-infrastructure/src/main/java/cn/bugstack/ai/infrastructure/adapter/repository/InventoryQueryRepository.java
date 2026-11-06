@@ -44,7 +44,20 @@ public class InventoryQueryRepository implements IInventoryQueryRepository {
     }
 
     public List<cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO> movements(String merchant, int offset, int size, String q) {
-        return dao.movements(merchant, offset, size, q).stream().map(p -> new cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO(p.getId(), p.getSkuId(), p.getType(), p.getQuantity(), p.getBizKey(), p.getCreatedAt())).toList();
+        return dao
+            .movements(merchant, offset, size, q)
+            .stream()
+            .map(p ->
+                new cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO(
+                    p.getId(),
+                    p.getSkuId(),
+                    p.getType(),
+                    p.getQuantity(),
+                    p.getBizKey(),
+                    p.getCreatedAt()
+                )
+            )
+            .toList();
     }
 
     private StockVO convert(StockPO p) {

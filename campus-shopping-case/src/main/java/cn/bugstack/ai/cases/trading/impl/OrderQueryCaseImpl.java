@@ -10,17 +10,17 @@ import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
-import cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO;
 import cn.bugstack.ai.domain.trading.model.valobj.OperationsStatisticsVO;
+import cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO;
 import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleQueryService;
 import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderQueryService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
-import java.util.*;
 import java.time.*;
 import java.time.format.DateTimeParseException;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -109,12 +109,16 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
     }
 
     public OperationsStatisticsVO operationsStatistics(String actor, String merchant, int periodDays, String to) {
-        if (merchant == null) access.requireAdmin(actor); else access.requirePermission(actor, merchant, "dashboard.read");
+        if (merchant == null) access.requireAdmin(actor);
+        else access.requirePermission(actor, merchant, "dashboard.read");
         Checks.require(periodDays == 7 || periodDays == 30, ResponseCode.ILLEGAL_PARAMETER);
         ZoneId zone = ZoneId.of("Asia/Shanghai");
         Instant end;
-        try { end = to == null || to.isBlank() ? ZonedDateTime.now(zone).toInstant() : parseStatisticsEnd(to); }
-        catch (DateTimeParseException e) { throw new cn.bugstack.ai.types.exception.AppException(ResponseCode.ILLEGAL_PARAMETER); }
+        try {
+            end = to == null || to.isBlank() ? ZonedDateTime.now(zone).toInstant() : parseStatisticsEnd(to);
+        } catch (DateTimeParseException e) {
+            throw new cn.bugstack.ai.types.exception.AppException(ResponseCode.ILLEGAL_PARAMETER);
+        }
         Instant now = Instant.now();
         Checks.require(!end.isAfter(now.plusSeconds(5)), ResponseCode.ILLEGAL_PARAMETER);
         Instant start = end.atZone(zone).minusDays(periodDays).toInstant();

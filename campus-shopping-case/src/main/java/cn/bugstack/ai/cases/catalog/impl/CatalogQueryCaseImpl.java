@@ -107,7 +107,8 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     @Override
     public StockPage stockPage(String actor, String merchant, int page, int size, String query, Integer availableBelow) {
         access.requirePermission(actor, merchant, "stock.read");
-        List<StockVO> stocks = availableBelow == null ? inventoryService.list(merchant, page, size, query) : inventoryService.list(merchant, page, size, query, availableBelow);
+        List<StockVO> stocks =
+            availableBelow == null ? inventoryService.list(merchant, page, size, query) : inventoryService.list(merchant, page, size, query, availableBelow);
         Map<String, SkuOfferVO> offers = stockOffers(actor, merchant, stocks.stream().map(StockVO::skuId).toList());
         long total = availableBelow == null ? inventoryService.countStocks(merchant, query) : inventoryService.countStocks(merchant, query, availableBelow);
         return new StockPage(stocks, offers, total);

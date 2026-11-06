@@ -16,7 +16,15 @@ public interface IOrderApi {
     Response<OrderResponseDTO> detail(String orderId, Principal principal);
     /** 商户待处理订单。 */
     Response<List<OrderResponseDTO>> merchantOrders(String merchantId, String state, int page, int size, Principal principal);
-    Response<PageResponseDTO<OrderResponseDTO>> merchantOrdersPage(String merchantId, String state, int page, int size, String q, String pickupState, Principal principal);
+    Response<PageResponseDTO<OrderResponseDTO>> merchantOrdersPage(
+        String merchantId,
+        String state,
+        int page,
+        int size,
+        String q,
+        String pickupState,
+        Principal principal
+    );
     /** 本人模拟支付，不产生真实资金。 */
     Response<OrderResponseDTO> pay(String orderId, Principal principal);
     /** 取消本人未付款订单并释放预占。 */

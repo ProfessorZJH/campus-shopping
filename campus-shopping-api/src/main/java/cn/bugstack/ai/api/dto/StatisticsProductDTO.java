@@ -6,4 +6,9 @@ import lombok.*;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class StatisticsProductDTO { private String skuId; private String title; private Long quantity; }
+public class StatisticsProductDTO {
+
+    private String skuId;
+    private String title;
+    private Long quantity;
+}
