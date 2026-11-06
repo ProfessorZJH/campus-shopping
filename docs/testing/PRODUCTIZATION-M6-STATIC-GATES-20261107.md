@@ -16,4 +16,4 @@
 | `python scripts/build-ui-bundle.py --check` | 通过 |
 | `./mvnw -q -pl campus-shopping-app -am '-Dtest=OrderBatchQueryTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dfrontend.skip=true' test` | 通过 |
 
-此项只覆盖源码与定向测试；真实 MySQL/Redis、浏览器矩阵和 CI 仍属于 4.9/5.8/6.4/7.2/7.3。
+此项只覆盖源码与定向测试。随后隔离整合已完成 5.8、6.4，证据见 [M4/M5 真实隔离整合验收](PRODUCTIZATION-M4-M5-INTEGRATION-20261107.md)；4.9 仍缺该版本 CI、真实供应商效果和流式断网矩阵，7.2/7.3/7.4 仍待最终收口。

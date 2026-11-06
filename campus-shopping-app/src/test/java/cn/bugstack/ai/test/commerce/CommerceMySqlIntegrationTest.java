@@ -1419,7 +1419,10 @@ class CommerceMySqlIntegrationTest {
             conversationRows.add(new Object[] { "conversation-" + suffix, buyer, "会话" + i });
             invitationRows.add(new Object[] { "invitation-" + suffix, merchant.id(), buyer, owner });
         }
-        jdbc.batchUpdate("INSERT INTO ai_conversation(id,user_id,title,created_at) VALUES(?,?,?,'2025-01-01')", conversationRows);
+        jdbc.batchUpdate(
+            "INSERT INTO ai_conversation(id,user_id,title,created_at,last_active_at) VALUES(?,?,?,'2025-01-01','2025-01-01')",
+            conversationRows
+        );
         jdbc.batchUpdate(
             "INSERT INTO iam_invitation(id,merchant_id,target_user_id,invited_by,status,expires_at,created_at) VALUES(?,?,?,?,'PENDING','2027-01-01','2025-01-01')",
             invitationRows

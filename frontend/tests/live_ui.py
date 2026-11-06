@@ -327,6 +327,13 @@ def main():
             page.screenshot(path=str(directory / 'admin-real.png'), full_page=True)
             checks.append('新版管理员 Session 登录并访问入驻审核')
 
+            page.goto(args.base_url + '/#/admin/knowledge/debug', wait_until='domcontentloaded')
+            expect(page.locator('.merchant-page-heading h1')).to_have_text('RAG 检索调试')
+            page.locator('textarea').fill('平台规则')
+            page.get_by_role('button', name='开始检索', exact=True).click()
+            expect(page.locator('.knowledge-debug-result')).to_be_visible(timeout=15000)
+            checks.append('真实浏览器打开平台 RAG 调试页并完成一次检索请求')
+
             page.goto(args.base_url + '/#/', wait_until='domcontentloaded')
             expect(page.locator('.account-pill')).to_be_visible()
             page.locator('.account-pill').click()  # 消费者顶栏退出操作

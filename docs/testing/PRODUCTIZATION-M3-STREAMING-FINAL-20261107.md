@@ -25,9 +25,8 @@ verify-release: PASS
 
 隔离验收范围：
 
-- `verify-mysql-isolated.py --skip-maven` 已在全新临时 MySQL 8.0.31 实例通过，覆盖旧库升级、重复迁移、脏历史 CHECK 拒绝、缺失 V30 的旧 Redis 迁移历史、图片回填和新旧结构逻辑一致性；证据见 `docs/testing/evidence/productization-m3-mysql-migration.json`。验收指纹比较字段逻辑结构，不把可安全变化的 MySQL 物理字段顺序当成契约。
-- 当前没有明确配置的隔离 Redis 测试实例，未运行 Redis 双实例验收。
-- 当前未运行真实浏览器断网重连验收；前端逻辑已通过构建、类型和 Node SSE 解析 smoke。
-- 未连接真实供应商，未宣称真实模型文本增量或性能通过。
+- `verify-mysql-isolated.py --http-smoke` 已在全新临时 MySQL 8.0.31、两个本机 Redis 实例和真实 Java/FastAPI/Chromium 链路通过：393 Java（0 skipped）、291 HTTP、9 双 Redis、22 浏览器和 5 项 M2 履约；完整证据见 `docs/testing/evidence/productization-final-20261107/`。
+- 本轮真实 HTTP 使用当前 OpenAPI 逐响应校验；检索模式为 `LOCAL_RETRIEVAL_DEMO`，未连接真实外部模型或向量服务。
+- 真实浏览器已覆盖调试页请求，但尚未完成 AI 流式断网重连矩阵；CI 当前提交没有可读取的 check run。
 
-当前结论：M3 流式代码、前端恢复链路和隔离 MySQL 升级路径已完成；隔离 Redis、真实 HTTP/浏览器回归、真实供应商效果仍属于 4.9 整合门禁项。
+当前结论：M3 流式代码、前端恢复链路、隔离数据库/Redis/HTTP/基础浏览器回归已通过；真实供应商效果、流式断网矩阵和该版本 CI 仍属于 4.9 的未完成范围。
