@@ -1,4 +1,5 @@
 import { build } from 'vite';
+import vue from '@vitejs/plugin-vue';
 import { cp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { resolve, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -31,7 +32,9 @@ if (!isManaged && existing.length && !existing.includes('ui-build.json')) {
 await build({
   configFile: false,
   root,
-  plugins: [precompileTemplates()],
+  plugins: [vue(), precompileTemplates()],
+  // 库模式不会自动替换 Vue 运行时的环境判断；显式固定为生产构建。
+  define: { 'process.env.NODE_ENV': JSON.stringify('production') },
   build: {
     outDir: out,
     emptyOutDir: true,

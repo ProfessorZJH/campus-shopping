@@ -5,6 +5,8 @@
 """
 import base64
 import json
+import os
+import shutil
 from datetime import datetime,timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -55,7 +57,6 @@ def render(browser,route='/',demo=True,size=(430,932),fixture=None,routes=None,b
             return new Response(reply.body,{status:reply.status,headers:{'Content-Type':'application/json'}});
           };
         }''')
-    page.add_script_tag(path=str(UI/'vendor/vue.global.prod.js'))
     page.add_script_tag(path=str(UI/'ui.bundle.js'))
     expect(page.locator('.application')).to_have_count(1)
     images(page)
@@ -69,7 +70,7 @@ def main():
   fixture=BackendContractDouble();fixture.logged=True
   try:
     with sync_playwright() as p:
-      browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+      browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])
       # 1. 首页视觉与真实 Vue 交互（演示数据）
       page=render(browser,'/',True)
       expect(page.locator('.home-product')).to_have_count(8)
@@ -170,8 +171,8 @@ def main():
       close_page(page)
       fixture.logged=False
       page=render(browser,'/merchant/products',False,(1448,1000),fixture)
-      expect(page.get_by_role('button',name='登录账号')).to_be_visible()
-      page.get_by_role('button',name='登录账号').click()
+      expect(page.get_by_role('heading',name='请先登录')).to_be_visible()
+      page.get_by_role('button',name='登录',exact=True).click()
       page.locator('#login-name').fill('testuser')
       page.locator('#login-password').fill('safe-test-password')
       page.locator('.login-dialog').get_by_role('button',name='登录',exact=True).click()

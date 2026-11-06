@@ -2,6 +2,7 @@
 """界面精简验收：真实 Chromium + 预编译 Vue + 显式 HTTP 契约替身。
 不代表 Spring / MySQL 集成测试。
 """
+import os
 import shutil
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
@@ -16,7 +17,7 @@ def main():
     EVIDENCE.mkdir(parents=True,exist_ok=True)
     checks=[]
     with sync_playwright() as p:
-        browser=p.chromium.launch(headless=True,executable_path=shutil.which('chromium'),args=['--no-sandbox'])
+        browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])
         backend=RoleBackend()
         page=browser_page(browser,'/merchant/roles',backend)
         expect(page.locator('.rbac-permission')).to_have_count(15)
@@ -57,7 +58,6 @@ def main():
         page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"></head><body><div id="app"></div></body></html>')
         page.add_style_tag(path=str(UI/'src/styles/app.css'))
         page.evaluate("window.__CAMPUS_TEST_DEMO__=true;window.__CAMPUS_TEST_ROUTE__='/merchant/roles';")
-        page.add_script_tag(path=str(UI/'vendor/vue.global.prod.js'))
         page.add_script_tag(path=str(UI/'ui.bundle.js'))
         expect(page.locator('.rbac-role')).to_have_count(3,timeout=15000)
         expect(page.locator('.rbac-permission')).to_have_count(15)

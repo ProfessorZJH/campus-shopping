@@ -7,7 +7,9 @@ import shutil
 运行: python frontend/tests/ui_fix_regression.py
 """
 import json
+import os
 import re
+import shutil
 from urllib.parse import urlparse
 from playwright.sync_api import sync_playwright, expect
 from contract_ui import BackendContractDouble
@@ -80,7 +82,6 @@ def browser_page(browser, route, fixture, *, race=False, before_mount=None):
         return new Response(reply.body,{status:reply.status,headers:{'Content-Type':'application/json'}});
       };
     }''',{'race':race})
-    page.add_script_tag(path=str(UI/'vendor/vue.global.prod.js'))
     if before_mount:
         page.evaluate(before_mount)
     page.add_script_tag(path=str(UI/'ui.bundle.js'))
@@ -95,7 +96,7 @@ def paged(product):
 def main():
     checks=[]
     with sync_playwright() as p:
-        browser=p.chromium.launch(headless=True,executable_path=shutil.which('chromium'),args=['--no-sandbox'])
+        browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])
         f=TwoMerchantBackend()
         page=browser_page(browser,'/',f,race=True)
         expect(page.locator('.home-product')).to_have_count(6)
