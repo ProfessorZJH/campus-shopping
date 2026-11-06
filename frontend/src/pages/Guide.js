@@ -74,6 +74,7 @@ export default {
         error.value = '';
         input.value = '';
         thinking.value = false;
+        confirmingProposal.value = false;
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
