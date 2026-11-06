@@ -20,6 +20,7 @@
 - `evidence/productization-final-20261107/redis-shared-http.json`
 - `evidence/productization-final-20261107/frontend-live.json`
 - `evidence/productization-final-20261107/frontend-live-m2.json`
+- `evidence/productization-final-20261107/ai-load-recovery.json`（80 次本地隔离请求、重启后检索恢复；不代表生产容量）
 
 ## M4 事实
 
@@ -31,7 +32,7 @@
 
 - 文档通过真实 Java/Python 接口建立索引、发布和撤回；已有 Java MySQL 测试覆盖索引过期、失败重试和配额边界。
 - 商户真实 HTTP 调用 RAG 调试接口，响应包含授权命中、版本、片段、排名、分数类型、检索模式和回答模式；另一商户的调试请求不能看到内部文档。
-- 真实 Chromium 打开平台 RAG 调试页并完成一次检索请求；Java/Python 流式、容量和服务定向测试覆盖慢调用、取消和执行许可边界。
+- 真实 Chromium 打开平台 RAG 调试页并完成一次检索请求；Java/Python 流式、容量和服务定向测试覆盖慢调用、取消和执行许可边界；本地隔离 AI 负载还完成 80 次请求、12 并发客户端和重启恢复检查。
 - 断言和报告不保存知识正文、提示词、下游异常正文或凭据；导购结果明确为 `LOCAL_RETRIEVAL_DEMO`，未宣称真实模型效果。
 
 ## 未覆盖范围
