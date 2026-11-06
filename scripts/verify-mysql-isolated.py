@@ -372,6 +372,21 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         browser = json.loads((source/'results.json').read_text('utf-8'))
         report['browser'] = {'status': browser['status'], 'checks': len(browser['checks']), 'apiMockUsed': False}
         assert completed.returncode == 0 and browser['status'] == 'PASS', '真实浏览器验收失败'
+        live_final = build_root/'frontend/tests/live_final_matrix.py'
+        shutil.copy2(ROOT/'frontend/tests/live_final_matrix.py', live_final)
+        completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live_final), '--base-url', base],
+                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=360)
+        source_final = build_root/'docs/testing/evidence/frontend-live-final'
+        if source_final.exists():
+            shutil.copytree(source_final, args.output.parent/'frontend-live-final', dirs_exist_ok=True)
+        browser_final = json.loads((source_final/'results.json').read_text('utf-8'))
+        report['browserFinal'] = {
+            'status': browser_final['status'],
+            'checks': len(browser_final['checks']),
+            'apiMockUsed': False,
+            'streamMode': browser_final.get('streamMode'),
+        }
+        assert completed.returncode == 0 and browser_final['status'] == 'PASS', '最终隔离浏览器矩阵失败'
         live_m2 = build_root/'frontend/tests/live_m2_fulfillment.py'
         shutil.copy2(ROOT/'frontend/tests/live_m2_fulfillment.py', live_m2)
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live_m2), '--base-url', base],
