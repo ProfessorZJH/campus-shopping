@@ -107,7 +107,7 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
             offset(page, size),
             size,
             optional(q, 100),
-            cn.bugstack.ai.domain.fulfillment.model.valobj.PickupStatusEnumVO.filter(pickupState)
+            pickupStateFilter(pickupState)
         );
     }
 
@@ -118,8 +118,15 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
             merchant,
             OrderStatusEnumVO.filter(status),
             optional(q, 100),
-            cn.bugstack.ai.domain.fulfillment.model.valobj.PickupStatusEnumVO.filter(pickupState)
+            pickupStateFilter(pickupState)
         );
+    }
+
+    private String pickupStateFilter(String value) {
+        if (value == null || value.isBlank()) return "";
+        String state = value.trim().toUpperCase(Locale.ROOT);
+        require(Set.of("WAIT_PREP", "PREPARING", "READY", "COMPLETED", "CANCELED").contains(state), ResponseCode.ILLEGAL_PARAMETER);
+        return state;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

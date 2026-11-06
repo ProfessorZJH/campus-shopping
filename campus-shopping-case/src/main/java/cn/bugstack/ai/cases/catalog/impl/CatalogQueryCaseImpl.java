@@ -114,6 +114,11 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
+    public StockPage stockPage(String actor, String merchant, int page, int size, String query) {
+        return stockPage(actor, merchant, page, size, query, null);
+    }
+
+    @Override
     public List<StockVO> stockRows(String actor, String merchant, int page, int size) {
         access.requirePermission(actor, merchant, "stock.read");
         return inventoryService.list(merchant, page, size, "");
@@ -126,9 +131,19 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
+    public List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size) {
+        return stockMovements(actor, merchant, page, size, "");
+    }
+
+    @Override
     public long countStockMovements(String actor, String merchant, String query) {
         access.requirePermission(actor, merchant, "stock.read");
         return inventoryService.countMovements(merchant, query);
+    }
+
+    @Override
+    public long countStockMovements(String actor, String merchant) {
+        return countStockMovements(actor, merchant, "");
     }
 
     private Map<String, SkuOfferVO> stockOffers(String actor, String merchant, List<String> skuIds) {
