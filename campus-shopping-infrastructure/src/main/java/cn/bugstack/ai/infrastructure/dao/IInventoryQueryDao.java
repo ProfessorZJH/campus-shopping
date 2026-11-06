@@ -7,6 +7,8 @@ import org.apache.ibatis.annotations.*;
 /** 只读投影 DAO，禁止写语句。 */
 @Mapper
 public interface IInventoryQueryDao {
-    long countStocks(@Param("merchantId") String merchant, @Param("q") String q);
-    List<StockPO> list(@Param("merchantId") String merchantId, @Param("offset") int offset, @Param("limit") int limit, @Param("q") String q);
+    long countStocks(@Param("merchantId") String merchant, @Param("q") String q, @Param("availableBelow") Integer availableBelow);
+    List<StockPO> list(@Param("merchantId") String merchantId, @Param("offset") int offset, @Param("limit") int limit, @Param("q") String q, @Param("availableBelow") Integer availableBelow);
+    long countMovements(@Param("merchantId") String merchantId, @Param("q") String q);
+    List<StockMovementPO> movements(@Param("merchantId") String merchantId, @Param("offset") int offset, @Param("limit") int limit, @Param("q") String q);
 }

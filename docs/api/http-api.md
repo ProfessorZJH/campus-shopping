@@ -101,10 +101,10 @@
 | `DELETE` | `/api/v1/merchants/{merchantId}/rbac/roles/{code}` | merchantId:String、code:String | `Void` | authenticated + domain ACL | `RoleController.java` |
 | `PUT` | `/api/v1/merchants/{merchantId}/rbac/roles/{code}` | merchantId:String、code:String、body:RoleRequestDTO | `RoleResponseDTO` | authenticated + domain ACL | `RoleController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/statistics` | merchantId:String | `StatisticsResponseDTO` | authenticated + domain ACL | `OrderController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/stock-movements` | merchantId:String、page?:int、size?:int | `List<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/stock-movements/page` | merchantId:String、page?:int、size?:int | `PageResponseDTO<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/stock-movements` | merchantId:String、page?:int、size?:int、q?:String | `List<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/stock-movements/page` | merchantId:String、page?:int、size?:int、q?:String | `PageResponseDTO<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/stocks` | merchantId:String、page?:int、size?:int | `List<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/stocks/page` | merchantId:String、page?:int、size?:int、q?:String | `PageResponseDTO<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/stocks/page` | merchantId:String、page?:int、size?:int、q?:String、availableBelow?:Integer | `PageResponseDTO<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/stocks/{skuId}/replenish` | merchantId:String、skuId:String、body:ReplenishRequestDTO、Idempotency-Key:String | `Void` | authenticated + domain ACL | `InventoryController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/store/images` | merchantId:String、body:FileUploadRequestDTO | `ProductImageUploadDTO` | authenticated + domain ACL | `MerchantApplicationController.java` |
 | `GET` | `/api/v1/orders` | state?:String、page?:int、size?:int | `List<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |

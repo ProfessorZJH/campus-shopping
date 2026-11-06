@@ -55,6 +55,8 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 
 `total` 必须是与当前 `state`、`status`、`category`、`merchantId`、`q` **同一过滤条件**下的数据库 `COUNT`，不能使用当前页 `items.length`。`hasNext` 基于 `page*size<total`。查询过滤在 SQL 分页之前生效，列表与 COUNT 保持等价条件。旧 `List<T>` 路由保留兼容；已提供 `/page` 的列表由新前端优先使用 `/page`。
 
+库存查询的 `availableBelow` 表示 `onHand-reserved <= availableBelow`，边界包含等号；`onHand`、`reserved` 和 `available` 仍由服务端库存事实计算，筛选只读不改库存。库存流水分页的 `q` 仅定位当前商户的 `skuId` 或 `bizKey`，列表与 COUNT 使用相同条件并按 `created_at DESC,id ASC` 稳定排序。
+
 当前支持 `q` 的长列表：平台商户、平台入驻申请、商户/平台订单、商户商品、商户库存、平台/公共商品。其余没有声明 `q` 的接口不能在 UI 中声称“跨所有页全文搜索”。`q` 为可选关键字，采用字面子串搜索，而不是让用户传入 SQL 通配符。建议在前端搜索时防抖，旧请求返回不得覆盖新一轮查询。
 
 **SDD-04 商品搜索语义**：公共商品 `/products/page` 和平台商品 `/admin/products/page` 的 `q` 搜索商品标题、描述、商户名称、SKU ID、规格；商户自身 `/merchants/{mid}/products/page` 搜索商品标题、描述、SKU ID、规格。公开搜索仅从有效 SKU 参与匹配，匹配多规格仍只返回一条商品记录。`%` 和 `_` 在这些商品接口中均按普通字符字面查找。商品列表/COUNT 的动态筛选必须保持一致。

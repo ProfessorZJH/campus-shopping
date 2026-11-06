@@ -19818,6 +19818,10 @@
       const pickupState = ref$3(route.value === "/merchant/pickup" ? "READY" : "");
       const q = ref$3("");
       const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), loading = ref$3(false), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3(""), historyEvents = ref$3([]), historyLoading = ref$3(false), historyError = ref$3("");
+      const availableBelow = ref$3(null);
+      const movementQ = ref$3("");
+      const movementPage = ref$3(1);
+      const movementPageInfo = ref$3({ total: 0, hasNext: false });
       let historyVersion = 0;
       const page = ref$3(1), pageInfo = ref$3({ total: 0, hasNext: false }), amount = ref$3(1), sku2 = ref$3(""), inviteUser = ref$3(""), profile = ref$3({
         name: "",
@@ -19952,12 +19956,22 @@
           }
           if (section === "/merchant/inventory") {
             const [stockResult, movements] = await Promise.all([
-              read(base + "/stocks/page" + query({ page: page.value, size: 10, q: q.value })),
-              read(base + "/stock-movements/page" + query({ page: 1, size: 8 }))
+              read(
+                base + "/stocks/page" + query({
+                  page: page.value,
+                  size: 10,
+                  q: q.value,
+                  availableBelow: availableBelow.value
+                })
+              ),
+              read(
+                base + "/stock-movements/page" + query({ page: movementPage.value, size: 8, q: movementQ.value })
+              )
             ]);
             if (!current()) return;
             stockRows.value = stockResult.items || [];
             moves.value = movements.items || [];
+            movementPageInfo.value = movements;
             pageInfo.value = stockResult;
           }
           if (section === "/merchant/team") {
@@ -19989,7 +20003,7 @@
       let searchDelay;
       let resettingPage = false;
       watch$3(
-        [page, q, filter, pickupState],
+        [page, q, filter, pickupState, availableBelow, movementQ],
         (next, previous) => {
           if (resettingPage) return;
           clearTimeout(searchDelay);
@@ -19999,12 +20013,16 @@
           if (changed) {
             resettingPage = true;
             page.value = 1;
+            if (next[4] !== previous[4] || next[5] !== previous[5]) movementPage.value = 1;
             resettingPage = false;
           }
           searchDelay = setTimeout(load, next[1] !== previous[1] ? 280 : 0);
         },
         { flush: "sync" }
       );
+      watch$3(movementPage, () => {
+        if (route.value === "/merchant/inventory") load();
+      });
       async function perform(url, body, method = "POST", key) {
         if (!canAct.value) return;
         const current = scope.capture();
@@ -20214,6 +20232,10 @@
         members,
         moves,
         stockRows,
+        availableBelow,
+        movementQ,
+        movementPage,
+        movementPageInfo,
         error,
         busy,
         loading,
@@ -20499,6 +20521,32 @@
                       [_vModelText, _ctx.q]
                     ])
                   ]),
+                  _createElementVNode("div", { class: "filter-pills secondary-pills" }, [
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.availableBelow === null }),
+                      onClick: ($event) => _ctx.availableBelow = null
+                    }, "全部库存", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.availableBelow !== null }),
+                      onClick: ($event) => _ctx.availableBelow = 10
+                    }, "低可售 ≤ " + _toDisplayString(_ctx.availableBelow === null ? 10 : _ctx.availableBelow), 11, ["onClick"]),
+                    _ctx.availableBelow !== null ? _withDirectives((_openBlock(), _createElementBlock("input", {
+                      key: 0,
+                      class: "admin-input compact-select",
+                      type: "number",
+                      min: "0",
+                      max: "1000000",
+                      "onUpdate:modelValue": ($event) => _ctx.availableBelow = $event,
+                      "aria-label": "低可售阈值"
+                    }, null, 8, ["onUpdate:modelValue"])), [
+                      [
+                        _vModelText,
+                        _ctx.availableBelow,
+                        void 0,
+                        { number: true }
+                      ]
+                    ]) : _createCommentVNode("v-if", true)
+                  ]),
                   _createElementVNode("div", { class: "ops-table-wrap" }, [
                     _createElementVNode("table", { class: "ops-table" }, [
                       _createElementVNode("thead", null, [
@@ -20658,12 +20706,31 @@
                     /* STABLE_FRAGMENT */
                   )) : _createCommentVNode("v-if", true),
                   _createElementVNode("div", { class: "ops-card-header compact" }, [
-                    _createElementVNode("h3", null, "库存流水")
+                    _createElementVNode("h3", null, "库存流水"),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      _toDisplayString(_ctx.movementPageInfo.total || 0) + " 条",
+                      1
+                      /* TEXT */
+                    )
+                  ]),
+                  _createElementVNode("label", { class: "ops-search" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "search",
+                      size: 17
+                    }),
+                    _withDirectives(_createElementVNode("input", {
+                      "onUpdate:modelValue": ($event) => _ctx.movementQ = $event,
+                      placeholder: "单据号 / SKU"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.movementQ]
+                    ])
                   ]),
                   (_openBlock(true), _createElementBlock(
                     _Fragment,
                     null,
-                    _renderList(_ctx.moves.slice(0, 8), (m) => {
+                    _renderList(_ctx.moves, (m) => {
                       return _openBlock(), _createElementBlock("div", {
                         class: "ops-list-line",
                         key: m.id
@@ -20685,7 +20752,7 @@
                           _createElementVNode(
                             "small",
                             null,
-                            _toDisplayString(_ctx.dateTime(m.createdAt)),
+                            _toDisplayString(_ctx.dateTime(m.createdAt)) + " · 单据 " + _toDisplayString(m.bizKey),
                             1
                             /* TEXT */
                           )
@@ -20701,7 +20768,31 @@
                     }),
                     128
                     /* KEYED_FRAGMENT */
-                  ))
+                  )),
+                  !_ctx.moves.length ? (_openBlock(), _createElementBlock("div", {
+                    key: 1,
+                    class: "admin-empty"
+                  }, "暂无匹配流水")) : _createCommentVNode("v-if", true),
+                  _ctx.movementPageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+                    key: 2,
+                    class: "sdd-pager"
+                  }, [
+                    _createElementVNode("button", {
+                      disabled: _ctx.movementPage <= 1,
+                      onClick: ($event) => _ctx.movementPage--
+                    }, "上一页", 8, ["disabled", "onClick"]),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      _toDisplayString(_ctx.movementPage),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("button", {
+                      disabled: !_ctx.movementPageInfo.hasNext,
+                      onClick: ($event) => _ctx.movementPage++
+                    }, "下一页", 8, ["disabled", "onClick"])
+                  ])) : _createCommentVNode("v-if", true)
                 ])
               ])) : _ctx.route === "/merchant/orders" || _ctx.route === "/merchant/pickup" ? (_openBlock(), _createElementBlock("div", {
                 key: 5,

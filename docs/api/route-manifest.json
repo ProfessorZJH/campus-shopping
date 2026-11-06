@@ -1942,6 +1942,13 @@
           "type": "int",
           "required": false,
           "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
         }
       ],
       "access": "authenticated + domain ACL",
@@ -1973,6 +1980,13 @@
           "type": "int",
           "required": false,
           "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
         }
       ],
       "access": "authenticated + domain ACL",
@@ -2042,6 +2056,12 @@
           "type": "String",
           "required": false,
           "default": ""
+        },
+        {
+          "in": "query",
+          "name": "availableBelow",
+          "type": "Integer",
+          "required": false
         }
       ],
       "access": "authenticated + domain ACL",

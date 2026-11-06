@@ -14664,6 +14664,16 @@
               "minimum": 1,
               "maximum": 100
             }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "maxLength": 100
+            }
           }
         ],
         "responses": {
@@ -14849,6 +14859,16 @@
               "default": 20,
               "minimum": 1,
               "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "maxLength": 100
             }
           }
         ],
@@ -15256,6 +15276,15 @@
               "type": "string",
               "default": "",
               "maxLength": 100
+            }
+          },
+          {
+            "name": "availableBelow",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
         ],
