@@ -48,7 +48,7 @@ export default {
       categories = ref([]);
     const selectedId = ref(''),
       search = ref(''),
-      state = ref(''),
+      state = ref(store.route === '/admin/disputes' ? 'DISPUTED' : ''),
       page = ref(1),
       pageInfo = ref({ total: 0, hasNext: false }),
       reason = ref(''),

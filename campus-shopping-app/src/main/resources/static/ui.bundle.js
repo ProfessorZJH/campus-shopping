@@ -22626,7 +22626,7 @@
       const scope = requestScope();
       const route = computed$1(() => store.route), title = computed$1(() => titles[route.value] || "平台总览");
       const stats = ref$1(null), applications = ref$1([]), merchants = ref$1([]), products = ref$1([]), orders = ref$1([]), aftersales = ref$1([]), categories = ref$1([]);
-      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
       let disputeVersion = 0;
       const pickedApplication = computed$1(
         () => applications.value.find((a) => a.applicationId === selectedId.value) || applications.value[0] || null
