@@ -26,6 +26,8 @@ class FakeCursor:
             return (1,)
         if "RELEASE_LOCK" in self.last_query:
             return (1,)
+        if "table_name='sys_schema_migration_drift'" in self.last_query:
+            return (1,)
         return (0,)
 
     def fetchall(self):
@@ -125,6 +127,59 @@ class SchemaAdmissionTest(unittest.TestCase):
 
         execute_script.assert_not_called()
         self.assertFalse(any("CREATE TABLE" in statement[0] for statement in connection.cursor_instance.statements))
+
+    def test_empty_database_replays_current_schema(self):
+        connection = FakeConnection()
+        with mock.patch.object(schema_contract, "_target_fingerprint", return_value="target"), \
+             mock.patch.object(schema_contract, "_table_names", return_value=set()), \
+             mock.patch.object(schema_contract, "schema_fingerprint", return_value="target"), \
+             mock.patch.object(schema_contract, "validate_history"), \
+             mock.patch.object(schema_contract, "execute_script") as execute_script:
+            schema_contract.apply_migrations(connection, expected=self.EXPECTED)
+
+        execute_script.assert_called_once()
+        self.assertIn("BEGIN GENERATED SCHEMA PREFLIGHT", execute_script.call_args.args[1])
+        self.assertFalse(any("CREATE TABLE" in statement[0] for statement in connection.cursor_instance.statements))
+
+    def test_current_target_without_history_registers_history(self):
+        connection = FakeConnection()
+        with mock.patch.object(schema_contract, "_target_fingerprint", return_value="target"), \
+             mock.patch.object(schema_contract, "_table_names", return_value={"iam_user"}), \
+             mock.patch.object(schema_contract, "schema_fingerprint", return_value="target"), \
+             mock.patch.object(schema_contract, "_history", return_value={}), \
+             mock.patch.object(schema_contract, "_register_history") as register_history, \
+             mock.patch.object(schema_contract, "validate_history"):
+            schema_contract.apply_migrations(connection, expected=self.EXPECTED)
+
+        register_history.assert_called_once_with(connection.cursor_instance, self.EXPECTED)
+        self.assertTrue(any("CREATE TABLE" in statement[0] for statement in connection.cursor_instance.statements))
+
+    def test_post_migration_drift_is_audited_and_rejected(self):
+        connection = FakeConnection()
+        with mock.patch.object(schema_contract, "_target_fingerprint", return_value="target"), \
+             mock.patch.object(schema_contract, "_table_names", return_value={"legacy_table", "sys_schema_migration_drift"}), \
+             mock.patch.object(schema_contract, "schema_fingerprint", side_effect=["legacy", "drift"]), \
+             mock.patch.object(schema_contract, "_history", return_value={}), \
+             mock.patch.object(
+                 schema_contract,
+                 "_baseline_manifest",
+                 return_value=[{"release": "legacy", "sourceFingerprint": "legacy", "expectedHistory": ["V1"]}],
+             ), \
+             mock.patch.object(schema_contract, "_write_audit") as write_audit, \
+             mock.patch.object(schema_contract, "_register_history"), \
+             mock.patch.object(schema_contract, "validate_history"), \
+             mock.patch.object(schema_contract, "execute_script") as execute_script:
+            with self.assertRaises(schema_contract.SchemaDriftError):
+                schema_contract.apply_migrations(
+                    connection,
+                    expected=self.EXPECTED,
+                    accept_baseline="legacy",
+                    reason="ticket-1",
+                    operator="alice",
+                )
+
+        self.assertEqual(write_audit.call_args_list[-1].args[2], "DRIFT")
+        execute_script.assert_called_once()
 
     def test_known_baseline_with_mismatched_history_is_rejected(self):
         connection = FakeConnection()
