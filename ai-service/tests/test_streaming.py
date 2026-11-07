@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 import app.main as main
 from app.config import Settings
 from app.retrieval import Provider
+from app.observability import counts
 
 KEY = 'stream-test-service-key-not-for-production'
 
@@ -70,7 +71,7 @@ def test_provider_stream_parser_accumulates_bounded_sse_content(monkeypatch):
 
         def iter_lines(self):
             yield 'data: {"choices":[{"delta":{"content":"{\\"answer\\":\\""}}]}'
-            yield 'data: {"choices":[{"delta":{"content":"完成\\"}"}}]}'
+            yield 'data: {"choices":[{"delta":{"content":"完成\\"}"},"finish_reason":"stop"}]}'
             yield 'data: [DONE]'
 
     class Client:
@@ -91,3 +92,28 @@ def test_provider_stream_parser_accumulates_bounded_sse_content(monkeypatch):
     provider = Provider(settings)
 
     assert ''.join(provider.stream_complete('system', {'question': '测试'})) == '{"answer":"完成"}'
+    assert counts['llm.calls'] >= 1
+    assert counts['llm.last_success_at'] > 0
+
+
+def test_provider_stream_parser_rejects_done_without_success_finish(monkeypatch):
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def raise_for_status(self): return None
+        def iter_lines(self):
+            yield 'data: {"choices":[{"delta":{"content":"{}"}}]}'
+            yield 'data: [DONE]'
+
+    class Client:
+        def __init__(self, **_): pass
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def stream(self, *_, **__): return Response()
+
+    monkeypatch.setattr('app.retrieval.httpx.Client', Client)
+    settings = Settings(KEY, 'var/stream-parser-terminal.db', llm_url='http://localhost:9999', llm_key='configured', llm_model='model')
+    provider = Provider(settings)
+    import pytest
+    with pytest.raises(ValueError, match='未正常结束'):
+        ''.join(provider.stream_complete('system', {'question': '测试'}))
