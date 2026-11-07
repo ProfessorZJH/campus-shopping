@@ -7,7 +7,7 @@
 1. 备份并在副本验证，核对 MySQL 版本至少为 8.0.16（本次实际使用 8.0.31）。
 2. 准备有 DDL 权限的升级账号，在当前终端设置 `DB_USERNAME` / `DB_PASSWORD`；凭据不放命令行、不提交 Git。
 3. 在目标库执行下面的前置检查，结果必须全为 0；异常记录应由业务负责人核对，不能自动删行或改金额。
-4. 在维护窗口运行下方显式迁移命令。CLI 按版本号顺序执行当前 `docs/database/migrations/` 中全部迁移：`V20261028_01`（订单图片）、`V20261028_02`（RBAC）、`V20261029_01`（完整性及索引）、`V20261030_01`（知识索引请求标识与会话租约）、`V20261031_01`（会话租约补充）、`V20261031_02`（知识租约与配额）、`V20261031_03`（AI 同步检查点）、`V20261102_01`（商品图片对象引用及历史主图回填）、`V20261104_01`（图片对象商户归属）、`V20261106_01`（门店公开资料与图片用途）、`V20261106_02`（订单自提地点快照）、`V20261106_03`（履约与售后事件）、`V20261107_01`（会话最近活跃时间、受控摘要与稳定分页索引）、`V20261107_02`（历史消息引用快照）、`V20261107_03`（会话轮次运行状态与取消意图），成功后逐项登记 SHA-256。索引和图片对象表可能消耗额外空间并产生元数据锁等待。
+4. 在维护窗口运行下方显式迁移命令。CLI 按版本号顺序执行当前 `docs/database/migrations/` 中全部迁移：`V20261028_01`（订单图片）、`V20261028_02`（RBAC）、`V20261029_01`（完整性及索引）、`V20261030_01`（知识索引请求标识与会话租约）、`V20261031_01`（会话租约补充）、`V20261031_02`（知识租约与配额）、`V20261031_03`（AI 同步检查点）、`V20261102_01`（商品图片对象引用及历史主图回填）、`V20261104_01`（图片对象商户归属）、`V20261106_01`（门店公开资料与图片用途）、`V20261106_02`（订单自提地点快照）、`V20261106_03`（履约与售后事件）、`V20261107_01`（会话最近活跃时间、受控摘要与稳定分页索引）、`V20261107_02`（历史消息引用快照）、`V20261107_03`（会话轮次运行状态与取消意图）、`V20261107_04`（会话活跃时间默认值）、`V20261107_05`（订单创建时间统计索引），成功后逐项登记 SHA-256。索引和图片对象表可能消耗额外空间并产生元数据锁等待。
 ```powershell
 python -m pip install --require-hashes -r ai-service/requirements-dev.lock
 python scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campus_shopping
@@ -25,6 +25,8 @@ python scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campu
 `V20261107_02` 为 `ai_message` 增加 `citation_recorded`，并新增 `ai_message_citation` 保存文档根/版本、证据定位和允许公开的片段。旧消息默认没有引用记录；新助手消息在消息完成事务中批量写入快照，读取时按当前授权和文档版本复验。
 
 `V20261107_03` 为 `ai_conversation` 增加 `turn_status` 与 `turn_cancel_requested_at`。当前轮次跨实例共享 `RUNNING` / `CANCEL_REQUESTED` 状态；取消请求不提前清理租约，`finishTurn` 只接受仍为 `RUNNING` 且未过期的令牌。状态接口不返回内部令牌。
+
+`V20261107_05` 为 `trd_order` 增加 `(created_at,id)` 复合索引，支持平台统计按北京时间期间筛选订单并保持稳定排序；迁移只增加索引，不修改订单业务数据。
 
 ```sql
 SELECT VERSION(), DATABASE();
@@ -49,6 +51,7 @@ SELECT COUNT(*) AS invalid_refunds FROM trd_refund WHERE amount_cent <= 0;
 | `ix_message_sequence(conversation_id,seq_no)` | 最近会话消息按真实序列取数 |
 | `ix_conversation_activity(user_id,last_active_at DESC,id)` | 本人会话按最近活跃时间稳定分页 |
 | `ix_proposal_conversation(user_id,conversation_id,created_at DESC,id)` | 本人会话的提案列表 |
+| `ix_order_created(created_at,id)` | 平台/商户经营统计的期间过滤与稳定排序 |
 
 上述是访问路径补齐，不表示经过大数据量性能压测；生产数据量下仍需 `EXPLAIN ANALYZE` 与容量评估。
 

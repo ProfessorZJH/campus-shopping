@@ -13658,7 +13658,7 @@
         selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
         proposalFeedback.value = "";
       }
-      async function loadConversationSnapshot(id, stamp) {
+      async function loadConversationSnapshot(id, stamp, expectedQuestion = null, knownLastMessage = null) {
         var _a;
         const encoded = encodeURIComponent(id);
         const [history, proposals] = await Promise.all([
@@ -13666,8 +13666,26 @@
           api("/ai/conversations/" + encoded + "/proposals")
         ]);
         if (stamp !== conversationEpoch) return false;
+        const messageHistory = history || [];
+        if (expectedQuestion) {
+          const lastQuestion = messageHistory.length - 2;
+          const tailQuestion = messageHistory[lastQuestion];
+          const tailAnswer = messageHistory[messageHistory.length - 1];
+          let knownLastIndex = -1;
+          if (knownLastMessage) {
+            for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
+              const message = messageHistory[index];
+              if (message.role === knownLastMessage.role && message.content === knownLastMessage.content) {
+                knownLastIndex = index;
+                break;
+              }
+            }
+          }
+          const hasAnswer = lastQuestion >= 0 && (tailQuestion == null ? void 0 : tailQuestion.role) === "user" && tailQuestion.content === expectedQuestion && (tailAnswer == null ? void 0 : tailAnswer.role) === "assistant" && (knownLastIndex < 0 || knownLastIndex < lastQuestion);
+          if (!hasAnswer) return false;
+        }
         store.conversationId = id;
-        messages.value = (history || []).map((m) => ({
+        messages.value = messageHistory.map((m) => ({
           role: m.role,
           content: m.content,
           citations: citationsOf(m),
@@ -13678,7 +13696,7 @@
         selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
         return true;
       }
-      async function recoverAfterDisconnect(stamp, actor, id) {
+      async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
         var _a, _b;
         if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
         reconnecting.value = true;
@@ -13702,7 +13720,7 @@
             }
             if ((status == null ? void 0 : status.status) === "IDLE") {
               try {
-                return await loadConversationSnapshot(id, stamp);
+                return await loadConversationSnapshot(id, stamp, expectedQuestion, knownLastMessage);
               } catch (error2) {
                 if (!["NETWORK", "TIMEOUT"].includes(error2 == null ? void 0 : error2.code)) return false;
                 await new Promise((resolve2) => setTimeout(resolve2, 500));
@@ -13738,6 +13756,7 @@
           return;
         }
         const stamp = ++conversationEpoch;
+        const knownLastMessage = messages.value[messages.value.length - 1] || null;
         input.value = "";
         error.value = "";
         proposalFeedback.value = "";
@@ -13789,12 +13808,18 @@
             }
           });
           if (!completed && !cancelled)
-            throw Object.assign(new Error("流式响应未完成"), { code: "RESPONSE" });
+            throw Object.assign(new Error("流式连接中断，请稍后重试"), { code: "NETWORK" });
         } catch (err) {
           if ((err == null ? void 0 : err.name) === "AbortError" && (cancelRequested.value || stamp !== conversationEpoch))
             return;
           if ((err == null ? void 0 : err.code) === "NETWORK" && streamConversationId) {
-            const recovered = await recoverAfterDisconnect(stamp, actor, streamConversationId);
+            const recovered = await recoverAfterDisconnect(
+              stamp,
+              actor,
+              streamConversationId,
+              text,
+              knownLastMessage
+            );
             if (recovered) return;
           }
           if (stamp === conversationEpoch && !cancelled) {

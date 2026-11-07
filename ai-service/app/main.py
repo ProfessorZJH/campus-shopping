@@ -172,15 +172,17 @@ def create_app(settings: Settings|None=None):
                     failure('query.stream',error);publish('failed',{'errorCode':'AI_UNAVAILABLE'})
                 finally:
                     worker_done.set();release_gate()
+            started=False
             try:
-                thread=threading.Thread(target=work,name='ai-query-stream',daemon=True);thread.start()
+                thread=threading.Thread(target=work,name='ai-query-stream',daemon=True);thread.start();started=True
                 yield event('started',{'mode':'FULL_RESPONSE' if not settings.llm_key else 'UPSTREAM_STREAMING_JSON'})
                 while not worker_done.is_set() or not queue.empty():
                     try:name,payload=queue.get(timeout=.25)
                     except Empty:continue
                     yield event(name,payload)
             finally:
-                stopped.set();release_gate()
+                stopped.set()
+                if not started:release_gate()
         return StreamingResponse(generate(),media_type='text/event-stream')
     @app.post('/v1/products/index',dependencies=[Depends(authorized)])
     def index_products(request: ProductIndexRequest):

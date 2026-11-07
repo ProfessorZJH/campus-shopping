@@ -80,6 +80,11 @@
       "version": "V20261107_04",
       "file": "V20261107_04__conversation_activity_default.sql",
       "sha256": "49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe"
+    },
+    {
+      "version": "V20261107_05",
+      "file": "V20261107_05__order_created_at_reporting_index.sql",
+      "sha256": "2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813"
     }
   ]
 }

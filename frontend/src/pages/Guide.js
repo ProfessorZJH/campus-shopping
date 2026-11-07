@@ -129,15 +129,46 @@ export default {
       proposalFeedback.value = '';
     }
 
-    async function loadConversationSnapshot(id, stamp) {
+    async function loadConversationSnapshot(
+      id,
+      stamp,
+      expectedQuestion = null,
+      knownLastMessage = null,
+    ) {
       const encoded = encodeURIComponent(id);
       const [history, proposals] = await Promise.all([
         api('/ai/conversations/' + encoded + '/messages'),
         api('/ai/conversations/' + encoded + '/proposals'),
       ]);
       if (stamp !== conversationEpoch) return false;
+      const messageHistory = history || [];
+      if (expectedQuestion) {
+        const lastQuestion = messageHistory.length - 2;
+        const tailQuestion = messageHistory[lastQuestion];
+        const tailAnswer = messageHistory[messageHistory.length - 1];
+        let knownLastIndex = -1;
+        if (knownLastMessage) {
+          for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
+            const message = messageHistory[index];
+            if (
+              message.role === knownLastMessage.role &&
+              message.content === knownLastMessage.content
+            ) {
+              knownLastIndex = index;
+              break;
+            }
+          }
+        }
+        const hasAnswer =
+          lastQuestion >= 0 &&
+          tailQuestion?.role === 'user' &&
+          tailQuestion.content === expectedQuestion &&
+          tailAnswer?.role === 'assistant' &&
+          (knownLastIndex < 0 || knownLastIndex < lastQuestion);
+        if (!hasAnswer) return false;
+      }
       store.conversationId = id;
-      messages.value = (history || []).map((m) => ({
+      messages.value = messageHistory.map((m) => ({
         role: m.role,
         content: m.content,
         citations: citationsOf(m),
@@ -149,7 +180,7 @@ export default {
       return true;
     }
 
-    async function recoverAfterDisconnect(stamp, actor, id) {
+    async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
       if (!id || actor !== store.user?.userId) return false;
       reconnecting.value = true;
       try {
@@ -172,7 +203,7 @@ export default {
           }
           if (status?.status === 'IDLE') {
             try {
-              return await loadConversationSnapshot(id, stamp);
+              return await loadConversationSnapshot(id, stamp, expectedQuestion, knownLastMessage);
             } catch (error) {
               if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
               await new Promise((resolve) => setTimeout(resolve, 500));
@@ -212,6 +243,7 @@ export default {
         return;
       }
       const stamp = ++conversationEpoch;
+      const knownLastMessage = messages.value[messages.value.length - 1] || null;
       input.value = '';
       error.value = '';
       proposalFeedback.value = '';
@@ -262,12 +294,18 @@ export default {
           },
         });
         if (!completed && !cancelled)
-          throw Object.assign(new Error('流式响应未完成'), { code: 'RESPONSE' });
+          throw Object.assign(new Error('流式连接中断，请稍后重试'), { code: 'NETWORK' });
       } catch (err) {
         if (err?.name === 'AbortError' && (cancelRequested.value || stamp !== conversationEpoch))
           return;
         if (err?.code === 'NETWORK' && streamConversationId) {
-          const recovered = await recoverAfterDisconnect(stamp, actor, streamConversationId);
+          const recovered = await recoverAfterDisconnect(
+            stamp,
+            actor,
+            streamConversationId,
+            text,
+            knownLastMessage,
+          );
           if (recovered) return;
         }
         if (stamp === conversationEpoch && !cancelled) {
