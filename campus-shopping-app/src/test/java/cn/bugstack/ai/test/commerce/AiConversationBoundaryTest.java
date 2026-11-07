@@ -409,7 +409,7 @@ class AiConversationBoundaryTest {
         var query = ArgumentCaptor.forClass(cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity.class);
         var answer = ArgumentCaptor.forClass(String.class);
         verify(engine).query(query.capture());
-        verify(turns).complete(eq(turn), eq(question), answer.capture(), eq(List.of()), any(), anyString());
+        verify(turns).complete(eq(turn), eq(question), answer.capture(), eq(List.of()), any(), any(), anyString());
         assertTrue(query.getValue().externalDocumentIds().isEmpty());
         assertTrue(answer.getValue().contains("内部资料来源，原文片段不公开展示"));
         assertFalse(answer.getValue().contains(content));

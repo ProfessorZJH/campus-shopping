@@ -13,7 +13,7 @@ public record AiCitationVO(
     String contentHash
 ) {
     public AiCitationVO(String documentId, String chunkId, String title, String snippet, double score) {
-        this(documentId, chunkId, title, snippet, score, "", 0, -1, "");
+        this(documentId, chunkId, title, snippet, score, "", 1, -1, "");
     }
 
     public AiCitationVO(String documentId, String chunkId, String title, String snippet, double score, String rootId, int documentVersion) {
