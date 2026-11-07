@@ -230,6 +230,8 @@ def main():
             mobile_route_check(owner_page, base, '/merchant/products', checks, '商户')
             mobile_route_check(admin_page, base, '/admin/products', checks, '平台')
             mobile_route_check(clerk_page, base, '/merchant/products', checks, '店员')
+            for page in (buyer_page, owner_page, admin_page, clerk_page):
+                page.close()
 
             # 同一个真实买家会话切换身份后，旧身份不能继续读取私有数据。
             data(buyer_client, base, 'POST', '/auth/logout', {})

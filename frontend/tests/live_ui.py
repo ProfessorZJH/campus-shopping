@@ -410,7 +410,7 @@ def main():
                 detail = ''
         output = (final.stderr or final.stdout or '').strip().splitlines()
         if output:
-            detail += '；子进程=' + output[-1][:500]
+            detail += '；子进程=' + ' | '.join(output[-8:])[:1800]
         message = '最终隔离浏览器矩阵失败' + detail
         print('::error title=Final browser matrix::' + message, file=sys.stderr)
         raise SystemExit(message)
