@@ -21,7 +21,9 @@ import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -31,6 +33,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 /** 独立 SSE 入口；完整响应供应商只发送开始和完整响应终态，不切片伪造增量。 */
 @RestController
 @RequestMapping("/api/v1/ai")
+@Slf4j
 public class AiStreamEndpoint {
 
     private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(
@@ -50,13 +53,19 @@ public class AiStreamEndpoint {
     @Resource
     private IShoppingAiCase shopping;
 
-    @PostMapping(value = "/chat/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(@RequestBody ChatRequestDTO request, Principal principal) {
-        required(request);
-        String actor = actor(principal);
-        String question = Checks.text(request.getQuestion(), "问题", 2000);
-        request.setQuestion(question);
-        request.setConversationId(Checks.optional(request.getConversationId(), 128));
+    @PostMapping(value = "/chat/stream", produces = { MediaType.TEXT_EVENT_STREAM_VALUE, MediaType.APPLICATION_JSON_VALUE })
+    public Object stream(@RequestBody ChatRequestDTO request, Principal principal) {
+        final String actor;
+        try {
+            required(request);
+            actor = actor(principal);
+            String question = Checks.text(request.getQuestion(), "问题", 2000);
+            request.setQuestion(question);
+            request.setConversationId(Checks.optional(request.getConversationId(), 128));
+        } catch (AppException failure) {
+            ControllerFailures.record(log, failure);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(ApiResponses.rejected(failure));
+        }
         SseEmitter emitter = new SseEmitter(120_000L);
         try {
             EXECUTOR.execute(() -> run(emitter, actor, request));
