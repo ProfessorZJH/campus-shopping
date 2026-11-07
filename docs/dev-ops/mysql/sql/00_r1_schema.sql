@@ -236,7 +236,7 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261104_01','1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
-INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_01','a97b56a94cea076eeb84461322f10e1af5b5011708b917a59a94b65fec26d6c2' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_01','f3dc21f54f23e3f142cf2ec5d82a8c2a7fec36abe219a16936a3cea985b290cb' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_01','fcc1851f8933857c4531d126ba46d4a49754310693c006589f3b9363f033e977' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_02','338723eaf6a7f12ce1ecd11aca2cba58d7c0c01d2050d8f75999502694076c5a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_03','044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

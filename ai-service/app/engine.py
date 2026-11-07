@@ -29,7 +29,7 @@ SIMPLE=r'一二两三四五六七八九'
 UNCERTAIN=(r'(?:['+DIGITS+r'\d]*[几多来余]|['+DIGITS+r'\d]+\s*[到至~-]\s*['+DIGITS+r'\d]+'
            r'|['+SIMPLE+r']['+SIMPLE+r'][十百千万]|[百千万]['+SIMPLE+r']['+SIMPLE+r']'
            r'|(?<!['+DIGITS+r'\d])十['+SIMPLE+r']['+SIMPLE+r']'
-           r'|[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+)\s*')
+           r'|(?<!['+DIGITS+r'\d])[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+(?!['+DIGITS+r'\d]))\s*')
 FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些')
 
 def budget_intent(question: str) -> tuple[int|None,str]:

@@ -65,7 +65,13 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
-        return toAnswer(gateway.queryStream(toRequest(query, true), progress));
+        AiGatewayDTO.Query request = toRequest(query, true);
+        try {
+            return toAnswer(gateway.queryStream(request, progress));
+        } catch (AiGatewayService.RemoteStatusException rejected) {
+            if (rejected.status() != 422) throw rejected;
+            return toAnswer(queryGatewayWithFallback(request));
+        }
     }
 
     private AiGatewayDTO.Query toRequest(AiQueryEntity query, boolean answerPreview) {

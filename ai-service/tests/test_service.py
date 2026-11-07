@@ -205,6 +205,8 @@ def test_chinese_budget_and_unclear_constraints(app_client):
     assert budget_cent('不到20元')==2000
     assert budget_cent('预算十二三元') is None
     assert budget_cent('预算二三十元') is None
+    assert budget_cent('预算一百零三元') == 10300
+    assert budget_cent('预算三百零五元') == 30500
     assert not query(client,'预算二十元买一瓶矿泉水',[],offers).json()['recommendations']
     for question in ('买十几瓶矿泉水','买二十到三十瓶矿泉水','预算几十元买矿泉水','买二三十瓶矿泉水','买十二三瓶矿泉水'):
         data=query(client,question,[],offers).json()

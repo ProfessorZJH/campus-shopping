@@ -6,11 +6,16 @@ PREPARE stock_guard_stmt FROM @stock_guard_sql;
 EXECUTE stock_guard_stmt;
 DEALLOCATE PREPARE stock_guard_stmt;
 
-SET @stock_unique_exists := (SELECT COUNT(*) FROM information_schema.STATISTICS
- WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='inv_stock_balance' AND INDEX_NAME='uk_stock_sku'
- AND NON_UNIQUE=0 AND SEQ_IN_INDEX=1 AND COLUMN_NAME='sku_id');
-SET @stock_unique_sql := IF(@stock_unique_exists=1, 'SELECT 1 AS already_applied',
- 'ALTER TABLE inv_stock_balance ADD UNIQUE KEY uk_stock_sku(sku_id)');
+SET @stock_unique_rows := (SELECT COUNT(*) FROM information_schema.STATISTICS
+ WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='inv_stock_balance' AND INDEX_NAME='uk_stock_sku');
+SET @stock_unique_exact := (SELECT IF(
+ COUNT(*)=1 AND MAX(NON_UNIQUE)=0 AND MAX(SEQ_IN_INDEX)=1 AND MAX(COLUMN_NAME='sku_id')=1,
+ 1, 0
+) FROM information_schema.STATISTICS
+ WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='inv_stock_balance' AND INDEX_NAME='uk_stock_sku');
+SET @stock_unique_sql := IF(@stock_unique_exact=1, 'SELECT 1 AS already_applied',
+ IF(@stock_unique_rows=0, 'ALTER TABLE inv_stock_balance ADD UNIQUE KEY uk_stock_sku(sku_id)',
+ 'SELECT missing_inventory_integrity_guard'));
 PREPARE stock_unique_stmt FROM @stock_unique_sql;
 EXECUTE stock_unique_stmt;
 DEALLOCATE PREPARE stock_unique_stmt;

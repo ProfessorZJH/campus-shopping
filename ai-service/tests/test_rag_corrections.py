@@ -85,6 +85,23 @@ def test_strict_citation_denominator_includes_unauthorized_new_protocol():
     assert metrics['strictCitationValidity']['denominator'] == 2
 
 
+def test_redacted_internal_strict_citation_uses_identity_not_placeholder_text():
+    data = load()
+    doc = next(d for d in data['knowledge'] if d['visibility'] == 'MERCHANT_INTERNAL')
+    case = copy.deepcopy(next(c for c in data['cases'] if doc['documentId'] in c['allowedDocumentIds']))
+    piece = __import__('app.retrieval', fromlist=['chunks']).chunks(doc['content'])[0]
+    result = {'answer': '回答', 'citations': [{
+        'documentId': doc['documentId'],
+        'chunkId': str(uuid.uuid5(uuid.NAMESPACE_URL, doc['documentId'] + ':0')),
+        'snippet': '[内部资料已按权限脱敏]',
+        'documentVersion': doc['version'], 'ordinal': 0,
+        'contentHash': hashlib.sha256(piece.encode()).hexdigest(),
+    }]}
+    metrics = evidence_metrics(data, case, result)
+    assert metrics['citationValidity']['value'] == 1
+    assert metrics['strictCitationValidity']['value'] == 1
+
+
 def test_legacy_citation_count_once_with_mixed_authorization_and_protocols():
     data = load()
     case = copy.deepcopy(data['cases'][0])

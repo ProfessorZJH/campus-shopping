@@ -147,7 +147,13 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
             strict_match = False
         else:
             strict_match = None
-        if piece is not None and citation.get("snippet") and citation["snippet"] in piece and strict_match is not False:
+        internal_identity_match = (
+            doc.get("visibility") != "PUBLIC"
+            and protocol == "strict"
+            and strict_match is True
+        )
+        snippet_match = piece is not None and citation.get("snippet") and citation["snippet"] in piece
+        if piece is not None and (snippet_match or internal_identity_match) and strict_match is not False:
             valid += 1
             valid_relevant_documents.add(did)
             if strict_match is True:

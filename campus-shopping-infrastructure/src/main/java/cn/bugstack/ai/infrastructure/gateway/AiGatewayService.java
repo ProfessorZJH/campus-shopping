@@ -136,6 +136,7 @@ public class AiGatewayService {
                 .build();
             HttpResponse<InputStream> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
             try (InputStream body = response.body()) {
+                if (response.statusCode() == 422) throw new RemoteStatusException(422);
                 if (response.statusCode() / 100 != 2) throw new AppException(ResponseCode.AI_UNAVAILABLE);
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
                     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout);
