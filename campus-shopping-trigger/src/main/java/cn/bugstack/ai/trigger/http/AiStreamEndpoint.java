@@ -13,11 +13,12 @@ import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.types.exception.AppException;
+import cn.bugstack.ai.types.common.Checks;
 import jakarta.annotation.Resource;
 import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.springframework.http.MediaType;
@@ -37,7 +38,7 @@ public class AiStreamEndpoint {
         8,
         30,
         TimeUnit.SECONDS,
-        new ArrayBlockingQueue<>(32),
+        new SynchronousQueue<>(),
         runnable -> {
             Thread thread = new Thread(runnable, "ai-stream");
             thread.setDaemon(true);
@@ -53,6 +54,9 @@ public class AiStreamEndpoint {
     public SseEmitter stream(@RequestBody ChatRequestDTO request, Principal principal) {
         required(request);
         String actor = actor(principal);
+        String question = Checks.text(request.getQuestion(), "问题", 2000);
+        request.setQuestion(question);
+        request.setConversationId(Checks.optional(request.getConversationId(), 128));
         SseEmitter emitter = new SseEmitter(120_000L);
         try {
             EXECUTOR.execute(() -> run(emitter, actor, request));

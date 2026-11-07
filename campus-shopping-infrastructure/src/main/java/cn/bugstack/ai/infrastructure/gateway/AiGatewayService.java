@@ -85,10 +85,11 @@ public class AiGatewayService {
             try (InputStream body = response.body()) {
                 if (response.statusCode() / 100 != 2) throw new AppException(ResponseCode.AI_UNAVAILABLE);
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
+                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout);
                     String event = null;
                     String data = null;
                     String line;
-                    while ((line = readBoundedLine(reader, 65536)) != null) {
+                    while ((line = readBoundedLine(reader, 65536, deadline)) != null) {
                         if (line.isEmpty()) {
                             AiGatewayDTO.Answer answer = consumeStreamEvent(event, data, progress);
                             if (answer != null) return answer;
@@ -137,10 +138,21 @@ public class AiGatewayService {
         };
     }
 
-    private String readBoundedLine(BufferedReader reader, int maxLength) throws IOException {
+    private String readBoundedLine(BufferedReader reader, int maxLength, long deadline) throws IOException {
         StringBuilder line = new StringBuilder(Math.min(maxLength, 256));
         int value;
-        while ((value = reader.read()) != -1) {
+        while (true) {
+            while (!reader.ready()) {
+                if (System.nanoTime() >= deadline) throw new IOException("AI stream timeout");
+                try {
+                    Thread.sleep(25);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new IOException("AI stream interrupted", interrupted);
+                }
+            }
+            value = reader.read();
+            if (value == -1) break;
             if (value == '\n') return line.toString().endsWith("\r") ? line.substring(0, line.length() - 1) : line.toString();
             if (line.length() >= maxLength) throw new AppException(ResponseCode.AI_UNAVAILABLE);
             line.append((char) value);
