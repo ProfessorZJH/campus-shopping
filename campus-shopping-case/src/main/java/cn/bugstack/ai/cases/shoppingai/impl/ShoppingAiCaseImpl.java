@@ -46,6 +46,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import java.util.stream.Collectors;
+import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -103,7 +104,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     /** 复用正式 AI 检索入口的只读调试链路；不创建会话、不产生提案。 */
     @Override
     public KnowledgeDebugResult debugRetrieval(String actor, String question, boolean answerPreview) {
-        accounts.requireActive(actor);
+        knowledge.requireDebugAccess(actor);
         require(question != null && !question.isBlank() && question.length() <= 1000, ResponseCode.ILLEGAL_PARAMETER);
         long started = System.nanoTime();
         List<KnowledgeScopeVO> readable = knowledge.readableScope(actor);
@@ -122,7 +123,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                 .map(KnowledgeScopeVO::id)
                 .toList()
         );
-        AiAnswerVO answer = engine.query(query);
+        AiAnswerVO answer = answerPreview ? engine.query(query) : engine.retrieve(query);
         List<KnowledgeScopeVO> current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
         List<AiCitationVO> citations = verifyCitations(actor, answer.citations(), current);
@@ -282,11 +283,16 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                 .map(KnowledgeScopeVO::id)
                 .toList()
         );
+        AtomicLong lastCancellationCheck = new AtomicLong(0);
         LongConsumer guardedProgress =
             progress == null
                 ? null
                 : bytes -> {
-                      ensureTurnActive(actor, conversation);
+                      long now = System.nanoTime();
+                      long previous = lastCancellationCheck.get();
+                      if (previous == 0 || now - previous >= 200_000_000L) {
+                          if (lastCancellationCheck.compareAndSet(previous, now)) ensureTurnActive(actor, conversation);
+                      }
                       progress.accept(bytes);
                   };
         AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, guardedProgress);
@@ -353,15 +359,23 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         );
         require(fingerprint.equals(scope(knowledge.readableScope(actor))), ResponseCode.KNOWLEDGE_NOT_READY);
         if (progress != null) ensureTurnActive(actor, conversation);
-        ProposalVO proposal = turns.complete(
-            turn,
-            question,
-            safe.answer(),
-            items,
-            citations,
-            clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60),
-            fingerprint
-        );
+        ProposalVO proposal;
+        try {
+            proposal = turns.complete(
+                turn,
+                question,
+                safe.answer(),
+                items,
+                citations,
+                clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60),
+                fingerprint
+            );
+        } catch (cn.bugstack.ai.types.exception.AppException failure) {
+            // Cancellation can win between the final status check and finishTurn's conditional UPDATE.
+            var status = state.turnStatus(actor, conversation);
+            if (status != null && "CANCEL_REQUESTED".equals(status.status())) throw new AiTurnCancelledException();
+            throw failure;
+        }
         return new ChatResult(conversation, safe, proposal);
     }
 

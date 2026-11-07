@@ -133,7 +133,7 @@ def knowledge_question(question: str) -> bool:
                 and re.search(r'怎么|如何|怎样|流程|规则|政策|说明|须知|多久|什么时候|哪里|能否|是否|能不能', question))
 
 
-def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[dict],history: list[dict],retrieval_query: str="",semantic_sku_ids: list[str]|None=None,*,_trace: dict|None=None,external_document_ids: list[str]|None=None,_stream_progress=None) -> dict:
+def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[dict],history: list[dict],retrieval_query: str="",semantic_sku_ids: list[str]|None=None,*,_trace: dict|None=None,external_document_ids: list[str]|None=None,_stream_progress=None,answer_preview: bool=True) -> dict:
     started=time.perf_counter();query=retrieval_query or query_rewrite(question,history,store)
     evidence,retrieval_mode=store.search(query,allowed,6,external_document_ids=external_document_ids)
     if _trace is not None:_trace.update(offers=[o['skuId'] for o in offers], eligible=[], candidates=[], selected=[])
@@ -167,7 +167,7 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     local_recommendations=list(recommendations)
     mode='LOCAL_RETRIEVAL_DEMO';warning='本次为本地检索演示，未调用大语言模型。'
     text=''
-    if store.settings.llm_key:
+    if store.settings.llm_key and answer_preview:
         try:
             model_payload={'question':question,'history':[h for h in history if h['role']=='user'][-3:],'authorizedEvidence':[e for e in evidence if e['documentId'] in set(external_document_ids or [])],'candidates':candidates,'budgetCent':limit,'requestedQuantity':requested}
             if _stream_progress is None:

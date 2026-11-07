@@ -54,6 +54,15 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         this.merchants = merchants;
     }
 
+    @Override
+    public void requireDebugAccess(String actor) {
+        accounts.requireActive(actor);
+        boolean allowed = access.isAdmin(actor) || access.memberships(actor).stream()
+            .map(m -> m.merchantId())
+            .anyMatch(id -> access.permissions(actor, id).contains("knowledge.read"));
+        require(allowed, ResponseCode.AUTH_FORBIDDEN);
+    }
+
     private KnowledgeBaseVO manage(String actor, String id, String permission) {
         accounts.requireActive(actor);
         KnowledgeBaseVO b = state.base(id);

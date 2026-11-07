@@ -102,9 +102,7 @@ public class ShoppingAiController implements IShoppingAiApi {
 
     private String scoreType(String retrievalMode) {
         return switch (retrievalMode) {
-            case "REMOTE_EMBEDDING" -> "VECTOR_SIMILARITY";
-            case "BM25_DEGRADED" -> "BM25";
-            case "LOCAL_CHAR_NGRAM_DEMO" -> "CHAR_NGRAM";
+            case "REMOTE_EMBEDDING", "BM25_DEGRADED", "LOCAL_CHAR_NGRAM_DEMO" -> "RRF";
             default -> "UNKNOWN";
         };
     }

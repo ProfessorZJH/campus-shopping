@@ -388,6 +388,8 @@ def main():
     if failure:
         raise SystemExit(failure)
     print('真实服务浏览器检查通过：', len(checks))
+    if os.environ.get('SKIP_FINAL_MATRIX') == '1':
+        return
     final_script = Path(__file__).with_name('live_final_matrix.py')
     if not final_script.is_file():
         raise SystemExit('缺少最终隔离浏览器矩阵脚本')

@@ -18,8 +18,13 @@ public final class AiGatewayDTO {
         List<History> history,
         String retrievalQuery,
         List<String> semanticSkuIds,
-        List<String> externalDocumentIds
-    ) {}
+        List<String> externalDocumentIds,
+        boolean answerPreview
+    ) {
+        public Query(String question, List<String> allowedDocumentIds, List<Offer> offers, List<History> history, String retrievalQuery, List<String> semanticSkuIds, List<String> externalDocumentIds) {
+            this(question, allowedDocumentIds, offers, history, retrievalQuery, semanticSkuIds, externalDocumentIds, true);
+        }
+    }
 
     public record RecallRequest(String question, List<History> history) {}
 

@@ -50,14 +50,19 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public AiAnswerVO query(AiQueryEntity query) {
-        return toAnswer(gateway.query(toRequest(query)));
+        return toAnswer(gateway.query(toRequest(query, true)));
+    }
+
+    @Override
+    public AiAnswerVO retrieve(AiQueryEntity query) {
+        return toAnswer(gateway.query(toRequest(query, false)));
     }
 
     public AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
-        return toAnswer(gateway.queryStream(toRequest(query), progress));
+        return toAnswer(gateway.queryStream(toRequest(query, true), progress));
     }
 
-    private AiGatewayDTO.Query toRequest(AiQueryEntity query) {
+    private AiGatewayDTO.Query toRequest(AiQueryEntity query, boolean answerPreview) {
         return new AiGatewayDTO.Query(
             query.question(),
             query.allowedDocumentIds(),
@@ -73,7 +78,8 @@ public class AiEnginePort implements IAiEnginePort {
                 .toList(),
             query.retrievalQuery(),
             query.semanticSkuIds(),
-            query.externalDocumentIds()
+            query.externalDocumentIds(),
+            answerPreview
         );
     }
 

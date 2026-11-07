@@ -60,6 +60,7 @@ class QueryRequest(StrictModel):
     retrievalQuery: str=Field(default="",max_length=2000)
     history: list[HistoryItem]=Field(default_factory=list,max_length=12)
     semanticSkuIds: list[str]=Field(default_factory=list,max_length=300)
+    answerPreview: bool=True
 class RecallRequest(StrictModel):
     question: str=Field(min_length=1,max_length=2000)
     history: list[HistoryItem]=Field(default_factory=list,max_length=12)
@@ -137,7 +138,7 @@ def create_app(settings: Settings|None=None):
     @app.post('/v1/query',dependencies=[Depends(authorized)])
     def query(request: QueryRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
-        try:return answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds)
+        try:return answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds,answer_preview=request.answerPreview)
         except Exception as error:
             failure('query', error)
             raise HTTPException(503,'检索暂不可用') from None
@@ -147,16 +148,21 @@ def create_app(settings: Settings|None=None):
         if not gate.acquire(blocking=False):raise HTTPException(429,'推理服务繁忙')
         def event(name,payload):return 'event: '+name+'\ndata: '+json.dumps(payload,ensure_ascii=False,separators=(',',':'))+'\n\n'
         def generate():
-            queue=Queue(maxsize=32);stopped=threading.Event();worker_done=threading.Event()
-            yield event('started',{'mode':'FULL_RESPONSE' if not settings.llm_key else 'UPSTREAM_STREAMING_JSON'})
+            queue=Queue(maxsize=32);stopped=threading.Event();worker_done=threading.Event();release_lock=threading.Lock();released=False
+            def release_gate():
+                nonlocal released
+                with release_lock:
+                    if not released:
+                        released=True;gate.release()
             def progress(size):
                 if stopped.is_set():return True
                 try:queue.put_nowait(('progress',{'bytes':size}))
                 except Full:return True
                 return False
             def publish(name,payload):
-                try:queue.put_nowait((name,payload))
-                except Full:pass
+                while not stopped.is_set():
+                    try:queue.put((name,payload),timeout=.1);return
+                    except Full:continue
             def work():
                 try:
                     result=answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds,_stream_progress=progress if settings.llm_key else None)
@@ -165,15 +171,16 @@ def create_app(settings: Settings|None=None):
                 except Exception as error:
                     failure('query.stream',error);publish('failed',{'errorCode':'AI_UNAVAILABLE'})
                 finally:
-                    worker_done.set();gate.release()
-            thread=threading.Thread(target=work,name='ai-query-stream',daemon=True);thread.start()
+                    worker_done.set();release_gate()
             try:
+                thread=threading.Thread(target=work,name='ai-query-stream',daemon=True);thread.start()
+                yield event('started',{'mode':'FULL_RESPONSE' if not settings.llm_key else 'UPSTREAM_STREAMING_JSON'})
                 while not worker_done.is_set() or not queue.empty():
                     try:name,payload=queue.get(timeout=.25)
                     except Empty:continue
                     yield event(name,payload)
             finally:
-                stopped.set()
+                stopped.set();release_gate()
         return StreamingResponse(generate(),media_type='text/event-stream')
     @app.post('/v1/products/index',dependencies=[Depends(authorized)])
     def index_products(request: ProductIndexRequest):

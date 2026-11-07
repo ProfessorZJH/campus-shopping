@@ -111,9 +111,13 @@ def migration_checks(connection, report):
     old, count = re.subn(r'CREATE TABLE IF NOT EXISTS trd_order_event \(.*?;\n', '', old, count=1, flags=re.S)
     assert count == 1, '旧库夹具应缺少订单事件表'
     old = old.replace(" image_url VARCHAR(255) NOT NULL DEFAULT '',", '')
-    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL', "summary VARCHAR(200) NOT NULL DEFAULT ''"):
+    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL', "summary VARCHAR(200) NOT NULL DEFAULT ''", "turn_status VARCHAR(24) NOT NULL DEFAULT 'IDLE'", 'turn_cancel_requested_at DATETIME(3) NULL', 'last_active_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)', 'citation_recorded TINYINT(1) NOT NULL DEFAULT 0'):
         old, count = re.subn(r' ' + re.escape(column) + ',', '', old)
         assert count == 1, column
+    old, count = re.subn(r', KEY ix_conversation_activity\([^)]*\)', '', old)
+    assert count == 1, '旧库夹具不应包含会话活跃索引'
+    old, count = re.subn(r'CREATE TABLE IF NOT EXISTS ai_message_citation \(.*?;\n', '', old, count=1, flags=re.S)
+    assert count == 1, '旧库夹具不应包含消息引用表'
     old = re.sub(r'CREATE TABLE IF NOT EXISTS ai_knowledge_quota \(.*?;\n', '', old, flags=re.S)
     old = re.sub(r'INSERT IGNORE INTO ai_knowledge_quota[^;]*;\n', '', old)
     old = re.sub(r'CREATE TABLE IF NOT EXISTS iam_merchant_role(?:_permission)? \(.*?;\n', '', old, flags=re.S)
@@ -365,14 +369,19 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         live.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT/'frontend/tests/live_ui.py', live)
         shutil.copy2(ROOT/'frontend/tests/live_final_matrix.py', build_root/'frontend/tests/live_final_matrix.py')
+        live_env = env.copy()
+        live_env['SKIP_FINAL_MATRIX'] = '1'
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live), '--base-url', base],
-                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=480)
+                                   cwd=build_root, env=live_env, creationflags=FLAGS, timeout=480)
         source = build_root/'docs/testing/evidence/frontend-live'
         if source.exists():
             shutil.copytree(source, args.output.parent/'frontend-live', dirs_exist_ok=True)
         browser = json.loads((source/'results.json').read_text('utf-8'))
         report['browser'] = {'status': browser['status'], 'checks': len(browser['checks']), 'apiMockUsed': False}
         assert completed.returncode == 0 and browser['status'] == 'PASS', '真实浏览器验收失败'
+        final_script = build_root/'frontend/tests/live_final_matrix.py'
+        completed_final = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(final_script), '--base-url', base],
+                                         cwd=build_root, env=env, creationflags=FLAGS, timeout=480)
         source_final = build_root/'docs/testing/evidence/frontend-live-final'
         if source_final.exists():
             shutil.copytree(source_final, args.output.parent/'frontend-live-final', dirs_exist_ok=True)
@@ -383,7 +392,7 @@ def http_smoke(args, workspace, build_root, connection, env, report):
             'apiMockUsed': False,
             'streamMode': browser_final.get('streamMode'),
         }
-        assert completed.returncode == 0 and browser_final['status'] == 'PASS', '最终隔离浏览器矩阵失败'
+        assert completed_final.returncode == 0 and browser_final['status'] == 'PASS', '最终隔离浏览器矩阵失败'
         live_m2 = build_root/'frontend/tests/live_m2_fulfillment.py'
         shutil.copy2(ROOT/'frontend/tests/live_m2_fulfillment.py', live_m2)
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live_m2), '--base-url', base],

@@ -12,6 +12,14 @@ public interface IAiEnginePort {
     );
     AiAnswerVO query(AiQueryEntity query);
 
+    default AiAnswerVO query(AiQueryEntity query, boolean answerPreview) {
+        return answerPreview ? query(query) : retrieve(query);
+    }
+
+    default AiAnswerVO retrieve(AiQueryEntity query) {
+        return query(query);
+    }
+
     /** 受控流式查询；供应商进度只以字节数回调，最终仍返回完整且已校验的答案。 */
     default AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
         return query(query);
