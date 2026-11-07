@@ -7,7 +7,7 @@ import lombok.*;
 @AllArgsConstructor
 public class StatisticsProductPO {
 
-    private String skuId;
+    private String productId;
     private String title;
     private Long quantity;
 }

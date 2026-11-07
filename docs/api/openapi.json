@@ -20037,7 +20037,14 @@
             "format": "int64"
           },
           "refundRate": {
-            "type": "number"
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "trend": {
             "type": "array",
@@ -20077,7 +20084,9 @@
           "products",
           "metricNote"
         ],
-        "x-nullable-fields": []
+        "x-nullable-fields": [
+          "refundRate"
+        ]
       },
       "OrderEventResponseDTO": {
         "type": "object",
@@ -20929,7 +20938,7 @@
       "StatisticsProductDTO": {
         "type": "object",
         "properties": {
-          "skuId": {
+          "productId": {
             "type": "string"
           },
           "title": {

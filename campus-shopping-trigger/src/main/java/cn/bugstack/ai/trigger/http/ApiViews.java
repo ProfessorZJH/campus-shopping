@@ -242,7 +242,7 @@ public final class ApiViews {
                 s
                     .products()
                     .stream()
-                    .map(x -> StatisticsProductDTO.builder().skuId(x.skuId()).title(x.title()).quantity(x.quantity()).build())
+                    .map(x -> StatisticsProductDTO.builder().productId(x.productId()).title(x.title()).quantity(x.quantity()).build())
                     .toList()
             )
             .metricNote("按订单创建时间分组；状态和完成金额为查询时事实；退款率仅代表模拟付款/整单退款，不代表真实资金结算")

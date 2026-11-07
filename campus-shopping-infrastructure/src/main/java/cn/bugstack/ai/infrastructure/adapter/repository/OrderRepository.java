@@ -166,7 +166,7 @@ public class OrderRepository implements IOrderRepository {
             dao
                 .statisticsProducts(merchant, start, end)
                 .stream()
-                .map(p -> new OperationsStatisticsVO.Product(p.getSkuId(), p.getTitle(), value(p.getQuantity())))
+                .map(p -> new OperationsStatisticsVO.Product(p.getProductId(), p.getTitle(), value(p.getQuantity())))
                 .toList()
         );
     }

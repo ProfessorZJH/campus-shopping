@@ -26,7 +26,7 @@ FIELDS = {
     'OrderEventResponseDTO': ('eventId type occurredAt actorRole reason', ''),
     'OrderItemResponseDTO': ('skuId title specKey imageUrl unitPriceCent quantity', ''),
     'OrderResponseDTO': ('orderId buyerId merchantId merchantName storeId pickupStoreName pickupLocation status totalCent deadline createdAt items events', 'pickup afterSale'),
-    'OperationsStatisticsResponseDTO': ('periodStart periodEnd timezone asOf totalOrders paidOrders refundedOrders completedAmountCent refundRate trend statuses products metricNote', ''),
+    'OperationsStatisticsResponseDTO': ('periodStart periodEnd timezone asOf totalOrders paidOrders refundedOrders completedAmountCent trend statuses products metricNote', 'refundRate'),
     'PageResponseDTO': ('items page size total hasNext', ''),
     'PermissionResponseDTO': ('code label grantable', ''),
     'PickupResponseDTO': ('status', 'expiresAt'),

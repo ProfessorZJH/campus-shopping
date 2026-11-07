@@ -96,9 +96,9 @@ FROM trd_order o WHERE o.created_at &gt;= #{start} AND o.created_at &lt; #{end}
 <if test="merchant != null">AND o.merchant_id=#{merchant}</if>
     </select>
     <select id="statisticsTrend" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsTrendPO">
-SELECT DATE_FORMAT(o.created_at,'%Y-%m-%d') day, COUNT(*) order_count FROM trd_order o
+SELECT DATE_FORMAT(CONVERT_TZ(o.created_at,'+00:00','+08:00'),'%Y-%m-%d') day, COUNT(*) order_count FROM trd_order o
 WHERE o.created_at &gt;= #{start} AND o.created_at &lt; #{end}<if test="merchant != null"> AND o.merchant_id=#{merchant}</if>
-GROUP BY DATE_FORMAT(o.created_at,'%Y-%m-%d') ORDER BY day
+GROUP BY DATE_FORMAT(CONVERT_TZ(o.created_at,'+00:00','+08:00'),'%Y-%m-%d') ORDER BY day
     </select>
     <select id="statisticsStatuses" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsStatusPO">
 SELECT o.status, COUNT(*) order_count, COALESCE(SUM(o.total_cent),0) amount_cent FROM trd_order o
@@ -106,9 +106,9 @@ WHERE o.created_at &gt;= #{start} AND o.created_at &lt; #{end}<if test="merchant
 GROUP BY o.status ORDER BY o.status
     </select>
     <select id="statisticsProducts" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsProductPO">
-SELECT i.sku_id, MAX(i.title) title, COALESCE(SUM(i.quantity),0) quantity FROM trd_order o JOIN trd_order_item i ON i.order_id=o.id
+SELECT p.id product_id, MAX(p.title) title, COALESCE(SUM(i.quantity),0) quantity FROM trd_order o JOIN trd_order_item i ON i.order_id=o.id JOIN cat_sku s ON s.id=i.sku_id JOIN cat_product p ON p.id=s.product_id
 WHERE o.status='COMPLETED' AND o.created_at &gt;= #{start} AND o.created_at &lt; #{end}<if test="merchant != null"> AND o.merchant_id=#{merchant}</if>
-GROUP BY i.sku_id ORDER BY quantity DESC,i.sku_id LIMIT 20
+GROUP BY p.id ORDER BY quantity DESC,p.id LIMIT 20
     </select>
 <insert id="ensureCart">INSERT INTO trd_cart_owner(user_id) VALUES(#{user}) ON DUPLICATE KEY UPDATE user_id=user_id</insert>
 <select id="lockCart" resultType="java.lang.String">SELECT user_id FROM trd_cart_owner WHERE user_id=#{user} FOR UPDATE</select>

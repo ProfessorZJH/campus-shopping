@@ -30,5 +30,5 @@ public record OperationsStatisticsVO(
 
     public record Status(String status, long orderCount, long amountCent) {}
 
-    public record Product(String skuId, String title, long quantity) {}
+    public record Product(String productId, String title, long quantity) {}
 }
