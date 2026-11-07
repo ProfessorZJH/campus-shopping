@@ -72,7 +72,7 @@ def application(admin, base, owner, suffix):
         'storeName': '最终矩阵门店 ' + suffix,
         'location': '隔离校区测试点',
     }
-    item = data(owner, base, 'POST', '/merchant-applications', request)
+    item = data(owner, base, 'POST', '/merchant-applications', request, key=uuid.uuid4().hex)
     return data(admin, base, 'POST', '/admin/merchant-applications/' + item['applicationId'] + '/review', {'approved': True, 'reason': '最终隔离矩阵'})
 
 
@@ -109,7 +109,7 @@ def mobile_route_check(page, base, route, checks, label):
 def abort_real_stream(page, base, question):
     csrf = data(page.request, base, 'GET', '/auth/csrf')
     return page.evaluate(
-        """
+        r"""
         async ({base, headerName, token, question}) => {
           const controller = new AbortController();
           const response = await fetch(base + '/api/v1/ai/chat/stream', {
@@ -193,7 +193,7 @@ def main():
             })
             product = create_product(owner_client, base, mid, '最终矩阵商品 ' + suffix, image_url=image['url'], image_urls=[image['url']])
             sku = product['skus'][0]
-            data(owner_client, base, 'POST', prefix + '/stocks/' + sku['skuId'] + '/replenish', {'quantity': 3})
+            data(owner_client, base, 'POST', prefix + '/stocks/' + sku['skuId'] + '/replenish', {'quantity': 3}, key=uuid.uuid4().hex)
             data(owner_client, base, 'POST', prefix + '/products/' + product['productId'] + '/publish', {'published': True})
             checks.append('隔离商品关联本轮上传图片与商户归属')
 
@@ -265,7 +265,7 @@ def main():
             # 缺货：第二买家先占住最后库存，第一买家的旧报价不得建单。
             scarce = create_product(owner_client, base, mid, '最终矩阵限量商品 ' + suffix, price=900)
             scarce_sku = scarce['skus'][0]
-            data(owner_client, base, 'POST', prefix + '/stocks/' + scarce_sku['skuId'] + '/replenish', {'quantity': 1})
+            data(owner_client, base, 'POST', prefix + '/stocks/' + scarce_sku['skuId'] + '/replenish', {'quantity': 1}, key=uuid.uuid4().hex)
             data(owner_client, base, 'POST', prefix + '/products/' + scarce['productId'] + '/publish', {'published': True})
             scarce_quote = data(buyer_client, base, 'GET', '/products/' + scarce['productId'])
             scarce_offer = scarce_quote['skus'][0]
