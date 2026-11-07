@@ -155,15 +155,30 @@ export default {
       try {
         for (let attempt = 0; attempt < 60; attempt += 1) {
           if (stamp !== conversationEpoch || actor !== store.user?.userId) return true;
-          const status = await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/status', {
-            timeoutMs: 5000,
-          });
+          let status;
+          try {
+            status = await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/status', {
+              timeoutMs: 5000,
+            });
+          } catch (error) {
+            if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+          }
           if (status?.status === 'CANCEL_REQUESTED') {
             cancelRequested.value = true;
             await new Promise((resolve) => setTimeout(resolve, 500));
             continue;
           }
-          if (status?.status === 'IDLE') return loadConversationSnapshot(id, stamp);
+          if (status?.status === 'IDLE') {
+            try {
+              return await loadConversationSnapshot(id, stamp);
+            } catch (error) {
+              if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              continue;
+            }
+          }
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
       } finally {

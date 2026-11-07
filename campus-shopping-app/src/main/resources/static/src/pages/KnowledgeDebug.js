@@ -7,7 +7,7 @@ export default {
   components: { BackofficeShell },
   setup() {
     const question = ref(''),
-      preview = ref(true),
+      preview = ref(false),
       busy = ref(false),
       error = ref(''),
       result = ref(null);
