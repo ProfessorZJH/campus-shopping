@@ -36,10 +36,14 @@ import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
 import cn.bugstack.ai.domain.shoppingai.service.ShoppingAnswerPolicy;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -205,13 +209,17 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         AiRecallVO recall = engine.recall(question, history);
         // 词面召回 + 可选 Milvus 语义召回：RRF 合并，商品状态仍须重新由 MySQL 校验。
         List<cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate> lexical = catalog.recall(recall.terms(), 200);
-        List<String> semanticIds = List.of();
+        List<cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO> semanticRanks = List.of();
         try {
-            semanticIds = engine.semanticProducts(recall.query(), 80);
+            semanticRanks = engine.semanticProductRanks(recall.query(), 80);
         } catch (cn.bugstack.ai.types.exception.AppException e) {
             if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;
             log.warn("商品语义召回降级 diagnostic={}", cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
         }
+        var semanticIds = semanticRanks
+            .stream()
+            .map(c -> c.productId())
+            .toList();
         var semantic = catalog.recallByIds(semanticIds);
         var byProduct = new HashMap<String, cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate>();
         lexical.forEach(p -> byProduct.put(p.getId(), p));
@@ -225,7 +233,9 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                 .stream()
                 .map(p -> p.getId())
                 .toList(),
-            semanticIds
+            semanticRanks
+                .stream()
+                .collect(Collectors.toMap(c -> c.productId(), c -> c.rank(), (a, b) -> a, () -> new java.util.LinkedHashMap<String, Integer>()))
         )
             .stream()
             .filter(byProduct::containsKey)
@@ -265,11 +275,26 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             })
             .filter(o -> o.available() > 0)
             .toList();
-        List<String> semanticSkuIds = offers
+        var prior = java.util.Optional.ofNullable(proposals.proposals(actor, conversation)).orElse(List.of()).stream().findFirst().orElse(null);
+        Set<String> excludedSkuIds = new HashSet<>();
+        long cheaperThan = Long.MAX_VALUE;
+        if (prior != null && question.matches(".*(?:换一个|换一款|还有别的|类似的).*")) {
+            prior.items().forEach(item -> excludedSkuIds.add(item.skuId()));
+        }
+        if (prior != null && question.matches(".*(?:便宜点|便宜一些|更便宜).*")) {
+            for (var item : prior.items()) cheaperThan = Math.min(cheaperThan, item.priceCent());
+        }
+        final long cheaperLimit = cheaperThan;
+        candidates = candidates
             .stream()
-            .filter(o -> semanticProductIds.contains(o.productId()))
-            .map(SkuOfferVO::skuId)
+            .filter(o -> !excludedSkuIds.contains(o.skuId()) && o.priceCent() < cheaperLimit)
             .toList();
+        var candidateIds = candidates.stream().map(AiOfferVO::skuId).collect(Collectors.toSet());
+        offers = offers
+            .stream()
+            .filter(o -> candidateIds.contains(o.skuId()))
+            .toList();
+        List<String> semanticSkuIds = semanticSkuOrder(offers, semanticRanks, semanticProductIds);
         AiQueryEntity aiQuery = new AiQueryEntity(
             question,
             documents.stream().map(KnowledgeScopeVO::id).toList(),
@@ -337,9 +362,12 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             quotes.stream().map(ProposalItemVO::title).toList()
         );
         String safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
-        if (!knowledgeOnly && (!items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
+        boolean replacementRequest = question.matches(".*(?:换一个|换一款|还有别的|类似的|便宜点|便宜一些|更便宜).*");
+        if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
             safeText = items.isEmpty()
-                ? "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
+                ? replacementRequest
+                    ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。"
+                    : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
                 : "可查看以下商品：" +
                   items
                       .stream()
@@ -379,6 +407,45 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         return new ChatResult(conversation, safe, proposal);
     }
 
+    /** 语义候选按商品轮询，避免单个商品的多个 SKU 挤占前 12 个候选。 */
+    private List<String> semanticSkuOrder(
+        List<SkuOfferVO> offers,
+        List<cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO> ranks,
+        Set<String> semanticProductIds
+    ) {
+        Map<String, Integer> rankByProduct = ranks
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::productId,
+                    cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO::rank,
+                    Math::min
+                )
+            );
+        Map<String, List<SkuOfferVO>> byProduct = offers
+            .stream()
+            .filter(o -> semanticProductIds.contains(o.productId()))
+            .sorted(java.util.Comparator.comparing(SkuOfferVO::skuId))
+            .collect(Collectors.groupingBy(SkuOfferVO::productId, LinkedHashMap::new, Collectors.toList()));
+        List<String> productOrder = byProduct
+            .keySet()
+            .stream()
+            .sorted(java.util.Comparator.comparingInt((String id) -> rankByProduct.getOrDefault(id, Integer.MAX_VALUE)).thenComparing(id -> id))
+            .toList();
+        List<String> result = new ArrayList<>();
+        for (int offset = 0; ; offset++) {
+            boolean added = false;
+            for (String productId : productOrder) {
+                List<SkuOfferVO> productOffers = byProduct.get(productId);
+                if (offset < productOffers.size()) {
+                    result.add(productOffers.get(offset).skuId());
+                    added = true;
+                }
+            }
+            if (!added) return List.copyOf(result);
+        }
+    }
+
     private void ensureTurnActive(String actor, String conversation) {
         var status = state.turnStatus(actor, conversation);
         if (status != null && "CANCEL_REQUESTED".equals(status.status())) throw new AiTurnCancelledException();
@@ -396,8 +463,19 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         List<AiCitationVO> citations = new ArrayList<>();
         for (var citation : requested) {
             var document = byId.get(citation.documentId());
+            require(document != null, ResponseCode.KNOWLEDGE_NOT_READY);
+            boolean publicDocument = "PUBLIC".equals(document.visibility());
+            String chunkBody = citation.ordinal() < 0 ? "" : chunk(document.content(), citation.ordinal());
             require(
-                document != null && citation.snippet() != null && citation.snippet().length() <= 500 && document.content().contains(citation.snippet()),
+                citation.documentVersion() == document.version() &&
+                    citation.snippet() != null &&
+                    citation.snippet().codePointCount(0, citation.snippet().length()) <= 500 &&
+                    // 内部原文不跨服务传输：PUBLIC 才校验片段属于该 chunk，其余以 chunkId、序号和内容哈希定位。
+                    (citation.ordinal() < 0
+                        ? !publicDocument || document.content().contains(citation.snippet())
+                        : citation.chunkId().equals(chunkId(document.id(), citation.ordinal())) &&
+                          citation.contentHash().equals(hash(chunkBody)) &&
+                          (!publicDocument || chunkBody.contains(citation.snippet()))),
                 ResponseCode.KNOWLEDGE_NOT_READY
             );
             citations.add(
@@ -408,11 +486,70 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                     "PUBLIC".equals(document.visibility()) ? citation.snippet() : "内部资料来源，原文片段不公开展示",
                     citation.score(),
                     document.rootId(),
-                    document.version()
+                    document.version(),
+                    citation.ordinal(),
+                    citation.contentHash()
                 )
             );
         }
         return citations;
+    }
+
+    private String chunkId(String document, int ordinal) {
+        try {
+            var namespace = java.util.UUID.fromString("6ba7b811-9dad-11d1-80b4-00c04fd430c8");
+            var bytes = java.nio.ByteBuffer.allocate(16).putLong(namespace.getMostSignificantBits()).putLong(namespace.getLeastSignificantBits()).array();
+            var name = (document + ":" + ordinal).getBytes(StandardCharsets.UTF_8);
+            var input = new byte[bytes.length + name.length];
+            System.arraycopy(bytes, 0, input, 0, bytes.length);
+            System.arraycopy(name, 0, input, bytes.length, name.length);
+            byte[] digest = MessageDigest.getInstance("SHA-1").digest(input);
+            digest[6] = (byte) ((digest[6] & 0x0f) | 0x50);
+            digest[8] = (byte) ((digest[8] & 0x3f) | 0x80);
+            var result = java.nio.ByteBuffer.wrap(digest);
+            return new java.util.UUID(result.getLong(), result.getLong()).toString();
+        } catch (java.security.NoSuchAlgorithmException error) {
+            throw new IllegalStateException(error);
+        }
+    }
+
+    private String chunk(String content, int ordinal) {
+        String normalized = stripUnicode(content.replace("\u0000", ""));
+        int startPoint = ordinal * 620;
+        int pointCount = normalized.codePointCount(0, normalized.length());
+        if (startPoint < 0 || startPoint >= pointCount) return "";
+        int endPoint = Math.min(pointCount, startPoint + 700);
+        int start = normalized.offsetByCodePoints(0, startPoint);
+        int end = normalized.offsetByCodePoints(0, endPoint);
+        return normalized.substring(start, end);
+    }
+
+    /** 与 Python str.strip 对齐，同时覆盖 Java isWhitespace 未包含的 NBSP。 */
+    private String stripUnicode(String value) {
+        int start = 0;
+        int end = value.length();
+        while (start < end) {
+            int codePoint = value.codePointAt(start);
+            if (!Character.isWhitespace(codePoint) && !Character.isSpaceChar(codePoint)) break;
+            start += Character.charCount(codePoint);
+        }
+        while (end > start) {
+            int codePoint = value.codePointBefore(end);
+            if (!Character.isWhitespace(codePoint) && !Character.isSpaceChar(codePoint)) break;
+            end -= Character.charCount(codePoint);
+        }
+        return value.substring(start, end);
+    }
+
+    private String hash(String value) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder result = new StringBuilder();
+            for (byte item : digest) result.append(String.format("%02x", item));
+            return result.toString();
+        } catch (java.security.NoSuchAlgorithmException error) {
+            throw new IllegalStateException(error);
+        }
     }
 
     private String scope(List<KnowledgeScopeVO> docs) {

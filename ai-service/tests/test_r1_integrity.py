@@ -30,7 +30,8 @@ def test_model_cannot_claim_transaction_completion_without_quotes(tmp_path, with
         store.index('policy', '退款说明', '申请退款需要在订单页填写售后原因。')
         store.settings = replace(store.settings, llm_key='test-only')
         store.provider.complete = lambda *args: dict(answer='已付款并退款成功', recommendations=[])
-        result = answer(store, '怎么申请退款', ['policy'] if with_evidence else [], [], [])
+        result = answer(store, '怎么申请退款', ['policy'] if with_evidence else [], [], [],
+                        external_document_ids=['policy'] if with_evidence else [])
         assert '已付款' not in result['answer'] and '退款成功' not in result['answer']
         if with_evidence: assert '填写售后原因' in result['answer']
     finally:

@@ -87,9 +87,18 @@ class ShoppingEvaluationMySqlTest {
         doAnswer(call -> new AiRecallVO(current.get().path("query").asText(), strings(current.get().path("terms"))))
             .when(engine)
             .recall(anyString(), anyList());
-        doAnswer(call -> strings(current.get().path("semanticIds")).stream().map(fixture.logicalToActual::get).filter(Objects::nonNull).toList())
+        // Case 现已调用 semanticProductRanks；测试替身必须模拟相同入口及上游 rank。
+        doAnswer(call -> {
+            List<String> ids = strings(current.get().path("semanticIds"));
+            List<SemanticProductRankVO> ranks = new ArrayList<>();
+            for (int i = 0; i < ids.size(); i++) {
+                String actual = fixture.logicalToActual.get(ids.get(i));
+                if (actual != null) ranks.add(new SemanticProductRankVO(actual, i + 1));
+            }
+            return List.copyOf(ranks);
+        })
             .when(engine)
-            .semanticProducts(anyString(), anyInt());
+            .semanticProductRanks(anyString(), anyInt());
         doAnswer(call -> {
             AiQueryEntity q = call.getArgument(0);
             return new AiAnswerVO("受控建议，不执行交易", "STUB", "STUB", q.retrievalQuery(), "", List.of(), List.of(), 0);

@@ -10,7 +10,7 @@ public final class SkuConstraintPolicy {
     private static final String NEGATIVE =
         "不要推荐|不想要|不想选|不想买|不需要|不要选|不推荐|不接受|不喜欢|不要|不选|不买|不用|别推荐|别选|别买|排除|不考虑|不含|不是|拒绝|非";
     private static final String CUES = NEGATIVE + "|只要|想要|规格为|规格是|要|选择|选|换成|改成|改为";
-    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|贵一点|还有别的|类似的|这些");
+    private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
 
     private SkuConstraintPolicy() {}
 
@@ -92,12 +92,15 @@ public final class SkuConstraintPolicy {
             }
             String remainder = token.substring(cursor).replaceAll("^(?:和|及|与|并且|同时|的|也)+", "");
             boolean productName = titles.stream().anyMatch(title -> !remainder.isEmpty() && normalize(title).contains(remainder));
+            // 商户范围由服务端 merchant 白名单执行，不是SKU属性，不能被否定线索误判为未知规格。
+            boolean merchantScope = remainder.matches(".*(?:商户|商家).*");
             if (
                 !remainder.isEmpty() &&
                 !productName &&
+                !merchantScope &&
                 (explicit.group().startsWith("规格为") ||
                     explicit.group().startsWith("规格是") ||
-                    (explicit.group().matches("^(?:只要|要|换成|改成|改为).*") && remainder.length() <= 8))
+                    (explicit.group().matches("^(?:" + NEGATIVE + "|只要|要|换成|改成|改为).*") && remainder.length() <= 12))
             ) terms.add(remainder);
         }
         Set<String> required = new HashSet<>(),
@@ -147,6 +150,10 @@ public final class SkuConstraintPolicy {
         required.forEach(v -> axes.add(dimension(v)));
         forbidden.forEach(v -> axes.add(dimension(v)));
         boolean ambiguous = current.ambiguous();
+        ambiguous |= current
+            .forbidden()
+            .stream()
+            .anyMatch(value -> !vocabulary.contains(value));
         if (FOLLOWUP.matcher(question).find()) {
             for (int i = history.size() - 1; i >= 0; i--) {
                 var inherited = extract(history.get(i), vocabulary, sortedTitles);
@@ -165,6 +172,11 @@ public final class SkuConstraintPolicy {
                     .filter(v -> newAxes.contains(dimension(v)))
                     .forEach(forbidden::add);
                 if (!newAxes.isEmpty()) ambiguous |= inherited.ambiguous();
+                ambiguous |= inherited
+                    .forbidden()
+                    .stream()
+                    .filter(value -> newAxes.contains(dimension(value)))
+                    .anyMatch(value -> !vocabulary.contains(value));
                 axes.addAll(newAxes);
                 if (!FOLLOWUP.matcher(history.get(i)).find()) break;
             }

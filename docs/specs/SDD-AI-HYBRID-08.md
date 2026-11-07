@@ -1,6 +1,6 @@
 # SDD-08 · 校园商城商品混合召回（MySQL 关键词 + NVIDIA Embedding + Milvus）
 
-> 2026-10-31：本规格继续拥有商品向量投影、RRF与Java事实复验规则。新增FR-023评测行为见[OpenSpec评测规格](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md)、[实验与来源矩阵](../../ai-service/evaluation/README.md)、[本轮验证](../testing/AI-EVALUATION-20261031.md)。知识向量与商品Milvus分别统计；本轮受控替身不得记作真实Embedding/Milvus质量通过。
+> 2026-11-01：批次 A+B 增加语义 product rank 到 SKU 的显式传递、属性缺失澄清、Proposal 多轮换选/低价过滤及引用版本/chunk/hash 复验；实现与未验证范围见[批次 A+B 实施记录](../testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)。知识向量与商品Milvus分别统计；受控替身不得记作真实Embedding/Milvus质量通过。
 
 > 2026-10-29，基线 v1.2.2。**源码集成候选版；实际 NVIDIA、讯飞、Milvus、Java/MySQL 联调未完成**。本文不包含任何真实密钥。
 

@@ -146,7 +146,7 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         try {
             boolean external = egress.allows(d.visibility(), d.baseId(), d.merchantId());
             if (external) access.audit(actor, "AI_EXTERNAL_INDEX_REQUESTED", id, d.merchantId(), "知识嵌入范围：已批准知识版本；不记录正文");
-            engine.index(id, d.title(), d.content(), external);
+            engine.index(id, d.title(), d.content(), d.version(), external);
             require(state.completeIndex(attempt, true, ""), ResponseCode.STATE_CONFLICT);
         } catch (AppException e) {
             if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;

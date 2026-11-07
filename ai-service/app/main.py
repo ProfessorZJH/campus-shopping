@@ -42,6 +42,7 @@ class StrictModel(BaseModel):model_config=ConfigDict(extra='forbid')
 class IndexRequest(StrictModel):
     externalAllowed: bool=False
     documentId: str=Field(min_length=1,max_length=64)
+    documentVersion: int=Field(default=1,ge=1,le=1000000)
     title: str=Field(min_length=1,max_length=120)
     content: str=Field(min_length=1,max_length=100000)
 class HistoryItem(StrictModel):
@@ -51,6 +52,7 @@ class Offer(StrictModel):
     skuId: str=Field(max_length=64);merchantId: str=Field(max_length=64)
     title: str=Field(max_length=100);specKey: str=Field(max_length=100)
     description: str=Field(default='',max_length=5000)
+    attributes: dict[str,str]=Field(default_factory=dict,max_length=32)
     priceCent: int=Field(gt=0,le=100000000);available: int=Field(ge=0)
 class QueryRequest(StrictModel):
     externalDocumentIds: list[str]=Field(default_factory=list,max_length=1000)
@@ -113,7 +115,7 @@ def create_app(settings: Settings|None=None):
     @app.post('/v1/index',dependencies=[Depends(authorized)])
     def index(request: IndexRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'索引服务繁忙')
-        try:return {'chunks':store.index(request.documentId,request.title,request.content,external_allowed=request.externalAllowed),'mode':store.provider.vector_mode if request.externalAllowed else 'LOCAL_CHAR_NGRAM_DEMO'}
+        try:return {'chunks':store.index(request.documentId,request.title,request.content,version=request.documentVersion,external_allowed=request.externalAllowed),'mode':store.provider.vector_mode if request.externalAllowed else 'LOCAL_CHAR_NGRAM_DEMO'}
         except ValueError as e:raise HTTPException(400,str(e)) from None
         except Exception as error:
             raise HTTPException(503,'索引依赖不可用，请重试') from None

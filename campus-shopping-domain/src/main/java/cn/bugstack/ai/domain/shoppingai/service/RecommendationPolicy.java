@@ -16,13 +16,20 @@ public final class RecommendationPolicy {
     private RecommendationPolicy() {}
 
     public static List<String> fuse(List<String> lexical, List<String> semantic) {
+        Map<String, Integer> ranks = new HashMap<>();
+        for (int i = 0; i < semantic.size(); i++) ranks.putIfAbsent(semantic.get(i), i + 1);
+        return fuse(lexical, ranks);
+    }
+
+    public static List<String> fuse(List<String> lexical, Map<String, Integer> semanticRanks) {
         Map<String, Double> scores = new HashMap<>();
-        for (var source : List.of(lexical, semantic)) {
-            Set<String> seen = new HashSet<>();
-            for (int rank = 0; rank < source.size(); rank++) {
-                String id = source.get(rank);
-                if (seen.add(id)) scores.merge(id, 1.0 / (61 + rank), Double::sum);
-            }
+        Set<String> seen = new HashSet<>();
+        for (int rank = 0; rank < lexical.size(); rank++) {
+            String id = lexical.get(rank);
+            if (seen.add(id)) scores.merge(id, 1.0 / (61 + rank), Double::sum);
+        }
+        for (var entry : semanticRanks.entrySet()) {
+            if (entry.getValue() >= 1) scores.merge(entry.getKey(), 1.0 / (60 + entry.getValue()), Double::sum);
         }
         return scores
             .entrySet()

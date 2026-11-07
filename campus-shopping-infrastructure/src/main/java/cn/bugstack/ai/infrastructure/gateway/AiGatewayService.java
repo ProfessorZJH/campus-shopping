@@ -63,6 +63,59 @@ public class AiGatewayService {
         return post("/v1/query", request, AiGatewayDTO.Answer.class);
     }
 
+    /** 允许 Java 先升级时与仍在运行的旧 Python 实例短暂共存；仅 422 协议拒绝触发降级载荷。 */
+    public AiGatewayDTO.Answer queryLegacy(AiGatewayDTO.Query request) {
+        return post("/v1/query", legacyQueryPayload(request, true), AiGatewayDTO.Answer.class);
+    }
+
+    public AiGatewayDTO.Answer queryLegacyWithoutExternalScope(AiGatewayDTO.Query request) {
+        return post("/v1/query", legacyQueryPayload(request, false), AiGatewayDTO.Answer.class);
+    }
+
+    private java.util.Map<String, Object> legacyQueryPayload(AiGatewayDTO.Query request, boolean includeExternalScope) {
+        var offers = request
+            .offers()
+            .stream()
+            .map(o ->
+                java.util.Map.of(
+                    "skuId",
+                    o.skuId(),
+                    "merchantId",
+                    o.merchantId(),
+                    "title",
+                    o.title(),
+                    "specKey",
+                    o.specKey(),
+                    "description",
+                    o.description(),
+                    "priceCent",
+                    o.priceCent(),
+                    "available",
+                    o.available()
+                )
+            )
+            .toList();
+        var payload = new java.util.LinkedHashMap<String, Object>();
+        payload.putAll(
+            java.util.Map.of(
+                "question",
+                request.question(),
+                "allowedDocumentIds",
+                request.allowedDocumentIds(),
+                "offers",
+                offers,
+                "history",
+                request.history(),
+                "retrievalQuery",
+                request.retrievalQuery(),
+                "semanticSkuIds",
+                request.semanticSkuIds()
+            )
+        );
+        if (includeExternalScope) payload.put("externalDocumentIds", request.externalDocumentIds());
+        return payload;
+    }
+
     /**
      * 读取 Python 流式桥接的 SSE 协议；只把最终完整答案交给上层，进度回调不包含模型正文。
      * 连接和共享 AI 准入在整个响应体读取完成前保持有效，避免客户端断开后提前释放执行槽。
@@ -83,6 +136,7 @@ public class AiGatewayService {
                 .build();
             HttpResponse<InputStream> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
             try (InputStream body = response.body()) {
+                if (response.statusCode() == 422) throw new RemoteStatusException(422);
                 if (response.statusCode() / 100 != 2) throw new AppException(ResponseCode.AI_UNAVAILABLE);
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
                     long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout);
@@ -200,6 +254,27 @@ public class AiGatewayService {
         ) throw new AppException(ResponseCode.AI_UNAVAILABLE);
     }
 
+    public void indexLegacy(AiGatewayDTO.Index request) {
+        var payload = java.util.Map.of(
+            "documentId",
+            request.documentId(),
+            "title",
+            request.title(),
+            "content",
+            request.content(),
+            "externalAllowed",
+            request.externalAllowed()
+        );
+        var result = post("/v1/index", payload, AiGatewayDTO.KnowledgeIndexResult.class);
+        if (
+            result == null ||
+            result.chunks() == null ||
+            result.chunks() < 1 ||
+            result.chunks() > 162 ||
+            !java.util.Set.of("REMOTE_EMBEDDING", "LOCAL_CHAR_NGRAM_DEMO").contains(java.util.Objects.toString(result.mode(), ""))
+        ) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+    }
+
     public String extract(AiGatewayDTO.Extract request) {
         String text = post("/v1/extract", request, AiGatewayDTO.Extracted.class).text();
         if (text == null || text.isBlank() || text.length() > 100000) throw new AppException(ResponseCode.AI_UNAVAILABLE);
@@ -232,6 +307,7 @@ public class AiGatewayService {
                 if (path.equals("/v1/extract") && java.util.Set.of(400, 413, 415, 422).contains(response.statusCode())) throw new AppException(
                     ResponseCode.UPLOAD_INVALID
                 );
+                if (response.statusCode() == 422 && (path.equals("/v1/query") || path.equals("/v1/index"))) throw new RemoteStatusException(422);
                 throw new AppException(ResponseCode.AI_UNAVAILABLE);
             }
             T result = mapper.readValue(response.body(), type);
@@ -260,5 +336,18 @@ public class AiGatewayService {
 
     private AppException unavailable(Exception cause) {
         return new AppException(ResponseCode.AI_UNAVAILABLE.getCode(), ResponseCode.AI_UNAVAILABLE.getInfo(), cause);
+    }
+
+    public static final class RemoteStatusException extends RuntimeException {
+
+        private final int status;
+
+        public RemoteStatusException(int status) {
+            this.status = status;
+        }
+
+        public int status() {
+            return status;
+        }
     }
 }

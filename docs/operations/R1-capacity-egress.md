@@ -22,6 +22,6 @@ HTTP响应先限制实际流字节再解析JSON，LLM上限256KiB、Embedding 8M
 
 PUBLIC知识可外发；内部知识默认仅本地字符向量/BM25。服务端`AI_EGRESS_BASE_IDS`为逗号分隔的批准知识库ID；MERCHANT_INTERNAL还须其商户出现在`AI_EGRESS_MERCHANT_IDS`。PLATFORM_INTERNAL须无商户且知识库获批，未知可见性拒绝。需先完成数据范围审核再配置，不能由客户端指定。两个变量分别映射`campus.ai.egress.base-ids/merchant-ids`。
 
-Java逐次从授权可见范围构造外发document ID名单，Python默认拒绝。只有名单内证据进入模型上下文，历史只保留最近3条user消息，不外发assistant历史。文本截断并脱敏手机号、身份证号及邮箱；这是基础规则，不保证识别所有个人信息。Embedding输入同样处理。审计仅含供应商主机、用途、时间、记录数、字节数、请求ID；Java记录已批准索引请求，不记录正文。
+Java逐次从授权可见范围构造外发document ID名单，Python默认拒绝。只有名单内证据进入模型上下文，历史只保留最近3条user消息，不外发assistant历史；Python响应也对名单外文档只回传documentId、chunkId、版本、序号和内容哈希，标题与片段替换为固定脱敏说明。Java对内部引用按确定性chunk身份和内容哈希复验，PUBLIC引用仍核验片段属于该chunk。文本截断并脱敏手机号、身份证号及邮箱；这是基础规则，不保证识别所有个人信息。Embedding输入同样处理。审计仅含供应商主机、用途、时间、记录数、字节数、请求ID；Java记录已批准索引请求，不记录正文。
 
 撤回批准后，后续检索不再查询该文档的远端向量或将证据发给LLM，但不会撤回历史已发出的数据。重新索引可改为本地模式；既存供应商数据须依供应商保留政策另行授权清理。不得宣称此更改自动完成历史数据删除。

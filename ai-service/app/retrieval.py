@@ -3,12 +3,18 @@ from __future__ import annotations
 import hashlib,json,math,re,sqlite3,threading,time,uuid
 from collections import Counter
 from dataclasses import asdict
+from pathlib import Path
 from typing import Any
 import httpx
 from .config import Settings
 from .http_limits import bounded_json
 from .egress import minimized, audit
 from .observability import counts, failure, lock, observed
+from .sqlite_migration import create_schema, DOC_COLUMNS, CHUNK_COLUMNS
+
+# 未获服务端外发许可的文档只回传受控标识；原文与标题留在检索服务内。
+INTERNAL_TITLE='内部资料'
+INTERNAL_SNIPPET='内部资料来源，原文片段不公开展示'
 
 def tokens(text: str) -> list[str]:
     text=text.lower()
@@ -152,12 +158,19 @@ class Provider:
 class KnowledgeStore:
     def __init__(self,settings: Settings):
         self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock()
+        db_path = Path(settings.db_path)
+        fresh = not db_path.exists()
         self.db=sqlite3.connect(settings.db_path,check_same_thread=False,isolation_level=None)
         self.db.row_factory=sqlite3.Row
         self.db.execute('PRAGMA journal_mode=WAL')
-        self.db.execute('CREATE TABLE IF NOT EXISTS docs(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,model TEXT NOT NULL,updated REAL NOT NULL)')
-        self.db.execute('CREATE TABLE IF NOT EXISTS chunks(id TEXT PRIMARY KEY,doc_id TEXT NOT NULL,title TEXT NOT NULL,body TEXT NOT NULL,ordinal INTEGER NOT NULL,embedding TEXT NOT NULL,model TEXT NOT NULL)')
-        self.db.execute('CREATE INDEX IF NOT EXISTS chunks_doc ON chunks(doc_id)')
+        if fresh:
+            create_schema(self.db)
+        else:
+            tables={row['name'] for row in self.db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+            docs={row['name'] for row in self.db.execute('PRAGMA table_info(docs)')} if 'docs' in tables else set()
+            chunks={row['name'] for row in self.db.execute('PRAGMA table_info(chunks)')} if 'chunks' in tables else set()
+            if DOC_COLUMNS - docs or CHUNK_COLUMNS - chunks:
+                raise RuntimeError('SQLite 索引结构需要先执行显式迁移')
     def close(self):self.db.close()
     @observed('qdrant')
     def _qdrant(self,method: str,path: str,body: dict|None=None):
@@ -175,7 +188,8 @@ class KnowledgeStore:
             self._qdrant('PUT','/collections/'+s.collection,{'vectors':{'size':size,'distance':'Cosine'}})
             self._qdrant('PUT','/collections/'+s.collection+'/index',{'field_name':'document_id','field_schema':'keyword'})
     @observed('knowledge.index')
-    def index(self,doc_id: str,title: str,text: str,external_allowed: bool=False) -> int:
+    def index(self,doc_id: str,title: str,text: str,version: int=1,external_allowed: bool=False) -> int:
+        if version < 1: raise ValueError('文档版本无效')
         pieces=chunks(text);fingerprint=hashlib.sha256((title+'\0'+text).encode()).hexdigest()
         with self.lock:
             prior=self.db.execute('SELECT fingerprint,model FROM docs WHERE id=?',(doc_id,)).fetchone()
@@ -193,7 +207,7 @@ class KnowledgeStore:
             try:
                 self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,))
                 self.db.executemany('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)',rows)
-                self.db.execute('INSERT INTO docs VALUES(?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated',(doc_id,fingerprint,model,time.time()))
+                self.db.execute('INSERT INTO docs VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated,version=excluded.version,version_known=1',(doc_id,fingerprint,model,time.time(),version,1))
                 self.db.execute('COMMIT')
             except Exception:self.db.execute('ROLLBACK');raise
         return len(rows)
@@ -211,11 +225,12 @@ class KnowledgeStore:
         if not allowed:return [],self.provider.vector_mode
         allowed=list(dict.fromkeys(allowed))
         if len(allowed)>1000:raise ValueError('allowed document scope exceeds 1000')
+        egress=set(external_document_ids or [])
         with self.lock:
             rows=[]
             for start in range(0,len(allowed),500):
                 batch=allowed[start:start+500]
-                rows.extend(dict(r) for r in self.db.execute('SELECT * FROM chunks WHERE doc_id IN ('+','.join('?' for _ in batch)+') ORDER BY doc_id,ordinal',batch))
+                rows.extend(dict(r) for r in self.db.execute('SELECT c.*,d.version AS document_version FROM chunks c JOIN docs d ON d.id=c.doc_id WHERE d.version_known=1 AND d.version IS NOT NULL AND c.doc_id IN ('+','.join('?' for _ in batch)+') ORDER BY c.doc_id,c.ordinal',batch))
             rows.sort(key=lambda r:(r['doc_id'],r['ordinal']))
         if not rows:return [],self.provider.vector_mode
         sparse=bm25(query,[r['title']+' '+r['body'] for r in rows])[:30]
@@ -228,7 +243,7 @@ class KnowledgeStore:
                 for i in local_indices:
                     v=json.loads(rows[i]['embedding']);score=sum(a*b for a,b in zip(v,local))
                     if score>0.05:dense.append((i,score))
-            remote_ids=list(dict.fromkeys(r['doc_id'] for r in rows if r['model']==self.provider.model_tag and r['model']!='local-char-ngram-v1' and r['doc_id'] in set(external_document_ids or [])))
+            remote_ids=list(dict.fromkeys(r['doc_id'] for r in rows if r['model']==self.provider.model_tag and r['model']!='local-char-ngram-v1' and r['doc_id'] in egress))
             if not remote_ids:
                 mode='LOCAL_CHAR_NGRAM_DEMO'
                 dense=sorted(dense,key=lambda x:-x[1])[:30]
@@ -260,7 +275,11 @@ class KnowledgeStore:
             _trace.update(authorized=[r['id'] for r in rows], sparse=[rows[i]['id'] for i,_ in sparse],
                           dense=[rows[i]['id'] for i,_ in dense], selected=[rows[i]['id'] for i in selected],
                           selectionDepth=top_k, strategy=_strategy, scores={rows[i]['id']:v for i,v in scores.items()})
-        return [{'documentId':rows[i]['doc_id'],'chunkId':rows[i]['id'],'title':rows[i]['title'],'snippet':rows[i]['body'][:500],'score':scores[i]} for i in selected],mode
+        return [{'documentId':rows[i]['doc_id'],'chunkId':rows[i]['id'],
+                 'title':rows[i]['title'] if rows[i]['doc_id'] in egress else INTERNAL_TITLE,
+                 'snippet':rows[i]['body'][:500] if rows[i]['doc_id'] in egress else INTERNAL_SNIPPET,
+                 'score':scores[i], 'documentVersion':rows[i]['document_version'], 'ordinal':rows[i]['ordinal'],
+                 'contentHash':hashlib.sha256(rows[i]['body'].encode('utf-8')).hexdigest()} for i in selected],mode
 
 
 class _SparseOnly(Exception):

@@ -27,7 +27,8 @@ public class InventoryServiceImpl implements IInventoryService {
     @Transactional(propagation = Propagation.MANDATORY)
     public void initialize(String merchant, String store, String sku) {
         repository.initialize(merchant, store, sku);
-        require(merchant.equals(required(store, sku).merchantId()), ResponseCode.AUTH_FORBIDDEN);
+        StockVO existing = required(store, sku);
+        require(merchant.equals(existing.merchantId()) && store.equals(existing.storeId()), ResponseCode.AUTH_FORBIDDEN);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
