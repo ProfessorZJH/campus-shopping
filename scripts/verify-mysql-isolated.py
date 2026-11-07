@@ -364,18 +364,15 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         live = build_root/'frontend/tests/live_ui.py'
         live.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT/'frontend/tests/live_ui.py', live)
+        shutil.copy2(ROOT/'frontend/tests/live_final_matrix.py', build_root/'frontend/tests/live_final_matrix.py')
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live), '--base-url', base],
-                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=150)
+                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=480)
         source = build_root/'docs/testing/evidence/frontend-live'
         if source.exists():
             shutil.copytree(source, args.output.parent/'frontend-live', dirs_exist_ok=True)
         browser = json.loads((source/'results.json').read_text('utf-8'))
         report['browser'] = {'status': browser['status'], 'checks': len(browser['checks']), 'apiMockUsed': False}
         assert completed.returncode == 0 and browser['status'] == 'PASS', '真实浏览器验收失败'
-        live_final = build_root/'frontend/tests/live_final_matrix.py'
-        shutil.copy2(ROOT/'frontend/tests/live_final_matrix.py', live_final)
-        completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live_final), '--base-url', base],
-                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=360)
         source_final = build_root/'docs/testing/evidence/frontend-live-final'
         if source_final.exists():
             shutil.copytree(source_final, args.output.parent/'frontend-live-final', dirs_exist_ok=True)

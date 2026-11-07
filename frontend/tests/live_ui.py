@@ -8,6 +8,8 @@ import json
 import os
 import secrets
 import shutil
+import subprocess
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -386,6 +388,16 @@ def main():
     if failure:
         raise SystemExit(failure)
     print('真实服务浏览器检查通过：', len(checks))
+    final_script = Path(__file__).with_name('live_final_matrix.py')
+    if not final_script.is_file():
+        raise SystemExit('缺少最终隔离浏览器矩阵脚本')
+    final = subprocess.run(
+        [sys.executable, '-X', 'utf8', '-B', str(final_script), '--base-url', args.base_url],
+        cwd=ROOT,
+        check=False,
+    )
+    if final.returncode != 0:
+        raise SystemExit('最终隔离浏览器矩阵失败')
 
 
 if __name__ == '__main__':
