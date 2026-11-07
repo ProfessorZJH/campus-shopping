@@ -8,7 +8,7 @@
 | **PR与主线质量门禁** | [PR模板](../.github/pull_request_template.md)、[main保护与核验](development/REPOSITORY-GATES.md) |
 | **R1 六批审查整改** | [增量约束](specs/SDD-R1-REMEDIATION-13.md)、[逐批状态与实际验证](testing/R1-REMEDIATION-20261031.md)、[容量与外发操作](operations/R1-capacity-egress.md)、[供应链与发布边界](operations/R1-release-governance.md) |
 | **OpenSpec需求变更试用** | [安装、资料归属与使用](development/OPENSPEC.md)、[试点实际记录](testing/OPENSPEC-PILOT-20261031.md) |
-| **全链路产品化规划（2026-11-05）** | [整体方案与阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)、[技术设计与审查追踪](../openspec/changes/productize-campus-shopping-experience/design.md)、[实施任务与验收](../openspec/changes/productize-campus-shopping-experience/tasks.md)、[M1 实施与验证记录](testing/PRODUCTIZATION-M1-20261105.md)、[M2 实施与验证记录](testing/PRODUCTIZATION-M2-20261106.md)；M1 已提交 `fb00263` 并创建 PR #56（未合并），M2 已提交 `5c1579a`、创建 PR #57（基于 M1，未合并）；保留 Vue 3 + Vite，逐步采用 `.vue` 并试点 TypeScript，覆盖消费者、AI、商户、平台及知识库 |
+| **全链路产品化规划（2026-11-05）** | [整体方案与阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)、[技术设计与审查追踪](../openspec/changes/productize-campus-shopping-experience/design.md)、[实施任务与验收](../openspec/changes/productize-campus-shopping-experience/tasks.md)、[M1 实施与验证记录](testing/PRODUCTIZATION-M1-20261105.md)、[M2 实施与验证记录](testing/PRODUCTIZATION-M2-20261106.md)、[M3 提案商品身份与 PR #49 衔接](testing/PRODUCTIZATION-M3-PR49-RECONCILIATION-20261107.md)、[M3 会话活动与稳定分页](testing/PRODUCTIZATION-M3-CONVERSATION-ACTIVITY-20261107.md)、[M3 历史消息最小引用快照](testing/PRODUCTIZATION-M3-HISTORICAL-CITATIONS-20261107.md)、[M3 提案确认与失败恢复](testing/PRODUCTIZATION-M3-PROPOSAL-CONFIRMATION-20261107.md)、[M3 轮次运行状态与取消契约](testing/PRODUCTIZATION-M3-TURN-RUNTIME-20261107.md)、[M3 流式供应商桥接阶段](testing/PRODUCTIZATION-M3-STREAMING-BRIDGE-20261107.md)、[M3 流式导购界面阶段](testing/PRODUCTIZATION-M3-STREAMING-UI-20261107.md)、[M3 流式体验最终阶段](testing/PRODUCTIZATION-M3-STREAMING-FINAL-20261107.md)、[M4.1 商户订单待办与履约筛选](testing/PRODUCTIZATION-M4-ORDER-WORK-QUEUE-20261107.md)、[M4.2 低可售库存与流水定位](testing/PRODUCTIZATION-M4-INVENTORY-20261107.md)、[M4.3 商品、SKU 与多图编辑](testing/PRODUCTIZATION-M4-CATALOG-20261107.md)；M1、M2 已进入 `main`，M3 的提案身份、会话活动、历史引用、提案确认与轮次状态批次已在独立分支完成定向验证；保留 Vue 3 + Vite，逐步采用 `.vue` 并试点 TypeScript，覆盖消费者、AI、商户、平台及知识库 |
 | **FR-023 智能导购评测** | [工具/指标/实验/复现](../ai-service/evaluation/README.md)、[120例草稿与人工标注](../ai-service/evaluation/datasets/campus-shopping-v1/README.md)、[最新审查修复与完整验收](testing/AI-SKU-REVIEW-20261031.md)、[前轮防御补强](testing/AI-SKU-DEFENSE-20261031.md)、[前轮规格过滤修复](testing/AI-SKU-CONSTRAINTS-20261031.md)、[前轮审查与原始失败](testing/AI-EVALUATION-REVIEW-20261031.md)、[历史实现验证](testing/AI-EVALUATION-20261031.md) |
 | **当前 SDD-12 Redis 交付** | [规格与验收矩阵](specs/SDD-REDIS-12.md)、[主线整合实际验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[配置、升级与回退](operations/REDIS-12-runbook.md) |
 | **PR #11 审查收口** | [文档状态与Python资源容量修复、复现及65项回归](testing/REDIS-REVIEW-FOLLOWUP-20261031.md) |
@@ -18,7 +18,7 @@
 | 原始产品需求 | [PRD](requirements/PRD.md) |
 | 决策如何收敛 | [决策清单](requirements/open-questions.md)、[ADR](architecture/decisions.md) |
 | 领域边界 | [业务架构](architecture/business-architecture.md)、[上下文映射](architecture/context-map.md) |
-| **当前权威 HTTP 契约** | [95 条路由与字段](api/http-api.md)、[OpenAPI JSON](api/openapi.json)、[行为约定](api/behavior-v1.1.md)、[错误码](api/error-codes.md) |
+| **当前权威 HTTP 契约** | [99 条 JSON 路由与字段](api/http-api.md)、[OpenAPI JSON](api/openapi.json)、[行为约定](api/behavior-v1.1.md)、[错误码](api/error-codes.md)、[独立 AI SSE 协议](api/streaming.md) |
 | **SDD-03 代码契约修复** | [实施规格](specs/SDD-API-CONTRACT-03.md)、[验证记录](testing/SDD-API-CONTRACT-03-VERIFICATION.md) |
 | **SDD-04 本批缺陷修复（F01–F10）** | [修复规格](specs/SDD-REPAIR-04.md)、[验证记录](testing/SDD-REPAIR-04-VERIFICATION.md) |
 | **SDD-05 商户自定义 RBAC + 全局排序** | [设计/权限矩阵](specs/SDD-RBAC-05.md)、[验证记录](testing/SDD-RBAC-05-VERIFICATION.md) |
@@ -56,3 +56,7 @@
 - [前端业务正确性、请求生命周期与页面状态整改](testing/UI-REMEDIATION-20261101.md)
 - [前端整改真实后端联调（用户指定单 Redis）](testing/UI-REMEDIATION-LIVE-20261101.md)
 - [PR #48 审查修复：匿名后台登录与首页加载边界](testing/PR48-REVIEW-FOLLOWUP-20261101.md)
+- [M4.2 低可售库存与流水定位实施记录](testing/PRODUCTIZATION-M4-INVENTORY-20261107.md)
+- [M4.4 账号、入驻、成员与角色工作区实施记录](testing/PRODUCTIZATION-M4-IDENTITY-20261107.md)
+- [M4/M5 真实隔离整合验收](testing/PRODUCTIZATION-M4-M5-INTEGRATION-20261107.md)
+- [全链路产品化阶段状态](testing/PRODUCTIZATION-FINAL-STATUS-20261107.md)

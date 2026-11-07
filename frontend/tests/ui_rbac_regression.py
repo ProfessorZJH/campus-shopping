@@ -82,12 +82,13 @@ class RoleBackend(TwoMerchantBackend):
             if member(mid) is None or member(mid)['role']!='OWNER':return self.answer(route,None,'A0003','无权限')
             return self.answer(route,[m.copy() for m in self.members if m['merchantId']==mid])
         if path=='/ai/conversations' and method=='GET':
-            return self.answer(route,[{'id':'conversation-'+actor,'title':'只有'+actor+'的历史会话','createdAt':'2026-10-28T08:00:00Z'}])
+            stamp='2026-10-28T08:00:00Z'
+            return self.answer(route,[{'id':'conversation-'+actor,'title':'只有'+actor+'的历史会话','createdAt':stamp,'lastActiveAt':stamp,'summary':'只有'+actor+'可见的摘要'}])
         msg=re.fullmatch(r'/ai/conversations/(conversation-u\d+)/(messages|proposals)',path)
         if msg:
             conversation,kind=msg.groups()
             if conversation!='conversation-'+actor:return self.answer(route,None,'A0006','无权查看会话')
-            return self.answer(route,[{'id':'msg-'+actor,'role':'assistant','content':actor+' 的私有 AI 回答'}] if kind=='messages' else [])
+            return self.answer(route,[{'id':'msg-'+actor,'role':'assistant','content':actor+' 的私有 AI 回答','citations':[],'citationStatus':'MISSING'}] if kind=='messages' else [])
         if path=='/knowledge/bases' and method=='GET':
             allowed=[m['merchantId'] for m in self.members if m['userId']==actor and m['status']=='ACTIVE' and 'knowledge.read' in self.grants(m)]
             return self.answer(route,[b for b in self.bases if b['merchantId'] in allowed])
@@ -163,7 +164,7 @@ def main():
         page=browser_page(browser,'/ai',f)
         page.locator('.ai-history-head').get_by_role('button', name='历史会话').click()
         expect(page.locator('.ai-history-list button')).to_have_count(1,timeout=15000)
-        assert '只有u2的历史会话' in page.locator('.ai-history-list').inner_text()
+        assert '只有u2可见的摘要' in page.locator('.ai-history-list').inner_text()
         assert '只有u1' not in page.locator('.ai-history-list').inner_text()
         page.locator('.ai-history-list button').first.click()
         expect(page.locator('.chat-thread')).to_contain_text('u2 的私有 AI 回答')
@@ -172,7 +173,7 @@ def main():
         f.user={'userId':'u1','username':'owner001','displayName':'经营者','status':'ACTIVE'}
         page=browser_page(browser,'/ai',f)
         page.locator('.ai-history-head').get_by_role('button', name='历史会话').click()
-        expect(page.locator('.ai-history-list')).to_contain_text('只有u1的历史会话',timeout=15000)
+        expect(page.locator('.ai-history-list')).to_contain_text('只有u1可见的摘要',timeout=15000)
         page.locator('.ai-history-list button').first.click()
         expect(page.locator('.chat-thread')).to_contain_text('u1 的私有 AI 回答')
         # Logout on the same Vue page must clear the local chat content immediately.

@@ -5,6 +5,7 @@ import static cn.bugstack.ai.types.common.Checks.require;
 
 import cn.bugstack.ai.api.IOrderApi;
 import cn.bugstack.ai.api.dto.CheckoutRequestDTO;
+import cn.bugstack.ai.api.dto.OperationsStatisticsResponseDTO;
 import cn.bugstack.ai.api.dto.OrderResponseDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
 import cn.bugstack.ai.api.dto.StatisticsResponseDTO;
@@ -118,10 +119,11 @@ public class OrderController implements IOrderApi {
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "") String q,
+        @RequestParam(defaultValue = "") String pickupState,
         Principal principal
     ) {
         return execute(() -> {
-            var result = query.merchant(actor(principal), merchantId, state, page, size, q);
+            var result = query.merchant(actor(principal), merchantId, state, page, size, q, pickupState);
             return PageResponseDTO.of(result.items().stream().map(this::readView).toList(), page, size, result.total());
         });
     }
@@ -151,11 +153,32 @@ public class OrderController implements IOrderApi {
         return execute(() -> ApiViews.statistics(query.statistics(actor(principal), merchantId)));
     }
 
+    @Override
+    @GetMapping("/merchants/{merchantId}/statistics/operations")
+    public Response<OperationsStatisticsResponseDTO> merchantOperationsStatistics(
+        @PathVariable("merchantId") String merchantId,
+        @RequestParam(defaultValue = "7") int periodDays,
+        @RequestParam(required = false) String to,
+        Principal principal
+    ) {
+        return execute(() -> ApiViews.operationsStatistics(query.operationsStatistics(actor(principal), merchantId, periodDays, to)));
+    }
+
     /** 平台订单汇总。 */
     @Override
     @GetMapping("/admin/statistics")
     public Response<StatisticsResponseDTO> platformStatistics(Principal principal) {
         return execute(() -> ApiViews.statistics(query.statistics(actor(principal), null)));
+    }
+
+    @Override
+    @GetMapping("/admin/statistics/operations")
+    public Response<OperationsStatisticsResponseDTO> platformOperationsStatistics(
+        @RequestParam(defaultValue = "7") int periodDays,
+        @RequestParam(required = false) String to,
+        Principal principal
+    ) {
+        return execute(() -> ApiViews.operationsStatistics(query.operationsStatistics(actor(principal), null, periodDays, to)));
     }
 
     /** 平台受控订单监管。 */

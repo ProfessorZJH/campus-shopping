@@ -13,8 +13,11 @@ public interface IOrderQueryService {
     List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size, String q);
     long countOrders(String buyer, String merchant, String status);
     long countOrders(String buyer, String merchant, String status, String q);
+    List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int page, int size, String q, String pickupState);
+    long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState);
     List<String> expired();
     List<String> expiredAfter(String after, int limit);
     Instant oldestExpired();
     TradingStatsVO statistics(String merchant);
+    OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
 }

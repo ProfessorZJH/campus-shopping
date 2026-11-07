@@ -2,7 +2,7 @@
 
 > 本文件由 `python scripts/generate-api-contract.py` 从当前 Controller/DTO **生成**；禁止手工追加旧版路由。
 > 路由/字段来自源码；必填、范围、枚举由 `scripts/api_contract_rules.py` 显式核对合并。业务规则见 [行为契约](behavior-v1.1.md)，
-> 机器可读的 97 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
+> 机器可读的 102 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
 
 ## 统一约定
 
@@ -17,7 +17,7 @@
 - 字段约束描述规范化后的输入，Java 字符长度按 UTF-16 单元；商品创建必填 skus，编辑必填 expectedVersion，退款审核必填 reason。
 - 本文件是契约，运行证据另见 docs/testing/CONTRACT-DATABASE-API-AUDIT-09.md。
 
-## 全量路由（共 97 条）
+## 全量路由（共 102 条）
 
 | 方法 | 路径 | 请求参数 / 主体 | data 类型 | 访问控制 | 实现类 |
 |---|---|---|---|---|---|
@@ -37,10 +37,14 @@
 | `GET` | `/api/v1/admin/products/page` | merchantId?:String、q?:String、page?:int、size?:int | `PageResponseDTO<ProductResponseDTO>` | platform-admin | `CatalogController.java` |
 | `POST` | `/api/v1/admin/products/{productId}/unpublish` | productId:String | `Void` | platform-admin | `CatalogController.java` |
 | `GET` | `/api/v1/admin/statistics` | — | `StatisticsResponseDTO` | platform-admin | `OrderController.java` |
+| `GET` | `/api/v1/admin/statistics/operations` | periodDays?:int、to?:String | `OperationsStatisticsResponseDTO` | platform-admin | `OrderController.java` |
 | `POST` | `/api/v1/ai/chat` | body:ChatRequestDTO | `ChatResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations` | page?:int、size?:int | `List<ConversationResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations/{conversationId}/messages` | conversationId:String | `List<MessageResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/ai/conversations/{conversationId}/proposals` | conversationId:String | `List<ProposalResponseDTO>` | authenticated + domain ACL | `ShoppingAiController.java` |
+| `POST` | `/api/v1/ai/conversations/{conversationId}/turn/cancel` | conversationId:String | `ConversationTurnStatusResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
+| `GET` | `/api/v1/ai/conversations/{conversationId}/turn/status` | conversationId:String | `ConversationTurnStatusResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
+| `POST` | `/api/v1/ai/debug/retrieval` | body:KnowledgeDebugRequestDTO | `KnowledgeDebugResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `POST` | `/api/v1/ai/proposals/{proposalId}/confirm` | proposalId:String、body:ConfirmProposalRequestDTO | `ProposalResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `POST` | `/api/v1/ai/proposals/{proposalId}/reject` | proposalId:String | `Void` | authenticated + domain ACL | `ShoppingAiController.java` |
 | `GET` | `/api/v1/auth/csrf` | — | `CsrfTokenResponseDTO` | anonymous | `AuthController.java` |
@@ -77,7 +81,7 @@
 | `GET` | `/api/v1/merchants/{merchantId}/members` | merchantId:String | `List<MembershipResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
 | `DELETE` | `/api/v1/merchants/{merchantId}/members/{userId}` | merchantId:String、userId:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/orders` | merchantId:String、state?:String、page?:int、size?:int | `List<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/orders/page` | merchantId:String、state?:String、page?:int、size?:int、q?:String | `PageResponseDTO<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/orders/page` | merchantId:String、state?:String、page?:int、size?:int、q?:String、pickupState?:String | `PageResponseDTO<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history` | merchantId:String、orderId:String | `List<OrderEventResponseDTO>` | authenticated + domain ACL | `AfterSaleController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/prepare` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/ready` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |
@@ -99,10 +103,11 @@
 | `DELETE` | `/api/v1/merchants/{merchantId}/rbac/roles/{code}` | merchantId:String、code:String | `Void` | authenticated + domain ACL | `RoleController.java` |
 | `PUT` | `/api/v1/merchants/{merchantId}/rbac/roles/{code}` | merchantId:String、code:String、body:RoleRequestDTO | `RoleResponseDTO` | authenticated + domain ACL | `RoleController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/statistics` | merchantId:String | `StatisticsResponseDTO` | authenticated + domain ACL | `OrderController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/stock-movements` | merchantId:String、page?:int、size?:int | `List<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/stock-movements/page` | merchantId:String、page?:int、size?:int | `PageResponseDTO<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/statistics/operations` | merchantId:String、periodDays?:int、to?:String | `OperationsStatisticsResponseDTO` | authenticated + domain ACL | `OrderController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/stock-movements` | merchantId:String、page?:int、size?:int、q?:String | `List<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/stock-movements/page` | merchantId:String、page?:int、size?:int、q?:String | `PageResponseDTO<StockMovementResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/stocks` | merchantId:String、page?:int、size?:int | `List<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
-| `GET` | `/api/v1/merchants/{merchantId}/stocks/page` | merchantId:String、page?:int、size?:int、q?:String | `PageResponseDTO<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
+| `GET` | `/api/v1/merchants/{merchantId}/stocks/page` | merchantId:String、page?:int、size?:int、q?:String、availableBelow?:Integer | `PageResponseDTO<StockResponseDTO>` | authenticated + domain ACL | `InventoryController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/stocks/{skuId}/replenish` | merchantId:String、skuId:String、body:ReplenishRequestDTO、Idempotency-Key:String | `Void` | authenticated + domain ACL | `InventoryController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/store/images` | merchantId:String、body:FileUploadRequestDTO | `ProductImageUploadDTO` | authenticated + domain ACL | `MerchantApplicationController.java` |
 | `GET` | `/api/v1/orders` | state?:String、page?:int、size?:int | `List<OrderResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
@@ -177,7 +182,11 @@
 
 ### `ConversationResponseDTO`
 
-`id`、`title`、`createdAt`
+`id`、`title`、`createdAt`、`lastActiveAt`、`summary`
+
+### `ConversationTurnStatusResponseDTO`
+
+`conversationId`、`status`、`cancelRequestedAt`
 
 ### `CsrfTokenResponseDTO`
 
@@ -215,6 +224,18 @@
 
 `id`、`name`、`merchantId`、`visibility`
 
+### `KnowledgeDebugHitResponseDTO`
+
+`documentId`、`title`、`rootId`、`version`、`snippet`、`rank`、`score`、`scoreType`
+
+### `KnowledgeDebugRequestDTO`
+
+`question`、`answerPreview`
+
+### `KnowledgeDebugResponseDTO`
+
+`query`、`retrievalMode`、`answerMode`、`answerPreview`、`warning`、`hits`、`latencyMs`
+
 ### `KnowledgeDocumentResponseDTO`
 
 `id`、`rootId`、`baseId`、`title`、`version`、`status`、`indexStatus`、`error`、`content`、`createdAt`
@@ -237,7 +258,11 @@
 
 ### `MessageResponseDTO`
 
-`id`、`role`、`content`、`createdAt`
+`id`、`role`、`content`、`createdAt`、`citations`、`citationStatus`
+
+### `OperationsStatisticsResponseDTO`
+
+`periodStart`、`periodEnd`、`timezone`、`asOf`、`totalOrders`、`paidOrders`、`refundedOrders`、`completedAmountCent`、`refundRate`、`trend`、`statuses`、`products`、`metricNote`
 
 ### `OrderEventResponseDTO`
 
@@ -281,7 +306,7 @@
 
 ### `ProposalItemResponseDTO`
 
-`skuId`、`merchantId`、`title`、`specKey`、`imageUrl`、`priceCent`、`quoteVersion`、`quantity`
+`skuId`、`productId`、`merchantId`、`title`、`specKey`、`imageUrl`、`priceCent`、`quoteVersion`、`quantity`、`detailAvailable`、`detailUnavailableReason`
 
 ### `ProposalResponseDTO`
 
@@ -339,9 +364,21 @@
 
 `active`、`reason`
 
+### `StatisticsProductDTO`
+
+`productId`、`title`、`quantity`
+
 ### `StatisticsResponseDTO`
 
 `totalOrders`、`pendingCount`、`paidCount`、`completedCount`、`refundedCount`、`completedAmountCent`
+
+### `StatisticsStatusDTO`
+
+`status`、`orderCount`、`amountCent`
+
+### `StatisticsTrendDTO`
+
+`day`、`orderCount`
 
 ### `StockMovementResponseDTO`
 

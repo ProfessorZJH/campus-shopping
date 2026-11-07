@@ -71,30 +71,48 @@ UPDATE ai_document SET status=#{status} WHERE id=#{id}
 UPDATE ai_document_root SET active_document_id=#{id} WHERE id=#{root}
     </update>
     <insert id="conversationInsert">
-INSERT INTO ai_conversation(id,user_id,title,created_at) VALUES(#{p.id},#{p.userId},#{p.title},#{p.createdAt})
+INSERT INTO ai_conversation(id,user_id,title,created_at,last_active_at,summary) VALUES(#{p.id},#{p.userId},#{p.title},#{p.createdAt},#{p.lastActiveAt},#{p.summary})
     </insert>
     <select id="conversation" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationPO">
 SELECT * FROM ai_conversation WHERE id=#{id}
     </select>
     <select id="conversations" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationPO">
-SELECT * FROM ai_conversation WHERE user_id=#{user} ORDER BY created_at DESC,id LIMIT #{size} OFFSET #{offset}
+SELECT id,user_id,title,created_at,last_active_at,summary FROM ai_conversation WHERE user_id=#{user} ORDER BY last_active_at DESC,id ASC LIMIT #{size} OFFSET #{offset}
     </select>
     <select id="messages" resultType="cn.bugstack.ai.infrastructure.dao.po.MessagePO">
-SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
+SELECT * FROM (SELECT id,conversation_id,role,content,created_at,access_fingerprint,citation_recorded,seq_no FROM ai_message WHERE conversation_id=#{conversation} ORDER BY seq_no DESC LIMIT #{limit}) recent ORDER BY seq_no
     </select>
+    <select id="messageCitations" resultType="cn.bugstack.ai.infrastructure.dao.po.MessageCitationPO">
+SELECT message_id,ordinal,document_id,root_id,document_version,chunk_id,title,snippet FROM ai_message_citation WHERE message_id IN <foreach collection="messageIds" item="id" open="(" close=")" separator=",">#{id}</foreach> ORDER BY message_id,ordinal
+    </select>
+    <update id="conversationActivity">
+UPDATE ai_conversation SET last_active_at=#{lastActiveAt},summary=#{summary} WHERE id=#{id} AND user_id=#{actor}
+    </update>
     <update id="claimTurn">
-UPDATE ai_conversation SET turn_token=#{token},turn_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3))
+UPDATE ai_conversation SET turn_token=#{token},turn_expires_at=TIMESTAMPADD(SECOND,600,CURRENT_TIMESTAMP(3)),turn_status='RUNNING',turn_cancel_requested_at=NULL
 WHERE id=#{id} AND user_id=#{actor} AND (turn_token IS NULL OR turn_expires_at &lt;= CURRENT_TIMESTAMP(3))
     </update>
     <update id="finishTurn">
-UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL
-WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token} AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
+UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL,turn_status='IDLE',turn_cancel_requested_at=NULL
+WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token} AND turn_status='RUNNING' AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
     </update>
     <update id="releaseTurn">
-UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token}
+UPDATE ai_conversation SET turn_token=NULL,turn_expires_at=NULL,turn_status='IDLE',turn_cancel_requested_at=NULL WHERE id=#{id} AND user_id=#{actor} AND turn_token=#{token}
+    </update>
+    <select id="turnStatus" resultType="cn.bugstack.ai.infrastructure.dao.po.ConversationTurnStatusPO">
+SELECT id AS conversation_id,CASE WHEN turn_token IS NULL OR turn_expires_at &lt;= CURRENT_TIMESTAMP(3) THEN 'IDLE' ELSE COALESCE(turn_status,'RUNNING') END AS status,
+turn_cancel_requested_at FROM ai_conversation WHERE id=#{id} AND user_id=#{actor}
+    </select>
+    <update id="requestTurnCancel">
+UPDATE ai_conversation SET turn_status='CANCEL_REQUESTED',turn_cancel_requested_at=CURRENT_TIMESTAMP(3)
+WHERE id=#{id} AND user_id=#{actor} AND turn_token IS NOT NULL AND turn_status='RUNNING' AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
     </update>
     <insert id="messageInsert">
-INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint})
+INSERT INTO ai_message(id,conversation_id,role,content,created_at,access_fingerprint,citation_recorded) VALUES(#{p.id},#{p.conversationId},#{p.role},#{p.content},#{p.createdAt},#{p.accessFingerprint},#{p.citationsRecorded})
+    </insert>
+    <insert id="messageCitationsInsert">
+INSERT INTO ai_message_citation(message_id,ordinal,document_id,root_id,document_version,chunk_id,title,snippet) VALUES
+<foreach collection="rows" item="row" separator=",">(#{row.messageId},#{row.ordinal},#{row.documentId},#{row.rootId},#{row.documentVersion},#{row.chunkId},#{row.title},#{row.snippet})</foreach>
     </insert>
     <insert id="proposalInsert">
 INSERT INTO ai_proposal(id,user_id,conversation_id,status,items_json,selection_hash,expires_at) VALUES(#{p.id},#{p.userId},#{p.conversationId},#{p.status},#{p.itemsJson},#{p.selectionHash},#{p.expiresAt})

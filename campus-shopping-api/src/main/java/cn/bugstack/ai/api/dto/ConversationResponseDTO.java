@@ -14,4 +14,6 @@ public class ConversationResponseDTO {
     private String id;
     private String title;
     private Instant createdAt;
+    private Instant lastActiveAt;
+    private String summary;
 }

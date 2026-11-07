@@ -93,6 +93,23 @@ public class OrderRepository implements IOrderRepository {
         return dao.countOrders(buyer, merchant, status, q);
     }
 
+    public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int offset, int size, String q, String pickupState) {
+        var rows = dao.ordersByPickupState(buyer, merchant, status, offset, size, q, pickupState);
+        if (rows.isEmpty()) return List.of();
+        var items = dao
+            .itemsByOrders(rows.stream().map(OrderPO::getId).toList())
+            .stream()
+            .collect(java.util.stream.Collectors.groupingBy(OrderItemPO::getOrderId));
+        return rows
+            .stream()
+            .map(p -> convert(p, items.getOrDefault(p.getId(), List.of())))
+            .toList();
+    }
+
+    public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
+        return dao.countOrdersByPickupState(buyer, merchant, status, q, pickupState);
+    }
+
     public List<String> expired(Instant now) {
         return dao.expired(now);
     }
@@ -123,6 +140,39 @@ public class OrderRepository implements IOrderRepository {
             p.getRefundedCount(),
             p.getCompletedAmountCent()
         );
+    }
+
+    public OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone) {
+        var w = dao.statisticsWindow(merchant, start, end);
+        return new OperationsStatisticsVO(
+            start,
+            end,
+            timezone,
+            asOf,
+            value(w.getTotalOrders()),
+            value(w.getPaidOrders()),
+            value(w.getRefundedOrders()),
+            value(w.getCompletedAmountCent()),
+            dao
+                .statisticsTrend(merchant, start, end)
+                .stream()
+                .map(p -> new OperationsStatisticsVO.Trend(p.getDay(), value(p.getOrderCount())))
+                .toList(),
+            dao
+                .statisticsStatuses(merchant, start, end)
+                .stream()
+                .map(p -> new OperationsStatisticsVO.Status(p.getStatus(), value(p.getOrderCount()), value(p.getAmountCent())))
+                .toList(),
+            dao
+                .statisticsProducts(merchant, start, end)
+                .stream()
+                .map(p -> new OperationsStatisticsVO.Product(p.getProductId(), p.getTitle(), value(p.getQuantity())))
+                .toList()
+        );
+    }
+
+    private long value(Long value) {
+        return value == null ? 0L : value;
     }
 
     private OrderAggregate convert(OrderPO p) {

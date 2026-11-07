@@ -1224,6 +1224,12 @@ button {
 .typing-bubble i:nth-child(3) {
   animation-delay: 0.5s;
 }
+.typing-bubble small {
+  display: block;
+  margin-left: 6px;
+  color: #71808f;
+  font-size: 11px;
+}
 .recommendation-panel {
   margin: 0 -4px 15px;
   padding: 16px 11px 10px;
@@ -1348,6 +1354,19 @@ button {
   display: block;
   margin-top: 2px;
 }
+.rec-detail-link {
+  border: 0;
+  padding: 0;
+  margin-top: 5px;
+  background: transparent;
+  color: #1689c9;
+  font-size: 9.5px;
+  cursor: pointer;
+}
+.rec-detail-link:disabled {
+  color: #aeb9c5;
+  cursor: default;
+}
 .rec-price {
   display: flex;
   justify-content: space-between;
@@ -1419,6 +1438,16 @@ button {
   background: #b4dcd9;
   color: #f6ffff;
 }
+.proposal-feedback {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid #f0d1c4;
+  border-radius: 9px;
+  background: #fff7f3;
+  color: #9b5b45;
+  font-size: 11px;
+  line-height: 1.5;
+}
 .chat-composer-placeholder {
   height: 56px;
 }
@@ -1462,6 +1491,16 @@ button {
 }
 .chat-composer button:disabled {
   background: #cce3e3;
+}
+.chat-composer .stream-cancel {
+  width: auto;
+  min-width: 76px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #b44848;
+  border: 1px solid #e3b5b5;
+  font-size: 12px;
 }
 /* 商户端：商品数据与编辑动作，而不是多层工作台介绍 */
 .admin-mode {
@@ -4123,6 +4162,27 @@ button {
   color: #3b5973;
   padding: 11px 8px;
   border-bottom: 1px solid #edf2f5;
+}
+.ai-history-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+.ai-history-copy strong,
+.ai-history-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-history-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.ai-history-copy small {
+  color: #9aadb9;
+  font-size: 10px;
 }
 .ai-history-list button svg:last-child {
   margin-left: auto;

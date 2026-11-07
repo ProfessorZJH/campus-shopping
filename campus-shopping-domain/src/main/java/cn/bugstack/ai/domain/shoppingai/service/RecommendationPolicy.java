@@ -87,7 +87,8 @@ public final class RecommendationPolicy {
                     quote.priceCent(),
                     quote.quoteVersion(),
                     recommendation.quantity(),
-                    quote.imageUrl()
+                    quote.imageUrl(),
+                    quote.productId()
                 )
             );
             if (result.size() == (constraints.requestedQuantity() == null ? 3 : 1)) break;

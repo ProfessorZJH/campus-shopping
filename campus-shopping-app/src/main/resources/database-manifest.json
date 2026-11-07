@@ -60,6 +60,26 @@
       "version": "V20261106_03",
       "file": "V20261106_03__order_events.sql",
       "sha256": "044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e"
+    },
+    {
+      "version": "V20261107_01",
+      "file": "V20261107_01__conversation_activity.sql",
+      "sha256": "d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd"
+    },
+    {
+      "version": "V20261107_02",
+      "file": "V20261107_02__message_citations.sql",
+      "sha256": "ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1"
+    },
+    {
+      "version": "V20261107_03",
+      "file": "V20261107_03__conversation_turn_runtime.sql",
+      "sha256": "464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937"
+    },
+    {
+      "version": "V20261107_04",
+      "file": "V20261107_04__conversation_activity_default.sql",
+      "sha256": "49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe"
     }
   ]
 }

@@ -8,7 +8,7 @@ import httpx
 from .config import Settings
 from .http_limits import bounded_json
 from .egress import minimized, audit
-from .observability import observed, failure
+from .observability import counts, failure, lock, observed
 
 def tokens(text: str) -> list[str]:
     text=text.lower()
@@ -94,6 +94,60 @@ class Provider:
             result=json.loads(content)
             if not isinstance(result,dict):raise ValueError('模型应返回 JSON 对象')
             return result
+
+    def stream_complete(self,system: str,payload: dict[str,Any]):
+        """读取 OpenAI 兼容供应商的真实 SSE 分块；调用方负责消费到结束或主动关闭。"""
+        started=time.perf_counter();operation='llm';succeeded=False
+        with lock:counts[operation+'.calls']+=1
+        s=self.settings
+        try:
+            if not s.llm_key:raise RuntimeError('未配置真实模型')
+            payload=minimized(payload)
+            data={'model':s.llm_model,'max_completion_tokens':2048,'stream':True,
+                  'messages':[{'role':'system','content':system},{'role':'user','content':json.dumps(payload,ensure_ascii=False)}]}
+            if not s.llm_model.startswith('spark-'):data['response_format']={'type':'json_object'}
+            audit(s.llm_url, 'completion.stream', len(payload.get('authorizedEvidence', [])), payload)
+            total=0;finish_reason=None;saw_done=False
+            with httpx.Client(timeout=httpx.Timeout(30.0,read=s.llm_timeout_seconds),follow_redirects=False,trust_env=False) as client:
+                with client.stream('POST',s.llm_url+'/chat/completions',headers={'Authorization':'Bearer '+s.llm_key},json=data) as response:
+                    response.raise_for_status()
+                    for line in response.iter_lines():
+                        if isinstance(line,bytes):line=line.decode('utf-8','replace')
+                        if len(line)>65536:raise ValueError('模型流式行超限')
+                        if not line or line.startswith(':'):continue
+                        if not line.startswith('data:'):continue
+                        body=line[5:].strip()
+                        if body=='[DONE]':saw_done=True;break
+                        try:chunk=json.loads(body)
+                        except (TypeError,ValueError):raise ValueError('模型流式数据无效') from None
+                        choices=chunk.get('choices')
+                        if not isinstance(choices,list) or not choices:continue
+                        choice=choices[0];reason=choice.get('finish_reason')
+                        if reason is not None:
+                            if reason!='stop':raise ValueError('模型流式未正常结束')
+                            finish_reason=reason
+                        content=(choice.get('delta') or {}).get('content','')
+                        if not isinstance(content,str):raise ValueError('模型流式内容无效')
+                        total+=len(content.encode('utf-8'))
+                        if total>20000:raise ValueError('模型输出无效或超限')
+                        if content:yield content
+            if finish_reason!='stop' or not saw_done:raise ValueError('模型流式未正常结束')
+            succeeded=True
+        except Exception as error:
+            failure(operation,error)
+            raise
+        finally:
+            with lock:
+                if succeeded:counts[operation+'.last_success_at']=time.time()
+                counts[operation+'.duration_ms']+=round((time.perf_counter()-started)*1000)
+
+    @staticmethod
+    def parse_json_content(content: str) -> dict[str,Any]:
+        content=content.strip()
+        if content.startswith('```'):content=re.sub(r'^```(?:json)?\s*|\s*```$', '', content).strip()
+        result=json.loads(content)
+        if not isinstance(result,dict):raise ValueError('模型应返回 JSON 对象')
+        return result
 
 class KnowledgeStore:
     def __init__(self,settings: Settings):

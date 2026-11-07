@@ -178,13 +178,18 @@ CREATE TABLE IF NOT EXISTS ai_document (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_conversation (
- processing_owner VARCHAR(64) NULL, processing_until DATETIME(3) NULL, id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, turn_token VARCHAR(36) NULL, turn_expires_at DATETIME(3) NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at)
+ processing_owner VARCHAR(64) NULL, processing_until DATETIME(3) NULL, id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, summary VARCHAR(200) NOT NULL DEFAULT '', turn_token VARCHAR(36) NULL, turn_expires_at DATETIME(3) NULL, turn_status VARCHAR(24) NOT NULL DEFAULT 'IDLE', turn_cancel_requested_at DATETIME(3) NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), last_active_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at), KEY ix_conversation_activity(user_id,last_active_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_message (
  seq_no BIGINT NOT NULL AUTO_INCREMENT UNIQUE,
- id VARCHAR(36) PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, role VARCHAR(16) NOT NULL, content TEXT NOT NULL, access_fingerprint CHAR(64),
+ id VARCHAR(36) PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, role VARCHAR(16) NOT NULL, content TEXT NOT NULL, access_fingerprint CHAR(64), citation_recorded TINYINT(1) NOT NULL DEFAULT 0,
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_message_conversation(conversation_id,created_at), KEY ix_message_sequence(conversation_id,seq_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ai_message_citation (
+ message_id VARCHAR(36) NOT NULL, ordinal INT NOT NULL, document_id VARCHAR(36) NOT NULL, root_id VARCHAR(36) NOT NULL, document_version INT NOT NULL,
+ chunk_id VARCHAR(100) NOT NULL, title VARCHAR(120) NOT NULL, snippet VARCHAR(500) NOT NULL DEFAULT '', PRIMARY KEY(message_id,ordinal), KEY ix_message_citation_document(document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_proposal (
@@ -234,3 +239,7 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261104_01','1f233c
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_01','fcc1851f8933857c4531d126ba46d4a49754310693c006589f3b9363f033e977' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_02','338723eaf6a7f12ce1ecd11aca2cba58d7c0c01d2050d8f75999502694076c5a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_03','044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_01','d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_02','ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_03','464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_04','49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

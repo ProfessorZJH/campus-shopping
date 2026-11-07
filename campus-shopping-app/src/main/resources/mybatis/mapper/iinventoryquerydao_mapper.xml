@@ -2,7 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.bugstack.ai.infrastructure.dao.IInventoryQueryDao">
 <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.StockPO">
-SELECT * FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if> ORDER BY sku_id LIMIT #{limit} OFFSET #{offset}
+SELECT * FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="availableBelow != null"> AND (b.on_hand-b.reserved) &lt;= #{availableBelow}</if> <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if> ORDER BY sku_id LIMIT #{limit} OFFSET #{offset}
     </select>
-<select id="countStocks" resultType="long">SELECT COUNT(*) FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if></select>
+<select id="countStocks" resultType="long">SELECT COUNT(*) FROM inv_stock_balance b WHERE b.merchant_id=#{merchantId} <if test="availableBelow != null"> AND (b.on_hand-b.reserved) &lt;= #{availableBelow}</if> <if test="q != null and q != ''"> AND EXISTS (SELECT 1 FROM cat_sku s JOIN cat_product p ON p.id=s.product_id WHERE s.id=b.sku_id AND (LOCATE(LOWER(#{q}),LOWER(s.id))>0 OR LOCATE(LOWER(#{q}),LOWER(s.spec_key))>0 OR LOCATE(LOWER(#{q}),LOWER(p.title))>0))</if></select>
+<select id="movements" resultType="cn.bugstack.ai.infrastructure.dao.po.StockMovementPO">
+SELECT * FROM inv_stock_movement m WHERE m.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND (LOCATE(LOWER(#{q}),LOWER(m.biz_key))&gt;0 OR LOCATE(LOWER(#{q}),LOWER(m.sku_id))&gt;0)</if> ORDER BY created_at DESC,id LIMIT #{limit} OFFSET #{offset}
+</select>
+<select id="countMovements" resultType="long">SELECT COUNT(*) FROM inv_stock_movement m WHERE m.merchant_id=#{merchantId} <if test="q != null and q != ''"> AND (LOCATE(LOWER(#{q}),LOWER(m.biz_key))&gt;0 OR LOCATE(LOWER(#{q}),LOWER(m.sku_id))&gt;0)</if></select>
 </mapper>

@@ -134,7 +134,7 @@ stateDiagram-v2
 | DELETE | `/api/v1/cart/{skuId}` | 本人移除 SKU |
 | POST | `/api/v1/orders` | 一次一个商户，`Idempotency-Key` 业务必填 |
 | GET | `/api/v1/orders/page`、`/api/v1/orders/{orderId}` | 买家可查自己的订单；详情允许受控商户与平台角色 |
-| GET | `/api/v1/merchants/{merchantId}/orders/page` | 商户成员受控读，支持 `state,q,page,size` |
+| GET | `/api/v1/merchants/{merchantId}/orders/page` | 商户成员受控读，支持 `state,pickupState,q,page,size`；待办按履约任务状态服务端过滤 |
 | GET | `/api/v1/admin/orders/page` | 平台管理员，支持 `state,q,page,size` |
 | POST | `/api/v1/orders/{orderId}/pay` | 本人模拟支付；不发生真实资金流转 |
 | POST | `/api/v1/orders/{orderId}/cancel` | 本人取消未付款 |

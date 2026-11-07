@@ -1,5 +1,6 @@
 package cn.bugstack.ai.domain.shoppingai.service;
 
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
@@ -11,6 +12,19 @@ public interface IConversationService {
     List<ConversationVO> conversations(String actor, int page, int size);
     List<MessageVO> messages(String actor, String conversation, int limit);
     ConversationTurnVO beginTurn(String actor, String conversation, String question);
-    void appendTurn(ConversationTurnVO turn, String question, String answer, String accessFingerprint);
+
+    default void appendTurn(ConversationTurnVO turn, String question, String answer, String accessFingerprint) {
+        appendTurn(turn, question, answer, java.util.List.of(), accessFingerprint);
+    }
+
+    void appendTurn(
+        ConversationTurnVO turn,
+        String question,
+        String answer,
+        java.util.List<cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO> citations,
+        String accessFingerprint
+    );
     void releaseTurn(ConversationTurnVO turn);
+    ConversationTurnStatusVO turnStatus(String actor, String conversation);
+    ConversationTurnStatusVO requestTurnCancel(String actor, String conversation);
 }

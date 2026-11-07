@@ -240,6 +240,21 @@ class CatalogCartReadModelTest {
     }
 
     @Test
+    void stockPageCarriesLowAvailableThresholdToRowsAndCount() {
+        var stock = new StockVO("m", "store", "sku", 8, 3, 3);
+        var offer = new SkuOfferVO("sku", "product", "m", "store", "笔", "黑色", 150, 1, "PUBLISHED", "ACTIVE", "", "");
+        when(inventory.list("m", 1, 20, "", 5)).thenReturn(List.of(stock));
+        when(catalog.offers(List.of("sku"))).thenReturn(List.of(offer));
+        when(inventory.countStocks("m", "", 5)).thenReturn(1L);
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
+        var page = query.stockPage("u", "m", 1, 20, "", 5);
+        assertEquals(1L, page.total());
+        assertEquals(List.of(stock), page.items());
+        verify(inventory).list("m", 1, 20, "", 5);
+        verify(inventory).countStocks("m", "", 5);
+    }
+
+    @Test
     void workspaceQueryLoadsMerchantDetailsInOneBatch() {
         var access = mock(IAccessService.class);
         var memberships = List.of(new MembershipVO("m1", "actor", "OWNER", "ACTIVE"), new MembershipVO("m2", "actor", "CLERK", "ACTIVE"));

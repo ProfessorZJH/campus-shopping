@@ -7,6 +7,7 @@ import java.util.List;
 
 /** 后台知识管理与前台 RAG 授权是不同能力。 */
 public interface IKnowledgeCase {
+    void requireDebugAccess(String actor);
     List<KnowledgeBaseVO> managedBases(String actor);
     KnowledgeBaseVO createBase(String actor, String merchant, String name, String visibility);
     long countDocuments(String actor, String base);

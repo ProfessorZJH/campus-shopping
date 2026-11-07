@@ -101,6 +101,8 @@ REQUEST_RULES = {
         'trigger/http/RequestInputs.java'),
     'ChatRequestDTO': rule('question', {'conversationId': optional_text(36), 'question': text(2000,
         description='API 最长 2000；当前导购 UI 主动限制为 500。')}, 'cases/shoppingai/impl/ShoppingAiCaseImpl.java'),
+    'KnowledgeDebugRequestDTO': rule('question', {'question': text(1000), 'answerPreview': {'type': ['boolean', 'null']}},
+        'cases/shoppingai/impl/ShoppingAiCaseImpl.java'),
 }
 
 

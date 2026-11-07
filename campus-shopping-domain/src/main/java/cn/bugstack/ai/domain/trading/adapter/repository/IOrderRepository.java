@@ -17,10 +17,13 @@ public interface IOrderRepository {
     long countOrders(String buyer, String merchant, String status, String q);
     List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size);
     List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q);
+    List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int offset, int size, String q, String pickupState);
+    long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState);
     List<String> expired(Instant now);
     List<String> expiredAfter(Instant now, String after, int limit);
     Instant oldestExpired(Instant now);
     void payment(String order, long amount);
     void refund(String order, long amount);
     TradingStatsVO statistics(String merchant);
+    OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
 }

@@ -188,9 +188,9 @@ class BackendContractDouble:
             if action!='index':data['status']='PUBLISHED' if action=='publish' else 'WITHDRAWN'
         elif path=='/ai/conversations':data=self.conversations
         elif path=='/ai/chat':
-            self.conversations=[{'id':'conv1','title':body['question'],'createdAt':NOW}]
-            p={'id':'proposal1','status':'PENDING','expiresAt':DEADLINE,'items':[{'skuId':'sku0','merchantId':'m1','title':'书写顺滑中性笔','specKey':'标准装','priceCent':1200,'quoteVersion':1,'quantity':1}]};self.proposals=[p]
-            self.messages=[{'id':'msg1','role':'user','content':body['question']},{'id':'msg2','role':'assistant','content':'这是明确标注的本地检索演示，根据已上架商品为你找到这款中性笔。'}]
+            self.conversations=[{'id':'conv1','title':body['question'],'createdAt':NOW,'lastActiveAt':NOW,'summary':body['question']}]
+            p={'id':'proposal1','status':'PENDING','expiresAt':DEADLINE,'items':[{'skuId':'sku0','productId':'p0','merchantId':'m1','title':'书写顺滑中性笔','specKey':'标准装','priceCent':1200,'quoteVersion':1,'quantity':1,'detailAvailable':True,'detailUnavailableReason':None}]};self.proposals=[p]
+            self.messages=[{'id':'msg1','role':'user','content':body['question'],'citations':[],'citationStatus':'NONE'},{'id':'msg2','role':'assistant','content':'这是明确标注的本地检索演示，根据已上架商品为你找到这款中性笔。','citations':[{'documentId':'doc1','title':'自提指南','snippet':'付款后到店自提。'}],'citationStatus':'AVAILABLE'}]
             data={'conversationId':'conv1','answer':self.messages[-1]['content'],'mode':'LOCAL_RETRIEVAL_DEMO','retrievalMode':'LOCAL_CHAR_NGRAM_DEMO','warning':'未配置真实模型。','citations':[{'documentId':'doc1','title':'自提指南','snippet':'付款后到店自提。'}],'proposal':p,'latencyMs':15}
         elif path.endswith('/messages'):data=self.messages
         elif path.endswith('/proposals'):data=self.proposals
