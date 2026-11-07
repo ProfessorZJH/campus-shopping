@@ -397,7 +397,14 @@ def main():
         check=False,
     )
     if final.returncode != 0:
-        raise SystemExit('最终隔离浏览器矩阵失败')
+        evidence = ROOT / 'docs/testing/evidence/frontend-live-final/results.json'
+        detail = ''
+        if evidence.is_file():
+            try:
+                detail = ': ' + str(json.loads(evidence.read_text(encoding='utf-8')).get('error') or '未记录具体错误')
+            except (OSError, ValueError):
+                detail = ''
+        raise SystemExit('最终隔离浏览器矩阵失败' + detail)
 
 
 if __name__ == '__main__':

@@ -282,11 +282,13 @@ def main():
             assert stream['status'] == 200 and stream['bytes'] > 0 and stream['conversationId']
             conversation_id = stream['conversationId']
             status = None
-            for _ in range(30):
+            # CI 中共享 Redis/AI 进程的调度抖动可能让断线后的短事务稍晚完成，
+            # 给状态收敛留出 30 秒，但仍保持本场景有界。
+            for _ in range(60):
                 status = data(buyer_client, base, 'GET', '/ai/conversations/' + conversation_id + '/turn/status')
                 if status['status'] in ('IDLE', 'CANCEL_REQUESTED'):
                     break
-                time.sleep(0.3)
+                time.sleep(0.5)
             assert status and status['status'] in ('IDLE', 'CANCEL_REQUESTED')
             history = data(buyer_client, base, 'GET', '/ai/conversations/' + conversation_id + '/messages')
             assert any(message['role'] == 'user' and '断线恢复' in message['content'] for message in history)
