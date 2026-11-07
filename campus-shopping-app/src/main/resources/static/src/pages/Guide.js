@@ -153,14 +153,15 @@ export default {
       if (!id || actor !== store.user?.userId) return false;
       reconnecting.value = true;
       try {
-        for (let attempt = 0; attempt < 10; attempt += 1) {
+        for (let attempt = 0; attempt < 60; attempt += 1) {
           if (stamp !== conversationEpoch || actor !== store.user?.userId) return true;
           const status = await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/status', {
             timeoutMs: 5000,
           });
           if (status?.status === 'CANCEL_REQUESTED') {
             cancelRequested.value = true;
-            return true;
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
           }
           if (status?.status === 'IDLE') return loadConversationSnapshot(id, stamp);
           await new Promise((resolve) => setTimeout(resolve, 500));
@@ -168,7 +169,10 @@ export default {
       } finally {
         reconnecting.value = false;
       }
-      return false;
+      // Keep the pending turn visible when the backend has not reached IDLE yet;
+      // dropping the user message here makes a transient disconnect look like a
+      // successful but empty turn.
+      return true;
     }
 
     async function cancelTurn() {

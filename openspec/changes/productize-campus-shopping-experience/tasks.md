@@ -55,7 +55,7 @@
   - 证据：[M3 流式供应商桥接阶段](../../../docs/testing/PRODUCTIZATION-M3-STREAMING-BRIDGE-20261107.md)；Java 定向编译/协议测试、Python 58 项流式/容量/服务测试通过，实际供应商网络效果留待 4.9。
 - [x] 4.8 接入导购流式界面和断线恢复，按实际事件显示进度；验证部分输出失败、停止等待与取消处理中区别、重连读取原会话结果且不重复发起生成，补页面说明。
   - 证据：[M3 流式导购界面阶段](../../../docs/testing/PRODUCTIZATION-M3-STREAMING-UI-20261107.md)；前端构建、类型检查、SSE 解析 smoke 与定向浏览器检查通过，真实后端断线联调留待 4.9。
-- [ ] 4.9 对本组执行适用 Java/Python、真实隔离 MySQL/Redis、HTTP 与浏览器回归及该版本 CI；证明完整 JSON 兼容，报告区分受控流式、实际供应商和未运行的真实效果/性能项。
+- [x] 4.9 对本组执行适用 Java/Python、真实隔离 MySQL/Redis、HTTP 与浏览器回归及该版本 CI；证明完整 JSON 兼容，报告区分受控流式、实际供应商和未运行的真实效果/性能项。证据：`docs/testing/evidence/frontend-live-final/results.json`、PR #59 CI；Python 流式/容量定向 15 项、Java AI 协议/边界定向测试通过，最终隔离浏览器矩阵 26 项通过。受控本地 AI 流式和真实 Java/MySQL/Redis/HTTP 已验证；真实 NVIDIA/XFYUN/Milvus 供应商语义效果及性能未运行。
 
 ## 5. M4：商户与平台操作效率
 
@@ -82,8 +82,8 @@
 ## 7. M6：最终整合与交付核验
 
 - [x] 7.1 对当前整合源码重新核对类型、UI 副本、API/schema、Mapper/DDL 与源码门禁；格式和真实后端验收另列范围。证据：`docs/testing/PRODUCTIZATION-M6-STATIC-GATES-20261107.md`。
-- [ ] 7.2 在隔离真实后端完成桌面/手机和消费者/商户/店员/平台的主链路及异常矩阵，包含旧数据、重复提交、变价缺货、会话切换、AI 断线及图片归属；如使用云图样本，实际关联到本次隔离商品并记录范围。
-- [ ] 7.3 核对最终版本必需的隔离 CI、真实 MySQL/Redis/浏览器与交付镜像结果，处理有效审查意见；若源码再变化，补对应检查，不能通过跳过或削弱断言收口。
+- [x] 7.2 在隔离真实后端完成桌面/手机和消费者/商户/店员/平台的主链路及异常矩阵，包含旧数据、重复提交、变价缺货、会话切换、AI 断线及图片归属；如使用云图样本，实际关联到本次隔离商品并记录范围。证据：`docs/testing/evidence/frontend-live-final/results.json`，26 项最终矩阵全部通过，API mock 未使用，流式范围为受控本地 AI 客户端断线恢复。
+- [x] 7.3 核对最终版本必需的隔离 CI、真实 MySQL/Redis/浏览器与交付镜像结果，处理有效审查意见；若源码再变化，补对应检查，不能通过跳过或削弱断言收口。证据：PR #59 最新提交的 Quick quality gates、Chromium current/legacy、Maven/MySQL/FastAPI/Browser E2E、实际交付镜像检查均通过；最终审查涉及的 SSE 生命周期、取消/配额、检索终态、权限、统计口径、API nullable 契约和隔离脚本问题已修复并定向验证。
 - [x] 7.4 在 `docs/testing/` 保存跨阶段最终验收报告并更新文档索引与任务证据，明确代码完成、测试通过、列明范围验收、真实模型/域名/生产未验证项及仓库运行状态。证据：`docs/testing/PRODUCTIZATION-FINAL-STATUS-20261107.md`。
 
 ## Workflow follow-up

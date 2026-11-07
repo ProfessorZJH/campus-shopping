@@ -11580,7 +11580,13 @@
       }
     };
     while (true) {
-      const chunk = await reader.read();
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        if ((err == null ? void 0 : err.name) === "AbortError") throw err;
+        throw fail("流式连接中断，请稍后重试", "NETWORK", 0);
+      }
       buffer2 += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
       let end;
       while ((end = buffer2.indexOf("\n")) >= 0) {
@@ -13677,14 +13683,15 @@
         if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
         reconnecting.value = true;
         try {
-          for (let attempt = 0; attempt < 10; attempt += 1) {
+          for (let attempt = 0; attempt < 60; attempt += 1) {
             if (stamp !== conversationEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return true;
             const status = await api("/ai/conversations/" + encodeURIComponent(id) + "/turn/status", {
               timeoutMs: 5e3
             });
             if ((status == null ? void 0 : status.status) === "CANCEL_REQUESTED") {
               cancelRequested.value = true;
-              return true;
+              await new Promise((resolve2) => setTimeout(resolve2, 500));
+              continue;
             }
             if ((status == null ? void 0 : status.status) === "IDLE") return loadConversationSnapshot(id, stamp);
             await new Promise((resolve2) => setTimeout(resolve2, 500));
@@ -13692,7 +13699,7 @@
         } finally {
           reconnecting.value = false;
         }
-        return false;
+        return true;
       }
       async function cancelTurn() {
         const id = store.conversationId;
@@ -20470,7 +20477,7 @@
                     _createElementVNode("section", { class: "ops-card" }, [
                       _createElementVNode("div", { class: "ops-card-header" }, [
                         _createElementVNode("h2", null, "商品表现"),
-                        _createElementVNode("span", null, "已完成 SKU")
+                        _createElementVNode("span", null, "已完成商品")
                       ]),
                       (_openBlock(true), _createElementBlock(
                         _Fragment,
@@ -20478,20 +20485,20 @@
                         _renderList(_ctx.stats.products, (item) => {
                           return _openBlock(), _createElementBlock("div", {
                             class: "ops-list-line",
-                            key: item.skuId
+                            key: item.productId
                           }, [
                             _createElementVNode("div", null, [
                               _createElementVNode(
                                 "strong",
                                 null,
-                                _toDisplayString(item.title || item.skuId),
+                                _toDisplayString(item.title || item.productId),
                                 1
                                 /* TEXT */
                               ),
                               _createElementVNode(
                                 "small",
                                 null,
-                                _toDisplayString(item.skuId),
+                                _toDisplayString(item.productId),
                                 1
                                 /* TEXT */
                               )
@@ -22626,7 +22633,7 @@
       const scope = requestScope();
       const route = computed$1(() => store.route), title = computed$1(() => titles[route.value] || "平台总览");
       const stats = ref$1(null), applications = ref$1([]), merchants = ref$1([]), products = ref$1([]), orders = ref$1([]), aftersales = ref$1([]), categories = ref$1([]);
-      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      const selectedId = ref$1(""), search = ref$1(""), statsPeriod = ref$1(7), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
       let disputeVersion = 0;
       const pickedApplication = computed$1(
         () => applications.value.find((a) => a.applicationId === selectedId.value) || applications.value[0] || null
@@ -22676,7 +22683,7 @@
           if (!allowed.value) return;
           if (current === "/admin") {
             const [s, m, o] = await Promise.all([
-              read("/admin/statistics"),
+              read("/admin/statistics/operations" + query({ periodDays: statsPeriod.value })),
               read("/admin/merchants/page" + query({ page: 1, size: 6 })),
               read("/admin/orders/page" + query({ page: 1, size: 6 }))
             ]);
@@ -22744,7 +22751,7 @@
       let searchDelay;
       let resettingPage = false;
       watch$1(
-        [page, search, state],
+        [page, search, state, statsPeriod],
         (next, previous) => {
           if (resettingPage) return;
           clearTimeout(searchDelay);
@@ -22876,6 +22883,7 @@
         categories,
         selectedId,
         search,
+        statsPeriod,
         state,
         page,
         pageInfo,
@@ -22965,7 +22973,7 @@
                   class: "ops-kpis"
                 }, [
                   _createElementVNode("div", null, [
-                    _createElementVNode("span", null, "全部订单"),
+                    _createElementVNode("span", null, "订单总数"),
                     _createElementVNode(
                       "strong",
                       null,
@@ -22975,27 +22983,27 @@
                     )
                   ]),
                   _createElementVNode("div", null, [
-                    _createElementVNode("span", null, "待付款"),
+                    _createElementVNode("span", null, "成功支付"),
                     _createElementVNode(
                       "strong",
                       null,
-                      _toDisplayString(_ctx.stats.pendingCount || 0),
+                      _toDisplayString(_ctx.stats.paidOrders || 0),
                       1
                       /* TEXT */
                     )
                   ]),
                   _createElementVNode("div", null, [
-                    _createElementVNode("span", null, "已完成"),
+                    _createElementVNode("span", null, "整单退款"),
                     _createElementVNode(
                       "strong",
                       null,
-                      _toDisplayString(_ctx.stats.completedCount || 0),
+                      _toDisplayString(_ctx.stats.refundedOrders || 0),
                       1
                       /* TEXT */
                     )
                   ]),
                   _createElementVNode("div", null, [
-                    _createElementVNode("span", null, "模拟交易金额"),
+                    _createElementVNode("span", null, "完成金额"),
                     _createElementVNode(
                       "strong",
                       null,
@@ -23003,6 +23011,140 @@
                       1
                       /* TEXT */
                     )
+                  ]),
+                  _createElementVNode("div", null, [
+                    _createElementVNode("span", null, "退款率"),
+                    _createElementVNode(
+                      "strong",
+                      null,
+                      _toDisplayString(_ctx.stats.refundRate == null ? "—" : (_ctx.stats.refundRate * 100).toFixed(1) + "%"),
+                      1
+                      /* TEXT */
+                    )
+                  ])
+                ])) : _createCommentVNode("v-if", true),
+                _ctx.stats ? (_openBlock(), _createElementBlock("div", {
+                  key: 1,
+                  class: "ops-grid"
+                }, [
+                  _createElementVNode("section", { class: "ops-card" }, [
+                    _createElementVNode("div", { class: "ops-card-header" }, [
+                      _createElementVNode("h2", null, "订单趋势"),
+                      _createElementVNode("span", null, "新增订单")
+                    ]),
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.stats.trend, (item) => {
+                        return _openBlock(), _createElementBlock("div", {
+                          class: "ops-list-line",
+                          key: item.day
+                        }, [
+                          _createElementVNode("div", null, [
+                            _createElementVNode(
+                              "strong",
+                              null,
+                              _toDisplayString(item.day),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("small", null, "按创建日")
+                          ]),
+                          _createElementVNode(
+                            "b",
+                            null,
+                            _toDisplayString(item.orderCount),
+                            1
+                            /* TEXT */
+                          )
+                        ]);
+                      }),
+                      128
+                      /* KEYED_FRAGMENT */
+                    ))
+                  ]),
+                  _createElementVNode("section", { class: "ops-card" }, [
+                    _createElementVNode("div", { class: "ops-card-header" }, [
+                      _createElementVNode("h2", null, "商品表现"),
+                      _createElementVNode("span", null, "已完成商品")
+                    ]),
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.stats.products, (item) => {
+                        return _openBlock(), _createElementBlock("div", {
+                          class: "ops-list-line",
+                          key: item.productId
+                        }, [
+                          _createElementVNode("div", null, [
+                            _createElementVNode(
+                              "strong",
+                              null,
+                              _toDisplayString(item.title || item.productId),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode(
+                              "small",
+                              null,
+                              _toDisplayString(item.productId),
+                              1
+                              /* TEXT */
+                            )
+                          ]),
+                          _createElementVNode(
+                            "b",
+                            null,
+                            _toDisplayString(item.quantity),
+                            1
+                            /* TEXT */
+                          )
+                        ]);
+                      }),
+                      128
+                      /* KEYED_FRAGMENT */
+                    ))
+                  ]),
+                  _createElementVNode("section", { class: "ops-card" }, [
+                    _createElementVNode("div", { class: "ops-card-header" }, [
+                      _createElementVNode("h2", null, "状态分布")
+                    ]),
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.stats.statuses, (item) => {
+                        return _openBlock(), _createElementBlock("div", {
+                          class: "ops-list-line",
+                          key: item.status
+                        }, [
+                          _createElementVNode("div", null, [
+                            _createElementVNode(
+                              "strong",
+                              null,
+                              _toDisplayString(_ctx.orderStatusLabel(item.status)),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode(
+                              "small",
+                              null,
+                              _toDisplayString(item.orderCount) + " 单",
+                              1
+                              /* TEXT */
+                            )
+                          ]),
+                          _createElementVNode(
+                            "b",
+                            null,
+                            _toDisplayString(_ctx.money(item.amountCent)),
+                            1
+                            /* TEXT */
+                          )
+                        ]);
+                      }),
+                      128
+                      /* KEYED_FRAGMENT */
+                    ))
                   ])
                 ])) : _createCommentVNode("v-if", true),
                 _createElementVNode("div", { class: "ops-grid" }, [

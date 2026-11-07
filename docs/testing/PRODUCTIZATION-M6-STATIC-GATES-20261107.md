@@ -10,10 +10,10 @@
 | 命令 | 结果 |
 |---|---|
 | `./mvnw -q -pl campus-shopping-app -am '-DskipTests' '-Dfrontend.skip=true' compile` | 通过 |
-| `python scripts/verify-release.py` | PASS，源码/接口/DDL/Mapper 门禁通过 |
+| `python scripts/verify-release.py` | PASS，源码/接口/DDL/Mapper/DDD 边界门禁通过 |
 | `python scripts/verify-api-contract.py` | PASS |
 | `python scripts/verify-api-schemas.py` | PASS，75 项 |
 | `python scripts/build-ui-bundle.py --check` | 通过 |
 | `./mvnw -q -pl campus-shopping-app -am '-Dtest=OrderBatchQueryTest' '-Dsurefire.failIfNoSpecifiedTests=false' '-Dfrontend.skip=true' test` | 通过 |
 
-此项只覆盖源码与定向测试。随后隔离整合已完成 5.8、6.4，证据见 [M4/M5 真实隔离整合验收](PRODUCTIZATION-M4-M5-INTEGRATION-20261107.md)；4.9 仍缺该版本 CI、真实供应商效果和流式断网矩阵，7.2/7.3/7.4 仍待最终收口。
+此项只覆盖源码与定向测试。随后隔离整合已完成 5.8、6.4；4.9、7.2、7.3 的最终证据见 [全链路产品化阶段状态](PRODUCTIZATION-FINAL-STATUS-20261107.md) 及 `evidence/frontend-live-final/results.json`。真实供应商效果、生产域名/数据/部署和性能结论仍未宣称通过。

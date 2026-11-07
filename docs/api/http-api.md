@@ -366,7 +366,7 @@
 
 ### `StatisticsProductDTO`
 
-`skuId`、`title`、`quantity`
+`productId`、`title`、`quantity`
 
 ### `StatisticsResponseDTO`
 

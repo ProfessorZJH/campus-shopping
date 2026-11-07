@@ -54,6 +54,11 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     @Override
+    public AiAnswerVO query(AiQueryEntity query, boolean answerPreview) {
+        return answerPreview ? query(query) : retrieve(query);
+    }
+
+    @Override
     public AiAnswerVO retrieve(AiQueryEntity query) {
         return toAnswer(gateway.query(toRequest(query, false)));
     }

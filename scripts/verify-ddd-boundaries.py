@@ -22,6 +22,7 @@ READS = {
     ('ICatalogQueryDao', 'searchManaged'): {'inv_stock_balance'},
     ('ITradingDao', 'ordersByPickupState'): {'ful_pickup_task'},
     ('ITradingDao', 'countOrdersByPickupState'): {'ful_pickup_task'},
+    ('ITradingDao', 'statisticsProducts'): {'cat_product', 'cat_sku'},
     ('IInventoryQueryDao', 'list'): {'cat_product', 'cat_sku'},
     ('IInventoryQueryDao', 'countStocks'): {'cat_product', 'cat_sku'},
 }

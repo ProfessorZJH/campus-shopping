@@ -128,7 +128,13 @@ export async function stream(path, { body, signal, onEvent, retry = true } = {})
     }
   };
   while (true) {
-    const chunk = await reader.read();
+    let chunk;
+    try {
+      chunk = await reader.read();
+    } catch (err) {
+      if (err?.name === 'AbortError') throw err;
+      throw fail('流式连接中断，请稍后重试', 'NETWORK', 0);
+    }
     buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
     let end;
     while ((end = buffer.indexOf('\n')) >= 0) {
