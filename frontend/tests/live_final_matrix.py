@@ -13,6 +13,7 @@ import secrets
 import shutil
 import sys
 import time
+import traceback
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -278,8 +279,9 @@ def main():
             checks.append('最后库存被占用后旧确认被拒绝')
 
             # 真实 SSE：读取 started 后主动断开，轮询同一 turn 的服务端状态和历史。
-            buyer_page.goto(base + '/#/ai', wait_until='domcontentloaded')
-            stream = abort_real_stream(buyer_page, base, '最终隔离矩阵断线恢复')
+            ai_page = buyer_ctx.new_page()
+            ai_page.goto(base + '/#/ai', wait_until='domcontentloaded')
+            stream = abort_real_stream(ai_page, base, '最终隔离矩阵断线恢复')
             assert stream['status'] == 200 and stream['bytes'] > 0 and stream['conversationId']
             conversation_id = stream['conversationId']
             cancel = data(buyer_client, base, 'POST', '/ai/conversations/' + conversation_id + '/turn/cancel', {})
@@ -295,8 +297,9 @@ def main():
             assert status and status['status'] in ('IDLE', 'CANCEL_REQUESTED')
             history = data(buyer_client, base, 'GET', '/ai/conversations/' + conversation_id + '/messages')
             assert any(message['role'] == 'user' and '断线恢复' in message['content'] for message in history)
-            buyer_page.reload(wait_until='domcontentloaded')
-            expect(buyer_page.locator('#app')).not_to_be_empty()
+            ai_page.reload(wait_until='domcontentloaded')
+            expect(ai_page.locator('#app')).not_to_be_empty()
+            ai_page.close()
             checks.append('真实 SSE 断开后同一会话状态可恢复，历史消息未重复创建')
 
             assert not errors, errors
@@ -320,6 +323,7 @@ def main():
         (EVIDENCE / 'results.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
         if failure:
             print('最终矩阵失败：', failure, file=sys.stderr)
+            print(traceback.format_exc(), file=sys.stderr)
         if browser:
             browser.close()
     if failure:
