@@ -240,3 +240,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_03','044d59
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_01','d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_02','ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_03','464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_04','49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
