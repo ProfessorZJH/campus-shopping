@@ -326,8 +326,6 @@ def main():
         if failure:
             print('最终矩阵失败：', failure, file=sys.stderr)
             print(traceback.format_exc(), file=sys.stderr)
-        if browser:
-            browser.close()
     if failure:
         raise SystemExit(failure)
     print('最终隔离浏览器矩阵通过：', len(checks))
