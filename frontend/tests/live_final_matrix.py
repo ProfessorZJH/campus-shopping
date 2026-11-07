@@ -301,8 +301,6 @@ def main():
 
             assert not errors, errors
             checks.append('最终矩阵浏览器无未捕获 JS 异常')
-            for index, page in enumerate((buyer_page, owner_page, admin_page)):
-                page.screenshot(path=str(EVIDENCE / ('final-' + str(index) + '.png')), full_page=True)
             for context in contexts:
                 context.close()
     except Exception as exc:  # noqa: BLE001 - evidence records first failure
