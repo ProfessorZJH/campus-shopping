@@ -11,6 +11,7 @@ import json
 import os
 import secrets
 import shutil
+import sys
 import time
 import uuid
 from datetime import datetime, timezone
@@ -319,6 +320,8 @@ def main():
             'streamMode': 'CONTROLLED_CLIENT_DISCONNECT_LOCAL_AI',
         }
         (EVIDENCE / 'results.json').write_text(json.dumps(result, ensure_ascii=False, indent=2), encoding='utf-8')
+        if failure:
+            print('最终矩阵失败：', failure, file=sys.stderr)
         if browser:
             browser.close()
     if failure:

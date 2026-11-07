@@ -394,6 +394,8 @@ def main():
     final = subprocess.run(
         [sys.executable, '-X', 'utf8', '-B', str(final_script), '--base-url', args.base_url],
         cwd=ROOT,
+        capture_output=True,
+        text=True,
         check=False,
     )
     if final.returncode != 0:
@@ -406,6 +408,9 @@ def main():
                 detail += '；已完成检查=' + str(len(result.get('checks') or []))
             except (OSError, ValueError):
                 detail = ''
+        output = (final.stderr or final.stdout or '').strip().splitlines()
+        if output:
+            detail += '；子进程=' + output[-1][:500]
         message = '最终隔离浏览器矩阵失败' + detail
         print('::error title=Final browser matrix::' + message, file=sys.stderr)
         raise SystemExit(message)
