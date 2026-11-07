@@ -1,5 +1,9 @@
 # API 行为契约 v1.1（当前版本）
 
+### 商户订单待办筛选（M4.1）
+
+`GET /api/v1/merchants/{merchantId}/orders/page` 保留订单 `state` 筛选，并支持可选的 `pickupState`：`WAIT_PREP`（待备货）、`PREPARING`（备货中）、`READY`（待自提）或 `COMPLETED`（已核销）。服务端在同一商户权限范围内按 `ful_pickup_task.status` 过滤，并对 `items` 与 `total` 使用相同条件；不把客户端已加载页面的局部筛选当作待办总数。备货、备货完成或核销成功后，调用方应保留原筛选与搜索条件并刷新当前有效页。
+
 > 适用范围：`campus-shopping` R1 及截至 2026-10-30 的 SDD 增量。HTTP 路由、字段名和 DTO 结构以[自动生成路由表](http-api.md)及[OpenAPI](openapi.json)为准；本文件补充静态提取无法准确表达的授权、数据语义与业务不变量。**源码已实现不等于真实联调通过**。
 
 ## 1. 优先级与来源
@@ -47,9 +51,11 @@ HTTP 200 的机器响应契约区分 `code=0000` 的成功和非零业务失败�
 {"code":"0000","info":"成功","data":{"items":[],"page":1,"size":20,"total":0,"hasNext":false}}
 ```
 
-会话 `GET /ai/conversations` 与邀请 `GET /invitations` 保留 `List<T>` 响应，支持 `page=1`、`size=100` 默认值，范围同上；按 `created_at DESC,id ASC` 稳定排序。前端每次取 20 条并提供继续加载/翻页；返回少于 size 条表示末页，满页后允许下一页为空。这两个接口不提供 total。页码最大 10000，越界返回 `0002`。
+会话 `GET /ai/conversations` 与邀请 `GET /invitations` 保留 `List<T>` 响应，支持 `page=1`、`size=100` 默认值，范围同上；会话按最近一次成功保存消息的 `lastActiveAt DESC,id ASC` 稳定排序，邀请按既有创建时间规则排序。会话没有消息时 `lastActiveAt` 使用创建时间，`summary` 只展示用户自己的问题摘要并遵守长度限制。前端每次取 20 条并提供继续加载/翻页；返回少于 size 条表示末页，满页后允许下一页为空。这两个接口不提供 total。页码最大 10000，越界返回 `0002`。
 
 `total` 必须是与当前 `state`、`status`、`category`、`merchantId`、`q` **同一过滤条件**下的数据库 `COUNT`，不能使用当前页 `items.length`。`hasNext` 基于 `page*size<total`。查询过滤在 SQL 分页之前生效，列表与 COUNT 保持等价条件。旧 `List<T>` 路由保留兼容；已提供 `/page` 的列表由新前端优先使用 `/page`。
+
+库存查询的 `availableBelow` 表示 `onHand-reserved <= availableBelow`，边界包含等号；`onHand`、`reserved` 和 `available` 仍由服务端库存事实计算，筛选只读不改库存。库存流水分页的 `q` 仅定位当前商户的 `skuId` 或 `bizKey`，列表与 COUNT 使用相同条件并按 `created_at DESC,id ASC` 稳定排序。
 
 当前支持 `q` 的长列表：平台商户、平台入驻申请、商户/平台订单、商户商品、商户库存、平台/公共商品。其余没有声明 `q` 的接口不能在 UI 中声称“跨所有页全文搜索”。`q` 为可选关键字，采用字面子串搜索，而不是让用户传入 SQL 通配符。建议在前端搜索时防抖，旧请求返回不得覆盖新一轮查询。
 
@@ -98,9 +104,10 @@ OpenAPI 的字段类型从 DTO 提取，`required`、长度、范围和枚举由
 - 图片字段兼容：创建时 `imageUrls` 缺失或为 null 沿用旧 `imageUrl`，显式 `[]` 创建空相册；编辑时 `imageUrls` 非 null 优先且 `[]` 清空，`imageUrls` 为 null 时 `imageUrl` 也为 null 表示不改图片，与当前主图相同保留相册，空串或全空白字符串清空，其他有效地址替换首图并保留原副图，已在相册则升首位保留全部（不重复、最多 8 张）。
 - 前端逐文件上传：合法文件成功即保留在表单（部分成功不丢），失败项按文件名/原因列出并可单项重试或移除；非法类型、空文件、超 2,000,000 字节不发请求且重试仍校验；同一批 `name+size+type` 重复只上传一次，不是内容哈希去重；未解决失败或重挂载 `invalid` 兜底继续阻断保存，显式放弃保留已成功图片，迟到结果按商户/商品/身份/路由/卸载隔离。
 - `CartResponseDTO.merchantName` 从 `mer_merchant` 查出后返回；`imageUrl` 从当前公开商品数据读取。
-- `ProposalItemResponseDTO.imageUrl` 是生成提案时可信 Catalog 数据，不要求新增数据库表；过期提案仍拒绝执行。
+- `ProposalItemResponseDTO` 的 `imageUrl`、价格、版本和数量是生成提案时可信 Catalog 快照；新提案同时保存可信 `productId`。历史 `items_json` 缺少商品身份时，服务端按 SKU 批量恢复当前公开关联，无法恢复或商品不可访问时返回 `detailAvailable=false` 和安全原因，保留历史快照且不伪造空 ID；过期提案仍拒绝执行。
 - `OrderItemResponseDTO.imageUrl` 是**下单时**写入 `trd_order_item.image_url` 的快照；旧订单缺图使用占位图片，不能反查当前商品图代替历史图。升级数据库前执行 `docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`。
 - `POST /ai/chat` 首版返回完整 JSON，**不支持 SSE 流式 token**。未配置真实模型时，响应 `mode` 必须正确标识本地检索/降级；禁止用演示结果宣称真实模型评测通过。知识库有发布状态与权限范围，外部引用只显示可授权的信息。
+- `GET /ai/conversations/{conversationId}/messages` 的助手消息包含 `citations` 与 `citationStatus`。新消息只保存文档根/版本、证据定位和允许公开的片段，读取时按当前授权、发布/索引状态、版本和正文一致性复验；`AVAILABLE` 表示仍可展示，`HIDDEN` 表示回答或来源已被当前规则遮蔽，`MISSING` 表示旧消息没有保存引用记录，`NONE` 表示该消息没有引用。旧消息不会重新检索或拼接内部文档地址。
 
 知识库列表返回完整的授权元数据，授权判断不再先截取 1000 个知识库。单次知识检索白名单最多 1000 份当前 PUBLISHED + READY + 根活动版本文档；Java 查询额外检测超限，超过上限返回 `AI0005`，不调用模型、不保存本轮回答/提案。Python 对超过 1000 个 ID 的内部请求返回 422，直接检索调用也拒绝超限，不静默切片；1000 个 ID 的 SQLite 查询分批执行。历史消息接口是最近 100 条的上下文窗口，提案列表是最近 20 条；二者不承诺完整导出。
 

@@ -19,6 +19,7 @@ export const merchantNav = [
   ['users', '店员管理', '/merchant/team'],
   ['shield', '角色权限', '/merchant/roles'],
   ['book', '知识库', '/merchant/knowledge'],
+  ['search', 'RAG 调试', '/merchant/knowledge/debug'],
   ['settings', '门店设置', '/merchant/settings'],
 ];
 export const adminNav = [
@@ -29,6 +30,7 @@ export const adminNav = [
   ['order', '订单监管', '/admin/orders'],
   ['shield', '争议处理', '/admin/disputes'],
   ['book', '知识库', '/admin/knowledge'],
+  ['search', 'RAG 调试', '/admin/knowledge/debug'],
   ['grid', '分类管理', '/admin/categories'],
 ];
 export default {
@@ -48,6 +50,7 @@ export default {
       '/merchant/team': 'team.manage',
       '/merchant/roles': 'role.manage',
       '/merchant/knowledge': 'knowledge.read',
+      '/merchant/knowledge/debug': 'knowledge.read',
       '/merchant/settings': 'store.manage',
     };
     const visibleMerchantNav = computed(() =>

@@ -17,4 +17,5 @@ public class MessagePO {
     private String content;
     private Instant createdAt;
     private String accessFingerprint;
+    private boolean citationsRecorded;
 }

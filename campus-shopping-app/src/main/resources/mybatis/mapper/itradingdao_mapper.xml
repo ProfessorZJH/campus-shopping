@@ -33,6 +33,14 @@ SELECT * FROM trd_order o WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{bu
 SELECT COUNT(*) FROM trd_order o WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{buyer}</if> <if test="merchant != null">AND o.merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND o.status=#{status}</if>
     <if test="q != null and q != ''">AND (LOCATE(LOWER(#{q}),LOWER(o.id))>0 OR EXISTS(SELECT 1 FROM trd_order_item oi WHERE oi.order_id=o.id AND LOCATE(LOWER(#{q}),LOWER(oi.title))>0))</if>
 </select>
+    <select id="ordersByPickupState" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderPO">
+SELECT o.* FROM trd_order o JOIN ful_pickup_task p ON p.order_id=o.id WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{buyer}</if> <if test="merchant != null">AND o.merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND o.status=#{status}</if> AND p.status=#{pickupState}<if test="q != null and q != ''">AND (LOCATE(LOWER(#{q}),LOWER(o.id))>0 OR EXISTS(SELECT 1 FROM trd_order_item oi WHERE oi.order_id=o.id AND LOCATE(LOWER(#{q}),LOWER(oi.title))>0))</if>
+ ORDER BY o.created_at DESC,o.id LIMIT #{limit} OFFSET #{offset}
+    </select>
+    <select id="countOrdersByPickupState" resultType="long">
+SELECT COUNT(*) FROM trd_order o JOIN ful_pickup_task p ON p.order_id=o.id WHERE 1=1 <if test="buyer != null">AND o.buyer_id=#{buyer}</if> <if test="merchant != null">AND o.merchant_id=#{merchant}</if> <if test="status != null and status != ''">AND o.status=#{status}</if> AND p.status=#{pickupState}
+    <if test="q != null and q != ''">AND (LOCATE(LOWER(#{q}),LOWER(o.id))>0 OR EXISTS(SELECT 1 FROM trd_order_item oi WHERE oi.order_id=o.id AND LOCATE(LOWER(#{q}),LOWER(oi.title))>0))</if>
+</select>
     <select id="oldestExpired" resultType="java.time.Instant">SELECT MIN(deadline) FROM trd_order WHERE status='PENDING_PAYMENT' AND deadline &lt;= #{now}</select>
     <select id="expired" resultType="java.lang.String">
 SELECT id FROM trd_order WHERE status='PENDING_PAYMENT' AND deadline &lt;= #{now} ORDER BY deadline,id LIMIT 100
@@ -78,6 +86,29 @@ SELECT COUNT(*) FROM trd_after_sale WHERE 1=1 <if test="buyer != null">AND buyer
     </select>
     <select id="statistics" resultType="cn.bugstack.ai.infrastructure.dao.po.TradingStatsPO">
 SELECT COUNT(*) total_orders,COALESCE(SUM(status='PENDING_PAYMENT'),0) pending_count,COALESCE(SUM(status='PAID'),0) paid_count,COALESCE(SUM(status='COMPLETED'),0) completed_count,COALESCE(SUM(status='REFUNDED'),0) refunded_count,COALESCE(SUM(CASE WHEN status='COMPLETED' THEN total_cent ELSE 0 END),0) completed_amount_cent FROM trd_order <if test="merchant != null">WHERE merchant_id=#{merchant}</if>
+    </select>
+    <select id="statisticsWindow" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsWindowPO">
+SELECT COUNT(*) total_orders,
+       COALESCE(SUM(EXISTS(SELECT 1 FROM trd_payment p WHERE p.order_id=o.id AND p.status='SUCCEEDED')),0) paid_orders,
+       COALESCE(SUM(EXISTS(SELECT 1 FROM trd_refund r WHERE r.order_id=o.id)),0) refunded_orders,
+       COALESCE(SUM(CASE WHEN o.status='COMPLETED' THEN o.total_cent ELSE 0 END),0) completed_amount_cent
+FROM trd_order o WHERE o.created_at &gt;= #{start} AND o.created_at &lt; #{end}
+<if test="merchant != null">AND o.merchant_id=#{merchant}</if>
+    </select>
+    <select id="statisticsTrend" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsTrendPO">
+SELECT DATE_FORMAT(CONVERT_TZ(o.created_at,'+00:00','+08:00'),'%Y-%m-%d') day, COUNT(*) order_count FROM trd_order o
+WHERE o.created_at &gt;= #{start} AND o.created_at &lt; #{end}<if test="merchant != null"> AND o.merchant_id=#{merchant}</if>
+GROUP BY DATE_FORMAT(CONVERT_TZ(o.created_at,'+00:00','+08:00'),'%Y-%m-%d') ORDER BY day
+    </select>
+    <select id="statisticsStatuses" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsStatusPO">
+SELECT o.status, COUNT(*) order_count, COALESCE(SUM(o.total_cent),0) amount_cent FROM trd_order o
+WHERE o.created_at &gt;= #{start} AND o.created_at &lt; #{end}<if test="merchant != null"> AND o.merchant_id=#{merchant}</if>
+GROUP BY o.status ORDER BY o.status
+    </select>
+    <select id="statisticsProducts" resultType="cn.bugstack.ai.infrastructure.dao.po.StatisticsProductPO">
+SELECT p.id product_id, MAX(p.title) title, COALESCE(SUM(i.quantity),0) quantity FROM trd_order o JOIN trd_order_item i ON i.order_id=o.id JOIN cat_sku s ON s.id=i.sku_id JOIN cat_product p ON p.id=s.product_id
+WHERE o.status='COMPLETED' AND o.created_at &gt;= #{start} AND o.created_at &lt; #{end}<if test="merchant != null"> AND o.merchant_id=#{merchant}</if>
+GROUP BY p.id ORDER BY quantity DESC,p.id LIMIT 20
     </select>
 <insert id="ensureCart">INSERT INTO trd_cart_owner(user_id) VALUES(#{user}) ON DUPLICATE KEY UPDATE user_id=user_id</insert>
 <select id="lockCart" resultType="java.lang.String">SELECT user_id FROM trd_cart_owner WHERE user_id=#{user} FOR UPDATE</select>

@@ -10,25 +10,29 @@ FIELDS = {
     'CategoryResponseDTO': ('code name active', ''),
     'ChatResponseDTO': ('conversationId answer mode retrievalMode citations latencyMs', 'warning proposal'),
     'CitationResponseDTO': ('documentId title snippet', ''),
-    'ConversationResponseDTO': ('id title createdAt', ''),
+    'ConversationResponseDTO': ('id title createdAt lastActiveAt summary', ''),
+    'ConversationTurnStatusResponseDTO': ('conversationId status', 'cancelRequestedAt'),
     'CsrfTokenResponseDTO': ('headerName token', ''),
     'CurrentUserResponseDTO': ('userId username displayName status', ''),
     'ImageResponseDTO': ('url imageId provider sortOrder', ''),
     'InvitationResponseDTO': ('id merchantId targetUserId status expiresAt', ''),
     'KnowledgeBaseResponseDTO': ('id name visibility', 'merchantId'),
     'KnowledgeDocumentResponseDTO': ('id rootId baseId title version status indexStatus createdAt', 'error content'),
+    'KnowledgeDebugHitResponseDTO': ('documentId title rootId version snippet rank score scoreType', ''),
+    'KnowledgeDebugResponseDTO': ('query retrievalMode answerMode hits latencyMs', 'answerPreview warning'),
     'MembershipResponseDTO': ('merchantId userId role status', ''),
     'MerchantResponseDTO': ('merchantId name category status storeId storeName location description businessHours imageUrl', ''),
-    'MessageResponseDTO': ('id role content createdAt', ''),
+    'MessageResponseDTO': ('id role content createdAt citations citationStatus', ''),
     'OrderEventResponseDTO': ('eventId type occurredAt actorRole reason', ''),
     'OrderItemResponseDTO': ('skuId title specKey imageUrl unitPriceCent quantity', ''),
     'OrderResponseDTO': ('orderId buyerId merchantId merchantName storeId pickupStoreName pickupLocation status totalCent deadline createdAt items events', 'pickup afterSale'),
+    'OperationsStatisticsResponseDTO': ('periodStart periodEnd timezone asOf totalOrders paidOrders refundedOrders completedAmountCent trend statuses products metricNote', 'refundRate'),
     'PageResponseDTO': ('items page size total hasNext', ''),
     'PermissionResponseDTO': ('code label grantable', ''),
     'PickupResponseDTO': ('status', 'expiresAt'),
     'ProductImageUploadDTO': ('url', ''),
     'ProductResponseDTO': ('productId merchantId merchantName storeId title description categoryCode imageUrl status version skus images', ''),
-    'ProposalItemResponseDTO': ('skuId merchantId title specKey imageUrl priceCent quoteVersion quantity', ''),
+    'ProposalItemResponseDTO': ('skuId merchantId title specKey imageUrl priceCent quoteVersion quantity detailAvailable', 'productId detailUnavailableReason'),
     'ProposalResponseDTO': ('id status items expiresAt', ''),
     'RegisterResponseDTO': ('userId', ''),
     'RoleResponseDTO': ('code name permissions builtin', ''),
@@ -51,6 +55,7 @@ ENUM_FIELDS = {
     ('SkuResponseDTO', 'status'): 'catalog/model/valobj/SkuStatusEnumVO',
     ('PickupResponseDTO', 'status'): 'fulfillment/model/valobj/PickupStatusEnumVO',
     ('ProposalResponseDTO', 'status'): 'shoppingai/model/valobj/ProposalStatusEnumVO',
+    ('ConversationTurnStatusResponseDTO', 'status'): 'shoppingai/model/valobj/ConversationTurnStatusEnumVO',
     ('KnowledgeBaseResponseDTO', 'visibility'): 'shoppingai/model/valobj/KnowledgeVisibilityEnumVO',
     ('KnowledgeDocumentResponseDTO', 'status'): 'shoppingai/model/valobj/KnowledgeDocumentStatusEnumVO',
     ('KnowledgeDocumentResponseDTO', 'indexStatus'): 'shoppingai/model/valobj/KnowledgeIndexStatusEnumVO',
@@ -82,6 +87,7 @@ def merge_response_rules(schemas, root):
     for (name, field), source in ENUM_FIELDS.items():
         schemas[name]['properties'][field]['enum'] = enum_codes(root, source)
     schemas['MessageResponseDTO']['properties']['role']['enum'] = ['user', 'assistant']
+    schemas['MessageResponseDTO']['properties']['citationStatus']['enum'] = ['AVAILABLE', 'NONE', 'MISSING', 'HIDDEN']
     schemas['ChatResponseDTO']['properties']['mode']['enum'] = ['LOCAL_RETRIEVAL_DEMO', 'LLM', 'LOCAL_FALLBACK']
     schemas['ChatResponseDTO']['properties']['retrievalMode']['enum'] = ['REMOTE_EMBEDDING', 'LOCAL_CHAR_NGRAM_DEMO', 'BM25_DEGRADED']
     schemas['OrderResponseDTO']['properties']['items']['minItems'] = 1
@@ -99,9 +105,11 @@ def success_data(row, schema):
 
 
 def query_enum(root, row, name):
-    if name not in {'state', 'status'}:
+    if name not in {'state', 'status', 'pickupState'}:
         return None
     controller = row['controller']
+    if name == 'pickupState':
+        return ['', *enum_codes(root, 'fulfillment/model/valobj/PickupStatusEnumVO')]
     source = {'OrderController.java': 'trading/model/valobj/OrderStatusEnumVO',
               'AfterSaleController.java': 'trading/model/valobj/AfterSaleStatusEnumVO',
               'FulfillmentController.java': 'fulfillment/model/valobj/PickupStatusEnumVO',

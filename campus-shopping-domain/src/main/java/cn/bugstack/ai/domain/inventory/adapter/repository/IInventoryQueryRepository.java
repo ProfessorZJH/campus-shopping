@@ -7,6 +7,10 @@ import java.util.List;
 public interface IInventoryQueryRepository {
     long countStocks(String merchant);
     long countStocks(String merchant, String q);
+    long countStocks(String merchant, String q, Integer availableBelow);
     List<StockVO> list(String merchant, int offset, int size);
     List<StockVO> list(String merchant, int offset, int size, String q);
+    List<StockVO> list(String merchant, int offset, int size, String q, Integer availableBelow);
+    long countMovements(String merchant, String q);
+    List<cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO> movements(String merchant, int offset, int size, String q);
 }

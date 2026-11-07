@@ -12,6 +12,7 @@ import lombok.*;
 public class ProposalItemResponseDTO {
 
     private String skuId;
+    private String productId;
     private String merchantId;
     private String title;
     private String specKey;
@@ -19,4 +20,6 @@ public class ProposalItemResponseDTO {
     private Long priceCent;
     private Long quoteVersion;
     private Integer quantity;
+    private Boolean detailAvailable;
+    private String detailUnavailableReason;
 }

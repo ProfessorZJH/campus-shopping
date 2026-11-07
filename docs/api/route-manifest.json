@@ -448,6 +448,30 @@
       "csrf": false
     },
     {
+      "method": "GET",
+      "path": "/api/v1/admin/statistics/operations",
+      "controller": "OrderController.java",
+      "handler": "platformOperationsStatistics",
+      "responseType": "OperationsStatisticsResponseDTO",
+      "inputs": [
+        {
+          "in": "query",
+          "name": "periodDays",
+          "type": "int",
+          "required": false,
+          "default": "7"
+        },
+        {
+          "in": "query",
+          "name": "to",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
       "method": "POST",
       "path": "/api/v1/ai/chat",
       "controller": "ShoppingAiController.java",
@@ -522,6 +546,57 @@
       ],
       "access": "authenticated + domain ACL",
       "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/conversations/{conversationId}/turn/cancel",
+      "controller": "ShoppingAiController.java",
+      "handler": "cancelTurn",
+      "responseType": "ConversationTurnStatusResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "conversationId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ai/conversations/{conversationId}/turn/status",
+      "controller": "ShoppingAiController.java",
+      "handler": "turnStatus",
+      "responseType": "ConversationTurnStatusResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "conversationId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ai/debug/retrieval",
+      "controller": "ShoppingAiController.java",
+      "handler": "debugRetrieval",
+      "responseType": "KnowledgeDebugResponseDTO",
+      "inputs": [
+        {
+          "in": "body",
+          "name": "request",
+          "type": "KnowledgeDebugRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
     },
     {
       "method": "POST",
@@ -1297,6 +1372,13 @@
           "type": "String",
           "required": false,
           "default": ""
+        },
+        {
+          "in": "query",
+          "name": "pickupState",
+          "type": "String",
+          "required": false,
+          "default": ""
         }
       ],
       "access": "authenticated + domain ACL",
@@ -1877,6 +1959,36 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/merchants/{merchantId}/statistics/operations",
+      "controller": "OrderController.java",
+      "handler": "merchantOperationsStatistics",
+      "responseType": "OperationsStatisticsResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "periodDays",
+          "type": "int",
+          "required": false,
+          "default": "7"
+        },
+        {
+          "in": "query",
+          "name": "to",
+          "type": "String",
+          "required": false
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": false
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/merchants/{merchantId}/stock-movements",
       "controller": "InventoryController.java",
       "handler": "movements",
@@ -1901,6 +2013,13 @@
           "type": "int",
           "required": false,
           "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
         }
       ],
       "access": "authenticated + domain ACL",
@@ -1932,6 +2051,13 @@
           "type": "int",
           "required": false,
           "default": "20"
+        },
+        {
+          "in": "query",
+          "name": "q",
+          "type": "String",
+          "required": false,
+          "default": ""
         }
       ],
       "access": "authenticated + domain ACL",
@@ -2001,6 +2127,12 @@
           "type": "String",
           "required": false,
           "default": ""
+        },
+        {
+          "in": "query",
+          "name": "availableBelow",
+          "type": "Integer",
+          "required": false
         }
       ],
       "access": "authenticated + domain ACL",

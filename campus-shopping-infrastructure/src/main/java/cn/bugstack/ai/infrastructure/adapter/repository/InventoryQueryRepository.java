@@ -20,7 +20,11 @@ public class InventoryQueryRepository implements IInventoryQueryRepository {
     }
 
     public long countStocks(String merchant, String q) {
-        return dao.countStocks(merchant, q);
+        return countStocks(merchant, q, null);
+    }
+
+    public long countStocks(String merchant, String q, Integer availableBelow) {
+        return dao.countStocks(merchant, q, availableBelow);
     }
 
     public List<StockVO> list(String merchant, int offset, int size) {
@@ -28,7 +32,32 @@ public class InventoryQueryRepository implements IInventoryQueryRepository {
     }
 
     public List<StockVO> list(String merchant, int offset, int size, String q) {
-        return dao.list(merchant, offset, size, q).stream().map(this::convert).toList();
+        return list(merchant, offset, size, q, null);
+    }
+
+    public List<StockVO> list(String merchant, int offset, int size, String q, Integer availableBelow) {
+        return dao.list(merchant, offset, size, q, availableBelow).stream().map(this::convert).toList();
+    }
+
+    public long countMovements(String merchant, String q) {
+        return dao.countMovements(merchant, q);
+    }
+
+    public List<cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO> movements(String merchant, int offset, int size, String q) {
+        return dao
+            .movements(merchant, offset, size, q)
+            .stream()
+            .map(p ->
+                new cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO(
+                    p.getId(),
+                    p.getSkuId(),
+                    p.getType(),
+                    p.getQuantity(),
+                    p.getBizKey(),
+                    p.getCreatedAt()
+                )
+            )
+            .toList();
     }
 
     private StockVO convert(StockPO p) {

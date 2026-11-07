@@ -1,6 +1,7 @@
 package cn.bugstack.ai.cases.shoppingai.impl;
 
 import cn.bugstack.ai.cases.shoppingai.IConversationTurnCase;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
@@ -23,9 +24,23 @@ public class ConversationTurnCaseImpl implements IConversationTurnCase {
         this.proposals = proposals;
     }
 
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public ProposalVO complete(ConversationTurnVO turn, String question, String answer, List<ProposalItemVO> items, Instant expiresAt, String fingerprint) {
-        conversations.appendTurn(turn, question, answer, fingerprint);
+        return complete(turn, question, answer, items, List.of(), expiresAt, fingerprint);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ProposalVO complete(
+        ConversationTurnVO turn,
+        String question,
+        String answer,
+        List<ProposalItemVO> items,
+        List<AiCitationVO> citations,
+        Instant expiresAt,
+        String fingerprint
+    ) {
+        conversations.appendTurn(turn, question, answer, citations, fingerprint);
         return items.isEmpty() ? null : proposals.create(turn.userId(), turn.conversationId(), items, expiresAt);
     }
 }

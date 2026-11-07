@@ -69,8 +69,10 @@ def execute_script(cursor, content):
 
 def fingerprint(cursor, database):
     queries = [
-        "SELECT TABLE_NAME,COLUMN_NAME,ORDINAL_POSITION,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA,COLLATION_NAME "
-        "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,ORDINAL_POSITION",
+        # 字段物理顺序不是迁移兼容契约。旧 Redis 分支可能先登记后续版本，
+        # 再补齐较早迁移，MySQL 会保留不同的 ORDINAL_POSITION，但逻辑列结构必须一致。
+        "SELECT TABLE_NAME,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA,COLLATION_NAME "
+        "FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,COLUMN_NAME",
         "SELECT TABLE_NAME,INDEX_NAME,NON_UNIQUE,SEQ_IN_INDEX,COLUMN_NAME,COLLATION "
         "FROM information_schema.STATISTICS WHERE TABLE_SCHEMA=%s ORDER BY TABLE_NAME,INDEX_NAME,SEQ_IN_INDEX",
         "SELECT TABLE_NAME,CONSTRAINT_NAME,CONSTRAINT_TYPE,ENFORCED FROM information_schema.TABLE_CONSTRAINTS "
@@ -109,9 +111,13 @@ def migration_checks(connection, report):
     old, count = re.subn(r'CREATE TABLE IF NOT EXISTS trd_order_event \(.*?;\n', '', old, count=1, flags=re.S)
     assert count == 1, '旧库夹具应缺少订单事件表'
     old = old.replace(" image_url VARCHAR(255) NOT NULL DEFAULT '',", '')
-    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL'):
+    for column in ('processing_owner VARCHAR(64) NULL', 'processing_until DATETIME(3) NULL', 'index_attempt VARCHAR(36) NULL', 'turn_token VARCHAR(36) NULL', 'turn_expires_at DATETIME(3) NULL', "summary VARCHAR(200) NOT NULL DEFAULT ''", "turn_status VARCHAR(24) NOT NULL DEFAULT 'IDLE'", 'turn_cancel_requested_at DATETIME(3) NULL', 'last_active_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)', 'citation_recorded TINYINT(1) NOT NULL DEFAULT 0'):
         old, count = re.subn(r' ' + re.escape(column) + ',', '', old)
         assert count == 1, column
+    old, count = re.subn(r', KEY ix_conversation_activity\([^)]*\)', '', old)
+    assert count == 1, '旧库夹具不应包含会话活跃索引'
+    old, count = re.subn(r'CREATE TABLE IF NOT EXISTS ai_message_citation \(.*?;\n', '', old, count=1, flags=re.S)
+    assert count == 1, '旧库夹具不应包含消息引用表'
     old = re.sub(r'CREATE TABLE IF NOT EXISTS ai_knowledge_quota \(.*?;\n', '', old, flags=re.S)
     old = re.sub(r'INSERT IGNORE INTO ai_knowledge_quota[^;]*;\n', '', old)
     old = re.sub(r'CREATE TABLE IF NOT EXISTS iam_merchant_role(?:_permission)? \(.*?;\n', '', old, flags=re.S)
@@ -191,7 +197,10 @@ def migration_checks(connection, report):
         cur.execute("DELETE FROM trd_payment WHERE order_id='invalid-fixture'")
         # 旧 Redis 分支已登记 V31，却没有主线 V30；必须允许补齐较早版本，且不篡改 V31。
         from schema_contract import migrations as expected_migrations
-        redis_history = [entry for entry in expected_migrations() if entry['version'] != 'V20261030_01']
+        # 旧 Redis 分支示例只登记到 V31；跳过依赖 V30 租约列的后续轮次迁移，
+        # 先验证“缺主线 V30 但保留 V31”能够安全补齐，再由完整历史重放其余迁移。
+        redis_history = [entry for entry in expected_migrations()
+                         if entry['version'] not in {'V20261030_01', 'V20261107_03', 'V20261107_04'}]
         apply_migrations(connection, redis_history)
         cur.execute("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
                     "AND TABLE_NAME='ai_conversation' AND COLUMN_NAME='turn_token'")
@@ -362,14 +371,31 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         live = build_root/'frontend/tests/live_ui.py'
         live.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT/'frontend/tests/live_ui.py', live)
+        shutil.copy2(ROOT/'frontend/tests/live_final_matrix.py', build_root/'frontend/tests/live_final_matrix.py')
+        live_env = env.copy()
+        live_env['SKIP_FINAL_MATRIX'] = '1'
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live), '--base-url', base],
-                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=150)
+                                   cwd=build_root, env=live_env, creationflags=FLAGS, timeout=480)
         source = build_root/'docs/testing/evidence/frontend-live'
         if source.exists():
             shutil.copytree(source, args.output.parent/'frontend-live', dirs_exist_ok=True)
         browser = json.loads((source/'results.json').read_text('utf-8'))
         report['browser'] = {'status': browser['status'], 'checks': len(browser['checks']), 'apiMockUsed': False}
         assert completed.returncode == 0 and browser['status'] == 'PASS', '真实浏览器验收失败'
+        final_script = build_root/'frontend/tests/live_final_matrix.py'
+        completed_final = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(final_script), '--base-url', base],
+                                         cwd=build_root, env=env, creationflags=FLAGS, timeout=480)
+        source_final = build_root/'docs/testing/evidence/frontend-live-final'
+        if source_final.exists():
+            shutil.copytree(source_final, args.output.parent/'frontend-live-final', dirs_exist_ok=True)
+        browser_final = json.loads((source_final/'results.json').read_text('utf-8'))
+        report['browserFinal'] = {
+            'status': browser_final['status'],
+            'checks': len(browser_final['checks']),
+            'apiMockUsed': False,
+            'streamMode': browser_final.get('streamMode'),
+        }
+        assert completed_final.returncode == 0 and browser_final['status'] == 'PASS', '最终隔离浏览器矩阵失败'
         live_m2 = build_root/'frontend/tests/live_m2_fulfillment.py'
         shutil.copy2(ROOT/'frontend/tests/live_m2_fulfillment.py', live_m2)
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live_m2), '--base-url', base],

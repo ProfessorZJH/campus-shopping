@@ -287,6 +287,16 @@ public class CatalogServiceImpl implements ICatalogService {
         return loadOffers(ids, false, false);
     }
 
+    /** 历史提案只需要恢复仍存在的 SKU 关联，不能因单个失效 SKU 让整批读取失败。 */
+    @Override
+    public List<SkuOfferVO> resolveOffers(List<String> ids) {
+        require(
+            ids != null && ids.size() <= 1000 && ids.stream().allMatch(id -> id != null && !id.isBlank() && id.length() <= 64),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
+        return ids.isEmpty() ? List.of() : repository.offers(ids.stream().distinct().sorted().toList(), false);
+    }
+
     @Override
     public List<SkuOfferVO> saleOffers(List<String> ids) {
         return loadOffers(ids, true, false);
