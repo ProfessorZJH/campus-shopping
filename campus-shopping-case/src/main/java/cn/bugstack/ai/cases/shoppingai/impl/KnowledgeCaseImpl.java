@@ -57,9 +57,13 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     @Override
     public void requireDebugAccess(String actor) {
         accounts.requireActive(actor);
-        boolean allowed = access.isAdmin(actor) || access.memberships(actor).stream()
-            .map(m -> m.merchantId())
-            .anyMatch(id -> access.permissions(actor, id).contains("knowledge.read"));
+        boolean allowed =
+            access.isAdmin(actor) ||
+            access
+                .memberships(actor)
+                .stream()
+                .map(m -> m.merchantId())
+                .anyMatch(id -> access.permissions(actor, id).contains("knowledge.read"));
         require(allowed, ResponseCode.AUTH_FORBIDDEN);
     }
 

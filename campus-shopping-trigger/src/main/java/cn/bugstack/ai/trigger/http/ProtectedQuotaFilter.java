@@ -42,10 +42,7 @@ public final class ProtectedQuotaFilter extends OncePerRequestFilter {
             return;
         }
         String path = RequestPath.applicationPath(r);
-        boolean ai =
-            path.equals("/api/v1/ai/chat") ||
-            path.equals("/api/v1/ai/chat/stream") ||
-            path.equals("/api/v1/ai/debug/retrieval");
+        boolean ai = path.equals("/api/v1/ai/chat") || path.equals("/api/v1/ai/chat/stream") || path.equals("/api/v1/ai/debug/retrieval");
         long retry;
         try {
             retry = quotas.acquire(ai ? "ai-user" : "pickup-user", actor.getName(), ai ? 10 : 60, 60);

@@ -21,7 +21,15 @@ public final class AiGatewayDTO {
         List<String> externalDocumentIds,
         boolean answerPreview
     ) {
-        public Query(String question, List<String> allowedDocumentIds, List<Offer> offers, List<History> history, String retrievalQuery, List<String> semanticSkuIds, List<String> externalDocumentIds) {
+        public Query(
+            String question,
+            List<String> allowedDocumentIds,
+            List<Offer> offers,
+            List<History> history,
+            String retrievalQuery,
+            List<String> semanticSkuIds,
+            List<String> externalDocumentIds
+        ) {
             this(question, allowedDocumentIds, offers, history, retrievalQuery, semanticSkuIds, externalDocumentIds, true);
         }
     }
