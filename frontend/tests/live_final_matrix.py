@@ -281,6 +281,8 @@ def main():
             stream = abort_real_stream(buyer_page, base, '最终隔离矩阵断线恢复')
             assert stream['status'] == 200 and stream['bytes'] > 0 and stream['conversationId']
             conversation_id = stream['conversationId']
+            cancel = data(buyer_client, base, 'POST', '/ai/conversations/' + conversation_id + '/turn/cancel', {})
+            assert cancel['conversationId'] == conversation_id and cancel['status'] in ('CANCEL_REQUESTED', 'IDLE')
             status = None
             # CI 中共享 Redis/AI 进程的调度抖动可能让断线后的短事务稍晚完成，
             # 给状态收敛留出 30 秒，但仍保持本场景有界。
