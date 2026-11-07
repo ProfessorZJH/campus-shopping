@@ -19,6 +19,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.LongConsumer;
 import org.springframework.stereotype.Component;
 
 /** 远程协议防腐适配，不访问 MySQL 或业务 DAO。 */
@@ -50,7 +51,25 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public AiAnswerVO query(AiQueryEntity query) {
-        var request = new AiGatewayDTO.Query(
+        return toAnswer(queryGatewayWithFallback(toRequest(query, true)));
+    }
+
+    @Override
+    public AiAnswerVO query(AiQueryEntity query, boolean answerPreview) {
+        return answerPreview ? query(query) : retrieve(query);
+    }
+
+    @Override
+    public AiAnswerVO retrieve(AiQueryEntity query) {
+        return toAnswer(queryGatewayWithFallback(toRequest(query, false)));
+    }
+
+    public AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
+        return toAnswer(gateway.queryStream(toRequest(query, true), progress));
+    }
+
+    private AiGatewayDTO.Query toRequest(AiQueryEntity query, boolean answerPreview) {
+        return new AiGatewayDTO.Query(
             query.question(),
             query.allowedDocumentIds(),
             query
@@ -67,8 +86,12 @@ public class AiEnginePort implements IAiEnginePort {
                 .toList(),
             query.retrievalQuery(),
             query.semanticSkuIds(),
-            query.externalDocumentIds()
+            query.externalDocumentIds(),
+            answerPreview
         );
+    }
+
+    private AiGatewayDTO.Answer queryGatewayWithFallback(AiGatewayDTO.Query request) {
         AiGatewayDTO.Answer response;
         try {
             response = gateway.query(request);
@@ -86,6 +109,10 @@ public class AiEnginePort implements IAiEnginePort {
                 }
             }
         }
+        return response;
+    }
+
+    private AiAnswerVO toAnswer(AiGatewayDTO.Answer response) {
         require(
             response != null &&
                 text(response.answer(), 10000) &&

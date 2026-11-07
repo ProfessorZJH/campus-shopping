@@ -4,16 +4,16 @@
     <select id="displayFacts" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">SELECT status,version FROM mer_merchant WHERE id=#{id}</select>
     <select id="status" resultType="string">SELECT status FROM mer_merchant WHERE id=#{id}</select>
     <select id="find" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">
-SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE m.id=#{id}<if test="lock"> FOR UPDATE</if>
+SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location,s.description,s.business_hours,s.image_url FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE m.id=#{id}<if test="lock"> FOR UPDATE</if>
     </select>
     <insert id="insertMerchant">
 INSERT INTO mer_merchant(id,source_application_id,name,category,status) VALUES(#{po.id},#{po.applicationId},#{po.name},#{po.category},#{po.status})
     </insert>
     <insert id="insertStore">
-INSERT INTO mer_store(id,merchant_id,name,location) VALUES(#{po.storeId},#{po.id},#{po.storeName},#{po.location})
+INSERT INTO mer_store(id,merchant_id,name,location,description,business_hours,image_url) VALUES(#{po.storeId},#{po.id},#{po.storeName},#{po.location},#{po.description},#{po.businessHours},#{po.imageUrl})
     </insert>
     <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">
-SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE 1=1 <if test="activeOnly">AND m.status='ACTIVE'</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',m.id,m.name,m.category,s.name,s.location)))>0</if> ORDER BY m.created_at DESC,m.id LIMIT #{limit} OFFSET #{offset}
+SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location,s.description,s.business_hours,s.image_url FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE 1=1 <if test="activeOnly">AND m.status='ACTIVE'</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',m.id,m.name,m.category,s.name,s.location)))>0</if> ORDER BY m.created_at DESC,m.id LIMIT #{limit} OFFSET #{offset}
     </select>
     <select id="count" resultType="long">
 SELECT COUNT(*) FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE 1=1 <if test="activeOnly">AND m.status='ACTIVE'</if><if test="q != null and q != ''"> AND LOCATE(LOWER(#{q}),LOWER(CONCAT_WS(' ',m.id,m.name,m.category,s.name,s.location)))>0</if>
@@ -22,8 +22,8 @@ SELECT COUNT(*) FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE
 UPDATE mer_merchant SET status=#{status},version=version+1 WHERE id=#{id}
     </update>
     <update id="updateProfile">UPDATE mer_merchant SET name=#{name},version=version+1 WHERE id=#{id}</update>
-    <update id="updateStore">UPDATE mer_store SET name=#{storeName},location=#{location} WHERE merchant_id=#{id}</update>
+    <update id="updateStore">UPDATE mer_store SET name=#{storeName},location=#{location},description=#{description},business_hours=#{businessHours},image_url=#{imageUrl} WHERE merchant_id=#{id}</update>
     <select id="findAll" resultType="cn.bugstack.ai.infrastructure.dao.po.MerchantPO">
-SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE m.id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
+SELECT m.id,m.source_application_id AS application_id,m.name,m.category,m.status,s.id AS store_id,s.name AS store_name,s.location,s.description,s.business_hours,s.image_url FROM mer_merchant m JOIN mer_store s ON s.merchant_id=m.id WHERE m.id IN <foreach collection="ids" item="id" open="(" close=")" separator=",">#{id}</foreach>
     </select>
 </mapper>

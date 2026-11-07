@@ -1,12 +1,12 @@
 {
-  "timestamp": "2026-11-05T13:46:42.192201+00:00",
+  "timestamp": "2026-11-06T14:05:58.100218+00:00",
   "type": "STATIC_SOURCE_AND_CONTRACT_ONLY",
   "status": "PASS",
   "counts": {
-    "javaSyntaxFiles": 408,
-    "internalInterfaceImplementations": 61,
-    "schemaTables": 39,
-    "mybatisMapperFiles": 11,
+    "javaSyntaxFiles": 432,
+    "internalInterfaceImplementations": 65,
+    "schemaTables": 40,
+    "mybatisMapperFiles": 12,
     "mavenPomFiles": 8
   },
   "errors": [],

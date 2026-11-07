@@ -41,7 +41,20 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public OrderAggregate create(String id, String buyer, String merchant, String store, List<OrderItemEntity> items, Instant deadline) {
-        OrderAggregate o = new OrderAggregate(id, buyer, merchant, store, items, "PENDING_PAYMENT", deadline, clock.instant());
+        return create(id, buyer, merchant, store, "", "", items, deadline);
+    }
+
+    public OrderAggregate create(
+        String id,
+        String buyer,
+        String merchant,
+        String store,
+        String pickupStoreName,
+        String pickupLocation,
+        List<OrderItemEntity> items,
+        Instant deadline
+    ) {
+        OrderAggregate o = new OrderAggregate(id, buyer, merchant, store, pickupStoreName, pickupLocation, items, "PENDING_PAYMENT", deadline, clock.instant());
         repository.insert(o);
         return o;
     }
@@ -85,6 +98,31 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
         return repository.countOrders(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100));
     }
 
+    @Override
+    public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int page, int size, String q, String pickupState) {
+        return repository.ordersByPickupState(
+            buyer,
+            merchant,
+            OrderStatusEnumVO.filter(status),
+            offset(page, size),
+            size,
+            optional(q, 100),
+            pickupStateFilter(pickupState)
+        );
+    }
+
+    @Override
+    public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
+        return repository.countOrdersByPickupState(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100), pickupStateFilter(pickupState));
+    }
+
+    private String pickupStateFilter(String value) {
+        if (value == null || value.isBlank()) return "";
+        String state = value.trim().toUpperCase(Locale.ROOT);
+        require(Set.of("WAIT_PREP", "PREPARING", "READY", "COMPLETED", "CANCELED").contains(state), ResponseCode.ILLEGAL_PARAMETER);
+        return state;
+    }
+
     @Transactional(propagation = Propagation.MANDATORY)
     public void recordPayment(OrderAggregate o) {
         repository.payment(o.getId(), o.getTotalCent());
@@ -110,5 +148,9 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     public TradingStatsVO statistics(String merchant) {
         return repository.statistics(merchant);
+    }
+
+    public OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone) {
+        return repository.operationsStatistics(merchant, start, end, asOf, timezone);
     }
 }

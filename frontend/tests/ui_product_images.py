@@ -2,6 +2,7 @@
 """图片上传、预览、创建/修改商品及统一缺图：真实 Chromium + API 契约替身。
 不代表已经执行 Java/MySQL 联调。
 """
+import os
 import re
 import shutil
 import struct
@@ -24,7 +25,7 @@ def set_file(page,buffer,filename='cover.png',mime='image/png'):
 
 checks=[]
 with sync_playwright() as x:
-    browser=x.chromium.launch(headless=True,executable_path=shutil.which('chromium'),args=['--no-sandbox'])
+    browser=x.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])
     # demo preview permits selection but cannot upload/save to backend
     demo=render(browser,'/merchant/products',True,(1448,1050))
     demo.evaluate("() => { window.__imageRequests=0; window.fetch=()=>{window.__imageRequests++; return Promise.reject(new Error('unexpected request'));}; }")

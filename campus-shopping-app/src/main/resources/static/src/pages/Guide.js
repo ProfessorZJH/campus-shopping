@@ -1,6 +1,7 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
-import { api, query } from '../services/api.js';
+import { api, query, stream } from '../services/api.js';
+import { citationsOf } from '../services/ai-citations';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
@@ -27,24 +28,29 @@ export default {
     const historyHasMore = ref(false);
     const loadingHistory = ref(false);
     const openingConversation = ref(false);
+    const confirmingProposal = ref(false);
+    const proposalFeedback = ref('');
+    const streamProgress = ref(0);
+    const reconnecting = ref(false);
+    const cancelRequested = ref(false);
     let conversationEpoch = 0,
-      historyEpoch = 0;
+      historyEpoch = 0,
+      activeStreamController = null;
     const examples = computed(() => DEMO_PRODUCTS.slice(0, 3));
     const items = computed(() =>
       preview
         ? examples.value.map((p) => ({
             skuId: skuOf(p).skuId,
+            productId: p.productId,
             product: p,
             title: p.title,
             specKey: skuOf(p).specKey,
             priceCent: skuOf(p).priceCent,
             quantity: 1,
             merchantId: p.merchantId,
+            detailAvailable: true,
           }))
-        : (proposal.value?.items || []).map((i) => ({
-            ...i,
-            product: store.products.find((p) => p.skus.some((s) => s.skuId === i.skuId)),
-          })),
+        : (proposal.value?.items || []).map((i) => ({ ...i })),
     );
     const total = computed(() =>
       items.value
@@ -54,11 +60,25 @@ export default {
     const showProposal = computed(() => preview || !!proposal.value?.items?.length);
     const formatTime = () =>
       new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const formatHistoryTime = (value) => {
+      if (!value) return '暂无时间';
+      const date = new Date(value);
+      return Number.isNaN(date.getTime())
+        ? '暂无时间'
+        : date.toLocaleString('zh-CN', {
+            month: 'numeric',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false,
+          });
+    };
     // 同一 AI 页面内退出/切换账号时，不能保留上一身份的本地会话与回答。
     watch(
       () => store.user?.userId,
       (now, was) => {
         if (preview || now === was) return;
+        stopActiveStream();
         ++conversationEpoch;
         ++historyEpoch;
         store.conversationId = '';
@@ -68,10 +88,12 @@ export default {
         historyHasMore.value = false;
         proposal.value = null;
         selectedIds.value = [];
+        proposalFeedback.value = '';
         mode.value = '';
         error.value = '';
         input.value = '';
         thinking.value = false;
+        confirmingProposal.value = false;
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
@@ -85,6 +107,134 @@ export default {
         selectedIds.value = examples.value.map((p) => skuOf(p).skuId);
       }
     });
+
+    function stopActiveStream() {
+      activeStreamController?.abort();
+      activeStreamController = null;
+    }
+
+    function applyChatAnswer(answer, stamp) {
+      if (stamp !== conversationEpoch || !answer) return;
+      store.conversationId = answer.conversationId || store.conversationId;
+      mode.value = answer.mode || '';
+      messages.value.push({
+        role: 'assistant',
+        content: answer.answer || '暂时没有找到合适答案',
+        warning: answer.warning,
+        citations: citationsOf(answer),
+        time: formatTime(),
+      });
+      proposal.value = answer.proposal || null;
+      selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+      proposalFeedback.value = '';
+    }
+
+    async function loadConversationSnapshot(
+      id,
+      stamp,
+      expectedQuestion = null,
+      knownLastMessage = null,
+    ) {
+      const encoded = encodeURIComponent(id);
+      const [history, proposals] = await Promise.all([
+        api('/ai/conversations/' + encoded + '/messages'),
+        api('/ai/conversations/' + encoded + '/proposals'),
+      ]);
+      if (stamp !== conversationEpoch) return false;
+      const messageHistory = history || [];
+      if (expectedQuestion) {
+        const lastQuestion = messageHistory.length - 2;
+        const tailQuestion = messageHistory[lastQuestion];
+        const tailAnswer = messageHistory[messageHistory.length - 1];
+        let knownLastIndex = -1;
+        if (knownLastMessage) {
+          for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
+            const message = messageHistory[index];
+            if (
+              message.role === knownLastMessage.role &&
+              message.content === knownLastMessage.content
+            ) {
+              knownLastIndex = index;
+              break;
+            }
+          }
+        }
+        const hasAnswer =
+          lastQuestion >= 0 &&
+          tailQuestion?.role === 'user' &&
+          tailQuestion.content === expectedQuestion &&
+          tailAnswer?.role === 'assistant' &&
+          (knownLastIndex < 0 || knownLastIndex < lastQuestion);
+        if (!hasAnswer) return false;
+      }
+      store.conversationId = id;
+      messages.value = messageHistory.map((m) => ({
+        role: m.role,
+        content: m.content,
+        citations: citationsOf(m),
+        citationStatus: m.citationStatus || 'MISSING',
+        time: '历史消息',
+      }));
+      proposal.value = (proposals || []).find((p) => p.status === 'PENDING') || null;
+      selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+      return true;
+    }
+
+    async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
+      if (!id || actor !== store.user?.userId) return false;
+      reconnecting.value = true;
+      try {
+        for (let attempt = 0; attempt < 60; attempt += 1) {
+          if (stamp !== conversationEpoch || actor !== store.user?.userId) return true;
+          let status;
+          try {
+            status = await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/status', {
+              timeoutMs: 5000,
+            });
+          } catch (error) {
+            if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+          }
+          if (status?.status === 'CANCEL_REQUESTED') {
+            cancelRequested.value = true;
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            continue;
+          }
+          if (status?.status === 'IDLE') {
+            try {
+              return await loadConversationSnapshot(id, stamp, expectedQuestion, knownLastMessage);
+            } catch (error) {
+              if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
+              await new Promise((resolve) => setTimeout(resolve, 500));
+              continue;
+            }
+          }
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      } finally {
+        reconnecting.value = false;
+      }
+      // Keep the pending turn visible when the backend has not reached IDLE yet;
+      // dropping the user message here makes a transient disconnect look like a
+      // successful but empty turn.
+      return true;
+    }
+
+    async function cancelTurn() {
+      const id = store.conversationId;
+      if (preview || !thinking.value || !id || cancelRequested.value) return;
+      cancelRequested.value = true;
+      try {
+        await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/cancel', {
+          method: 'POST',
+        });
+      } catch (err) {
+        cancelRequested.value = false;
+        notify(err?.message || '取消请求未完成，请稍后重试');
+      }
+    }
+
     async function ask(question = input.value) {
       const text = String(question || '').trim();
       if (!text || thinking.value || openingConversation.value) return;
@@ -93,8 +243,10 @@ export default {
         return;
       }
       const stamp = ++conversationEpoch;
+      const knownLastMessage = messages.value[messages.value.length - 1] || null;
       input.value = '';
       error.value = '';
+      proposalFeedback.value = '';
       messages.value.push({ role: 'user', content: text, time: formatTime() });
       if (preview) {
         messages.value.push({
@@ -107,30 +259,62 @@ export default {
         return;
       }
       thinking.value = true;
+      streamProgress.value = 0;
+      reconnecting.value = false;
+      cancelRequested.value = false;
+      activeStreamController = new AbortController();
+      const controller = activeStreamController;
+      const actor = store.user?.userId;
+      let streamConversationId = store.conversationId || null;
+      let completed = false;
+      let cancelled = false;
       try {
-        const answer = await api('/ai/chat', {
-          method: 'POST',
+        await stream('/ai/chat/stream', {
+          signal: controller.signal,
           body: { question: text, conversationId: store.conversationId || null },
+          onEvent: async (event, payload) => {
+            if (stamp !== conversationEpoch) return;
+            const id = payload?.conversationId || payload?.data?.conversationId;
+            if (id) {
+              streamConversationId = id;
+              store.conversationId = id;
+            }
+            if (event === 'progress') {
+              streamProgress.value = Number(payload?.data?.bytes || payload?.bytes || 0);
+            } else if (event === 'completed') {
+              completed = true;
+              applyChatAnswer(payload?.data, stamp);
+            } else if (event === 'cancelled') {
+              cancelled = true;
+              cancelRequested.value = true;
+            } else if (event === 'failed') {
+              const code = payload?.errorCode || payload?.data?.errorCode || 'AI0001';
+              throw Object.assign(new Error('智能服务暂不可用，请稍后重试'), { code });
+            }
+          },
         });
-        if (stamp !== conversationEpoch) return;
-        store.conversationId = answer.conversationId || store.conversationId;
-        mode.value = answer.mode || '';
-        messages.value.push({
-          role: 'assistant',
-          content: answer.answer || '暂时没有找到合适答案',
-          warning: answer.warning,
-          citations: (answer.citations || []).map((c) => c.title),
-          time: formatTime(),
-        });
-        proposal.value = answer.proposal || null;
-        selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+        if (!completed && !cancelled)
+          throw Object.assign(new Error('流式连接中断，请稍后重试'), { code: 'NETWORK' });
       } catch (err) {
-        if (stamp === conversationEpoch) {
+        if (err?.name === 'AbortError' && (cancelRequested.value || stamp !== conversationEpoch))
+          return;
+        if (err?.code === 'NETWORK' && streamConversationId) {
+          const recovered = await recoverAfterDisconnect(
+            stamp,
+            actor,
+            streamConversationId,
+            text,
+            knownLastMessage,
+          );
+          if (recovered) return;
+        }
+        if (stamp === conversationEpoch && !cancelled) {
           error.value = err.status === 401 ? '请先登录账号再使用 AI 导购' : err.message;
           messages.value.pop();
           input.value = text;
         }
       } finally {
+        if (activeStreamController === controller) activeStreamController = null;
         if (stamp === conversationEpoch) thinking.value = false;
       }
     }
@@ -160,20 +344,8 @@ export default {
       const stamp = ++conversationEpoch;
       openingConversation.value = true;
       try {
-        const id = encodeURIComponent(c.id);
-        const [history, proposals] = await Promise.all([
-          api('/ai/conversations/' + id + '/messages'),
-          api('/ai/conversations/' + id + '/proposals'),
-        ]);
-        if (stamp !== conversationEpoch) return;
-        store.conversationId = c.id;
-        messages.value = (history || []).map((m) => ({
-          role: m.role,
-          content: m.content,
-          time: '历史消息',
-        }));
-        proposal.value = (proposals || []).find((p) => p.status === 'PENDING') || null;
-        selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
+        await loadConversationSnapshot(c.id, stamp);
+        proposalFeedback.value = '';
         historyOpen.value = false;
       } catch (e) {
         if (stamp === conversationEpoch) notify(e.message);
@@ -181,7 +353,25 @@ export default {
         if (stamp === conversationEpoch) openingConversation.value = false;
       }
     }
+    /** 新对话只切换前端会话代次；旧请求仍可能在服务端完成，但不得写回当前页面。 */
+    function newConversation() {
+      if (confirmingProposal.value) return;
+      stopActiveStream();
+      ++conversationEpoch;
+      store.conversationId = '';
+      messages.value = [];
+      proposal.value = null;
+      selectedIds.value = [];
+      proposalFeedback.value = '';
+      mode.value = '';
+      error.value = '';
+      input.value = '';
+      thinking.value = false;
+      openingConversation.value = false;
+      historyOpen.value = false;
+    }
     onUnmounted(() => {
+      stopActiveStream();
       ++conversationEpoch;
       ++historyEpoch;
     });
@@ -190,47 +380,97 @@ export default {
         selectedIds.value = selectedIds.value.filter((x) => x !== id);
       else selectedIds.value = [...selectedIds.value, id];
     }
+    function openDetail(item) {
+      if (preview) {
+        if (item?.productId) go('/product/' + encodeURIComponent(item.productId));
+        return;
+      }
+      if (!item?.detailAvailable || !item?.productId) {
+        notify('该商品详情暂不可用，请重新咨询');
+        return;
+      }
+      go('/product/' + encodeURIComponent(item.productId));
+    }
+    function proposalFailureMessage(err) {
+      const messages = {
+        AI0002: '这份推荐已过期，请重新咨询后再选择商品。',
+        C0001: '其中商品已下架或暂不可售，请重新咨询后选择。',
+        C0002: '商品价格或版本已变化，请重新查看推荐后确认。',
+        I0001: '其中商品库存不足，请调整选择或重新咨询。',
+        G0002: '这份推荐状态已变化，请重新打开会话后再试。',
+        G0003: '这份推荐已经用另一组选择确认，不能更换选择重复加购。',
+        NETWORK: '确认请求未完成，请稍后用相同选择重试。',
+        TIMEOUT: '确认结果暂时未知，请稍后用相同选择重试。',
+      };
+      return messages[err?.code] || err?.message || '确认加购失败，请保留选择后重试。';
+    }
+    function currentProposal(stamp, actor, proposalId) {
+      return (
+        stamp === conversationEpoch &&
+        actor === store.user?.userId &&
+        proposal.value?.id === proposalId
+      );
+    }
+    function currentRequest(stamp, actor) {
+      return stamp === conversationEpoch && actor === store.user?.userId;
+    }
     async function confirm() {
       if (previewGuard() || !proposal.value?.id || thinking.value) return;
       const stamp = conversationEpoch,
-        actor = store.user?.userId;
+        actor = store.user?.userId,
+        proposalId = proposal.value.id,
+        chosen = [...selectedIds.value];
       if (!selectedIds.value.length) {
         notify('至少选择一件商品');
         return;
       }
+      proposalFeedback.value = '';
       thinking.value = true;
+      confirmingProposal.value = true;
       try {
-        const updated = await api(
-          '/ai/proposals/' + encodeURIComponent(proposal.value.id) + '/confirm',
-          { method: 'POST', body: { selectedSkuIds: selectedIds.value } },
-        );
-        if (stamp === conversationEpoch && actor === store.user?.userId) {
+        const updated = await api('/ai/proposals/' + encodeURIComponent(proposalId) + '/confirm', {
+          method: 'POST',
+          body: { selectedSkuIds: chosen },
+        });
+        if (currentProposal(stamp, actor, proposalId)) {
           proposal.value = updated;
+          selectedIds.value = chosen;
           notify('已确认提案，购物车已更新');
         }
       } catch (err) {
-        notify(err.message);
+        if (currentProposal(stamp, actor, proposalId)) {
+          proposalFeedback.value = proposalFailureMessage(err);
+          notify(proposalFeedback.value);
+        }
       } finally {
-        thinking.value = false;
+        if (currentProposal(stamp, actor, proposalId)) {
+          thinking.value = false;
+          confirmingProposal.value = false;
+        }
       }
     }
     async function reject() {
       if (previewGuard() || !proposal.value?.id || thinking.value) return;
       const stamp = conversationEpoch,
-        actor = store.user?.userId;
+        actor = store.user?.userId,
+        proposalId = proposal.value.id;
+      proposalFeedback.value = '';
       thinking.value = true;
       try {
-        await api('/ai/proposals/' + encodeURIComponent(proposal.value.id) + '/reject', {
+        await api('/ai/proposals/' + encodeURIComponent(proposalId) + '/reject', {
           method: 'POST',
         });
-        if (stamp === conversationEpoch && actor === store.user?.userId) {
+        if (currentProposal(stamp, actor, proposalId)) {
           proposal.value = null;
           notify('已放弃提案');
         }
       } catch (err) {
-        notify(err.message);
+        if (currentProposal(stamp, actor, proposalId)) {
+          proposalFeedback.value = err?.message || '放弃提案失败，请稍后重试。';
+          notify(proposalFeedback.value);
+        }
       } finally {
-        thinking.value = false;
+        if (currentRequest(stamp, actor)) thinking.value = false;
       }
     }
     return {
@@ -252,15 +492,24 @@ export default {
       mode,
       ask,
       toggle,
+      openDetail,
       confirm,
       reject,
       historyOpen,
       conversations,
+      formatHistoryTime,
       historyHasMore,
       loadingHistory,
       openingConversation,
+      confirmingProposal,
+      proposalFeedback,
+      streamProgress,
+      reconnecting,
+      cancelRequested,
+      cancelTurn,
       loadHistory,
       openConversation,
+      newConversation,
     };
   },
   template: `
@@ -270,15 +519,15 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> {{c.title||'对话'}} <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
+      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation||confirmingProposal"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> <span class="ai-history-copy"><strong>{{c.summary||c.title||'对话'}}</strong><small>{{formatHistoryTime(c.lastActiveAt||c.createdAt)}}</small></span> <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <section class="chat-thread" aria-label="AI对话">
         <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>
         <div class="chat-row" v-for="(message,index) in messages" :key="index" :class="message.role==='user'?'is-user':'is-assistant'">
           <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
-          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><span v-for="c in message.citations" :key="c"><Icon name="book" :size="12"/>{{c}}</span></div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
+          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><details class="citation-chip" v-for="(c,ci) in message.citations" :key="c.documentId||ci"><summary><Icon name="book" :size="12"/>{{c.title||'参考资料'}}</summary><p v-if="c.snippet">{{c.snippet}}</p></details></div><div v-if="message.role==='assistant' && message.citationStatus==='MISSING'" class="message-warning">历史消息没有可恢复的引用记录</div><div v-if="message.role==='assistant' && message.citationStatus==='HIDDEN'" class="message-warning">当前无法核验这条历史引用，来源已隐藏</div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
         </div>
-        <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i></div></div>
+        <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i><small v-if="reconnecting">连接已断开，正在恢复原会话…</small><small v-else-if="cancelRequested">正在停止本轮生成…</small><small v-else-if="streamProgress">已读取 {{streamProgress}} 字节</small></div></div>
         <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>
       </section>
       <section v-if="showProposal" class="recommendation-panel">
@@ -287,12 +536,12 @@ export default {
           <article class="rec-item" v-for="(item,index) in items" :key="item.skuId">
             <button class="rec-check" :class="{checked:selectedIds.includes(item.skuId)}" @click="toggle(item.skuId)" :aria-label="'选择'+item.title"><Icon name="check" :size="13"/></button>
             <div class="rec-photo"><ProductImage :src="item.imageUrl||item.product?.imageUrl" :alt="item.title"/></div>
-            <div class="rec-card-content"><div class="rec-item-tag">{{index===0?'HOT PICK':index===1?'DAILY':'GOOD VALUE'}}</div><strong>{{item.title}}</strong><small>{{item.specKey}}</small><div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini"><Icon name="plus" :size="15"/></span></div></div>
+            <div class="rec-card-content"><div class="rec-item-tag">{{index===0?'HOT PICK':index===1?'DAILY':'GOOD VALUE'}}</div><strong>{{item.title}}</strong><small>{{item.specKey}}</small><button class="rec-detail-link" type="button" @click="openDetail(item)" :disabled="!item.detailAvailable||!item.productId">{{item.detailAvailable?'查看详情':'详情暂不可用'}}</button><div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini"><Icon name="plus" :size="15"/></span></div></div>
           </article>
         </div>
-        <div class="proposal-footer"><div class="proposal-total"><span>已选 {{selectedIds.length}} 件</span><strong>{{money(total)}}</strong></div><div class="proposal-actions"><button v-if="!preview&&proposal?.status==='PENDING'" class="ghost-decline" @click="reject">放弃</button><button class="confirm-button" @click="confirm" :disabled="preview||thinking||!selectedIds.length||(!preview&&proposal?.status!=='PENDING')"><Icon name="check" :size="17"/>{{proposal?.status==='CONFIRMED'?'已确认':'确认加购'}}</button></div></div>
+        <div v-if="proposalFeedback" class="proposal-feedback" role="alert">{{proposalFeedback}}</div><div class="proposal-footer"><div class="proposal-total"><span>已选 {{selectedIds.length}} 件</span><strong>{{money(total)}}</strong></div><div class="proposal-actions"><button v-if="!preview&&proposal?.status==='PENDING'" class="ghost-decline" @click="reject">放弃</button><button class="confirm-button" @click="confirm" :disabled="preview||thinking||!selectedIds.length||(!preview&&proposal?.status!=='PENDING')"><Icon name="check" :size="17"/>{{proposal?.status==='CONFIRMED'?'已确认':confirmingProposal?'确认中…':'确认加购'}}</button></div></div>
       </section>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
-      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button type="submit" :disabled="thinking||openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
+      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
     </ConsumerShell>`,
 };

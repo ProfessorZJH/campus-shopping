@@ -8,4 +8,16 @@ public interface IMerchantAdmissionCase {
     void reject(String actor, String applicationId, String reason);
     void setActive(String actor, String merchantId, boolean active, String reason);
     MerchantVO updateProfile(String actor, String merchantId, String name, String storeName, String location);
+    MerchantVO updateProfile(
+        String actor,
+        String merchantId,
+        String name,
+        String storeName,
+        String location,
+        String description,
+        String businessHours,
+        String imageUrl
+    );
+    /** 上传门店图片；store.manage 与商户归属由用例和领域共同校验。 */
+    String uploadStoreImage(String actor, String merchantId, byte[] bytes);
 }

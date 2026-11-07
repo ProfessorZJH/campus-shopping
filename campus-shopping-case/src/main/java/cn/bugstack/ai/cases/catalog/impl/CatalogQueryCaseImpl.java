@@ -53,14 +53,14 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
-    public List<ProductReadModel> publicProducts(String merchant, String query, String category, int page, int size) {
-        return views(catalogService.search(merchant, query, category, true, page, size));
+    public List<ProductReadModel> publicProducts(String merchant, String query, String category, Long minPriceCent, Long maxPriceCent, int page, int size) {
+        return views(catalogService.search(merchant, query, category, true, page, size, minPriceCent, maxPriceCent));
     }
 
     @Override
-    public ProductPage publicPage(String merchant, String query, String category, int page, int size, String sort) {
-        List<ProductReadModel> items = views(catalogService.searchSorted(merchant, query, category, true, page, size, sort));
-        return new ProductPage(items, catalogService.count(merchant, query, category, true));
+    public ProductPage publicPage(String merchant, String query, String category, Long minPriceCent, Long maxPriceCent, int page, int size, String sort) {
+        List<ProductReadModel> items = views(catalogService.searchSorted(merchant, query, category, true, page, size, sort, minPriceCent, maxPriceCent));
+        return new ProductPage(items, catalogService.count(merchant, query, category, true, minPriceCent, maxPriceCent));
     }
 
     @Override
@@ -105,11 +105,18 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
-    public StockPage stockPage(String actor, String merchant, int page, int size, String query) {
+    public StockPage stockPage(String actor, String merchant, int page, int size, String query, Integer availableBelow) {
         access.requirePermission(actor, merchant, "stock.read");
-        List<StockVO> stocks = inventoryService.list(merchant, page, size, query);
+        List<StockVO> stocks =
+            availableBelow == null ? inventoryService.list(merchant, page, size, query) : inventoryService.list(merchant, page, size, query, availableBelow);
         Map<String, SkuOfferVO> offers = stockOffers(actor, merchant, stocks.stream().map(StockVO::skuId).toList());
-        return new StockPage(stocks, offers, inventoryService.countStocks(merchant, query));
+        long total = availableBelow == null ? inventoryService.countStocks(merchant, query) : inventoryService.countStocks(merchant, query, availableBelow);
+        return new StockPage(stocks, offers, total);
+    }
+
+    @Override
+    public StockPage stockPage(String actor, String merchant, int page, int size, String query) {
+        return stockPage(actor, merchant, page, size, query, null);
     }
 
     @Override
@@ -119,15 +126,25 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
-    public List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size) {
+    public List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size, String query) {
         access.requirePermission(actor, merchant, "stock.read");
-        return inventoryService.movements(merchant, page, size);
+        return inventoryService.movements(merchant, page, size, query);
+    }
+
+    @Override
+    public List<StockMovementVO> stockMovements(String actor, String merchant, int page, int size) {
+        return stockMovements(actor, merchant, page, size, "");
+    }
+
+    @Override
+    public long countStockMovements(String actor, String merchant, String query) {
+        access.requirePermission(actor, merchant, "stock.read");
+        return inventoryService.countMovements(merchant, query);
     }
 
     @Override
     public long countStockMovements(String actor, String merchant) {
-        access.requirePermission(actor, merchant, "stock.read");
-        return inventoryService.countMovements(merchant);
+        return countStockMovements(actor, merchant, "");
     }
 
     private Map<String, SkuOfferVO> stockOffers(String actor, String merchant, List<String> skuIds) {

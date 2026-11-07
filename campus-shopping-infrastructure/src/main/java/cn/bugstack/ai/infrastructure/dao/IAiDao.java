@@ -1,11 +1,14 @@
 package cn.bugstack.ai.infrastructure.dao;
 
 import cn.bugstack.ai.infrastructure.dao.po.ConversationPO;
+import cn.bugstack.ai.infrastructure.dao.po.ConversationTurnStatusPO;
 import cn.bugstack.ai.infrastructure.dao.po.DocumentRootPO;
 import cn.bugstack.ai.infrastructure.dao.po.KnowledgeBasePO;
 import cn.bugstack.ai.infrastructure.dao.po.KnowledgeDocumentPO;
+import cn.bugstack.ai.infrastructure.dao.po.MessageCitationPO;
 import cn.bugstack.ai.infrastructure.dao.po.MessagePO;
 import cn.bugstack.ai.infrastructure.dao.po.ProposalPO;
+import java.time.Instant;
 import java.util.List;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -47,10 +50,20 @@ public interface IAiDao {
     ConversationPO conversation(@Param("id") String id);
     List<ConversationPO> conversations(@Param("user") String user, @Param("offset") int offset, @Param("size") int size);
     List<MessagePO> messages(@Param("conversation") String conversation, @Param("limit") int limit);
+    List<MessageCitationPO> messageCitations(@Param("messageIds") List<String> messageIds);
+    int conversationActivity(
+        @Param("id") String id,
+        @Param("actor") String actor,
+        @Param("lastActiveAt") Instant lastActiveAt,
+        @Param("summary") String summary
+    );
     int claimTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int finishTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
     int releaseTurn(@Param("id") String id, @Param("actor") String actor, @Param("token") String token);
+    ConversationTurnStatusPO turnStatus(@Param("id") String id, @Param("actor") String actor);
+    int requestTurnCancel(@Param("id") String id, @Param("actor") String actor);
     int messageInsert(@Param("p") MessagePO p);
+    int messageCitationsInsert(@Param("rows") List<MessageCitationPO> rows);
     int proposalInsert(@Param("p") ProposalPO p);
     ProposalPO proposal(@Param("id") String id, @Param("lock") boolean lock);
     int proposalState(@Param("id") String id, @Param("status") String status, @Param("selectionHash") String selectionHash);

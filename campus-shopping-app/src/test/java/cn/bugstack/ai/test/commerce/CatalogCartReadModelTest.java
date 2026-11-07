@@ -46,7 +46,7 @@ class CatalogCartReadModelTest {
     private final IProductImageRepository images = mock(IProductImageRepository.class);
 
     private MerchantVO merchant(String id, String state) {
-        return new MerchantVO(id, null, "商户" + id, "文具", state, "store", "门店", "校园");
+        return new MerchantVO(id, null, "商户" + id, "文具", state, "store", "门店", "校园", "", "", "");
     }
 
     @Test
@@ -147,14 +147,14 @@ class CatalogCartReadModelTest {
             );
             shops.add(merchant("m" + i, "ACTIVE"));
         }
-        when(catalog.search(null, "", null, true, 1, 100)).thenReturn(rows);
+        when(catalog.search(null, "", null, true, 1, 100, null, null)).thenReturn(rows);
         var ids = rows.stream().map(ProductAggregate::getMerchantId).toList();
         when(merchants.findAll(ids)).thenReturn(shops);
         var productIds = rows.stream().map(ProductAggregate::getId).toList();
         var photo = new ProductImageVO("image", "LOCAL", "a.png", "/media/a.png", 0);
         when(images.findAll(productIds)).thenReturn(Map.of("p0", List.of(photo)));
         var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
-        var result = query.publicProducts(null, "", null, 1, 100).stream().map(ApiViews::product).toList();
+        var result = query.publicProducts(null, "", null, null, null, 1, 100).stream().map(ApiViews::product).toList();
         assertEquals(100, result.size());
         assertEquals("/media/a.png", result.get(0).getImages().get(0).getUrl());
         verify(images).findAll(productIds);
@@ -169,7 +169,7 @@ class CatalogCartReadModelTest {
         doThrow(new AppException(ResponseCode.AUTH_FORBIDDEN)).when(access).requirePermission("u", "m", "product.read");
         var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
         assertThrows(AppException.class, () -> query.managedProducts("u", "m", 1, 20));
-        assertTrue(query.publicProducts(null, "", null, 1, 20).isEmpty());
+        assertTrue(query.publicProducts(null, "", null, null, null, 1, 20).isEmpty());
         verifyNoInteractions(inventory, merchants, images);
     }
 
@@ -237,6 +237,21 @@ class CatalogCartReadModelTest {
         assertEquals(offer, page.offers().get("sku"));
         verify(inventory).list("m", 1, 20, "");
         verify(catalog).offers(List.of("sku"));
+    }
+
+    @Test
+    void stockPageCarriesLowAvailableThresholdToRowsAndCount() {
+        var stock = new StockVO("m", "store", "sku", 8, 3, 3);
+        var offer = new SkuOfferVO("sku", "product", "m", "store", "笔", "黑色", 150, 1, "PUBLISHED", "ACTIVE", "", "");
+        when(inventory.list("m", 1, 20, "", 5)).thenReturn(List.of(stock));
+        when(catalog.offers(List.of("sku"))).thenReturn(List.of(offer));
+        when(inventory.countStocks("m", "", 5)).thenReturn(1L);
+        var query = new CatalogQueryCaseImpl(catalog, inventory, merchants, access, images);
+        var page = query.stockPage("u", "m", 1, 20, "", 5);
+        assertEquals(1L, page.total());
+        assertEquals(List.of(stock), page.items());
+        verify(inventory).list("m", 1, 20, "", 5);
+        verify(inventory).countStocks("m", "", 5);
     }
 
     @Test

@@ -1,0 +1,46 @@
+{
+  "actualCode" : "T0005",
+  "after" : {
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "cart" : [ {
+      "sku_id" : "f188f58f-38bb-47b5-a6a5-0cf16c8ab601",
+      "quantity" : 99
+    } ],
+    "stock" : [ {
+      "sku_id" : "d626ecc2-1eb0-44ed-b4cd-ef3a0588e978",
+      "on_hand" : 5,
+      "reserved" : 0
+    }, {
+      "sku_id" : "f188f58f-38bb-47b5-a6a5-0cf16c8ab601",
+      "on_hand" : 105,
+      "reserved" : 0
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "before" : {
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "cart" : [ {
+      "sku_id" : "f188f58f-38bb-47b5-a6a5-0cf16c8ab601",
+      "quantity" : 99
+    } ],
+    "stock" : [ {
+      "sku_id" : "d626ecc2-1eb0-44ed-b4cd-ef3a0588e978",
+      "on_hand" : 5,
+      "reserved" : 0
+    }, {
+      "sku_id" : "f188f58f-38bb-47b5-a6a5-0cf16c8ab601",
+      "on_hand" : 105,
+      "reserved" : 0
+    } ]
+  },
+  "scenario" : "PARTIAL_ADDITION_ROLLBACK",
+  "javaMysql" : "REAL",
+  "assertions" : "PASSED",
+  "caseId" : "safe-rollback"
+}

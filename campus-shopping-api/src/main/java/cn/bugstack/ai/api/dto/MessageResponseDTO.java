@@ -15,4 +15,6 @@ public class MessageResponseDTO {
     private String role;
     private String content;
     private Instant createdAt;
+    private List<CitationResponseDTO> citations;
+    private String citationStatus;
 }

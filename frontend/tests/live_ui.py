@@ -8,6 +8,8 @@ import json
 import os
 import secrets
 import shutil
+import subprocess
+import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -327,6 +329,13 @@ def main():
             page.screenshot(path=str(directory / 'admin-real.png'), full_page=True)
             checks.append('新版管理员 Session 登录并访问入驻审核')
 
+            page.goto(args.base_url + '/#/admin/knowledge/debug', wait_until='domcontentloaded')
+            expect(page.locator('.merchant-page-heading h1')).to_have_text('RAG 检索调试')
+            page.locator('textarea').fill('平台规则')
+            page.get_by_role('button', name='开始检索', exact=True).click()
+            expect(page.locator('.knowledge-debug-result')).to_be_visible(timeout=15000)
+            checks.append('真实浏览器打开平台 RAG 调试页并完成一次检索请求')
+
             page.goto(args.base_url + '/#/', wait_until='domcontentloaded')
             expect(page.locator('.account-pill')).to_be_visible()
             page.locator('.account-pill').click()  # 消费者顶栏退出操作
@@ -379,6 +388,34 @@ def main():
     if failure:
         raise SystemExit(failure)
     print('真实服务浏览器检查通过：', len(checks))
+    if os.environ.get('SKIP_FINAL_MATRIX') == '1':
+        return
+    final_script = Path(__file__).with_name('live_final_matrix.py')
+    if not final_script.is_file():
+        raise SystemExit('缺少最终隔离浏览器矩阵脚本')
+    final = subprocess.run(
+        [sys.executable, '-X', 'utf8', '-B', str(final_script), '--base-url', args.base_url],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if final.returncode != 0:
+        evidence = ROOT / 'docs/testing/evidence/frontend-live-final/results.json'
+        detail = ''
+        if evidence.is_file():
+            try:
+                result = json.loads(evidence.read_text(encoding='utf-8'))
+                detail = ': ' + str(result.get('error') or '未记录具体错误')
+                detail += '；已完成检查=' + str(len(result.get('checks') or []))
+            except (OSError, ValueError):
+                detail = ''
+        output = (final.stderr or final.stdout or '').strip().splitlines()
+        if output:
+            detail += '；子进程=' + ' | '.join(output[-8:])[:1800]
+        message = '最终隔离浏览器矩阵失败' + detail
+        print('::error title=Final browser matrix::' + message, file=sys.stderr)
+        raise SystemExit(message)
 
 
 if __name__ == '__main__':

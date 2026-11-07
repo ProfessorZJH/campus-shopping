@@ -13,6 +13,16 @@ public interface IOrderService {
     String beginCheckout(String user, String key, String fingerprint);
     void finishCheckout(String user, String key, String orderId);
     OrderAggregate create(String id, String buyer, String merchant, String store, List<OrderItemEntity> items, Instant deadline);
+    OrderAggregate create(
+        String id,
+        String buyer,
+        String merchant,
+        String store,
+        String pickupStoreName,
+        String pickupLocation,
+        List<OrderItemEntity> items,
+        Instant deadline
+    );
     void save(OrderAggregate order);
     void recordPayment(OrderAggregate order);
     void recordRefund(OrderAggregate order);

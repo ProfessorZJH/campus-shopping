@@ -150,9 +150,9 @@ class DomainStatusEnumTest {
 
     @Test
     void merchantStatusIsValidatedWithoutChangingReadModelContract() {
-        MerchantVO merchant = new MerchantVO("m", "app", "文具店", "文具", "ACTIVE", "store", "一号店", "图书馆");
+        MerchantVO merchant = new MerchantVO("m", "app", "文具店", "文具", "ACTIVE", "store", "一号店", "图书馆", "", "", "");
         assertEquals(MerchantStatusEnumVO.ACTIVE, merchant.state());
         assertEquals("ACTIVE", merchant.status());
-        assertThrows(IllegalStateException.class, () -> new MerchantVO("m", "app", "文具店", "文具", "PAUSED", "store", "一号店", "图书馆"));
+        assertThrows(IllegalStateException.class, () -> new MerchantVO("m", "app", "文具店", "文具", "PAUSED", "store", "一号店", "图书馆", "", "", ""));
     }
 }

@@ -4,7 +4,19 @@ import java.time.*;
 import java.util.*;
 
 /** 商户与首店的只读业务视图。 */
-public record MerchantVO(String id, String applicationId, String name, String category, String status, String storeId, String storeName, String location) {
+public record MerchantVO(
+    String id,
+    String applicationId,
+    String name,
+    String category,
+    String status,
+    String storeId,
+    String storeName,
+    String location,
+    String description,
+    String businessHours,
+    String imageUrl
+) {
     public MerchantVO {
         MerchantStatusEnumVO.fromCode(status);
     }

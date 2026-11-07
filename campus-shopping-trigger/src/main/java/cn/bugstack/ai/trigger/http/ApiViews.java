@@ -1,5 +1,6 @@
 package cn.bugstack.ai.trigger.http;
 
+import cn.bugstack.ai.api.dto.*;
 import cn.bugstack.ai.api.dto.AdmissionResponseDTO;
 import cn.bugstack.ai.api.dto.AfterSaleResponseDTO;
 import cn.bugstack.ai.api.dto.CartResponseDTO;
@@ -7,6 +8,7 @@ import cn.bugstack.ai.api.dto.ImageResponseDTO;
 import cn.bugstack.ai.api.dto.InvitationResponseDTO;
 import cn.bugstack.ai.api.dto.MembershipResponseDTO;
 import cn.bugstack.ai.api.dto.MerchantResponseDTO;
+import cn.bugstack.ai.api.dto.OrderEventResponseDTO;
 import cn.bugstack.ai.api.dto.OrderItemResponseDTO;
 import cn.bugstack.ai.api.dto.OrderResponseDTO;
 import cn.bugstack.ai.api.dto.PickupResponseDTO;
@@ -26,6 +28,7 @@ import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.merchant.model.aggregate.MerchantApplicationAggregate;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
+import cn.bugstack.ai.domain.trading.model.valobj.OrderEventVO;
 import cn.bugstack.ai.domain.trading.model.valobj.TradingStatsVO;
 
 /** 对外字段白名单映射；不输出密码摘要、自提摘要、数据库 PO。 */
@@ -42,6 +45,9 @@ public final class ApiViews {
             .storeId(m.storeId())
             .storeName(m.storeName())
             .location(m.location())
+            .description(m.description())
+            .businessHours(m.businessHours())
+            .imageUrl(m.imageUrl())
             .build();
     }
 
@@ -137,6 +143,10 @@ public final class ApiViews {
                   .build();
     }
 
+    public static OrderEventResponseDTO orderEvent(OrderEventVO e) {
+        return OrderEventResponseDTO.builder().eventId(e.id()).type(e.type()).occurredAt(e.occurredAt()).actorRole(e.actorRole()).reason(e.reason()).build();
+    }
+
     public static OrderResponseDTO order(OrderReadModel model) {
         PickupVO p = model.pickup();
         AfterSaleVO a = model.afterSale();
@@ -146,6 +156,8 @@ public final class ApiViews {
             .buyerId(model.buyerId())
             .merchantId(model.merchantId())
             .storeId(model.storeId())
+            .pickupStoreName(model.pickupStoreName())
+            .pickupLocation(model.pickupLocation())
             .status(model.status())
             .totalCent(model.totalCent())
             .deadline(model.deadline())
@@ -167,6 +179,7 @@ public final class ApiViews {
                     .toList()
             )
             .pickup(p == null ? null : PickupResponseDTO.builder().status(p.status()).expiresAt(p.expiresAt()).build())
+            .events(model.events().stream().map(ApiViews::orderEvent).toList())
             .afterSale(afterSale(a))
             .build();
     }
@@ -197,6 +210,42 @@ public final class ApiViews {
             .completedCount(s.completedCount())
             .refundedCount(s.refundedCount())
             .completedAmountCent(s.completedAmountCent())
+            .build();
+    }
+
+    public static OperationsStatisticsResponseDTO operationsStatistics(cn.bugstack.ai.domain.trading.model.valobj.OperationsStatisticsVO s) {
+        return OperationsStatisticsResponseDTO.builder()
+            .periodStart(s.periodStart().toString())
+            .periodEnd(s.periodEnd().toString())
+            .timezone(s.timezone())
+            .asOf(s.asOf().toString())
+            .totalOrders(s.totalOrders())
+            .paidOrders(s.paidOrders())
+            .refundedOrders(s.refundedOrders())
+            .completedAmountCent(s.completedAmountCent())
+            .refundRate(s.paidOrders() == 0 ? null : (double) s.refundedOrders() / s.paidOrders())
+            .trend(
+                s
+                    .trend()
+                    .stream()
+                    .map(x -> StatisticsTrendDTO.builder().day(x.day()).orderCount(x.orderCount()).build())
+                    .toList()
+            )
+            .statuses(
+                s
+                    .statuses()
+                    .stream()
+                    .map(x -> StatisticsStatusDTO.builder().status(x.status()).orderCount(x.orderCount()).amountCent(x.amountCent()).build())
+                    .toList()
+            )
+            .products(
+                s
+                    .products()
+                    .stream()
+                    .map(x -> StatisticsProductDTO.builder().productId(x.productId()).title(x.title()).quantity(x.quantity()).build())
+                    .toList()
+            )
+            .metricNote("按订单创建时间分组；状态和完成金额为查询时事实；退款率仅代表模拟付款/整单退款，不代表真实资金结算")
             .build();
     }
 }

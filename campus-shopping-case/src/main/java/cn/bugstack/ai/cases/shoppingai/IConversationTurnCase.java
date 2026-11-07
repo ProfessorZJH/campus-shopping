@@ -1,5 +1,6 @@
 package cn.bugstack.ai.cases.shoppingai;
 
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
@@ -8,5 +9,17 @@ import java.util.List;
 
 /** 模型回答完成后的短事务提交能力。 */
 public interface IConversationTurnCase {
-    ProposalVO complete(ConversationTurnVO turn, String question, String answer, List<ProposalItemVO> items, Instant expiresAt, String fingerprint);
+    ProposalVO complete(
+        ConversationTurnVO turn,
+        String question,
+        String answer,
+        List<ProposalItemVO> items,
+        List<AiCitationVO> citations,
+        Instant expiresAt,
+        String fingerprint
+    );
+
+    default ProposalVO complete(ConversationTurnVO turn, String question, String answer, List<ProposalItemVO> items, Instant expiresAt, String fingerprint) {
+        return complete(turn, question, answer, items, List.of(), expiresAt, fingerprint);
+    }
 }

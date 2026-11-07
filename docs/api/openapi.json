@@ -3139,6 +3139,175 @@
         ]
       }
     },
+    "/api/v1/admin/statistics/operations": {
+      "get": {
+        "tags": [
+          "Order"
+        ],
+        "operationId": "OrderController_platformOperationsStatistics",
+        "x-java-controller": "OrderController.java",
+        "x-java-method": "platformOperationsStatistics",
+        "x-authorization": "platform-admin",
+        "parameters": [
+          {
+            "name": "periodDays",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OperationsStatisticsResponseDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ]
+      }
+    },
     "/api/v1/ai/chat": {
       "post": {
         "tags": [
@@ -3810,6 +3979,504 @@
             "SessionCookie": []
           }
         ]
+      }
+    },
+    "/api/v1/ai/conversations/{conversationId}/turn/cancel": {
+      "post": {
+        "tags": [
+          "ShoppingAi"
+        ],
+        "operationId": "ShoppingAiController_cancelTurn",
+        "x-java-controller": "ShoppingAiController.java",
+        "x-java-method": "cancelTurn",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "由 GET /api/v1/auth/csrf 的 data.headerName 和 data.token 动态确定；本工程默认为该名称"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ConversationTurnStatusResponseDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/conversations/{conversationId}/turn/status": {
+      "get": {
+        "tags": [
+          "ShoppingAi"
+        ],
+        "operationId": "ShoppingAiController_turnStatus",
+        "x-java-controller": "ShoppingAiController.java",
+        "x-java-method": "turnStatus",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ConversationTurnStatusResponseDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/ai/debug/retrieval": {
+      "post": {
+        "tags": [
+          "ShoppingAi"
+        ],
+        "operationId": "ShoppingAiController_debugRetrieval",
+        "x-java-controller": "ShoppingAiController.java",
+        "x-java-method": "debugRetrieval",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "由 GET /api/v1/auth/csrf 的 data.headerName 和 data.token 动态确定；本工程默认为该名称"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/KnowledgeDebugResponseDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-maxRequestBodyBytes": 3000000,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeDebugRequestDTO"
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/ai/proposals/{proposalId}/confirm": {
@@ -10220,6 +10887,23 @@
               "default": "",
               "maxLength": 100
             }
+          },
+          {
+            "name": "pickupState",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "enum": [
+                "",
+                "WAIT_PREP",
+                "PREPARING",
+                "READY",
+                "COMPLETED",
+                "CANCELED"
+              ]
+            }
           }
         ],
         "responses": {
@@ -10272,6 +10956,176 @@
                             "hasNext": {
                               "type": "boolean"
                             }
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ]
+      }
+    },
+    "/api/v1/merchants/{merchantId}/orders/{orderId}/after-sale-history": {
+      "get": {
+        "tags": [
+          "AfterSale"
+        ],
+        "operationId": "AfterSaleController_merchantAfterSaleHistory",
+        "x-java-controller": "AfterSaleController.java",
+        "x-java-method": "merchantAfterSaleHistory",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "merchantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/OrderEventResponseDTO"
                           }
                         }
                       }
@@ -14109,6 +14963,183 @@
         ]
       }
     },
+    "/api/v1/merchants/{merchantId}/statistics/operations": {
+      "get": {
+        "tags": [
+          "Order"
+        ],
+        "operationId": "OrderController_merchantOperationsStatistics",
+        "x-java-controller": "OrderController.java",
+        "x-java-method": "merchantOperationsStatistics",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "merchantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "periodDays",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 7
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/OperationsStatisticsResponseDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ]
+      }
+    },
     "/api/v1/merchants/{merchantId}/stock-movements": {
       "get": {
         "tags": [
@@ -14149,6 +15180,16 @@
               "default": 20,
               "minimum": 1,
               "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "maxLength": 100
             }
           }
         ],
@@ -14335,6 +15376,16 @@
               "default": 20,
               "minimum": 1,
               "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "default": "",
+              "maxLength": 100
             }
           }
         ],
@@ -14743,6 +15794,15 @@
               "default": "",
               "maxLength": 100
             }
+          },
+          {
+            "name": "availableBelow",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
           }
         ],
         "responses": {
@@ -15105,6 +16165,185 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/ReplenishRequestDTO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/merchants/{merchantId}/store/images": {
+      "post": {
+        "tags": [
+          "MerchantApplication"
+        ],
+        "operationId": "MerchantApplicationController_storeImage",
+        "x-java-controller": "MerchantApplicationController.java",
+        "x-java-method": "storeImage",
+        "x-authorization": "authenticated + domain ACL",
+        "parameters": [
+          {
+            "name": "merchantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-CSRF-TOKEN",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "由 GET /api/v1/auth/csrf 的 data.headerName 和 data.token 动态确定；本工程默认为该名称"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "业务成功 code=0000；业务失败仍可能 HTTP 200 且 code 非 0000",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "type": "object",
+                      "required": [
+                        "code",
+                        "info",
+                        "data"
+                      ],
+                      "properties": {
+                        "code": {
+                          "const": "0000"
+                        },
+                        "info": {
+                          "type": "string"
+                        },
+                        "data": {
+                          "$ref": "#/components/schemas/ProductImageUploadDTO"
+                        }
+                      }
+                    },
+                    {
+                      "$ref": "#/components/schemas/ErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A0004：未登录或会话失效。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "A0005/A0006/A0003：CSRF/授权/账号状态拒绝。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "0002：JSON/参数绑定错误；小数不可绑定到整数，禁止尾随 JSON。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "G0001：无此 API 路由；私有路径先鉴权。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "G0005：方法不支持，附 Allow。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "支持的 HTTP 方法。"
+              }
+            }
+          },
+          "406": {
+            "description": "G0007：响应媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "G0004：请求体超过 3,000,000 字节。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "G0006：请求媒体类型不支持。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "0001：账号状态服务暂不可用，失败关闭。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "SessionCookie": []
+          }
+        ],
+        "x-maxRequestBodyBytes": 3000000,
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileUploadRequestDTO"
               }
             }
           }
@@ -16751,6 +17990,24 @@
             }
           },
           {
+            "name": "minPriceCent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "maxPriceCent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
             "name": "page",
             "in": "query",
             "required": false,
@@ -16948,6 +18205,24 @@
             "required": false,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "minPriceCent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "maxPriceCent",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
             }
           },
           {
@@ -17992,15 +19267,60 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "lastActiveAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "summary": {
+            "type": "string"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ConversationResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
         "required": [
           "id",
           "title",
-          "createdAt"
+          "createdAt",
+          "lastActiveAt",
+          "summary"
         ],
         "x-nullable-fields": []
+      },
+      "ConversationTurnStatusResponseDTO": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "IDLE",
+              "RUNNING",
+              "CANCEL_REQUESTED"
+            ]
+          },
+          "cancelRequestedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ConversationTurnStatusResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "conversationId",
+          "status",
+          "cancelRequestedAt"
+        ],
+        "x-nullable-fields": [
+          "cancelRequestedAt"
+        ]
       },
       "CsrfTokenResponseDTO": {
         "type": "object",
@@ -18274,6 +19594,130 @@
           "merchantId"
         ]
       },
+      "KnowledgeDebugHitResponseDTO": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "rootId": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "snippet": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "score": {
+            "type": "number"
+          },
+          "scoreType": {
+            "type": "string"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/KnowledgeDebugHitResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "documentId",
+          "title",
+          "rootId",
+          "version",
+          "snippet",
+          "rank",
+          "score",
+          "scoreType"
+        ],
+        "x-nullable-fields": []
+      },
+      "KnowledgeDebugRequestDTO": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000,
+            "pattern": "\\S"
+          },
+          "answerPreview": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/KnowledgeDebugRequestDTO.java（字段类型来自源码；必填以领域规则为准）；业务约束经专项核对，未知属性忽略，身份/角色不从附加字段读取。",
+        "required": [
+          "question"
+        ],
+        "x-constraint-source": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java",
+        "additionalProperties": true
+      },
+      "KnowledgeDebugResponseDTO": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "retrievalMode": {
+            "type": "string"
+          },
+          "answerMode": {
+            "type": "string"
+          },
+          "answerPreview": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warning": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeDebugHitResponseDTO"
+            }
+          },
+          "latencyMs": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/KnowledgeDebugResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "query",
+          "retrievalMode",
+          "answerMode",
+          "answerPreview",
+          "warning",
+          "hits",
+          "latencyMs"
+        ],
+        "x-nullable-fields": [
+          "answerPreview",
+          "warning"
+        ]
+      },
       "KnowledgeDocumentResponseDTO": {
         "type": "object",
         "properties": {
@@ -18428,6 +19872,28 @@
             "minLength": 1,
             "maxLength": 200,
             "pattern": "\\S"
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "businessHours": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "imageUrl": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 255,
+            "pattern": "^\\s*$|^/media/(?:[a-f0-9-]+|qiniu/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\\.png$"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/MerchantProfileRequestDTO.java（字段类型来自源码；必填以领域规则为准）；业务约束经专项核对，未知属性忽略，身份/角色不从附加字段读取。",
@@ -18466,6 +19932,15 @@
           },
           "location": {
             "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "businessHours": {
+            "type": "string"
+          },
+          "imageUrl": {
+            "type": "string"
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/MerchantResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
@@ -18476,7 +19951,10 @@
           "status",
           "storeId",
           "storeName",
-          "location"
+          "location",
+          "description",
+          "businessHours",
+          "imageUrl"
         ],
         "x-nullable-fields": []
       },
@@ -18499,6 +19977,21 @@
           "createdAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "citations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CitationResponseDTO"
+            }
+          },
+          "citationStatus": {
+            "type": "string",
+            "enum": [
+              "AVAILABLE",
+              "NONE",
+              "MISSING",
+              "HIDDEN"
+            ]
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/MessageResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
@@ -18506,7 +19999,122 @@
           "id",
           "role",
           "content",
-          "createdAt"
+          "createdAt",
+          "citations",
+          "citationStatus"
+        ],
+        "x-nullable-fields": []
+      },
+      "OperationsStatisticsResponseDTO": {
+        "type": "object",
+        "properties": {
+          "periodStart": {
+            "type": "string"
+          },
+          "periodEnd": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "asOf": {
+            "type": "string"
+          },
+          "totalOrders": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "paidOrders": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refundedOrders": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "completedAmountCent": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "refundRate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "trend": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatisticsTrendDTO"
+            }
+          },
+          "statuses": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatisticsStatusDTO"
+            }
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StatisticsProductDTO"
+            }
+          },
+          "metricNote": {
+            "type": "string"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/OperationsStatisticsResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "periodStart",
+          "periodEnd",
+          "timezone",
+          "asOf",
+          "totalOrders",
+          "paidOrders",
+          "refundedOrders",
+          "completedAmountCent",
+          "refundRate",
+          "trend",
+          "statuses",
+          "products",
+          "metricNote"
+        ],
+        "x-nullable-fields": [
+          "refundRate"
+        ]
+      },
+      "OrderEventResponseDTO": {
+        "type": "object",
+        "properties": {
+          "eventId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "occurredAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "actorRole": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/OrderEventResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
+        "required": [
+          "eventId",
+          "type",
+          "occurredAt",
+          "actorRole",
+          "reason"
         ],
         "x-nullable-fields": []
       },
@@ -18563,6 +20171,12 @@
           "storeId": {
             "type": "string"
           },
+          "pickupStoreName": {
+            "type": "string"
+          },
+          "pickupLocation": {
+            "type": "string"
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -18592,6 +20206,12 @@
             },
             "minItems": 1
           },
+          "events": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrderEventResponseDTO"
+            }
+          },
           "pickup": {
             "anyOf": [
               {
@@ -18620,11 +20240,14 @@
           "merchantId",
           "merchantName",
           "storeId",
+          "pickupStoreName",
+          "pickupLocation",
           "status",
           "totalCent",
           "deadline",
           "createdAt",
           "items",
+          "events",
           "pickup",
           "afterSale"
         ],
@@ -18902,6 +20525,16 @@
           "skuId": {
             "type": "string"
           },
+          "productId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "merchantId": {
             "type": "string"
           },
@@ -18925,20 +20558,39 @@
           "quantity": {
             "type": "integer",
             "format": "int32"
+          },
+          "detailAvailable": {
+            "type": "boolean"
+          },
+          "detailUnavailableReason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/ProposalItemResponseDTO.java（字段类型来自源码；必填以领域规则为准）",
         "required": [
           "skuId",
+          "productId",
           "merchantId",
           "title",
           "specKey",
           "imageUrl",
           "priceCent",
           "quoteVersion",
-          "quantity"
+          "quantity",
+          "detailAvailable",
+          "detailUnavailableReason"
         ],
-        "x-nullable-fields": []
+        "x-nullable-fields": [
+          "productId",
+          "detailUnavailableReason"
+        ]
       },
       "ProposalResponseDTO": {
         "type": "object",
@@ -19283,6 +20935,22 @@
         "x-constraint-source": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/merchant/impl/MerchantAdmissionCaseImpl.java",
         "additionalProperties": true
       },
+      "StatisticsProductDTO": {
+        "type": "object",
+        "properties": {
+          "productId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "quantity": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/StatisticsProductDTO.java（字段类型来自源码；必填以领域规则为准）"
+      },
       "StatisticsResponseDTO": {
         "type": "object",
         "properties": {
@@ -19321,6 +20989,36 @@
           "completedAmountCent"
         ],
         "x-nullable-fields": []
+      },
+      "StatisticsStatusDTO": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "orderCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "amountCent": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/StatisticsStatusDTO.java（字段类型来自源码；必填以领域规则为准）"
+      },
+      "StatisticsTrendDTO": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "string"
+          },
+          "orderCount": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        "description": "来自 campus-shopping-api/src/main/java/cn/bugstack/ai/api/dto/StatisticsTrendDTO.java（字段类型来自源码；必填以领域规则为准）"
       },
       "StockMovementResponseDTO": {
         "type": "object",

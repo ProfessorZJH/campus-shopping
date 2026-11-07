@@ -5,6 +5,8 @@
 """
 import base64
 import json
+import os
+import shutil
 from datetime import datetime,timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -50,12 +52,30 @@ def render(browser,route='/',demo=True,size=(430,932),fixture=None,routes=None,b
         page.expose_binding('__contractApi',fixture_call(fixture))
         track_bindings(page)
         page.evaluate('''() => {
+          window.__asStreamResponse = (reply) => {
+            const payload = JSON.parse(reply.body);
+            const answer = payload.data || {};
+            const conversationId = answer.conversationId || 'conv-contract';
+            if (payload.code && payload.code !== '0000') {
+              const failed = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:payload.code};
+              const stream = 'event: failed\\ndata: ' + JSON.stringify(failed) + '\\n\\n';
+              return new Response(stream, {status:reply.status, headers:{'Content-Type':'text/event-stream'}});
+            }
+            const started = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:null};
+            const completed = {conversationId, mode:'FULL_RESPONSE', data:answer, errorCode:null};
+            const stream = 'event: started\\ndata: ' + JSON.stringify(started) + '\\n\\n'
+              + 'event: completed\\ndata: ' + JSON.stringify(completed) + '\\n\\n';
+            return new Response(stream, {status:reply.status, headers:{'Content-Type':'text/event-stream'}});
+          };
           window.fetch=async (url,options={})=>{
-            const reply=await window.__contractApi({url:String(url),method:options.method||'GET',headers:options.headers||{},body:options.body});
+            const address=String(url);
+            const isStream=address.includes('/ai/chat/stream');
+            const contractUrl=isStream ? address.replace('/ai/chat/stream','/ai/chat') : address;
+            const reply=await window.__contractApi({url:contractUrl,method:options.method||'GET',headers:options.headers||{},body:options.body});
+            if(isStream)return window.__asStreamResponse(reply);
             return new Response(reply.body,{status:reply.status,headers:{'Content-Type':'application/json'}});
           };
         }''')
-    page.add_script_tag(path=str(UI/'vendor/vue.global.prod.js'))
     page.add_script_tag(path=str(UI/'ui.bundle.js'))
     expect(page.locator('.application')).to_have_count(1)
     images(page)
@@ -69,7 +89,7 @@ def main():
   fixture=BackendContractDouble();fixture.logged=True
   try:
     with sync_playwright() as p:
-      browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+      browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])
       # 1. 首页视觉与真实 Vue 交互（演示数据）
       page=render(browser,'/',True)
       expect(page.locator('.home-product')).to_have_count(8)
@@ -170,8 +190,8 @@ def main():
       close_page(page)
       fixture.logged=False
       page=render(browser,'/merchant/products',False,(1448,1000),fixture)
-      expect(page.get_by_role('button',name='登录账号')).to_be_visible()
-      page.get_by_role('button',name='登录账号').click()
+      expect(page.get_by_role('heading',name='请先登录')).to_be_visible()
+      page.get_by_role('button',name='登录',exact=True).click()
       page.locator('#login-name').fill('testuser')
       page.locator('#login-password').fill('safe-test-password')
       page.locator('.login-dialog').get_by_role('button',name='登录',exact=True).click()

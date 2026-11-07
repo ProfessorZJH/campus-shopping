@@ -116,11 +116,22 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     public long countStocks(String merchant, String q) {
-        return queries.countStocks(merchant, optional(q, 100));
+        return countStocks(merchant, q, null);
+    }
+
+    public long countStocks(String merchant, String q, Integer availableBelow) {
+        require(availableBelow == null || (availableBelow >= 0 && availableBelow <= 1_000_000), ResponseCode.ILLEGAL_PARAMETER);
+        String normalized = optional(q, 100);
+        return availableBelow == null ? queries.countStocks(merchant, normalized) : queries.countStocks(merchant, normalized, availableBelow);
     }
 
     public long countMovements(String merchant) {
         return repository.countMovements(merchant);
+    }
+
+    public long countMovements(String merchant, String q) {
+        String normalized = optional(q, 100);
+        return normalized.isEmpty() ? repository.countMovements(merchant) : queries.countMovements(merchant, normalized);
     }
 
     public List<StockVO> stocks(List<String> ids) {
@@ -145,10 +156,25 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     public List<StockVO> list(String merchant, int page, int size, String q) {
-        return queries.list(merchant, offset(page, size), size, optional(q, 100));
+        return list(merchant, page, size, q, null);
+    }
+
+    public List<StockVO> list(String merchant, int page, int size, String q, Integer availableBelow) {
+        require(availableBelow == null || (availableBelow >= 0 && availableBelow <= 1_000_000), ResponseCode.ILLEGAL_PARAMETER);
+        String normalized = optional(q, 100);
+        return availableBelow == null
+            ? queries.list(merchant, offset(page, size), size, normalized)
+            : queries.list(merchant, offset(page, size), size, normalized, availableBelow);
     }
 
     public List<StockMovementVO> movements(String merchant, int page, int size) {
-        return repository.movements(merchant, offset(page, size), size);
+        return movements(merchant, page, size, "");
+    }
+
+    public List<StockMovementVO> movements(String merchant, int page, int size, String q) {
+        String normalized = optional(q, 100);
+        return normalized.isEmpty()
+            ? repository.movements(merchant, offset(page, size), size)
+            : queries.movements(merchant, offset(page, size), size, normalized);
     }
 }

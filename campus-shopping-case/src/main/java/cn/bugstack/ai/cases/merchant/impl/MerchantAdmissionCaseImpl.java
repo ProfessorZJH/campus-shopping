@@ -57,4 +57,28 @@ public class MerchantAdmissionCaseImpl implements IMerchantAdmissionCase {
         access.audit(actor, "MERCHANT_PROFILE_CHANGED", id, id, "更新商户和自提门店资料");
         return merchants.find(id);
     }
+
+    /** 新增门店公开介绍、营业时段和图片；旧调用继续保留既有扩展字段。 */
+    @Transactional(rollbackFor = Exception.class)
+    public MerchantVO updateProfile(
+        String actor,
+        String id,
+        String name,
+        String storeName,
+        String location,
+        String description,
+        String businessHours,
+        String imageUrl
+    ) {
+        access.requirePermission(actor, id, "store.manage");
+        merchants.updateProfile(id, name, storeName, location, description, businessHours, imageUrl);
+        access.audit(actor, "MERCHANT_PROFILE_CHANGED", id, id, "更新商户和自提门店资料");
+        return merchants.find(id);
+    }
+
+    @Override
+    public String uploadStoreImage(String actor, String id, byte[] bytes) {
+        access.requirePermission(actor, id, "store.manage");
+        return merchants.storeImage(id, bytes);
+    }
 }

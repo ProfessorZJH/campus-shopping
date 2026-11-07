@@ -1,9 +1,9 @@
 {
   "status": "PASS",
   "kind": "STATIC_BOUNDARIES_WITH_REJECTION_FIXTURES",
-  "timestamp": "2026-11-05T13:46:42.337885+00:00",
-  "javaSources": 357,
-  "sqlStatements": 163,
+  "timestamp": "2026-11-06T14:05:58.228846+00:00",
+  "javaSources": 373,
+  "sqlStatements": 167,
   "rejectedFixtures": [
     "cross-domain type",
     "wrong dependency direction",

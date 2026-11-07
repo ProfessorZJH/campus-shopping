@@ -219,15 +219,21 @@ id VARCHAR(36) PRIMARY KEY, root_id VARCHAR(36) NOT NULL, base_id VARCHAR(36) NO
 ### `ai_conversation`
 
 ```sql
-id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at)
+id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, summary VARCHAR(200) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), last_active_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at), KEY ix_conversation_activity(user_id,last_active_at DESC,id)
 ```
 
 ### `ai_message`
 
 ```sql
 seq_no BIGINT NOT NULL AUTO_INCREMENT UNIQUE,
- id VARCHAR(36) PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, role VARCHAR(16) NOT NULL, content TEXT NOT NULL, access_fingerprint CHAR(64),
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_message_conversation(conversation_id,created_at), KEY ix_message_sequence(conversation_id,seq_no)
+ id VARCHAR(36) PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, role VARCHAR(16) NOT NULL, content TEXT NOT NULL, access_fingerprint CHAR(64), citation_recorded TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_message_conversation(conversation_id,created_at), KEY ix_message_sequence(conversation_id,seq_no)
+```
+
+### `ai_message_citation`
+
+```sql
+message_id VARCHAR(36) NOT NULL, ordinal INT NOT NULL, document_id VARCHAR(36) NOT NULL, root_id VARCHAR(36) NOT NULL, document_version INT NOT NULL, chunk_id VARCHAR(100) NOT NULL, title VARCHAR(120) NOT NULL, snippet VARCHAR(500) NOT NULL DEFAULT '', PRIMARY KEY(message_id,ordinal), KEY ix_message_citation_document(document_id)
 ```
 
 ### `ai_proposal`

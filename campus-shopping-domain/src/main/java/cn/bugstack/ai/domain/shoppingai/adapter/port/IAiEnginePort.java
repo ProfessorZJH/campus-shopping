@@ -2,6 +2,7 @@ package cn.bugstack.ai.domain.shoppingai.adapter.port;
 
 import cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiAnswerVO;
+import java.util.function.LongConsumer;
 
 /** 远程 Python AI 引擎端口；与本地 Repository 明确分工。 */
 public interface IAiEnginePort {
@@ -10,6 +11,20 @@ public interface IAiEnginePort {
         java.util.List<cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO> history
     );
     AiAnswerVO query(AiQueryEntity query);
+
+    default AiAnswerVO query(AiQueryEntity query, boolean answerPreview) {
+        return answerPreview ? query(query) : retrieve(query);
+    }
+
+    default AiAnswerVO retrieve(AiQueryEntity query) {
+        return query(query);
+    }
+
+    /** 受控流式查询；供应商进度只以字节数回调，最终仍返回完整且已校验的答案。 */
+    default AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
+        return query(query);
+    }
+
     /** 只返回可能相关的商品ID，不包含价格与库存；故障时由调用者降级关键词检索。 */
     java.util.List<String> semanticProducts(String question, int limit);
 

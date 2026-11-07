@@ -21,8 +21,8 @@ class PagedBackend(BackendContractDouble):
             params = parse_qs(parsed.query)
             page, size = int(params.get('page', ['1'])[0]), int(params.get('size', ['100'])[0])
             self.pages.append((path, page, size))
-            rows = [dict(id=f'row-{i}', title=f'历史会话 {i}', merchantId=f'商户 {i}', status='PENDING',
-                         createdAt='2026-10-30T00:00:00Z',
+            rows = [dict(id=f'row-{i}', title=f'历史会话 {i}', summary=f'最近问题 {i}', merchantId=f'商户 {i}', status='PENDING',
+                         createdAt='2026-10-30T00:00:00Z', lastActiveAt=f'2026-10-{30 if i < 50 else 31:02d}T00:00:00Z',
                          expiresAt='2020-01-01T00:00:00Z' if path == '/invitations' and i == 0 else '2027-01-01T00:00:00Z') for i in range(101)]
             return route.fulfill(status=200, json=self.data(rows[(page-1)*size:page*size]))
         return super().handle(route)
@@ -35,10 +35,12 @@ def main():
         fixture = PagedBackend()
         page = render(browser, '/ai', False, fixture=fixture)
         page.get_by_role('button', name='历史会话').click()
-        expect(page.locator('.ai-history-list button').filter(has_text='历史会话')).to_have_count(20)
+        expect(page.locator('.ai-history-list button').filter(has_text='最近问题')).to_have_count(20)
+        expect(page.locator('.ai-history-list button').first).to_contain_text('最近问题 0')
+        expect(page.locator('.ai-history-list button').first).to_contain_text('10/30')
         for expected in (40, 60, 80, 100, 101):
             page.get_by_role('button', name='加载更多会话').click()
-            expect(page.locator('.ai-history-list button').filter(has_text='历史会话')).to_have_count(expected)
+            expect(page.locator('.ai-history-list button').filter(has_text='最近问题')).to_have_count(expected)
         expect(page.get_by_role('button', name='加载更多会话')).to_have_count(0)
         checks.append('会话加载至第 101 条，末页隐藏继续加载')
         close_page(page)

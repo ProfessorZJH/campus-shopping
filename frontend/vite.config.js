@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
 import { precompileTemplates } from './scripts/template-plugin.mjs'
 
 export default defineConfig({
-  plugins: [precompileTemplates()],
+  plugins: [vue(), precompileTemplates()],
   // 仅转发真实 API；演示数据必须通过 ?demo=1 显式开启。
   server: {
     proxy: {

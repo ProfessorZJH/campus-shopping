@@ -334,6 +334,27 @@ def run(args):
         before=buyer.call('GET','/cart')
         buyer.call('POST','/ai/proposals/'+proposal['id']+'/confirm',{'selectedSkuIds':selected})
         check(before==buyer.call('GET','/cart'),'重复确认提案不会重复加购')
+        debug=owner.call('POST','/ai/debug/retrieval',{'question':'考试黑色签字笔几点自提？','answerPreview':True})
+        check(
+            debug['query']=='考试黑色签字笔几点自提？'
+            and isinstance(debug['hits'],list)
+            and all(all(key in hit for key in ('documentId','title','version','snippet','rank','score','scoreType')) for hit in debug['hits'])
+            and debug['retrievalMode']
+            and debug['answerMode'],
+            '商户检索调试返回授权命中、排名、分数类型和回答模式'
+        )
+        foreign_debug=other.call('POST','/ai/debug/retrieval',{'question':secret,'answerPreview':False})
+        check(all(hit['documentId']!=private['id'] for hit in foreign_debug['hits']),'跨商户检索调试不泄露内部文档')
+        merchant_operations=owner.call('GET',base+'/statistics/operations?periodDays=7')
+        check(
+            merchant_operations['timezone']=='Asia/Shanghai'
+            and merchant_operations['totalOrders']>=1
+            and all(key in merchant_operations for key in ('periodStart','periodEnd','asOf','trend','statuses','products','refundRate','metricNote')),
+            '商户运营统计返回真实订单期间、状态、商品和退款率'
+        )
+        platform_operations=admin.call('GET','/admin/statistics/operations?periodDays=30')
+        check(platform_operations['totalOrders']>=merchant_operations['totalOrders'],'平台运营统计覆盖商户真实订单')
+        owner.call('GET',base+'/statistics/operations?periodDays=14',code='0002')
         owner.call('POST','/knowledge/documents/'+public['id']+'/withdraw',{})
         history=buyer.call('GET','/ai/conversations/'+reply['conversationId']+'/messages')
         check(any('已隐藏' in x['content'] for x in history if x['role']=='assistant'),'撤回文档后相关历史回答被隐藏')

@@ -1,0 +1,14 @@
+{
+  "actualCode" : "AI0003",
+  "after" : {
+    "proposals" : [ ],
+    "cart" : [ ],
+    "stock" : [ ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "before" : { },
+  "scenario" : "REVOKE_DURING_GENERATION_AND_MASK_HISTORY",
+  "javaMysql" : "REAL",
+  "assertions" : "PASSED",
+  "caseId" : "safe-withdrawal"
+}
