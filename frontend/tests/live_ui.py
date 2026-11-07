@@ -401,10 +401,14 @@ def main():
         detail = ''
         if evidence.is_file():
             try:
-                detail = ': ' + str(json.loads(evidence.read_text(encoding='utf-8')).get('error') or '未记录具体错误')
+                result = json.loads(evidence.read_text(encoding='utf-8'))
+                detail = ': ' + str(result.get('error') or '未记录具体错误')
+                detail += '；已完成检查=' + str(len(result.get('checks') or []))
             except (OSError, ValueError):
                 detail = ''
-        raise SystemExit('最终隔离浏览器矩阵失败' + detail)
+        message = '最终隔离浏览器矩阵失败' + detail
+        print('::error title=Final browser matrix::' + message, file=sys.stderr)
+        raise SystemExit(message)
 
 
 if __name__ == '__main__':
