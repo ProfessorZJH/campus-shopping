@@ -16,7 +16,18 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     // 复合口语数词：二三 十、十二 三、一百二三 等区间；完整数词（如一百零二、二十三点五）不得误判。
     private static final String RANGE = "[" + DIGITS + "\\d]+\\s*[到至~-]\\s*[" + DIGITS + "\\d]+";
     private static final String COMPOUND = "[" + SIMPLE + "][" + SIMPLE + "][十百千万]|[百千万][" + SIMPLE + "][" + SIMPLE + "]";
-    private static final String NARROW = "(?<![" + DIGITS + "\\d])十[" + SIMPLE + "][" + SIMPLE + "]|(?<![" + DIGITS + "\\d])[零〇一两三四五六七八九]\\s*[零〇一两三四五六七八九]+(?![" + DIGITS + "\\d])";
+    private static final String NARROW =
+        "(?<![" +
+        DIGITS +
+        "\\d])十[" +
+        SIMPLE +
+        "][" +
+        SIMPLE +
+        "]|(?<![" +
+        DIGITS +
+        "\\d])[零〇一两三四五六七八九]\\s*[零〇一两三四五六七八九]+(?![" +
+        DIGITS +
+        "\\d])";
     private static final String UNCERTAIN = "(?:[" + DIGITS + "\\d]*[几多来余]|" + RANGE + "|" + COMPOUND + "|" + NARROW + ")\\s*";
 
     private record Intent(Long value, boolean specified, boolean invalid) {}
