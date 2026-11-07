@@ -197,7 +197,10 @@ def migration_checks(connection, report):
         cur.execute("DELETE FROM trd_payment WHERE order_id='invalid-fixture'")
         # 旧 Redis 分支已登记 V31，却没有主线 V30；必须允许补齐较早版本，且不篡改 V31。
         from schema_contract import migrations as expected_migrations
-        redis_history = [entry for entry in expected_migrations() if entry['version'] != 'V20261030_01']
+        # 旧 Redis 分支示例只登记到 V31；跳过依赖 V30 租约列的后续轮次迁移，
+        # 先验证“缺主线 V30 但保留 V31”能够安全补齐，再由完整历史重放其余迁移。
+        redis_history = [entry for entry in expected_migrations()
+                         if entry['version'] not in {'V20261030_01', 'V20261107_03', 'V20261107_04'}]
         apply_migrations(connection, redis_history)
         cur.execute("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() "
                     "AND TABLE_NAME='ai_conversation' AND COLUMN_NAME='turn_token'")
