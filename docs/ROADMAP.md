@@ -6,6 +6,10 @@
 
 本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。后续重点是 ShoppingAI 职责拆分、Catalog 窄查询能力、Python AI/RAG 边界和独立 Agent v1.1；这些属于下一阶段结构性重构，不由产品化完成状态自动推出。
 
+当前结构重构工作在独立分支 `codex/shoppingai-structure-refactor` 上推进，分支基于 `f1ba856`，实施与验证见[结构重构分支记录](testing/STRUCTURAL-REFACTOR-20261108.md)。该分支已经完成 ShoppingAI 候选/证据职责、Catalog 快照与候选查询、后台 Shell 元数据、Guide transport、Python Provider 和检索融合的第一批切片；这些提交尚未合入 `main`。
+
+AnswerFlow 规则树、Agent v1.1 和 Trading/Repository P2 仍保持延期边界：前者等待稳定的第二回答分支，Agent 等待独立产品决策，Trading/Repository 等待可量化的 SQL、并发或审计收益。
+
 另一个会话正在 Docker 环境执行真实验收。本文件暂不记录其通过结论；待命令、版本、环境和结果证据回传后，单独写入 `docs/testing/` 并更新引用。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
 
 原始规划资料仍保留在以下 OpenSpec 文件中：

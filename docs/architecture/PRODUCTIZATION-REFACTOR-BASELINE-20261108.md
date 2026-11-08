@@ -18,6 +18,8 @@
 
 另一个会话正在 Docker 环境执行真实验收。本轮没有读取其运行结果，因此 Docker 验收在该证据回传前保持 `IN_PROGRESS`，不在此文档中预填 `PASS`。
 
+结构重构已经在独立分支 `codex/shoppingai-structure-refactor` 上完成第一批内部切片，分支当前提交为 `ce56d09`。实现范围、定向测试和延期边界见[结构重构分支实施与验证记录](../testing/STRUCTURAL-REFACTOR-20261108.md)；这些改动尚未改变 `main` 的产品化基线结论。
+
 ## 二、已完成的产品化基线
 
 | 阶段 | 已完成范围 | 当前证据与边界 |
