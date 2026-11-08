@@ -1,14 +1,18 @@
 # R1 开发与验收状态
 
-## 2026-11-05 产品化整体规划（待实施）
+## 2026-11-08 产品化完成与后续重构路线
 
-用户已确认覆盖消费者、AI 导购、商户、平台和知识库的整体路线。保留 Vue 3 + Vite，逐步迁移 `.vue` 并试点 TypeScript；复用已完成的商品多图和可选七牛存储。整体方案按 M0～M6 分阶段推进，每阶段可以拆成多个独立 PR。
+截至 2026 年 11 月 8 日，`main` / `origin/main` `f1ba856` 已包含 `productize-campus-shopping-experience` 的 M0～M6 实现，OpenSpec 46 项任务全部完成。全链路产品化的实现与证据见[沉淀版架构路线](architecture/PRODUCTIZATION-REFACTOR-BASELINE-20261108.md)和[最终状态报告](testing/PRODUCTIZATION-FINAL-STATUS-20261107.md)。
+
+本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。后续重点是 ShoppingAI 职责拆分、Catalog 窄查询能力、Python AI/RAG 边界和独立 Agent v1.1；这些属于下一阶段结构性重构，不由产品化完成状态自动推出。
+
+另一个会话正在 Docker 环境执行真实验收。本文件暂不记录其通过结论；待命令、版本、环境和结果证据回传后，单独写入 `docs/testing/` 并更新引用。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
+
+原始规划资料仍保留在以下 OpenSpec 文件中：
 
 - [整体方案、范围和交付阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)
 - [技术设计、审查条目追踪、数据兼容与依赖](../openspec/changes/productize-campus-shopping-experience/design.md)
 - [可执行任务与逐项验收条件](../openspec/changes/productize-campus-shopping-experience/tasks.md)
-
-当前只完成规划落盘，业务任务保持待实施；该计划不覆盖下方历史结果，也不将 SSE、历史事件等新能力标为已交付。正式域名 HTTPS 和真实模型效果保持独立验收范围。
 
 ## R1 历史交付记录（2026-10-31）
 
