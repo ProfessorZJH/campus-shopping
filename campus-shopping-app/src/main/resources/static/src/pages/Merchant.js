@@ -5,6 +5,7 @@ import AuthDialog from '../components/AuthDialog.js';
 import ProductImage from '../components/ProductImage.js';
 import ProductImageField from '../components/ProductImageField.js';
 import ProductImageListField from '../components/ProductImageListField.js';
+import BackofficeShell from '../components/BackofficeShell.js';
 import {
   store,
   go,
@@ -20,21 +21,15 @@ import {
   switchMerchantContext,
 } from '../services/store.js';
 const { ref, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
-const MENU = [
-  ['home', '工作台', '/merchant'],
-  ['package', '商品管理', '/merchant/products'],
-  ['box', '库存管理', '/merchant/inventory'],
-  ['order', '订单管理', '/merchant/orders'],
-  ['scan', '自提核销', '/merchant/pickup'],
-  ['clipboard', '售后处理', '/merchant/aftersales'],
-  ['users', '店员管理', '/merchant/team'],
-  ['shield', '角色权限', '/merchant/roles'],
-  ['book', '知识库', '/merchant/knowledge'],
-  ['settings', '门店设置', '/merchant/settings'],
-];
 export default {
   name: 'Merchant',
-  components: { AuthDialog, ProductImage, ProductImageField, ProductImageListField },
+  components: {
+    BackofficeShell,
+    AuthDialog,
+    ProductImage,
+    ProductImageField,
+    ProductImageListField,
+  },
   setup() {
     const scope = requestScope();
     const search = ref('');
@@ -78,35 +73,6 @@ export default {
         store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {},
     );
     const owned = computed(() => hasPermission('product.write'));
-    const required = {
-      '/merchant': 'order.read',
-      '/merchant/products': 'product.read',
-      '/merchant/inventory': 'stock.read',
-      '/merchant/orders': 'order.read',
-      '/merchant/pickup': 'pickup.verify',
-      '/merchant/aftersales': 'aftersale.read',
-      '/merchant/team': 'team.manage',
-      '/merchant/roles': 'role.manage',
-      '/merchant/knowledge': 'knowledge.read',
-      '/merchant/settings': 'store.manage',
-    };
-    const visibleMenu = computed(() => MENU.filter(([, , path]) => hasPermission(required[path])));
-    const mobileNav = ref(null);
-    const alignMobileNav = () => {
-      const nav = mobileNav.value;
-      if (nav?.clientWidth)
-        nav.querySelector('button.active')?.scrollIntoView({ inline: 'center', block: 'nearest' });
-    };
-    watch(
-      [() => store.route, () => visibleMenu.value.map((item) => item[2]).join('|')],
-      async () => {
-        await nextTick();
-        alignMobileNav();
-      },
-      { immediate: true, flush: 'post' },
-    );
-    onMounted(() => window.addEventListener('resize', alignMobileNav));
-    onUnmounted(() => window.removeEventListener('resize', alignMobileNav));
     const canReplenish = computed(() => hasPermission('stock.replenish'));
     const canRead = computed(() => hasPermission('product.read'));
     const items = computed(() => store.products.filter((p) => p.merchantId === store.merchantId));
@@ -530,7 +496,6 @@ export default {
       selectedId.value = '';
     }
     return {
-      mobileNav,
       priceSku,
       sort,
       canRead,
@@ -553,7 +518,6 @@ export default {
       invalidateMerchantSearch,
       owned,
       merchant,
-      visibleMenu,
       search,
       category,
       status,
@@ -596,20 +560,8 @@ export default {
     };
   },
   template: `
-  <div class="merchant-shell">
-    <aside class="merchant-sidebar">
-      <button class="merchant-brand" @click="go('/')"><span class="brand-pin"><span></span></span><span class="brand-word">青柠校园<span class="brand-suffix"> / 商户端</span></span></button>
-      
-      <nav class="merchant-nav"><button v-for="([icon,label,path]) in visibleMenu" :key="path" :class="{active:store.route===path}" @click="go(path)"><Icon :name="icon" :size="19"/><span>{{label}}</span><span v-if="store.route===path" class="nav-left-bar"></span></button></nav>
-      <div class="merchant-sidebar-bottom"><button class="sidebar-back" @click="go('/')"><Icon name="arrowLeft" :size="16"/> 返回购物端</button></div>
-    </aside>
-    <div class="merchant-content-shell">
-      <header class="merchant-topbar"><div class="topbar-crumb">运营中心 <Icon name="chevronRight" :size="14"/> <strong>商品管理</strong></div><div class="merchant-topbar-tools"><div v-if="preview" class="admin-preview-tag"><Icon name="circleHelp" :size="14"/>演示数据</div><div class="topbar-merchant-select"><Icon name="store" :size="16"/><select :value="store.merchantId" @change="switchMerchant" :disabled="preview"><option v-for="m in store.merchants" :value="m.merchantId" :key="m.merchantId">{{m.name}} · {{m.storeName}}</option></select><Icon name="chevronDown" :size="13"/></div><span class="admin-avatar">{{store.user?.displayName?.slice(0,1)||'店'}}</span><span class="admin-user">{{store.user?.displayName||'店铺账号'}}</span></div></header>
-
-      <nav ref="mobileNav" class="merchant-mobile-nav" aria-label="工作台导航"><button v-for="([icon,label,path]) in visibleMenu" :key="path" :class="{active:store.route===path}" @click="go(path)"><Icon :name="icon" :size="16"/>{{label}}</button></nav>
-
-      <main class="merchant-main">
-        <div class="merchant-page-heading"><div><h1>商品管理</h1></div><div class="head-actions"><button class="outline-button small" @click="loadMerchant" :disabled="store.loading"><Icon name="refresh" :size="16"/>刷新</button><button class="teal-button" @click="openCreate" :disabled="!owned"><Icon name="plus" :size="18"/>新增商品</button></div></div>
+  <BackofficeShell title="商品管理">
+    <template #actions><div class="head-actions"><button class="outline-button small" @click="loadMerchant" :disabled="store.loading"><Icon name="refresh" :size="16"/>刷新</button><button class="teal-button" @click="openCreate" :disabled="!owned"><Icon name="plus" :size="18"/>新增商品</button></div></template>
         <div v-if="store.error" class="inline-error merchant-error"><Icon name="alert" :size="18"/>{{store.error}}<button v-if="!preview" class="merchant-login-action" @click="loginOpen=true">登录账号</button></div>
         <div v-if="!canRead" class="ops-card access-denied">当前角色没有商品查看权限，请联系商户经营者授权。</div><template v-else><section class="inventory-summary" aria-label="商品概况">
           <div class="summary-piece"><span class="summary-icon blue"><Icon name="package" :size="20"/></span><div><span>{{preview?'全部商品':'筛选商品'}}</span><strong>{{preview?count.all:store.merchantPage.total}}</strong></div></div>
@@ -653,12 +605,10 @@ export default {
           </aside>
           <div v-else class="product-inspector empty-inspector"><Icon name="package" :size="28"/>选择商品以查看详情</div>
         </section>
-      </template></main>
-    </div>
-    <AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="loadMerchant" />
+      </template>
     <div v-if="modal" v-modal="() => modal=''" class="ui-overlay" @click.self="modal=''">
       <form class="merchant-modal" v-if="modal==='create'" @submit.prevent="create"><div class="merchant-modal-header"><div><h2>新增商品</h2></div><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="20"/></button></div><label class="field-label" for="merchant-field-5">商品名称</label><input id="merchant-field-5" class="admin-input" maxlength="100" v-model="form.title" placeholder="商品名称" required/><label class="field-label" for="merchant-field-6">分类</label><select id="merchant-field-6" v-model="form.categoryCode" class="admin-input"><option v-for="c in store.categories.filter(c=>c.active)" :value="c.code">{{c.name}}</option></select><label class="field-label">规格 / 售价（元）</label><div v-for="(item,index) in form.skus" :key="index" class="sku-create-row"><input class="admin-input" maxlength="100" v-model="item.specKey" required placeholder="例如 250ml"/><input class="admin-input" v-model="item.price" inputmode="decimal" placeholder="0.00" required/><button type="button" class="outline-button small" :disabled="form.skus.length===1" @click="removeCreateSku(index)" :aria-label="'移除规格'+(index+1)"><Icon name="x" :size="15"/></button></div><button type="button" class="outline-button small" :disabled="form.skus.length>=20" @click="addCreateSku"><Icon name="plus" :size="15"/>添加规格</button><label class="field-label" for="merchant-field-7">描述</label><textarea id="merchant-field-7" class="admin-input" rows="3" v-model="form.description" placeholder="选填"></textarea><label class="field-label">商品主图</label><ProductImageListField v-model="form.imageUrls" :merchant-id="store.merchantId" :invalid="createImageInvalid" :demo="preview" :disabled="saving||!owned" @busy="createImageUploading=$event" @invalid="createImageInvalid=$event"/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving||createImageUploading||createImageInvalid||!owned">保存商品</button></div></form>
       <form class="merchant-modal narrow" v-else-if="modal==='addSku'" @submit.prevent="addSku"><div class="merchant-modal-header"><h2>新增规格</h2><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="18"/></button></div><label class="field-label" for="merchant-field-8">规格名称</label><input id="merchant-field-8" class="admin-input" maxlength="100" v-model="skuForm.specKey" required placeholder="例如：500ml"/><label class="field-label" for="merchant-field-9">售价（元）</label><input id="merchant-field-9" class="admin-input" v-model="skuForm.price" inputmode="decimal" required placeholder="0.00"/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving">保存规格</button></div></form><form class="merchant-modal narrow" v-else-if="modal==='price'" @submit.prevent="savePrice"><div class="merchant-modal-header"><div><h2>修改售价</h2></div><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="20"/></button></div><div class="field-muted">{{selected?.title}} · {{activePriceSku?.specKey}}</div><label class="field-label" for="merchant-field-10">售价（元）</label><input id="merchant-field-10" class="admin-input" v-model="newPrice" inputmode="decimal" required/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving">保存售价</button></div></form>
     </div>
-  </div>`,
+  </BackofficeShell>`,
 };

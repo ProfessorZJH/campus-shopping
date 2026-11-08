@@ -9,4 +9,4 @@
 ## 2. 回归交付
 
 - [x] 2.1 运行 Python 定向检索、推荐、流式和安全测试，确认无 API、SSE、Provider 或跨语言契约变化。
-- [ ] 2.2 运行 `openspec validate ai-retrieval-ranking-boundary --strict`、`python -m py_compile app/*.py` 和 `git diff --check`，提交单独 Python 结构重构 commit。
+- [x] 2.2 运行 `openspec validate ai-retrieval-ranking-boundary --strict`、`python -m py_compile app/*.py` 和 `git diff --check`，提交单独 Python 结构重构 commit。

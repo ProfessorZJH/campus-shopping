@@ -92,5 +92,4 @@ public record ProductSnapshot(
     public List<ProductSkuEntity> getSkus() {
         return skus;
     }
-
 }

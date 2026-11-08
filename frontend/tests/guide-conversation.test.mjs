@@ -92,4 +92,3 @@ test('disconnect recovery waits through cancellation and loads an idle snapshot'
     '/ai/conversations/conv-1/proposals',
   ]);
 });
-

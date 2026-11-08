@@ -17,6 +17,7 @@ import KnowledgeDebug from './pages/KnowledgeDebug.js';
 import Platform from './pages/Platform.js';
 import RoleManager from './pages/RoleManager.js';
 import AuthDialog from './components/AuthDialog.js';
+import { backofficeRoutes } from './services/backoffice-metadata.js';
 import {
   store,
   setRoute,
@@ -54,30 +55,8 @@ const App = {
       if (r === '/merchant/knowledge' || r === '/admin/knowledge') return 'Knowledge';
       if (r === '/merchant/knowledge/debug' || r === '/admin/knowledge/debug')
         return 'KnowledgeDebug';
-      if (
-        [
-          '/merchant',
-          '/merchant/inventory',
-          '/merchant/orders',
-          '/merchant/pickup',
-          '/merchant/aftersales',
-          '/merchant/team',
-          '/merchant/settings',
-        ].includes(r)
-      )
-        return 'MerchantOps';
-      if (
-        [
-          '/admin',
-          '/admin/applications',
-          '/admin/merchants',
-          '/admin/products',
-          '/admin/orders',
-          '/admin/disputes',
-          '/admin/categories',
-        ].includes(r)
-      )
-        return 'Platform';
+      if (backofficeRoutes.includes(r) && r.startsWith('/merchant')) return 'MerchantOps';
+      if (backofficeRoutes.includes(r) && r.startsWith('/admin')) return 'Platform';
       if (r.startsWith('/product/')) return 'ProductDetail';
       if (r.startsWith('/shops/')) return 'Shop';
       if (r === '/cart') return 'Cart';

@@ -29,6 +29,7 @@ public interface ICatalogService extends ICatalogReadService, ICatalogCandidateQ
     List<ProductAggregate> recall(List<String> terms, int limit);
     /** 仅获取仍公开销售的商品，拒绝使用向量索引中的过时业务状态。 */
     List<ProductAggregate> recallByIds(List<String> ids);
+
     /** 只读恢复 SKU 与商品的当前关联；允许历史 SKU 缺失并返回部分结果。 */
     default List<SkuOfferVO> resolveOffers(List<String> skuIds) {
         return offers(skuIds);

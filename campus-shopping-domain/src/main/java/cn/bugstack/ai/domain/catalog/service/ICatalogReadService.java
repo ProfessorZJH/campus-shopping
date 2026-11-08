@@ -11,16 +11,7 @@ public interface ICatalogReadService {
 
     List<ProductAggregate> search(String merchant, String query, String category, boolean publicOnly, int page, int size);
 
-    List<ProductAggregate> search(
-        String merchant,
-        String query,
-        String category,
-        boolean publicOnly,
-        int page,
-        int size,
-        Long minPriceCent,
-        Long maxPriceCent
-    );
+    List<ProductAggregate> search(String merchant, String query, String category, boolean publicOnly, int page, int size, Long minPriceCent, Long maxPriceCent);
 
     long count(String merchant, String query, String category, boolean publicOnly);
 

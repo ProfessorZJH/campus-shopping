@@ -61,38 +61,32 @@ final class CandidateResolver {
         Map<String, Integer> semanticRankByProduct = new LinkedHashMap<>();
         for (SemanticProductRankVO rank : semanticRanks) semanticRankByProduct.putIfAbsent(rank.productId(), rank.rank());
         List<ProductCandidateSnapshot> products = RecommendationPolicy.fuse(
-                lexical.stream().map(ProductCandidateSnapshot::productId).toList(),
-                semanticRankByProduct
+            lexical.stream().map(ProductCandidateSnapshot::productId).toList(),
+            semanticRankByProduct
         )
-                .stream()
-                .filter(byProduct::containsKey)
-                .map(byProduct::get)
-                .toList();
-        List<String> ids = RecommendationPolicy.sampleSkus(
-                products.stream()
-                        .map(ProductCandidateSnapshot::activeSkuIds)
-                        .toList()
-        );
+            .stream()
+            .filter(byProduct::containsKey)
+            .map(byProduct::get)
+            .toList();
+        List<String> ids = RecommendationPolicy.sampleSkus(products.stream().map(ProductCandidateSnapshot::activeSkuIds).toList());
         List<SkuOfferVO> offers = catalog.availableOffers(ids);
         Map<String, StockVO> stocks = inventory.stocks(ids).stream().collect(Collectors.toMap(StockVO::skuId, Function.identity()));
         List<AiOfferVO> candidates = offers
-                .stream()
-                .map(
-                        o -> {
-                            StockVO stock = stocks.get(o.skuId());
-                            return new AiOfferVO(
-                                    o.skuId(),
-                                    o.merchantId(),
-                                    o.title(),
-                                    o.specKey(),
-                                    o.description(),
-                                    o.priceCent(),
-                                    stock == null ? 0 : stock.onHand() - stock.reserved()
-                            );
-                        }
-                )
-                .filter(o -> o.available() > 0)
-                .toList();
+            .stream()
+            .map(o -> {
+                StockVO stock = stocks.get(o.skuId());
+                return new AiOfferVO(
+                    o.skuId(),
+                    o.merchantId(),
+                    o.title(),
+                    o.specKey(),
+                    o.description(),
+                    o.priceCent(),
+                    stock == null ? 0 : stock.onHand() - stock.reserved()
+                );
+            })
+            .filter(o -> o.available() > 0)
+            .toList();
 
         Set<String> excludedSkuIds = new HashSet<>();
         long cheaperThan = Long.MAX_VALUE;
@@ -103,15 +97,21 @@ final class CandidateResolver {
             for (ProposalItemVO item : prior.items()) cheaperThan = Math.min(cheaperThan, item.priceCent());
         }
         final long cheaperLimit = cheaperThan;
-        candidates = candidates.stream().filter(o -> !excludedSkuIds.contains(o.skuId()) && o.priceCent() < cheaperLimit).toList();
+        candidates = candidates
+            .stream()
+            .filter(o -> !excludedSkuIds.contains(o.skuId()) && o.priceCent() < cheaperLimit)
+            .toList();
         Set<String> candidateIds = candidates.stream().map(AiOfferVO::skuId).collect(Collectors.toSet());
-        offers = offers.stream().filter(o -> candidateIds.contains(o.skuId())).toList();
+        offers = offers
+            .stream()
+            .filter(o -> candidateIds.contains(o.skuId()))
+            .toList();
 
         List<String> semanticSkuIds = semanticSkuOrder(offers, semanticRanks, semanticProductIds);
         List<ProposalItemVO> quotes = offers
-                .stream()
-                .map(o -> new ProposalItemVO(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.priceCent(), o.version(), 1, o.imageUrl(), o.productId()))
-                .toList();
+            .stream()
+            .map(o -> new ProposalItemVO(o.skuId(), o.merchantId(), o.title(), o.specKey(), o.priceCent(), o.version(), 1, o.imageUrl(), o.productId()))
+            .toList();
         Map<String, Long> available = new HashMap<>();
         stocks.forEach((id, stock) -> available.put(id, stock.onHand() - stock.reserved()));
         return new CandidateSnapshot(candidates, quotes, available, semanticSkuIds);
@@ -119,19 +119,17 @@ final class CandidateResolver {
 
     /** 语义候选按商品轮询，避免单个商品的多个 SKU 挤占前 12 个候选。 */
     private List<String> semanticSkuOrder(List<SkuOfferVO> offers, List<SemanticProductRankVO> ranks, Set<String> semanticProductIds) {
-        Map<String, Integer> rankByProduct = ranks
-                .stream()
-                .collect(Collectors.toMap(SemanticProductRankVO::productId, SemanticProductRankVO::rank, Math::min));
+        Map<String, Integer> rankByProduct = ranks.stream().collect(Collectors.toMap(SemanticProductRankVO::productId, SemanticProductRankVO::rank, Math::min));
         Map<String, List<SkuOfferVO>> byProduct = offers
-                .stream()
-                .filter(o -> semanticProductIds.contains(o.productId()))
-                .sorted(Comparator.comparing(SkuOfferVO::skuId))
-                .collect(Collectors.groupingBy(SkuOfferVO::productId, LinkedHashMap::new, Collectors.toList()));
+            .stream()
+            .filter(o -> semanticProductIds.contains(o.productId()))
+            .sorted(Comparator.comparing(SkuOfferVO::skuId))
+            .collect(Collectors.groupingBy(SkuOfferVO::productId, LinkedHashMap::new, Collectors.toList()));
         List<String> productOrder = byProduct
-                .keySet()
-                .stream()
-                .sorted(Comparator.comparingInt((String id) -> rankByProduct.getOrDefault(id, Integer.MAX_VALUE)).thenComparing(id -> id))
-                .toList();
+            .keySet()
+            .stream()
+            .sorted(Comparator.comparingInt((String id) -> rankByProduct.getOrDefault(id, Integer.MAX_VALUE)).thenComparing(id -> id))
+            .toList();
         List<String> result = new ArrayList<>();
         for (int offset = 0; ; offset++) {
             boolean added = false;

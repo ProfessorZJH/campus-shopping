@@ -34,9 +34,9 @@ final class EvidenceAssembler {
         List<String> citedIds = requested.stream().map(AiCitationVO::documentId).distinct().toList();
         require(allowedIds.containsAll(citedIds), ResponseCode.KNOWLEDGE_NOT_READY);
         Map<String, KnowledgeDocumentVO> byId = knowledge
-                .citationDocuments(actor, citedIds)
-                .stream()
-                .collect(Collectors.toMap(KnowledgeDocumentVO::id, d -> d));
+            .citationDocuments(actor, citedIds)
+            .stream()
+            .collect(Collectors.toMap(KnowledgeDocumentVO::id, d -> d));
         List<AiCitationVO> citations = new ArrayList<>();
         for (AiCitationVO citation : requested) {
             KnowledgeDocumentVO document = byId.get(citation.documentId());
@@ -44,30 +44,28 @@ final class EvidenceAssembler {
             boolean publicDocument = "PUBLIC".equals(document.visibility());
             String chunkBody = citation.ordinal() < 0 ? "" : chunk(document.content(), citation.ordinal());
             require(
-                    citation.documentVersion() == document.version()
-                            && citation.snippet() != null
-                            && citation.snippet().codePointCount(0, citation.snippet().length()) <= 500
-                            && (
-                                    citation.ordinal() < 0
-                                            ? !publicDocument || document.content().contains(citation.snippet())
-                                            : citation.chunkId().equals(chunkId(document.id(), citation.ordinal()))
-                                                    && citation.contentHash().equals(hash(chunkBody))
-                                                    && (!publicDocument || chunkBody.contains(citation.snippet()))
-                            ),
-                    ResponseCode.KNOWLEDGE_NOT_READY
+                citation.documentVersion() == document.version() &&
+                    citation.snippet() != null &&
+                    citation.snippet().codePointCount(0, citation.snippet().length()) <= 500 &&
+                    (citation.ordinal() < 0
+                        ? !publicDocument || document.content().contains(citation.snippet())
+                        : citation.chunkId().equals(chunkId(document.id(), citation.ordinal())) &&
+                          citation.contentHash().equals(hash(chunkBody)) &&
+                          (!publicDocument || chunkBody.contains(citation.snippet()))),
+                ResponseCode.KNOWLEDGE_NOT_READY
             );
             citations.add(
-                    new AiCitationVO(
-                            document.id(),
-                            citation.chunkId(),
-                            document.title(),
-                            publicDocument ? citation.snippet() : "内部资料来源，原文片段不公开展示",
-                            citation.score(),
-                            document.rootId(),
-                            document.version(),
-                            citation.ordinal(),
-                            citation.contentHash()
-                    )
+                new AiCitationVO(
+                    document.id(),
+                    citation.chunkId(),
+                    document.title(),
+                    publicDocument ? citation.snippet() : "内部资料来源，原文片段不公开展示",
+                    citation.score(),
+                    document.rootId(),
+                    document.version(),
+                    citation.ordinal(),
+                    citation.contentHash()
+                )
             );
         }
         return citations;
@@ -77,47 +75,45 @@ final class EvidenceAssembler {
         Set<String> allowedIds = readable.stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
         Map<String, KnowledgeDocumentVO> currentCitations = currentCitationDocuments(actor, messages, allowedIds);
         return messages
-                .stream()
-                .map(
-                        message -> {
-                            if (
-                                    "assistant".equals(message.role())
-                                            && message.accessFingerprint() != null
-                                            && !message.accessFingerprint().isBlank()
-                                            && !fingerprint.equals(message.accessFingerprint())
-                            ) {
-                                return new MessageVO(
-                                        message.id(),
-                                        message.conversationId(),
-                                        message.role(),
-                                        "资料权限或版本已变化，此历史回答已隐藏，请重新提问。",
-                                        message.createdAt(),
-                                        fingerprint,
-                                        List.of(),
-                                        message.citationsRecorded(),
-                                        false
-                                );
-                            }
-                            if (!message.citationsRecorded() || message.citations().isEmpty()) return message;
-                            List<AiCitationVO> valid = message
-                                    .citations()
-                                    .stream()
-                                    .filter(citation -> validCitation(citation, currentCitations, allowedIds))
-                                    .toList();
-                            return new MessageVO(
-                                    message.id(),
-                                    message.conversationId(),
-                                    message.role(),
-                                    message.content(),
-                                    message.createdAt(),
-                                    message.accessFingerprint(),
-                                    valid,
-                                    true,
-                                    valid.size() == message.citations().size()
-                            );
-                        }
-                )
-                .toList();
+            .stream()
+            .map(message -> {
+                if (
+                    "assistant".equals(message.role()) &&
+                    message.accessFingerprint() != null &&
+                    !message.accessFingerprint().isBlank() &&
+                    !fingerprint.equals(message.accessFingerprint())
+                ) {
+                    return new MessageVO(
+                        message.id(),
+                        message.conversationId(),
+                        message.role(),
+                        "资料权限或版本已变化，此历史回答已隐藏，请重新提问。",
+                        message.createdAt(),
+                        fingerprint,
+                        List.of(),
+                        message.citationsRecorded(),
+                        false
+                    );
+                }
+                if (!message.citationsRecorded() || message.citations().isEmpty()) return message;
+                List<AiCitationVO> valid = message
+                    .citations()
+                    .stream()
+                    .filter(citation -> validCitation(citation, currentCitations, allowedIds))
+                    .toList();
+                return new MessageVO(
+                    message.id(),
+                    message.conversationId(),
+                    message.role(),
+                    message.content(),
+                    message.createdAt(),
+                    message.accessFingerprint(),
+                    valid,
+                    true,
+                    valid.size() == message.citations().size()
+                );
+            })
+            .toList();
     }
 
     private String chunkId(String document, int ordinal) {
@@ -179,13 +175,13 @@ final class EvidenceAssembler {
 
     private Map<String, KnowledgeDocumentVO> currentCitationDocuments(String actor, List<MessageVO> messages, Set<String> allowedIds) {
         List<String> ids = messages
-                .stream()
-                .flatMap(message -> message.citations().stream())
-                .filter(AiCitationVO::hasDocumentSnapshot)
-                .map(AiCitationVO::documentId)
-                .filter(allowedIds::contains)
-                .distinct()
-                .toList();
+            .stream()
+            .flatMap(message -> message.citations().stream())
+            .filter(AiCitationVO::hasDocumentSnapshot)
+            .map(AiCitationVO::documentId)
+            .filter(allowedIds::contains)
+            .distinct()
+            .toList();
         Map<String, KnowledgeDocumentVO> current = new HashMap<>();
         for (int start = 0; start < ids.size(); start += 20) {
             knowledge.citationDocuments(actor, ids.subList(start, Math.min(start + 20, ids.size()))).forEach(document -> current.put(document.id(), document));
@@ -197,19 +193,19 @@ final class EvidenceAssembler {
         if (!allowedIds.contains(citation.documentId()) || !citation.hasDocumentSnapshot()) return false;
         KnowledgeDocumentVO document = current.get(citation.documentId());
         if (
-                document == null
-                        || !citation.rootId().equals(document.rootId())
-                        || citation.documentVersion() != document.version()
-                        || !"PUBLISHED".equals(document.status())
-                        || !"READY".equals(document.indexStatus())
+            document == null ||
+            !citation.rootId().equals(document.rootId()) ||
+            citation.documentVersion() != document.version() ||
+            !"PUBLISHED".equals(document.status()) ||
+            !"READY".equals(document.indexStatus())
         ) return false;
         if (!"PUBLIC".equals(document.visibility())) return "内部资料来源，原文片段不公开展示".equals(citation.snippet());
         return (
-                citation.snippet() != null
-                        && !citation.snippet().isBlank()
-                        && citation.snippet().length() <= 500
-                        && document.content() != null
-                        && document.content().contains(citation.snippet())
+            citation.snippet() != null &&
+            !citation.snippet().isBlank() &&
+            citation.snippet().length() <= 500 &&
+            document.content() != null &&
+            document.content().contains(citation.snippet())
         );
     }
 }

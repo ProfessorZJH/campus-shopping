@@ -55,10 +55,8 @@ const App = {
       if (r === '/merchant/knowledge' || r === '/admin/knowledge') return 'Knowledge';
       if (r === '/merchant/knowledge/debug' || r === '/admin/knowledge/debug')
         return 'KnowledgeDebug';
-      if (backofficeRoutes.includes(r) && r.startsWith('/merchant'))
-        return 'MerchantOps';
-      if (backofficeRoutes.includes(r) && r.startsWith('/admin'))
-        return 'Platform';
+      if (backofficeRoutes.includes(r) && r.startsWith('/merchant')) return 'MerchantOps';
+      if (backofficeRoutes.includes(r) && r.startsWith('/admin')) return 'Platform';
       if (r.startsWith('/product/')) return 'ProductDetail';
       if (r.startsWith('/shops/')) return 'Shop';
       if (r === '/cart') return 'Cart';

@@ -23,7 +23,13 @@ import {
 const { ref, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
 export default {
   name: 'Merchant',
-  components: { BackofficeShell, AuthDialog, ProductImage, ProductImageField, ProductImageListField },
+  components: {
+    BackofficeShell,
+    AuthDialog,
+    ProductImage,
+    ProductImageField,
+    ProductImageListField,
+  },
   setup() {
     const scope = requestScope();
     const search = ref('');

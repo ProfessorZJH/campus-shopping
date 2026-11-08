@@ -1,7 +1,6 @@
 import { api, query, stream } from './api.js';
 
-const conversationPath = (id, suffix) =>
-  '/ai/conversations/' + encodeURIComponent(id) + suffix;
+const conversationPath = (id, suffix) => '/ai/conversations/' + encodeURIComponent(id) + suffix;
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
 function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
@@ -13,10 +12,7 @@ function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
   if (knownLastMessage) {
     for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
       const message = messageHistory[index];
-      if (
-        message.role === knownLastMessage.role &&
-        message.content === knownLastMessage.content
-      ) {
+      if (message.role === knownLastMessage.role && message.content === knownLastMessage.content) {
         knownLastIndex = index;
         break;
       }
@@ -154,4 +150,3 @@ export function createGuideConversationTransport({
 
   return { loadHistory, loadSnapshot, recoverAfterDisconnect, cancelTurn, streamTurn };
 }
-
