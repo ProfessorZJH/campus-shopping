@@ -52,8 +52,8 @@ class AiConversationBoundaryTest {
         );
         when(engine.recall(anyString(), anyList())).thenReturn(new AiRecallVO(question, List.of()));
         when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
-        when(catalog.recall(anyList(), anyInt())).thenReturn(List.of());
-        when(catalog.recallByIds(anyList())).thenReturn(List.of());
+        when(catalog.candidateRecall(anyList(), anyInt())).thenReturn(List.of());
+        when(catalog.candidateRecallByIds(anyList())).thenReturn(List.of());
         when(catalog.saleOffers(anyList())).thenReturn(List.of());
         when(catalog.availableOffers(anyList())).thenReturn(
             List.of(
@@ -278,8 +278,8 @@ class AiConversationBoundaryTest {
         );
         when(engine.recall(anyString(), anyList())).thenReturn(new AiRecallVO("退款规则怎么处理？", List.of()));
         when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
-        when(catalog.recall(anyList(), anyInt())).thenReturn(List.of());
-        when(catalog.recallByIds(anyList())).thenReturn(List.of());
+        when(catalog.candidateRecall(anyList(), anyInt())).thenReturn(List.of());
+        when(catalog.candidateRecallByIds(anyList())).thenReturn(List.of());
         when(catalog.availableOffers(anyList())).thenReturn(List.of());
         when(inventory.stocks(anyList())).thenReturn(List.of());
         when(engine.query(any())).thenReturn(
@@ -374,8 +374,8 @@ class AiConversationBoundaryTest {
         );
         when(engine.recall(anyString(), anyList())).thenReturn(new AiRecallVO(question, List.of()));
         when(engine.semanticProducts(anyString(), anyInt())).thenReturn(List.of());
-        when(catalog.recall(anyList(), anyInt())).thenReturn(List.of());
-        when(catalog.recallByIds(anyList())).thenReturn(List.of());
+        when(catalog.candidateRecall(anyList(), anyInt())).thenReturn(List.of());
+        when(catalog.candidateRecallByIds(anyList())).thenReturn(List.of());
         when(catalog.saleOffers(anyList())).thenReturn(List.of());
         when(catalog.availableOffers(anyList())).thenReturn(List.of());
         when(inventory.stocks(anyList())).thenReturn(List.of());

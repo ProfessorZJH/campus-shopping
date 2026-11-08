@@ -12,6 +12,7 @@ import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageRef;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductCandidateSnapshot;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
@@ -64,6 +65,16 @@ public class CatalogServiceImpl implements ICatalogService {
             ResponseCode.ILLEGAL_PARAMETER
         );
         return ids.isEmpty() ? List.of() : queries.publicByIds(ids.stream().distinct().toList());
+    }
+
+    @Override
+    public List<ProductCandidateSnapshot> candidateRecall(List<String> terms, int limit) {
+        return recall(terms, limit).stream().map(ProductCandidateSnapshot::from).toList();
+    }
+
+    @Override
+    public List<ProductCandidateSnapshot> candidateRecallByIds(List<String> ids) {
+        return recallByIds(ids).stream().map(ProductCandidateSnapshot::from).toList();
     }
 
     public ProductAggregate create(String merchant, String store, ProductCreateCommandEntity c) {

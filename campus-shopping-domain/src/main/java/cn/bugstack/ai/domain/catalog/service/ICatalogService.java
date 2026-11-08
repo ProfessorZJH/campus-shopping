@@ -6,7 +6,7 @@ import cn.bugstack.ai.domain.catalog.model.valobj.*;
 import java.util.*;
 
 /** 商品业务能力；跨域权限和库存初始化由 Case 协作。 */
-public interface ICatalogService extends ICatalogReadService {
+public interface ICatalogService extends ICatalogReadService, ICatalogCandidateQuery {
     List<String> scanIdsAfter(String after, int limit);
     ProductAggregate create(String merchant, String store, ProductCreateCommandEntity c);
     ProductAggregate find(String id);

@@ -1,9 +1,8 @@
 package cn.bugstack.ai.cases.shoppingai.impl;
 
-import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductCandidateSnapshot;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
-import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.catalog.service.ICatalogCandidateQuery;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAiEnginePort;
@@ -34,10 +33,10 @@ final class CandidateResolver {
     private static final Logger log = LoggerFactory.getLogger(CandidateResolver.class);
 
     private final IAiEnginePort engine;
-    private final ICatalogService catalog;
+    private final ICatalogCandidateQuery catalog;
     private final IInventoryService inventory;
 
-    CandidateResolver(IAiEnginePort engine, ICatalogService catalog, IInventoryService inventory) {
+    CandidateResolver(IAiEnginePort engine, ICatalogCandidateQuery catalog, IInventoryService inventory) {
         this.engine = engine;
         this.catalog = catalog;
         this.inventory = inventory;
@@ -45,7 +44,7 @@ final class CandidateResolver {
 
     CandidateSnapshot resolve(String question, AiRecallVO recall, ProposalVO prior) {
         // 词面召回 + 可选 Milvus 语义召回：RRF 合并，商品状态仍须重新由 MySQL 校验。
-        List<ProductAggregate> lexical = catalog.recall(recall.terms(), 200);
+        List<ProductCandidateSnapshot> lexical = catalog.candidateRecall(recall.terms(), 200);
         List<SemanticProductRankVO> semanticRanks = List.of();
         try {
             semanticRanks = engine.semanticProductRanks(recall.query(), 80);
@@ -54,15 +53,15 @@ final class CandidateResolver {
             log.warn("商品语义召回降级 diagnostic={}", cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
         }
         List<String> semanticIds = semanticRanks.stream().map(SemanticProductRankVO::productId).toList();
-        List<ProductAggregate> semantic = catalog.recallByIds(semanticIds);
-        Map<String, ProductAggregate> byProduct = new HashMap<>();
-        lexical.forEach(p -> byProduct.put(p.getId(), p));
-        semantic.forEach(p -> byProduct.put(p.getId(), p));
-        Set<String> semanticProductIds = semantic.stream().map(ProductAggregate::getId).collect(Collectors.toSet());
+        List<ProductCandidateSnapshot> semantic = catalog.candidateRecallByIds(semanticIds);
+        Map<String, ProductCandidateSnapshot> byProduct = new HashMap<>();
+        lexical.forEach(p -> byProduct.put(p.productId(), p));
+        semantic.forEach(p -> byProduct.put(p.productId(), p));
+        Set<String> semanticProductIds = semantic.stream().map(ProductCandidateSnapshot::productId).collect(Collectors.toSet());
         Map<String, Integer> semanticRankByProduct = new LinkedHashMap<>();
         for (SemanticProductRankVO rank : semanticRanks) semanticRankByProduct.putIfAbsent(rank.productId(), rank.rank());
-        List<ProductAggregate> products = RecommendationPolicy.fuse(
-                lexical.stream().map(ProductAggregate::getId).toList(),
+        List<ProductCandidateSnapshot> products = RecommendationPolicy.fuse(
+                lexical.stream().map(ProductCandidateSnapshot::productId).toList(),
                 semanticRankByProduct
         )
                 .stream()
@@ -71,14 +70,7 @@ final class CandidateResolver {
                 .toList();
         List<String> ids = RecommendationPolicy.sampleSkus(
                 products.stream()
-                        .map(
-                                p -> p
-                                        .getSkus()
-                                        .stream()
-                                        .filter(s -> s.state() == SkuStatusEnumVO.ACTIVE)
-                                        .map(s -> s.id())
-                                        .toList()
-                        )
+                        .map(ProductCandidateSnapshot::activeSkuIds)
                         .toList()
         );
         List<SkuOfferVO> offers = catalog.availableOffers(ids);
