@@ -1,8 +1,9 @@
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
-import { api, query, stream } from '../services/api.js';
+import { api } from '../services/api.js';
 import { citationsOf } from '../services/ai-citations';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
+import { createGuideConversationTransport } from '../services/guide-conversation.js';
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
 const prompts = [
@@ -15,6 +16,7 @@ export default {
   name: 'Guide',
   components: { ConsumerShell, ProductImage },
   setup() {
+    const conversationTransport = createGuideConversationTransport();
     const input = ref('');
     const thinking = ref(false);
     const selectedIds = ref([]);
@@ -135,38 +137,19 @@ export default {
       expectedQuestion = null,
       knownLastMessage = null,
     ) {
-      const encoded = encodeURIComponent(id);
-      const [history, proposals] = await Promise.all([
-        api('/ai/conversations/' + encoded + '/messages'),
-        api('/ai/conversations/' + encoded + '/proposals'),
-      ]);
+      const snapshot = await conversationTransport.loadSnapshot(id, {
+        expectedQuestion,
+        knownLastMessage,
+      });
       if (stamp !== conversationEpoch) return false;
-      const messageHistory = history || [];
-      if (expectedQuestion) {
-        const lastQuestion = messageHistory.length - 2;
-        const tailQuestion = messageHistory[lastQuestion];
-        const tailAnswer = messageHistory[messageHistory.length - 1];
-        let knownLastIndex = -1;
-        if (knownLastMessage) {
-          for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
-            const message = messageHistory[index];
-            if (
-              message.role === knownLastMessage.role &&
-              message.content === knownLastMessage.content
-            ) {
-              knownLastIndex = index;
-              break;
-            }
-          }
-        }
-        const hasAnswer =
-          lastQuestion >= 0 &&
-          tailQuestion?.role === 'user' &&
-          tailQuestion.content === expectedQuestion &&
-          tailAnswer?.role === 'assistant' &&
-          (knownLastIndex < 0 || knownLastIndex < lastQuestion);
-        if (!hasAnswer) return false;
-      }
+      if (!snapshot) return false;
+      applyConversationSnapshot(snapshot, id, stamp);
+      return true;
+    }
+
+    function applyConversationSnapshot(snapshot, id, stamp) {
+      if (stamp !== conversationEpoch || !snapshot) return false;
+      const messageHistory = snapshot.messages;
       store.conversationId = id;
       messages.value = messageHistory.map((m) => ({
         role: m.role,
@@ -175,7 +158,7 @@ export default {
         citationStatus: m.citationStatus || 'MISSING',
         time: '历史消息',
       }));
-      proposal.value = (proposals || []).find((p) => p.status === 'PENDING') || null;
+      proposal.value = snapshot.proposal;
       selectedIds.value = (proposal.value?.items || []).map((i) => i.skuId);
       return true;
     }
@@ -184,41 +167,20 @@ export default {
       if (!id || actor !== store.user?.userId) return false;
       reconnecting.value = true;
       try {
-        for (let attempt = 0; attempt < 60; attempt += 1) {
-          if (stamp !== conversationEpoch || actor !== store.user?.userId) return true;
-          let status;
-          try {
-            status = await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/status', {
-              timeoutMs: 5000,
-            });
-          } catch (error) {
-            if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            continue;
-          }
-          if (status?.status === 'CANCEL_REQUESTED') {
+        const recovered = await conversationTransport.recoverAfterDisconnect({
+          id,
+          isCurrent: () => stamp === conversationEpoch && actor === store.user?.userId,
+          expectedQuestion,
+          knownLastMessage,
+          onCancelRequested: () => {
             cancelRequested.value = true;
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            continue;
-          }
-          if (status?.status === 'IDLE') {
-            try {
-              return await loadConversationSnapshot(id, stamp, expectedQuestion, knownLastMessage);
-            } catch (error) {
-              if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
-              await new Promise((resolve) => setTimeout(resolve, 500));
-              continue;
-            }
-          }
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
+          },
+        });
+        if (recovered && recovered !== true) applyConversationSnapshot(recovered, id, stamp);
+        return recovered;
       } finally {
         reconnecting.value = false;
       }
-      // Keep the pending turn visible when the backend has not reached IDLE yet;
-      // dropping the user message here makes a transient disconnect look like a
-      // successful but empty turn.
-      return true;
     }
 
     async function cancelTurn() {
@@ -226,9 +188,7 @@ export default {
       if (preview || !thinking.value || !id || cancelRequested.value) return;
       cancelRequested.value = true;
       try {
-        await api('/ai/conversations/' + encodeURIComponent(id) + '/turn/cancel', {
-          method: 'POST',
-        });
+        await conversationTransport.cancelTurn(id);
       } catch (err) {
         cancelRequested.value = false;
         notify(err?.message || '取消请求未完成，请稍后重试');
@@ -269,32 +229,29 @@ export default {
       let completed = false;
       let cancelled = false;
       try {
-        await stream('/ai/chat/stream', {
+        const result = await conversationTransport.streamTurn({
+          question: text,
+          conversationId: store.conversationId || null,
           signal: controller.signal,
-          body: { question: text, conversationId: store.conversationId || null },
-          onEvent: async (event, payload) => {
-            if (stamp !== conversationEpoch) return;
-            const id = payload?.conversationId || payload?.data?.conversationId;
-            if (id) {
-              streamConversationId = id;
-              store.conversationId = id;
-            }
-            if (event === 'progress') {
-              streamProgress.value = Number(payload?.data?.bytes || payload?.bytes || 0);
-            } else if (event === 'completed') {
-              completed = true;
-              applyChatAnswer(payload?.data, stamp);
-            } else if (event === 'cancelled') {
-              cancelled = true;
-              cancelRequested.value = true;
-            } else if (event === 'failed') {
-              const code = payload?.errorCode || payload?.data?.errorCode || 'AI0001';
-              throw Object.assign(new Error('智能服务暂不可用，请稍后重试'), { code });
-            }
+          isCurrent: () => stamp === conversationEpoch,
+          onConversationId: (id) => {
+            streamConversationId = id;
+            store.conversationId = id;
+          },
+          onProgress: (bytes) => {
+            streamProgress.value = bytes;
+          },
+          onCompleted: (answer) => {
+            completed = true;
+            applyChatAnswer(answer, stamp);
+          },
+          onCancelled: () => {
+            cancelled = true;
+            cancelRequested.value = true;
           },
         });
-        if (!completed && !cancelled)
-          throw Object.assign(new Error('流式连接中断，请稍后重试'), { code: 'NETWORK' });
+        completed = result.completed;
+        cancelled = result.cancelled;
       } catch (err) {
         if (err?.name === 'AbortError' && (cancelRequested.value || stamp !== conversationEpoch))
           return;
@@ -325,7 +282,7 @@ export default {
       const page = reset ? 1 : historyPage.value + 1;
       loadingHistory.value = true;
       try {
-        const result = (await api('/ai/conversations' + query({ page, size: 20 }))) || [];
+        const result = (await conversationTransport.loadHistory(page, 20)) || [];
         if (stamp === historyEpoch) {
           conversations.value = reset
             ? result

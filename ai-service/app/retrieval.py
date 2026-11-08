@@ -10,6 +10,7 @@ from .config import Settings
 from .http_limits import bounded_json
 from .egress import minimized, audit
 from .observability import counts, failure, lock, observed
+from .ranking import reciprocal_rank_fusion, stable_top_k
 from .sqlite_migration import create_schema, DOC_COLUMNS, CHUNK_COLUMNS
 
 # 未获服务端外发许可的文档只回传受控标识；原文与标题留在检索服务内。
@@ -167,9 +168,8 @@ class KnowledgeStore:
             mode='BM25_DEGRADED'
         scores:dict[int,float]={}
         rankings=(sparse,) if _strategy=='sparse' else (dense,) if _strategy=='dense' else (sparse,dense)
-        for ranking in rankings:
-            for rank,(i,_) in enumerate(ranking,1):scores[i]=scores.get(i,0)+1/(60+rank)
-        selected=sorted(scores,key=lambda i:(-scores[i],rows[i]['id']))[:top_k]
+        scores=reciprocal_rank_fusion(*rankings)
+        selected=stable_top_k(scores,tie_breaker=lambda i: rows[i]['id'],limit=top_k)
         if _trace is not None:
             _trace.update(authorized=[r['id'] for r in rows], sparse=[rows[i]['id'] for i,_ in sparse],
                           dense=[rows[i]['id'] for i,_ in dense], selected=[rows[i]['id'] for i in selected],
