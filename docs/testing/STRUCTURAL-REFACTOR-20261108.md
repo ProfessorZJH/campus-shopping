@@ -1,8 +1,8 @@
 # 结构重构分支实施与验证记录
 
-> 日期：2026-11-08  
-> 分支：`codex/shoppingai-structure-refactor`  
-> 基线：`main` / `origin/main` `f1ba856`  
+> 日期：2026-11-08
+> 分支：`codex/shoppingai-structure-refactor`
+> 基线：`main` / `origin/main` `f1ba856`
 > 代码提交：`ce56d09`
 
 ## 记录范围
