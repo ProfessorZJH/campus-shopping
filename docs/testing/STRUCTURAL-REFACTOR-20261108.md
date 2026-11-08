@@ -33,6 +33,7 @@
 - 前端 Node：transport、API timeout、identity race 共 9 项通过。
 - 前端浏览器契约替身：Guide 8 项、修复回归 11 项、RBAC 14 项、Shell bundle 2 项通过。
 - 前端格式与副本：`npm run format:check --prefix frontend`、`python scripts/build-ui-bundle.py --check` 通过。
+- Java/DDD 静态门禁：`scripts/verify-release.py`、`scripts/verify-domain.py`、`scripts/verify-java-readability.py` 通过；脚本生成的历史 evidence 文件已恢复，不纳入本次提交。
 - 结构门禁：7 个本次相关 OpenSpec change 均通过 `openspec validate --strict --no-interactive`；最终差异通过 `git diff --check`。
 
 本轮没有执行全量 Maven `clean verify`，也没有把隔离替身测试扩大解释为 Docker、真实 MySQL/Redis、真实供应商或生产验收。
