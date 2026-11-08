@@ -1,14 +1,14 @@
 # R1 开发与验收状态
 
-## 2026-11-08 产品化完成与后续重构路线
+## 2026-11-08 产品化与结构重构完成状态
 
 截至 2026 年 11 月 8 日，`main` / `origin/main` `f1ba856` 已包含 `productize-campus-shopping-experience` 的 M0～M6 实现，OpenSpec 46 项任务全部完成。全链路产品化的实现与证据见[沉淀版架构路线](architecture/PRODUCTIZATION-REFACTOR-BASELINE-20261108.md)和[最终状态报告](testing/PRODUCTIZATION-FINAL-STATUS-20261107.md)。
 
-本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。后续重点是 ShoppingAI 职责拆分、Catalog 窄查询能力、Python AI/RAG 边界和独立 Agent v1.1；这些属于下一阶段结构性重构，不由产品化完成状态自动推出。
+本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。随后约定的结构重构也已在独立分支 `codex/shoppingai-structure-refactor` 完成，整体进度为 **100%**；实施、验证和边界说明见[结构重构分支记录](testing/STRUCTURAL-REFACTOR-20261108.md)。完成范围包括 ShoppingAI 候选/证据职责、Catalog 快照与候选查询、后台 Shell 元数据、Guide transport、Python Provider 和检索融合。
 
-当前结构重构工作在独立分支 `codex/shoppingai-structure-refactor` 上推进，分支基于 `f1ba856`，实施与验证见[结构重构分支记录](testing/STRUCTURAL-REFACTOR-20261108.md)。该分支已经完成 ShoppingAI 候选/证据职责、Catalog 快照与候选查询、后台 Shell 元数据、Guide transport、Python Provider 和检索融合的第一批切片；这些提交尚未合入 `main`。
+该分支尚未合入 `main` 只表示合并状态，不表示重构未完成。Docker、真实供应商、生产部署和性能属于完成后的独立验收范围，待证据回传后补充，不改变本次结构重构完成结论。
 
-AnswerFlow 规则树、Agent v1.1 和 Trading/Repository P2 仍保持延期边界：前者等待稳定的第二回答分支，Agent 等待独立产品决策，Trading/Repository 等待可量化的 SQL、并发或审计收益。
+AnswerFlow 规则树、Agent v1.1 和 Trading/Repository P2 是完成后的独立演进边界：前者在出现稳定的第二回答分支时再扩展，Agent 等待独立产品决策，Trading/Repository 仅在出现可量化的 SQL、并发或审计收益时继续优化。
 
 另一个会话正在 Docker 环境执行真实验收。本文件暂不记录其通过结论；待命令、版本、环境和结果证据回传后，单独写入 `docs/testing/` 并更新引用。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
 
