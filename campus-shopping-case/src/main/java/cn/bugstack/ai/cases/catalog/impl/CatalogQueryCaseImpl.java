@@ -10,7 +10,7 @@ import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.catalog.service.ICatalogReadService;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockMovementVO;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class CatalogQueryCaseImpl implements ICatalogQueryCase {
 
-    private final ICatalogService catalogService;
+    private final ICatalogReadService catalogService;
     private final IInventoryService inventoryService;
     private final IMerchantService merchantService;
     private final IAccessService access;
@@ -39,7 +39,7 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
 
     @Autowired
     public CatalogQueryCaseImpl(
-        ICatalogService catalogService,
+        ICatalogReadService catalogService,
         IInventoryService inventoryService,
         IMerchantService merchantService,
         IAccessService access,

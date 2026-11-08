@@ -8,7 +8,11 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 /** 商品展示所需的完整快照；商户名和各 SKU 库存由用例统一取得。 */
-public record ProductReadModel(ProductAggregate product, String merchantName, Map<String, Long> availableBySku, java.util.List<ProductImageVO> images) {
+public record ProductReadModel(ProductSnapshot product, String merchantName, Map<String, Long> availableBySku, java.util.List<ProductImageVO> images) {
+    public ProductReadModel(ProductAggregate product, String merchantName, Map<String, Long> availableBySku, java.util.List<ProductImageVO> images) {
+        this(ProductSnapshot.from(product), merchantName, availableBySku, images);
+    }
+
     public ProductReadModel {
         Objects.requireNonNull(product);
         Objects.requireNonNull(merchantName);
@@ -33,6 +37,6 @@ public record ProductReadModel(ProductAggregate product, String merchantName, Ma
                     }
                 )
             );
-        return new ProductReadModel(product, merchantName, available, images);
+        return new ProductReadModel(ProductSnapshot.from(product), merchantName, available, images);
     }
 }

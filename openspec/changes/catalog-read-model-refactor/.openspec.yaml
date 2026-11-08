@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-08
+goal: 收窄 Catalog 查询边界，使 ShoppingAI、前端和查询用例依赖不可变商品/SKU/库存展示数据。
+skip_specs: true

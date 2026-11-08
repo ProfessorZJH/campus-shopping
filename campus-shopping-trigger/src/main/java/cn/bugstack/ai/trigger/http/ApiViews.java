@@ -17,9 +17,9 @@ import cn.bugstack.ai.api.dto.SkuResponseDTO;
 import cn.bugstack.ai.api.dto.StatisticsResponseDTO;
 import cn.bugstack.ai.api.dto.StockResponseDTO;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.catalog.model.ProductSnapshot;
 import cn.bugstack.ai.cases.trading.model.CartItemReadModel;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
-import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.fulfillment.model.valobj.PickupVO;
 import cn.bugstack.ai.domain.identity.model.valobj.InvitationVO;
@@ -82,7 +82,7 @@ public final class ApiViews {
     }
 
     public static ProductResponseDTO product(ProductReadModel model) {
-        ProductAggregate p = model.product();
+        ProductSnapshot p = model.product();
         return ProductResponseDTO.builder()
             .productId(p.getId())
             .merchantName(model.merchantName())

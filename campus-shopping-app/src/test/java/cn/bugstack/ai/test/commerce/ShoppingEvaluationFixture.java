@@ -1,6 +1,7 @@
 package cn.bugstack.ai.test.commerce;
 
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
+import cn.bugstack.ai.cases.catalog.model.ProductSnapshot;
 import cn.bugstack.ai.domain.catalog.adapter.repository.ICatalogRepository;
 import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.*;
@@ -96,7 +97,7 @@ final class ShoppingEvaluationFixture {
         String owner = owners.get(mid);
         List<ProductSkuEntity> skus = new ArrayList<>();
         for (JsonNode s : p.path("skus")) skus.add(new ProductSkuEntity(null, s.path("specKey").asText(), s.path("priceCent").asLong(), "ACTIVE", 0));
-        ProductAggregate created = f.catalog
+        ProductSnapshot created = f.catalog
             .createProduct(
                 owner,
                 merchant.id(),

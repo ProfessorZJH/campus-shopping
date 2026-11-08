@@ -640,7 +640,7 @@ class CommerceMySqlIntegrationTest {
             .product();
         catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
         if (quantity > 0) catalog.replenishStock(owner, merchant.id(), p.getSkus().get(0).id(), quantity, UUID.randomUUID().toString());
-        return catalogQuery.detail(p.getId()).product();
+        return catalogSearch.findForDisplay(p.getId());
     }
 
     @Test
@@ -1122,7 +1122,7 @@ class CommerceMySqlIntegrationTest {
         long before = jdbc.queryForObject("SELECT COUNT FROM information_schema.INNODB_METRICS WHERE NAME='lock_deadlocks'", Long.class);
         var product = product(100);
         for (int n = 0; n < 20; n++) {
-            var current = catalogQuery.detail(product.getId()).product();
+            var current = catalogSearch.findForDisplay(product.getId());
             var proposal = proposal(current);
             long price = current.getSkus().get(0).priceCent() == 1200 ? 1300 : 1200;
             var results = race(

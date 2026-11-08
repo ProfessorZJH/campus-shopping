@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import cn.bugstack.ai.cases.catalog.impl.CatalogCaseImpl;
 import cn.bugstack.ai.cases.catalog.impl.CatalogQueryCaseImpl;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.catalog.model.ProductSnapshot;
 import cn.bugstack.ai.cases.merchant.impl.WorkspaceQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.impl.CartQueryCaseImpl;
 import cn.bugstack.ai.cases.trading.model.OrderReadModel;
@@ -88,7 +89,10 @@ class CatalogCartReadModelTest {
         assertThrows(IllegalArgumentException.class, () -> new ProductReadModel(product, "商户", Map.of(), List.of()));
         assertThrows(IllegalArgumentException.class, () -> new ProductReadModel(product, "  ", Map.of("s", 0L), List.of()));
         assertThrows(NullPointerException.class, () -> new ProductReadModel(product, "商户", Map.of("s", 0L), null));
-        var dto = ApiViews.product(ProductReadModel.from(product, "商户", Map.of(), List.of()));
+        var readModel = ProductReadModel.from(product, "商户", Map.of(), List.of());
+        assertInstanceOf(ProductSnapshot.class, readModel.product());
+        assertThrows(UnsupportedOperationException.class, () -> readModel.product().getSkus().clear());
+        var dto = ApiViews.product(readModel);
         assertEquals(0L, dto.getSkus().get(0).getAvailable());
         assertEquals("商户", dto.getMerchantName());
     }
