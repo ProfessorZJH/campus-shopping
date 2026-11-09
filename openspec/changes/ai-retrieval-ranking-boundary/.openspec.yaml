@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-08
+goal: 降低 KnowledgeStore 与回答引擎对 BM25/RRF 实现的耦合，保持现有 FastAPI、SSE、供应商、约束和输出契约不变
+skip_specs: true

@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-08
+goal: 收窄后台页面共享壳边界，避免 Merchant 与其他后台页重复维护导航和权限规则。
+skip_specs: true

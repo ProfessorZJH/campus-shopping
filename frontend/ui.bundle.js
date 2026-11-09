@@ -13536,6 +13536,136 @@
       snippet: (citation == null ? void 0 : citation.snippet) || ""
     }));
   }
+  const conversationPath = (id, suffix) => "/ai/conversations/" + encodeURIComponent(id) + suffix;
+  const wait = (milliseconds) => new Promise((resolve2) => setTimeout(resolve2, milliseconds));
+  function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
+    if (!expectedQuestion) return true;
+    const lastQuestion = messageHistory.length - 2;
+    const tailQuestion = messageHistory[lastQuestion];
+    const tailAnswer = messageHistory[messageHistory.length - 1];
+    let knownLastIndex = -1;
+    if (knownLastMessage) {
+      for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
+        const message = messageHistory[index];
+        if (message.role === knownLastMessage.role && message.content === knownLastMessage.content) {
+          knownLastIndex = index;
+          break;
+        }
+      }
+    }
+    return lastQuestion >= 0 && (tailQuestion == null ? void 0 : tailQuestion.role) === "user" && tailQuestion.content === expectedQuestion && (tailAnswer == null ? void 0 : tailAnswer.role) === "assistant" && (knownLastIndex < 0 || knownLastIndex < lastQuestion);
+  }
+  function failedEventError(payload) {
+    var _a;
+    const code = (payload == null ? void 0 : payload.errorCode) || ((_a = payload == null ? void 0 : payload.data) == null ? void 0 : _a.errorCode) || "AI0001";
+    return Object.assign(new Error("智能服务暂不可用，请稍后重试"), { code });
+  }
+  function disconnectedError() {
+    return Object.assign(new Error("流式连接中断，请稍后重试"), { code: "NETWORK" });
+  }
+  function createGuideConversationTransport({
+    request: request2 = api,
+    streamRequest = stream,
+    sleep = wait
+  } = {}) {
+    async function loadHistory(page, size = 20) {
+      return request2("/ai/conversations" + query({ page, size }));
+    }
+    async function loadSnapshot(id, { expectedQuestion = null, knownLastMessage = null } = {}) {
+      const [history, proposals] = await Promise.all([
+        request2(conversationPath(id, "/messages")),
+        request2(conversationPath(id, "/proposals"))
+      ]);
+      const messageHistory = history || [];
+      if (!hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage)) return false;
+      return {
+        id,
+        messages: messageHistory,
+        proposal: (proposals || []).find((item) => item.status === "PENDING") || null
+      };
+    }
+    async function recoverAfterDisconnect({
+      id,
+      isCurrent = () => true,
+      expectedQuestion = null,
+      knownLastMessage = null,
+      onCancelRequested
+    }) {
+      if (!id) return false;
+      if (!isCurrent()) return true;
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        if (!isCurrent()) return true;
+        let status;
+        try {
+          status = await request2(conversationPath(id, "/turn/status"), { timeoutMs: 5e3 });
+        } catch (error) {
+          if (!["NETWORK", "TIMEOUT"].includes(error == null ? void 0 : error.code)) return false;
+          await sleep(500);
+          continue;
+        }
+        if ((status == null ? void 0 : status.status) === "CANCEL_REQUESTED") {
+          onCancelRequested == null ? void 0 : onCancelRequested();
+          await sleep(500);
+          continue;
+        }
+        if ((status == null ? void 0 : status.status) === "IDLE") {
+          try {
+            return await loadSnapshot(id, { expectedQuestion, knownLastMessage });
+          } catch (error) {
+            if (!["NETWORK", "TIMEOUT"].includes(error == null ? void 0 : error.code)) return false;
+            await sleep(500);
+            continue;
+          }
+        }
+        await sleep(500);
+      }
+      return true;
+    }
+    async function cancelTurn(id) {
+      return request2(conversationPath(id, "/turn/cancel"), { method: "POST" });
+    }
+    async function streamTurn({
+      question,
+      conversationId = null,
+      signal,
+      isCurrent = () => true,
+      onConversationId,
+      onProgress,
+      onCompleted,
+      onCancelled
+    }) {
+      let activeConversationId = conversationId || null;
+      let completed = false;
+      let cancelled = false;
+      await streamRequest("/ai/chat/stream", {
+        signal,
+        body: { question, conversationId: conversationId || null },
+        onEvent: async (event, payload) => {
+          var _a, _b;
+          if (!isCurrent()) return;
+          const id = (payload == null ? void 0 : payload.conversationId) || ((_a = payload == null ? void 0 : payload.data) == null ? void 0 : _a.conversationId);
+          if (id) {
+            activeConversationId = id;
+            onConversationId == null ? void 0 : onConversationId(id);
+          }
+          if (event === "progress") {
+            onProgress == null ? void 0 : onProgress(Number(((_b = payload == null ? void 0 : payload.data) == null ? void 0 : _b.bytes) || (payload == null ? void 0 : payload.bytes) || 0));
+          } else if (event === "completed") {
+            completed = true;
+            await (onCompleted == null ? void 0 : onCompleted(payload == null ? void 0 : payload.data));
+          } else if (event === "cancelled") {
+            cancelled = true;
+            onCancelled == null ? void 0 : onCancelled();
+          } else if (event === "failed") {
+            throw failedEventError(payload);
+          }
+        }
+      });
+      if (!completed && !cancelled) throw disconnectedError();
+      return { conversationId: activeConversationId, completed, cancelled };
+    }
+    return { loadHistory, loadSnapshot, recoverAfterDisconnect, cancelTurn, streamTurn };
+  }
   const { ref: ref$e, computed: computed$e, onMounted: onMounted$b, onUnmounted: onUnmounted$8, watch: watch$c } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
@@ -13547,6 +13677,7 @@
     name: "Guide",
     components: { ConsumerShell, ProductImage },
     setup() {
+      const conversationTransport = createGuideConversationTransport();
       const input = ref$e("");
       const thinking = ref$e(false);
       const selectedIds = ref$e([]);
@@ -13659,31 +13790,19 @@
         proposalFeedback.value = "";
       }
       async function loadConversationSnapshot(id, stamp, expectedQuestion = null, knownLastMessage = null) {
-        var _a;
-        const encoded = encodeURIComponent(id);
-        const [history, proposals] = await Promise.all([
-          api("/ai/conversations/" + encoded + "/messages"),
-          api("/ai/conversations/" + encoded + "/proposals")
-        ]);
+        const snapshot = await conversationTransport.loadSnapshot(id, {
+          expectedQuestion,
+          knownLastMessage
+        });
         if (stamp !== conversationEpoch) return false;
-        const messageHistory = history || [];
-        if (expectedQuestion) {
-          const lastQuestion = messageHistory.length - 2;
-          const tailQuestion = messageHistory[lastQuestion];
-          const tailAnswer = messageHistory[messageHistory.length - 1];
-          let knownLastIndex = -1;
-          if (knownLastMessage) {
-            for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
-              const message = messageHistory[index];
-              if (message.role === knownLastMessage.role && message.content === knownLastMessage.content) {
-                knownLastIndex = index;
-                break;
-              }
-            }
-          }
-          const hasAnswer = lastQuestion >= 0 && (tailQuestion == null ? void 0 : tailQuestion.role) === "user" && tailQuestion.content === expectedQuestion && (tailAnswer == null ? void 0 : tailAnswer.role) === "assistant" && (knownLastIndex < 0 || knownLastIndex < lastQuestion);
-          if (!hasAnswer) return false;
-        }
+        if (!snapshot) return false;
+        applyConversationSnapshot(snapshot, id, stamp);
+        return true;
+      }
+      function applyConversationSnapshot(snapshot, id, stamp) {
+        var _a;
+        if (stamp !== conversationEpoch || !snapshot) return false;
+        const messageHistory = snapshot.messages;
         store.conversationId = id;
         messages.value = messageHistory.map((m) => ({
           role: m.role,
@@ -13692,56 +13811,39 @@
           citationStatus: m.citationStatus || "MISSING",
           time: "历史消息"
         }));
-        proposal.value = (proposals || []).find((p2) => p2.status === "PENDING") || null;
+        proposal.value = snapshot.proposal;
         selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
         return true;
       }
       async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
-        var _a, _b;
+        var _a;
         if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
         reconnecting.value = true;
         try {
-          for (let attempt = 0; attempt < 60; attempt += 1) {
-            if (stamp !== conversationEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return true;
-            let status;
-            try {
-              status = await api("/ai/conversations/" + encodeURIComponent(id) + "/turn/status", {
-                timeoutMs: 5e3
-              });
-            } catch (error2) {
-              if (!["NETWORK", "TIMEOUT"].includes(error2 == null ? void 0 : error2.code)) return false;
-              await new Promise((resolve2) => setTimeout(resolve2, 500));
-              continue;
-            }
-            if ((status == null ? void 0 : status.status) === "CANCEL_REQUESTED") {
+          const recovered = await conversationTransport.recoverAfterDisconnect({
+            id,
+            isCurrent: () => {
+              var _a2;
+              return stamp === conversationEpoch && actor === ((_a2 = store.user) == null ? void 0 : _a2.userId);
+            },
+            expectedQuestion,
+            knownLastMessage,
+            onCancelRequested: () => {
               cancelRequested.value = true;
-              await new Promise((resolve2) => setTimeout(resolve2, 500));
-              continue;
             }
-            if ((status == null ? void 0 : status.status) === "IDLE") {
-              try {
-                return await loadConversationSnapshot(id, stamp, expectedQuestion, knownLastMessage);
-              } catch (error2) {
-                if (!["NETWORK", "TIMEOUT"].includes(error2 == null ? void 0 : error2.code)) return false;
-                await new Promise((resolve2) => setTimeout(resolve2, 500));
-                continue;
-              }
-            }
-            await new Promise((resolve2) => setTimeout(resolve2, 500));
-          }
+          });
+          if (recovered && recovered !== true) applyConversationSnapshot(recovered, id, stamp);
+          return recovered;
         } finally {
           reconnecting.value = false;
         }
-        return true;
       }
       async function cancelTurn() {
         const id = store.conversationId;
         if (preview || !thinking.value || !id || cancelRequested.value) return;
         cancelRequested.value = true;
         try {
-          await api("/ai/conversations/" + encodeURIComponent(id) + "/turn/cancel", {
-            method: "POST"
-          });
+          await conversationTransport.cancelTurn(id);
         } catch (err) {
           cancelRequested.value = false;
           notify((err == null ? void 0 : err.message) || "取消请求未完成，请稍后重试");
@@ -13782,33 +13884,29 @@
         let completed = false;
         let cancelled = false;
         try {
-          await stream("/ai/chat/stream", {
+          const result = await conversationTransport.streamTurn({
+            question: text,
+            conversationId: store.conversationId || null,
             signal: controller.signal,
-            body: { question: text, conversationId: store.conversationId || null },
-            onEvent: async (event, payload) => {
-              var _a2, _b, _c;
-              if (stamp !== conversationEpoch) return;
-              const id = (payload == null ? void 0 : payload.conversationId) || ((_a2 = payload == null ? void 0 : payload.data) == null ? void 0 : _a2.conversationId);
-              if (id) {
-                streamConversationId = id;
-                store.conversationId = id;
-              }
-              if (event === "progress") {
-                streamProgress.value = Number(((_b = payload == null ? void 0 : payload.data) == null ? void 0 : _b.bytes) || (payload == null ? void 0 : payload.bytes) || 0);
-              } else if (event === "completed") {
-                completed = true;
-                applyChatAnswer(payload == null ? void 0 : payload.data, stamp);
-              } else if (event === "cancelled") {
-                cancelled = true;
-                cancelRequested.value = true;
-              } else if (event === "failed") {
-                const code = (payload == null ? void 0 : payload.errorCode) || ((_c = payload == null ? void 0 : payload.data) == null ? void 0 : _c.errorCode) || "AI0001";
-                throw Object.assign(new Error("智能服务暂不可用，请稍后重试"), { code });
-              }
+            isCurrent: () => stamp === conversationEpoch,
+            onConversationId: (id) => {
+              streamConversationId = id;
+              store.conversationId = id;
+            },
+            onProgress: (bytes) => {
+              streamProgress.value = bytes;
+            },
+            onCompleted: (answer) => {
+              completed = true;
+              applyChatAnswer(answer, stamp);
+            },
+            onCancelled: () => {
+              cancelled = true;
+              cancelRequested.value = true;
             }
           });
-          if (!completed && !cancelled)
-            throw Object.assign(new Error("流式连接中断，请稍后重试"), { code: "NETWORK" });
+          completed = result.completed;
+          cancelled = result.cancelled;
         } catch (err) {
           if ((err == null ? void 0 : err.name) === "AbortError" && (cancelRequested.value || stamp !== conversationEpoch))
             return;
@@ -13839,7 +13937,7 @@
         const page = reset ? 1 : historyPage.value + 1;
         loadingHistory.value = true;
         try {
-          const result = await api("/ai/conversations" + query({ page, size: 20 })) || [];
+          const result = await conversationTransport.loadHistory(page, 20) || [];
           if (stamp === historyEpoch) {
             conversations.value = reset ? result : [...new Map([...conversations.value, ...result].map((c) => [c.id, c])).values()];
             historyPage.value = page;
@@ -15065,8 +15163,7 @@
       };
     })()
   };
-  const { ref: ref$b, computed: computed$b, watch: watch$9, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
-  const MENU = [
+  const merchantNav = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
     ["box", "库存管理", "/merchant/inventory"],
@@ -15076,65 +15173,47 @@
     ["users", "店员管理", "/merchant/team"],
     ["shield", "角色权限", "/merchant/roles"],
     ["book", "知识库", "/merchant/knowledge"],
+    ["search", "RAG 调试", "/merchant/knowledge/debug"],
     ["settings", "门店设置", "/merchant/settings"]
   ];
-  const Merchant = {
-    name: "Merchant",
-    components: { AuthDialog, ProductImage, ProductImageField, ProductImageListField },
+  const adminNav = [
+    ["home", "平台总览", "/admin"],
+    ["store", "商户审核", "/admin/applications"],
+    ["users", "商户监管", "/admin/merchants"],
+    ["package", "商品监管", "/admin/products"],
+    ["order", "订单监管", "/admin/orders"],
+    ["shield", "争议处理", "/admin/disputes"],
+    ["book", "知识库", "/admin/knowledge"],
+    ["search", "RAG 调试", "/admin/knowledge/debug"],
+    ["grid", "分类管理", "/admin/categories"]
+  ];
+  const merchantPermissions = Object.freeze({
+    "/merchant": "order.read",
+    "/merchant/products": "product.read",
+    "/merchant/inventory": "stock.read",
+    "/merchant/orders": "order.read",
+    "/merchant/pickup": "pickup.verify",
+    "/merchant/aftersales": "aftersale.read",
+    "/merchant/team": "team.manage",
+    "/merchant/roles": "role.manage",
+    "/merchant/knowledge": "knowledge.read",
+    "/merchant/knowledge/debug": "knowledge.read",
+    "/merchant/settings": "store.manage"
+  });
+  const backofficeRoutes = Object.freeze([
+    ...merchantNav.map(([, , path]) => path),
+    ...adminNav.map(([, , path]) => path)
+  ]);
+  const { ref: ref$b, computed: computed$b, watch: watch$9, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
+  const BackofficeShell = {
+    name: "BackofficeShell",
+    props: { role: { type: String, default: "merchant" }, title: String },
+    components: { AuthDialog },
     setup() {
-      const scope = requestScope();
-      const search = ref$b("");
-      const category = ref$b("");
-      const status = ref$b("");
-      const sort = ref$b("NEWEST");
-      const page = ref$b(1);
-      const selectedId = ref$b("");
-      const selectedSkuId = ref$b("");
-      const drawerTab = ref$b("stock");
-      const loginOpen = ref$b(false);
-      const adjustment = ref$b(1);
-      const pendingReplenishKey = ref$b("");
-      const pendingReplenishPayload = ref$b("");
-      const saving = ref$b(false);
-      const modal2 = ref$b("");
-      const activePriceSku = ref$b(null);
-      const newPrice = ref$b("");
-      const form = ref$b({
-        title: "",
-        description: "",
-        categoryCode: "food",
-        imageUrl: "",
-        imageUrls: [],
-        skus: [{ specKey: "默认规格", price: "4.50" }]
-      });
-      const skuForm = ref$b({ specKey: "", price: "" });
-      const info = ref$b({
-        title: "",
-        description: "",
-        categoryCode: "food",
-        imageUrl: "",
-        imageUrls: []
-      });
-      const createImageUploading = ref$b(false), editImageUploading = ref$b(false);
-      const createImageInvalid = ref$b(false), editImageInvalid = ref$b(false);
-      const merchant = computed$b(
-        () => store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {}
+      const loginOpen = ref$b(false), mobileNav = ref$b(null);
+      const visibleMerchantNav = computed$b(
+        () => merchantNav.filter(([, , path]) => hasPermission(merchantPermissions[path]))
       );
-      const owned = computed$b(() => hasPermission("product.write"));
-      const required = {
-        "/merchant": "order.read",
-        "/merchant/products": "product.read",
-        "/merchant/inventory": "stock.read",
-        "/merchant/orders": "order.read",
-        "/merchant/pickup": "pickup.verify",
-        "/merchant/aftersales": "aftersale.read",
-        "/merchant/team": "team.manage",
-        "/merchant/roles": "role.manage",
-        "/merchant/knowledge": "knowledge.read",
-        "/merchant/settings": "store.manage"
-      };
-      const visibleMenu = computed$b(() => MENU.filter(([, , path]) => hasPermission(required[path])));
-      const mobileNav = ref$b(null);
       const alignMobileNav = () => {
         var _a;
         const nav = mobileNav.value;
@@ -15142,7 +15221,7 @@
           (_a = nav.querySelector("button.active")) == null ? void 0 : _a.scrollIntoView({ inline: "center", block: "nearest" });
       };
       watch$9(
-        [() => store.route, () => visibleMenu.value.map((item) => item[2]).join("|")],
+        [() => store.route, () => visibleMerchantNav.value.map((item) => item[2]).join("|")],
         async () => {
           await nextTick$1();
           alignMobileNav();
@@ -15151,19 +15230,290 @@
       );
       onMounted$a(() => window.addEventListener("resize", alignMobileNav));
       onUnmounted$7(() => window.removeEventListener("resize", alignMobileNav));
-      const canReplenish = computed$b(() => hasPermission("stock.replenish"));
-      const canRead = computed$b(() => hasPermission("product.read"));
-      const items2 = computed$b(() => store.products.filter((p2) => p2.merchantId === store.merchantId));
-      const selected = computed$b(
+      async function switchShop(e) {
+        if (preview) {
+          notify("演示模式不能切换真实商户");
+          return;
+        }
+        switchMerchantContext(e.target.value);
+      }
+      return {
+        store,
+        go,
+        preview,
+        loginOpen,
+        mobileNav,
+        merchantNav,
+        visibleMerchantNav,
+        adminNav,
+        switchShop
+      };
+    },
+    render: (() => {
+      const { createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
+      return function render2(_ctx, _cache) {
+        const _component_Icon = _resolveComponent("Icon");
+        const _component_AuthDialog = _resolveComponent("AuthDialog");
+        return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
+          _createElementVNode("aside", { class: "merchant-sidebar" }, [
+            _createElementVNode("button", {
+              class: "merchant-brand",
+              onClick: ($event) => _ctx.go("/")
+            }, [
+              _createElementVNode("span", { class: "brand-pin" }, [
+                _createElementVNode("span")
+              ]),
+              _createElementVNode("span", { class: "brand-word" }, [
+                _createTextVNode("青柠校园 "),
+                _createElementVNode(
+                  "span",
+                  { class: "brand-suffix" },
+                  "/ " + _toDisplayString(_ctx.role === "admin" ? "平台端" : "商户端"),
+                  1
+                  /* TEXT */
+                )
+              ])
+            ], 8, ["onClick"]),
+            _createElementVNode("nav", { class: "merchant-nav" }, [
+              (_openBlock(true), _createElementBlock(
+                _Fragment,
+                null,
+                _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
+                  return _openBlock(), _createElementBlock("button", {
+                    key: path,
+                    class: _normalizeClass({ active: _ctx.store.route === path }),
+                    onClick: ($event) => _ctx.go(path)
+                  }, [
+                    _createVNode2(_component_Icon, {
+                      name: ico,
+                      size: 19
+                    }, null, 8, ["name"]),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      _toDisplayString(label),
+                      1
+                      /* TEXT */
+                    ),
+                    _ctx.store.route === path ? (_openBlock(), _createElementBlock("span", {
+                      key: 0,
+                      class: "nav-left-bar"
+                    })) : _createCommentVNode("v-if", true)
+                  ], 10, ["onClick"]);
+                }),
+                128
+                /* KEYED_FRAGMENT */
+              ))
+            ]),
+            _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
+              _createElementVNode("button", {
+                class: "sidebar-back",
+                onClick: ($event) => _ctx.go("/")
+              }, [
+                _createVNode2(_component_Icon, {
+                  name: "arrowLeft",
+                  size: 16
+                }),
+                _createTextVNode(" 返回购物端")
+              ], 8, ["onClick"])
+            ])
+          ]),
+          _createElementVNode("div", { class: "merchant-content-shell" }, [
+            _createElementVNode("header", { class: "merchant-topbar" }, [
+              _createElementVNode("div", { class: "topbar-crumb" }, [
+                _createTextVNode(
+                  _toDisplayString(_ctx.role === "admin" ? "平台运营" : "店铺运营") + " ",
+                  1
+                  /* TEXT */
+                ),
+                _createVNode2(_component_Icon, {
+                  name: "chevronRight",
+                  size: 14
+                }),
+                _createElementVNode(
+                  "strong",
+                  null,
+                  _toDisplayString(_ctx.title),
+                  1
+                  /* TEXT */
+                )
+              ]),
+              _createElementVNode("div", { class: "merchant-topbar-tools" }, [
+                _ctx.preview ? (_openBlock(), _createElementBlock("span", {
+                  key: 0,
+                  class: "admin-preview-tag"
+                }, "设计预览")) : _createCommentVNode("v-if", true),
+                _ctx.role === "merchant" ? (_openBlock(), _createElementBlock("label", {
+                  key: 1,
+                  class: "topbar-merchant-select"
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "store",
+                    size: 16
+                  }),
+                  _createElementVNode("select", {
+                    value: _ctx.store.merchantId,
+                    onChange: _ctx.switchShop,
+                    disabled: _ctx.preview
+                  }, [
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.store.merchants, (m) => {
+                        return _openBlock(), _createElementBlock("option", {
+                          key: m.merchantId,
+                          value: m.merchantId
+                        }, _toDisplayString(m.name), 9, ["value"]);
+                      }),
+                      128
+                      /* KEYED_FRAGMENT */
+                    ))
+                  ], 40, ["value", "onChange", "disabled"])
+                ])) : _createCommentVNode("v-if", true),
+                _createElementVNode("button", {
+                  class: "topbar-avatar",
+                  onClick: ($event) => _ctx.loginOpen = true
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "user",
+                    size: 18
+                  })
+                ], 8, ["onClick"])
+              ])
+            ]),
+            _createElementVNode(
+              "nav",
+              {
+                ref: "mobileNav",
+                class: "merchant-mobile-nav",
+                "aria-label": "工作台导航"
+              },
+              [
+                (_openBlock(true), _createElementBlock(
+                  _Fragment,
+                  null,
+                  _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
+                    return _openBlock(), _createElementBlock("button", {
+                      key: path,
+                      class: _normalizeClass({ active: _ctx.store.route === path }),
+                      onClick: ($event) => _ctx.go(path)
+                    }, [
+                      _createVNode2(_component_Icon, {
+                        name: ico,
+                        size: 16
+                      }, null, 8, ["name"]),
+                      _createTextVNode(
+                        _toDisplayString(label),
+                        1
+                        /* TEXT */
+                      )
+                    ], 10, ["onClick"]);
+                  }),
+                  128
+                  /* KEYED_FRAGMENT */
+                ))
+              ],
+              512
+              /* NEED_PATCH */
+            ),
+            _createElementVNode("main", { class: "merchant-main" }, [
+              _createElementVNode("div", { class: "merchant-page-heading" }, [
+                _createElementVNode("div", null, [
+                  _createElementVNode(
+                    "h1",
+                    null,
+                    _toDisplayString(_ctx.title),
+                    1
+                    /* TEXT */
+                  )
+                ]),
+                _renderSlot(_ctx.$slots, "actions")
+              ]),
+              _ctx.store.error ? (_openBlock(), _createElementBlock(
+                "div",
+                {
+                  key: 0,
+                  class: "inline-error merchant-error"
+                },
+                _toDisplayString(_ctx.store.error),
+                1
+                /* TEXT */
+              )) : _createCommentVNode("v-if", true),
+              _renderSlot(_ctx.$slots, "default")
+            ])
+          ]),
+          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+            key: 0,
+            onClose: ($event) => _ctx.loginOpen = false,
+            onSuccess: ($event) => _ctx.role === "merchant" ? _ctx.loadMerchant() : null
+          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
+        ]);
+      };
+    })()
+  };
+  const { ref: ref$a, computed: computed$a, watch: watch$8, nextTick, onMounted: onMounted$9, onUnmounted: onUnmounted$6 } = Vue;
+  const Merchant = {
+    name: "Merchant",
+    components: {
+      BackofficeShell,
+      AuthDialog,
+      ProductImage,
+      ProductImageField,
+      ProductImageListField
+    },
+    setup() {
+      const scope = requestScope();
+      const search = ref$a("");
+      const category = ref$a("");
+      const status = ref$a("");
+      const sort = ref$a("NEWEST");
+      const page = ref$a(1);
+      const selectedId = ref$a("");
+      const selectedSkuId = ref$a("");
+      const drawerTab = ref$a("stock");
+      const loginOpen = ref$a(false);
+      const adjustment = ref$a(1);
+      const pendingReplenishKey = ref$a("");
+      const pendingReplenishPayload = ref$a("");
+      const saving = ref$a(false);
+      const modal2 = ref$a("");
+      const activePriceSku = ref$a(null);
+      const newPrice = ref$a("");
+      const form = ref$a({
+        title: "",
+        description: "",
+        categoryCode: "food",
+        imageUrl: "",
+        imageUrls: [],
+        skus: [{ specKey: "默认规格", price: "4.50" }]
+      });
+      const skuForm = ref$a({ specKey: "", price: "" });
+      const info = ref$a({
+        title: "",
+        description: "",
+        categoryCode: "food",
+        imageUrl: "",
+        imageUrls: []
+      });
+      const createImageUploading = ref$a(false), editImageUploading = ref$a(false);
+      const createImageInvalid = ref$a(false), editImageInvalid = ref$a(false);
+      const merchant = computed$a(
+        () => store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {}
+      );
+      const owned = computed$a(() => hasPermission("product.write"));
+      const canReplenish = computed$a(() => hasPermission("stock.replenish"));
+      const canRead = computed$a(() => hasPermission("product.read"));
+      const items2 = computed$a(() => store.products.filter((p2) => p2.merchantId === store.merchantId));
+      const selected = computed$a(
         () => items2.value.find((p2) => p2.productId === selectedId.value) || items2.value[0] || null
       );
-      const selectedSku = computed$b(
+      const selectedSku = computed$a(
         () => {
           var _a, _b;
           return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === selectedSkuId.value)) || skuOf(selected.value);
         }
       );
-      const stock = computed$b(
+      const stock = computed$a(
         () => store.stocks.find((s) => {
           var _a;
           return s.skuId === ((_a = selectedSku.value) == null ? void 0 : _a.skuId);
@@ -15172,13 +15522,13 @@
       const activeSkuCount = (p2) => ((p2 == null ? void 0 : p2.skus) || []).filter((s) => s.status === "ACTIVE").length;
       const skuStatusReason = (p2, s) => (p2 == null ? void 0 : p2.status) === "PUBLISHED" && s.status === "ACTIVE" && activeSkuCount(p2) <= 1 ? "已上架商品须保留至少一个有效规格" : "";
       const publishReason = (p2) => (p2 == null ? void 0 : p2.status) !== "PUBLISHED" && !activeSkuCount(p2) ? "请先启用至少一个规格再上架" : "";
-      const count = computed$b(() => ({
+      const count = computed$a(() => ({
         all: items2.value.length,
         published: items2.value.filter((p2) => p2.status === "PUBLISHED").length,
         unpublished: items2.value.filter((p2) => p2.status !== "PUBLISHED").length,
         low: items2.value.filter((p2) => p2.status === "PUBLISHED" && available(p2) < 20).length
       }));
-      const filtered = computed$b(() => {
+      const filtered = computed$a(() => {
         if (!preview) return items2.value;
         const q = search.value.trim().toLowerCase();
         return items2.value.filter(
@@ -15187,13 +15537,13 @@
           )) && (!category.value || p2.categoryCode === category.value) && (!status.value || (status.value === "low" ? p2.status === "PUBLISHED" && available(p2) < 20 : p2.status === status.value))
         );
       });
-      const totalPages = computed$b(
+      const totalPages = computed$a(
         () => Math.max(1, Math.ceil((preview ? filtered.value.length : store.merchantPage.total) / 9))
       );
-      const pageRows = computed$b(
+      const pageRows = computed$a(
         () => preview ? filtered.value.slice((page.value - 1) * 9, page.value * 9) : filtered.value
       );
-      const inventoryPercent = computed$b(
+      const inventoryPercent = computed$a(
         () => {
           var _a, _b;
           return Math.min(
@@ -15213,7 +15563,7 @@
         selectedSkuId.value = skuOf(p2).skuId || "";
         drawerTab.value = "stock";
       };
-      watch$9(
+      watch$8(
         selected,
         (p2, previous) => {
           var _a;
@@ -15248,10 +15598,10 @@
           sort: sort.value
         });
       }
-      onMounted$a(refreshPage);
-      onUnmounted$7(() => clearTimeout(searchDelay));
+      onMounted$9(refreshPage);
+      onUnmounted$6(() => clearTimeout(searchDelay));
       let resettingPage = false;
-      watch$9(
+      watch$8(
         [page, search, category, status, sort],
         (next, previous) => {
           if (resettingPage) return;
@@ -15529,7 +15879,6 @@
         selectedId.value = "";
       }
       return {
-        mobileNav,
         priceSku,
         sort,
         canRead,
@@ -15552,7 +15901,6 @@
         invalidateMerchantSearch,
         owned,
         merchant,
-        visibleMenu,
         search,
         category,
         status,
@@ -15595,203 +15943,44 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, toDisplayString: _toDisplayString, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, normalizeStyle: _normalizeStyle, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, createBlock: _createBlock, resolveDirective: _resolveDirective } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, normalizeStyle: _normalizeStyle, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, vModelSelect: _vModelSelect, withModifiers: _withModifiers, resolveDirective: _resolveDirective, createBlock: _createBlock, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ProductImageListField = _resolveComponent("ProductImageListField");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
+        const _component_BackofficeShell = _resolveComponent("BackofficeShell");
         const _directive_modal = _resolveDirective("modal");
-        return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
-          _createElementVNode("aside", { class: "merchant-sidebar" }, [
-            _createElementVNode("button", {
-              class: "merchant-brand",
-              onClick: ($event) => _ctx.go("/")
-            }, [
-              _createElementVNode("span", { class: "brand-pin" }, [
-                _createElementVNode("span")
-              ]),
-              _createElementVNode("span", { class: "brand-word" }, [
-                _createTextVNode("青柠校园"),
-                _createElementVNode("span", { class: "brand-suffix" }, " / 商户端")
-              ])
-            ], 8, ["onClick"]),
-            _createElementVNode("nav", { class: "merchant-nav" }, [
-              (_openBlock(true), _createElementBlock(
-                _Fragment,
-                null,
-                _renderList(_ctx.visibleMenu, ([icon, label, path]) => {
-                  return _openBlock(), _createElementBlock("button", {
-                    key: path,
-                    class: _normalizeClass({ active: _ctx.store.route === path }),
-                    onClick: ($event) => _ctx.go(path)
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: icon,
-                      size: 19
-                    }, null, 8, ["name"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(label),
-                      1
-                      /* TEXT */
-                    ),
-                    _ctx.store.route === path ? (_openBlock(), _createElementBlock("span", {
-                      key: 0,
-                      class: "nav-left-bar"
-                    })) : _createCommentVNode("v-if", true)
-                  ], 10, ["onClick"]);
-                }),
-                128
-                /* KEYED_FRAGMENT */
-              ))
-            ]),
-            _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
+        return _openBlock(), _createBlock(_component_BackofficeShell, { title: "商品管理" }, {
+          actions: _withCtx(() => [
+            _createElementVNode("div", { class: "head-actions" }, [
               _createElementVNode("button", {
-                class: "sidebar-back",
-                onClick: ($event) => _ctx.go("/")
+                class: "outline-button small",
+                onClick: _ctx.loadMerchant,
+                disabled: _ctx.store.loading
               }, [
                 _createVNode2(_component_Icon, {
-                  name: "arrowLeft",
+                  name: "refresh",
                   size: 16
                 }),
-                _createTextVNode(" 返回购物端")
-              ], 8, ["onClick"])
+                _createTextVNode("刷新")
+              ], 8, ["onClick", "disabled"]),
+              _createElementVNode("button", {
+                class: "teal-button",
+                onClick: _ctx.openCreate,
+                disabled: !_ctx.owned
+              }, [
+                _createVNode2(_component_Icon, {
+                  name: "plus",
+                  size: 18
+                }),
+                _createTextVNode("新增商品")
+              ], 8, ["onClick", "disabled"])
             ])
           ]),
-          _createElementVNode("div", { class: "merchant-content-shell" }, [
-            _createElementVNode("header", { class: "merchant-topbar" }, [
-              _createElementVNode("div", { class: "topbar-crumb" }, [
-                _createTextVNode("运营中心 "),
-                _createVNode2(_component_Icon, {
-                  name: "chevronRight",
-                  size: 14
-                }),
-                _createTextVNode(),
-                _createElementVNode("strong", null, "商品管理")
-              ]),
-              _createElementVNode("div", { class: "merchant-topbar-tools" }, [
-                _ctx.preview ? (_openBlock(), _createElementBlock("div", {
-                  key: 0,
-                  class: "admin-preview-tag"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "circleHelp",
-                    size: 14
-                  }),
-                  _createTextVNode("演示数据")
-                ])) : _createCommentVNode("v-if", true),
-                _createElementVNode("div", { class: "topbar-merchant-select" }, [
-                  _createVNode2(_component_Icon, {
-                    name: "store",
-                    size: 16
-                  }),
-                  _createElementVNode("select", {
-                    value: _ctx.store.merchantId,
-                    onChange: _ctx.switchMerchant,
-                    disabled: _ctx.preview
-                  }, [
-                    (_openBlock(true), _createElementBlock(
-                      _Fragment,
-                      null,
-                      _renderList(_ctx.store.merchants, (m) => {
-                        return _openBlock(), _createElementBlock("option", {
-                          value: m.merchantId,
-                          key: m.merchantId
-                        }, _toDisplayString(m.name) + " · " + _toDisplayString(m.storeName), 9, ["value"]);
-                      }),
-                      128
-                      /* KEYED_FRAGMENT */
-                    ))
-                  ], 40, ["value", "onChange", "disabled"]),
-                  _createVNode2(_component_Icon, {
-                    name: "chevronDown",
-                    size: 13
-                  })
-                ]),
-                _createElementVNode(
-                  "span",
-                  { class: "admin-avatar" },
-                  _toDisplayString(((_b = (_a = _ctx.store.user) == null ? void 0 : _a.displayName) == null ? void 0 : _b.slice(0, 1)) || "店"),
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode(
-                  "span",
-                  { class: "admin-user" },
-                  _toDisplayString(((_c = _ctx.store.user) == null ? void 0 : _c.displayName) || "店铺账号"),
-                  1
-                  /* TEXT */
-                )
-              ])
-            ]),
-            _createElementVNode(
-              "nav",
-              {
-                ref: "mobileNav",
-                class: "merchant-mobile-nav",
-                "aria-label": "工作台导航"
-              },
-              [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.visibleMenu, ([icon, label, path]) => {
-                    return _openBlock(), _createElementBlock("button", {
-                      key: path,
-                      class: _normalizeClass({ active: _ctx.store.route === path }),
-                      onClick: ($event) => _ctx.go(path)
-                    }, [
-                      _createVNode2(_component_Icon, {
-                        name: icon,
-                        size: 16
-                      }, null, 8, ["name"]),
-                      _createTextVNode(
-                        _toDisplayString(label),
-                        1
-                        /* TEXT */
-                      )
-                    ], 10, ["onClick"]);
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                ))
-              ],
-              512
-              /* NEED_PATCH */
-            ),
-            _createElementVNode("main", { class: "merchant-main" }, [
-              _createElementVNode("div", { class: "merchant-page-heading" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode("h1", null, "商品管理")
-                ]),
-                _createElementVNode("div", { class: "head-actions" }, [
-                  _createElementVNode("button", {
-                    class: "outline-button small",
-                    onClick: _ctx.loadMerchant,
-                    disabled: _ctx.store.loading
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: "refresh",
-                      size: 16
-                    }),
-                    _createTextVNode("刷新")
-                  ], 8, ["onClick", "disabled"]),
-                  _createElementVNode("button", {
-                    class: "teal-button",
-                    onClick: _ctx.openCreate,
-                    disabled: !_ctx.owned
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: "plus",
-                      size: 18
-                    }),
-                    _createTextVNode("新增商品")
-                  ], 8, ["onClick", "disabled"])
-                ])
-              ]),
+          default: _withCtx(() => {
+            var _a, _b, _c, _d, _e, _f, _g, _h;
+            return [
               _ctx.store.error ? (_openBlock(), _createElementBlock("div", {
                 key: 0,
                 class: "inline-error merchant-error"
@@ -16228,7 +16417,7 @@
                         _createElementVNode(
                           "span",
                           { class: "inspector-id" },
-                          _toDisplayString((_d = _ctx.selected.productId) == null ? void 0 : _d.slice(-9)),
+                          _toDisplayString((_a = _ctx.selected.productId) == null ? void 0 : _a.slice(-9)),
                           1
                           /* TEXT */
                         )
@@ -16319,7 +16508,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_e = _ctx.stock) == null ? void 0 : _e.onHand) ?? "—"),
+                              _toDisplayString(((_b = _ctx.stock) == null ? void 0 : _b.onHand) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -16329,7 +16518,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_f = _ctx.stock) == null ? void 0 : _f.reserved) ?? "—"),
+                              _toDisplayString(((_c = _ctx.stock) == null ? void 0 : _c.reserved) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -16339,7 +16528,7 @@
                             _createElementVNode(
                               "strong",
                               { class: "mint-text" },
-                              _toDisplayString(((_g = _ctx.stock) == null ? void 0 : _g.available) ?? ((_h = _ctx.selectedSku) == null ? void 0 : _h.available) ?? "—"),
+                              _toDisplayString(((_d = _ctx.stock) == null ? void 0 : _d.available) ?? ((_e = _ctx.selectedSku) == null ? void 0 : _e.available) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -16421,7 +16610,7 @@
                         _createElementVNode("button", {
                           class: "teal-button inspector-submit",
                           onClick: _ctx.replenish,
-                          disabled: _ctx.preview || _ctx.saving || !_ctx.canReplenish || !((_i = _ctx.selectedSku) == null ? void 0 : _i.skuId)
+                          disabled: _ctx.preview || _ctx.saving || !_ctx.canReplenish || !((_f = _ctx.selectedSku) == null ? void 0 : _f.skuId)
                         }, "确认补货", 8, ["onClick", "disabled"])
                       ])) : _ctx.drawerTab === "info" ? (_openBlock(), _createElementBlock("div", {
                         key: 1,
@@ -16606,283 +16795,285 @@
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              ))
-            ])
-          ]),
-          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
-            key: 0,
-            onClose: ($event) => _ctx.loginOpen = false,
-            onSuccess: _ctx.loadMerchant
-          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true),
-          _ctx.modal ? _withDirectives((_openBlock(), _createElementBlock("div", {
-            key: 1,
-            class: "ui-overlay",
-            onClick: _withModifiers(($event) => _ctx.modal = "", ["self"])
-          }, [
-            _ctx.modal === "create" ? (_openBlock(), _createElementBlock("form", {
-              key: 0,
-              class: "merchant-modal",
-              onSubmit: _withModifiers(_ctx.create, ["prevent"])
-            }, [
-              _createElementVNode("div", { class: "merchant-modal-header" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode("h2", null, "新增商品")
-                ]),
-                _createElementVNode("button", {
-                  type: "button",
-                  onClick: ($event) => _ctx.modal = "",
-                  "aria-label": "关闭"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "x",
-                    size: 20
-                  })
-                ], 8, ["onClick"])
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-5"
-              }, "商品名称"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-5",
-                class: "admin-input",
-                maxlength: "100",
-                "onUpdate:modelValue": ($event) => _ctx.form.title = $event,
-                placeholder: "商品名称",
-                required: ""
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.form.title]
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-6"
-              }, "分类"),
-              _withDirectives(_createElementVNode("select", {
-                id: "merchant-field-6",
-                "onUpdate:modelValue": ($event) => _ctx.form.categoryCode = $event,
-                class: "admin-input"
+              )),
+              _ctx.modal ? _withDirectives((_openBlock(), _createElementBlock("div", {
+                key: 3,
+                class: "ui-overlay",
+                onClick: _withModifiers(($event) => _ctx.modal = "", ["self"])
               }, [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.store.categories.filter((c) => c.active), (c) => {
-                    return _openBlock(), _createElementBlock("option", {
-                      value: c.code
-                    }, _toDisplayString(c.name), 9, ["value"]);
-                  }),
-                  256
-                  /* UNKEYED_FRAGMENT */
-                ))
-              ], 8, ["onUpdate:modelValue"]), [
-                [_vModelSelect, _ctx.form.categoryCode]
-              ]),
-              _createElementVNode("label", { class: "field-label" }, "规格 / 售价（元）"),
-              (_openBlock(true), _createElementBlock(
-                _Fragment,
-                null,
-                _renderList(_ctx.form.skus, (item, index) => {
-                  return _openBlock(), _createElementBlock("div", {
-                    key: index,
-                    class: "sku-create-row"
-                  }, [
-                    _withDirectives(_createElementVNode("input", {
-                      class: "admin-input",
-                      maxlength: "100",
-                      "onUpdate:modelValue": ($event) => item.specKey = $event,
-                      required: "",
-                      placeholder: "例如 250ml"
-                    }, null, 8, ["onUpdate:modelValue"]), [
-                      [_vModelText, item.specKey]
-                    ]),
-                    _withDirectives(_createElementVNode("input", {
-                      class: "admin-input",
-                      "onUpdate:modelValue": ($event) => item.price = $event,
-                      inputmode: "decimal",
-                      placeholder: "0.00",
-                      required: ""
-                    }, null, 8, ["onUpdate:modelValue"]), [
-                      [_vModelText, item.price]
+                _ctx.modal === "create" ? (_openBlock(), _createElementBlock("form", {
+                  key: 0,
+                  class: "merchant-modal",
+                  onSubmit: _withModifiers(_ctx.create, ["prevent"])
+                }, [
+                  _createElementVNode("div", { class: "merchant-modal-header" }, [
+                    _createElementVNode("div", null, [
+                      _createElementVNode("h2", null, "新增商品")
                     ]),
                     _createElementVNode("button", {
                       type: "button",
-                      class: "outline-button small",
-                      disabled: _ctx.form.skus.length === 1,
-                      onClick: ($event) => _ctx.removeCreateSku(index),
-                      "aria-label": "移除规格" + (index + 1)
+                      onClick: ($event) => _ctx.modal = "",
+                      "aria-label": "关闭"
                     }, [
                       _createVNode2(_component_Icon, {
                         name: "x",
-                        size: 15
+                        size: 20
                       })
-                    ], 8, ["disabled", "onClick", "aria-label"])
-                  ]);
-                }),
-                128
-                /* KEYED_FRAGMENT */
-              )),
-              _createElementVNode("button", {
-                type: "button",
-                class: "outline-button small",
-                disabled: _ctx.form.skus.length >= 20,
-                onClick: _ctx.addCreateSku
-              }, [
-                _createVNode2(_component_Icon, {
-                  name: "plus",
-                  size: 15
-                }),
-                _createTextVNode("添加规格")
-              ], 8, ["disabled", "onClick"]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-7"
-              }, "描述"),
-              _withDirectives(_createElementVNode("textarea", {
-                id: "merchant-field-7",
-                class: "admin-input",
-                rows: "3",
-                "onUpdate:modelValue": ($event) => _ctx.form.description = $event,
-                placeholder: "选填"
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.form.description]
-              ]),
-              _createElementVNode("label", { class: "field-label" }, "商品主图"),
-              _createVNode2(_component_ProductImageListField, {
-                modelValue: _ctx.form.imageUrls,
-                "onUpdate:modelValue": ($event) => _ctx.form.imageUrls = $event,
-                "merchant-id": _ctx.store.merchantId,
-                invalid: _ctx.createImageInvalid,
-                demo: _ctx.preview,
-                disabled: _ctx.saving || !_ctx.owned,
-                onBusy: ($event) => _ctx.createImageUploading = $event,
-                onInvalid: ($event) => _ctx.createImageInvalid = $event
-              }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "invalid", "demo", "disabled", "onBusy", "onInvalid"]),
-              _createElementVNode("div", { class: "form-buttons" }, [
-                _createElementVNode("button", {
-                  type: "button",
-                  class: "outline-button",
-                  onClick: ($event) => _ctx.modal = ""
-                }, "取消", 8, ["onClick"]),
-                _createElementVNode("button", {
-                  type: "submit",
-                  class: "teal-button",
-                  disabled: _ctx.preview || _ctx.saving || _ctx.createImageUploading || _ctx.createImageInvalid || !_ctx.owned
-                }, "保存商品", 8, ["disabled"])
-              ])
-            ], 40, ["onSubmit"])) : _ctx.modal === "addSku" ? (_openBlock(), _createElementBlock("form", {
-              key: 1,
-              class: "merchant-modal narrow",
-              onSubmit: _withModifiers(_ctx.addSku, ["prevent"])
-            }, [
-              _createElementVNode("div", { class: "merchant-modal-header" }, [
-                _createElementVNode("h2", null, "新增规格"),
-                _createElementVNode("button", {
-                  type: "button",
-                  onClick: ($event) => _ctx.modal = "",
-                  "aria-label": "关闭"
+                    ], 8, ["onClick"])
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-5"
+                  }, "商品名称"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-5",
+                    class: "admin-input",
+                    maxlength: "100",
+                    "onUpdate:modelValue": ($event) => _ctx.form.title = $event,
+                    placeholder: "商品名称",
+                    required: ""
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.form.title]
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-6"
+                  }, "分类"),
+                  _withDirectives(_createElementVNode("select", {
+                    id: "merchant-field-6",
+                    "onUpdate:modelValue": ($event) => _ctx.form.categoryCode = $event,
+                    class: "admin-input"
+                  }, [
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.store.categories.filter((c) => c.active), (c) => {
+                        return _openBlock(), _createElementBlock("option", {
+                          value: c.code
+                        }, _toDisplayString(c.name), 9, ["value"]);
+                      }),
+                      256
+                      /* UNKEYED_FRAGMENT */
+                    ))
+                  ], 8, ["onUpdate:modelValue"]), [
+                    [_vModelSelect, _ctx.form.categoryCode]
+                  ]),
+                  _createElementVNode("label", { class: "field-label" }, "规格 / 售价（元）"),
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.form.skus, (item, index) => {
+                      return _openBlock(), _createElementBlock("div", {
+                        key: index,
+                        class: "sku-create-row"
+                      }, [
+                        _withDirectives(_createElementVNode("input", {
+                          class: "admin-input",
+                          maxlength: "100",
+                          "onUpdate:modelValue": ($event) => item.specKey = $event,
+                          required: "",
+                          placeholder: "例如 250ml"
+                        }, null, 8, ["onUpdate:modelValue"]), [
+                          [_vModelText, item.specKey]
+                        ]),
+                        _withDirectives(_createElementVNode("input", {
+                          class: "admin-input",
+                          "onUpdate:modelValue": ($event) => item.price = $event,
+                          inputmode: "decimal",
+                          placeholder: "0.00",
+                          required: ""
+                        }, null, 8, ["onUpdate:modelValue"]), [
+                          [_vModelText, item.price]
+                        ]),
+                        _createElementVNode("button", {
+                          type: "button",
+                          class: "outline-button small",
+                          disabled: _ctx.form.skus.length === 1,
+                          onClick: ($event) => _ctx.removeCreateSku(index),
+                          "aria-label": "移除规格" + (index + 1)
+                        }, [
+                          _createVNode2(_component_Icon, {
+                            name: "x",
+                            size: 15
+                          })
+                        ], 8, ["disabled", "onClick", "aria-label"])
+                      ]);
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  )),
+                  _createElementVNode("button", {
+                    type: "button",
+                    class: "outline-button small",
+                    disabled: _ctx.form.skus.length >= 20,
+                    onClick: _ctx.addCreateSku
+                  }, [
+                    _createVNode2(_component_Icon, {
+                      name: "plus",
+                      size: 15
+                    }),
+                    _createTextVNode("添加规格")
+                  ], 8, ["disabled", "onClick"]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-7"
+                  }, "描述"),
+                  _withDirectives(_createElementVNode("textarea", {
+                    id: "merchant-field-7",
+                    class: "admin-input",
+                    rows: "3",
+                    "onUpdate:modelValue": ($event) => _ctx.form.description = $event,
+                    placeholder: "选填"
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.form.description]
+                  ]),
+                  _createElementVNode("label", { class: "field-label" }, "商品主图"),
+                  _createVNode2(_component_ProductImageListField, {
+                    modelValue: _ctx.form.imageUrls,
+                    "onUpdate:modelValue": ($event) => _ctx.form.imageUrls = $event,
+                    "merchant-id": _ctx.store.merchantId,
+                    invalid: _ctx.createImageInvalid,
+                    demo: _ctx.preview,
+                    disabled: _ctx.saving || !_ctx.owned,
+                    onBusy: ($event) => _ctx.createImageUploading = $event,
+                    onInvalid: ($event) => _ctx.createImageInvalid = $event
+                  }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "invalid", "demo", "disabled", "onBusy", "onInvalid"]),
+                  _createElementVNode("div", { class: "form-buttons" }, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.modal = ""
+                    }, "取消", 8, ["onClick"]),
+                    _createElementVNode("button", {
+                      type: "submit",
+                      class: "teal-button",
+                      disabled: _ctx.preview || _ctx.saving || _ctx.createImageUploading || _ctx.createImageInvalid || !_ctx.owned
+                    }, "保存商品", 8, ["disabled"])
+                  ])
+                ], 40, ["onSubmit"])) : _ctx.modal === "addSku" ? (_openBlock(), _createElementBlock("form", {
+                  key: 1,
+                  class: "merchant-modal narrow",
+                  onSubmit: _withModifiers(_ctx.addSku, ["prevent"])
                 }, [
-                  _createVNode2(_component_Icon, {
-                    name: "x",
-                    size: 18
-                  })
-                ], 8, ["onClick"])
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-8"
-              }, "规格名称"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-8",
-                class: "admin-input",
-                maxlength: "100",
-                "onUpdate:modelValue": ($event) => _ctx.skuForm.specKey = $event,
-                required: "",
-                placeholder: "例如：500ml"
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.skuForm.specKey]
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-9"
-              }, "售价（元）"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-9",
-                class: "admin-input",
-                "onUpdate:modelValue": ($event) => _ctx.skuForm.price = $event,
-                inputmode: "decimal",
-                required: "",
-                placeholder: "0.00"
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.skuForm.price]
-              ]),
-              _createElementVNode("div", { class: "form-buttons" }, [
-                _createElementVNode("button", {
-                  type: "button",
-                  class: "outline-button",
-                  onClick: ($event) => _ctx.modal = ""
-                }, "取消", 8, ["onClick"]),
-                _createElementVNode("button", {
-                  type: "submit",
-                  class: "teal-button",
-                  disabled: _ctx.preview || _ctx.saving
-                }, "保存规格", 8, ["disabled"])
-              ])
-            ], 40, ["onSubmit"])) : _ctx.modal === "price" ? (_openBlock(), _createElementBlock("form", {
-              key: 2,
-              class: "merchant-modal narrow",
-              onSubmit: _withModifiers(_ctx.savePrice, ["prevent"])
-            }, [
-              _createElementVNode("div", { class: "merchant-modal-header" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode("h2", null, "修改售价")
-                ]),
-                _createElementVNode("button", {
-                  type: "button",
-                  onClick: ($event) => _ctx.modal = "",
-                  "aria-label": "关闭"
+                  _createElementVNode("div", { class: "merchant-modal-header" }, [
+                    _createElementVNode("h2", null, "新增规格"),
+                    _createElementVNode("button", {
+                      type: "button",
+                      onClick: ($event) => _ctx.modal = "",
+                      "aria-label": "关闭"
+                    }, [
+                      _createVNode2(_component_Icon, {
+                        name: "x",
+                        size: 18
+                      })
+                    ], 8, ["onClick"])
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-8"
+                  }, "规格名称"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-8",
+                    class: "admin-input",
+                    maxlength: "100",
+                    "onUpdate:modelValue": ($event) => _ctx.skuForm.specKey = $event,
+                    required: "",
+                    placeholder: "例如：500ml"
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.skuForm.specKey]
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-9"
+                  }, "售价（元）"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-9",
+                    class: "admin-input",
+                    "onUpdate:modelValue": ($event) => _ctx.skuForm.price = $event,
+                    inputmode: "decimal",
+                    required: "",
+                    placeholder: "0.00"
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.skuForm.price]
+                  ]),
+                  _createElementVNode("div", { class: "form-buttons" }, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.modal = ""
+                    }, "取消", 8, ["onClick"]),
+                    _createElementVNode("button", {
+                      type: "submit",
+                      class: "teal-button",
+                      disabled: _ctx.preview || _ctx.saving
+                    }, "保存规格", 8, ["disabled"])
+                  ])
+                ], 40, ["onSubmit"])) : _ctx.modal === "price" ? (_openBlock(), _createElementBlock("form", {
+                  key: 2,
+                  class: "merchant-modal narrow",
+                  onSubmit: _withModifiers(_ctx.savePrice, ["prevent"])
                 }, [
-                  _createVNode2(_component_Icon, {
-                    name: "x",
-                    size: 20
-                  })
-                ], 8, ["onClick"])
-              ]),
-              _createElementVNode(
-                "div",
-                { class: "field-muted" },
-                _toDisplayString((_j = _ctx.selected) == null ? void 0 : _j.title) + " · " + _toDisplayString((_k = _ctx.activePriceSku) == null ? void 0 : _k.specKey),
-                1
-                /* TEXT */
-              ),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-10"
-              }, "售价（元）"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-10",
-                class: "admin-input",
-                "onUpdate:modelValue": ($event) => _ctx.newPrice = $event,
-                inputmode: "decimal",
-                required: ""
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.newPrice]
-              ]),
-              _createElementVNode("div", { class: "form-buttons" }, [
-                _createElementVNode("button", {
-                  type: "button",
-                  class: "outline-button",
-                  onClick: ($event) => _ctx.modal = ""
-                }, "取消", 8, ["onClick"]),
-                _createElementVNode("button", {
-                  type: "submit",
-                  class: "teal-button",
-                  disabled: _ctx.preview || _ctx.saving
-                }, "保存售价", 8, ["disabled"])
-              ])
-            ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
-          ], 8, ["onClick"])), [
-            [_directive_modal, () => _ctx.modal = ""]
-          ]) : _createCommentVNode("v-if", true)
-        ]);
+                  _createElementVNode("div", { class: "merchant-modal-header" }, [
+                    _createElementVNode("div", null, [
+                      _createElementVNode("h2", null, "修改售价")
+                    ]),
+                    _createElementVNode("button", {
+                      type: "button",
+                      onClick: ($event) => _ctx.modal = "",
+                      "aria-label": "关闭"
+                    }, [
+                      _createVNode2(_component_Icon, {
+                        name: "x",
+                        size: 20
+                      })
+                    ], 8, ["onClick"])
+                  ]),
+                  _createElementVNode(
+                    "div",
+                    { class: "field-muted" },
+                    _toDisplayString((_g = _ctx.selected) == null ? void 0 : _g.title) + " · " + _toDisplayString((_h = _ctx.activePriceSku) == null ? void 0 : _h.specKey),
+                    1
+                    /* TEXT */
+                  ),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-10"
+                  }, "售价（元）"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-10",
+                    class: "admin-input",
+                    "onUpdate:modelValue": ($event) => _ctx.newPrice = $event,
+                    inputmode: "decimal",
+                    required: ""
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.newPrice]
+                  ]),
+                  _createElementVNode("div", { class: "form-buttons" }, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.modal = ""
+                    }, "取消", 8, ["onClick"]),
+                    _createElementVNode("button", {
+                      type: "submit",
+                      class: "teal-button",
+                      disabled: _ctx.preview || _ctx.saving
+                    }, "保存售价", 8, ["disabled"])
+                  ])
+                ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
+              ], 8, ["onClick"])), [
+                [_directive_modal, () => _ctx.modal = ""]
+              ]) : _createCommentVNode("v-if", true),
+              _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+                key: 4,
+                onClose: ($event) => _ctx.loginOpen = false,
+                onSuccess: _ctx.loadMerchant
+              }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
+            ];
+          }),
+          _: 1
+          /* STABLE */
+        });
       };
     })()
   };
@@ -16937,33 +17128,33 @@
       };
     }
   });
-  const { ref: ref$a, computed: computed$a, onMounted: onMounted$9, watch: watch$8 } = Vue;
+  const { ref: ref$9, computed: computed$9, onMounted: onMounted$8, watch: watch$7 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const product = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), loading = ref$a(true), error = ref$a(""), errorCode = ref$a(""), imageIndex = ref$a(0), touchStartX = ref$a(null);
-      const id = computed$a(() => safeDecodeId(store.route.split("/")[2] || ""));
-      const sku2 = computed$a(
+      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
+      const id = computed$9(() => safeDecodeId(store.route.split("/")[2] || ""));
+      const sku2 = computed$9(
         () => {
           var _a, _b;
           return ((_b = (_a = product.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosen.value)) || skuOf(product.value);
         }
       );
-      const merchant = computed$a(
+      const merchant = computed$9(
         () => store.merchants.find((m) => {
           var _a;
           return m.merchantId === ((_a = product.value) == null ? void 0 : _a.merchantId);
         }) || {}
       );
-      const detailImages = computed$a(
+      const detailImages = computed$9(
         () => {
           var _a, _b, _c;
           return ((_b = (_a = product.value) == null ? void 0 : _a.images) == null ? void 0 : _b.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
         }
       );
-      const errorText = computed$a(() => {
+      const errorText = computed$9(() => {
         if (errorCode.value === "C0001") return "该商品已下架或暂不可售";
         if (errorCode.value === "G0001") return "商品不存在或已删除";
         if (!errorCode.value || ["NETWORK", "TIMEOUT", "RESPONSE"].includes(errorCode.value))
@@ -16998,7 +17189,7 @@
         imageIndex.value = 0;
         count.value = 1;
       }
-      onMounted$9(load);
+      onMounted$8(load);
       async function add() {
         var _a;
         if (preview || busy.value || !((_a = sku2.value) == null ? void 0 : _a.skuId)) return;
@@ -17306,13 +17497,13 @@
       };
     })()
   };
-  const { ref: ref$9, computed: computed$9, onMounted: onMounted$8, onUnmounted: onUnmounted$6, watch: watch$7 } = Vue;
+  const { ref: ref$8, computed: computed$8, onMounted: onMounted$7, onUnmounted: onUnmounted$5, watch: watch$6 } = Vue;
   const Shop = {
     name: "Shop",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const merchant = ref$9(null), products = ref$9([]), error = ref$9(""), loading = ref$9(false), page = ref$9(1), hasNext = ref$9(false);
-      const id = computed$9(
+      const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
+      const id = computed$8(
         () => safeDecodeId(store.route.slice("/shops/".length).split("/")[0] || "")
       );
       let loadVersion = 0;
@@ -17349,9 +17540,9 @@
           if (valid()) loading.value = false;
         }
       }
-      onMounted$8(load);
-      onUnmounted$6(() => ++loadVersion);
-      watch$7(page, load);
+      onMounted$7(load);
+      onUnmounted$5(() => ++loadVersion);
+      watch$6(page, load);
       return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
     },
     render: (() => {
@@ -17767,15 +17958,15 @@
       permissions: ["product.read", "product.write", "stock.read"]
     }
   ];
-  const { ref: ref$8, computed: computed$8, onMounted: onMounted$7 } = Vue;
+  const { ref: ref$7, computed: computed$7, onMounted: onMounted$6 } = Vue;
   const Cart = {
     name: "Cart",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const items2 = ref$8([]), merchantId = ref$8(""), busy = ref$8(false), loading = ref$8(true), error = ref$8(""), orderKey = ref$8(""), fingerprint = ref$8(""), confirmOpen = ref$8(false), confirmLoading = ref$8(false), confirmError = ref$8(""), confirmRetryable = ref$8(false), confirmItems = ref$8([]), confirmMerchant = ref$8({}), confirmTotal = ref$8(0);
+      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7(""), confirmOpen = ref$7(false), confirmLoading = ref$7(false), confirmError = ref$7(""), confirmRetryable = ref$7(false), confirmItems = ref$7([]), confirmMerchant = ref$7({}), confirmTotal = ref$7(0);
       let confirmVersion = 0;
-      const groups = computed$8(
+      const groups = computed$7(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
             var _a;
@@ -17788,8 +17979,8 @@
           total: rows.reduce((s, i) => s + Number(i.priceCent) * Number(i.quantity), 0)
         }))
       );
-      const selected = computed$8(() => items2.value.filter((i) => i.merchantId === merchantId.value));
-      const total = computed$8(
+      const selected = computed$7(() => items2.value.filter((i) => i.merchantId === merchantId.value));
+      const total = computed$7(
         () => selected.value.reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity), 0)
       );
       const merchantName = (id) => {
@@ -17819,7 +18010,7 @@
         if (!items2.value.some((i) => i.merchantId === merchantId.value))
           merchantId.value = ((_a = items2.value[0]) == null ? void 0 : _a.merchantId) || "";
       }
-      onMounted$7(load);
+      onMounted$6(load);
       async function quantity(i, d) {
         if (preview || busy.value || loading.value) return;
         const current = scope.capture();
@@ -18368,20 +18559,20 @@
       };
     })()
   };
-  const { ref: ref$7, computed: computed$7, onMounted: onMounted$6, watch: watch$6 } = Vue;
+  const { ref: ref$6, computed: computed$6, onMounted: onMounted$5, watch: watch$5 } = Vue;
   const Orders = {
     name: "Orders",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const orders = ref$7([]), detail = ref$7(null), token = ref$7(null), error = ref$7(""), busy = ref$7(false), loading = ref$7(true), tab = ref$7("ALL"), page = ref$7(1), pageInfo = ref$7({ total: 0, hasNext: false }), refundOpen = ref$7(false), reason = ref$7("");
-      const id = computed$7(
+      const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
+      const id = computed$6(
         () => store.route.startsWith("/orders/") ? safeDecodeId(store.route.slice("/orders/".length)) : null
       );
-      const filtered = computed$7(
+      const filtered = computed$6(
         () => orders.value.filter((o) => tab.value === "ALL" || o.status === tab.value)
       );
-      const refundPending = computed$7(
+      const refundPending = computed$6(
         () => {
           var _a;
           return !!((_a = detail.value) == null ? void 0 : _a.afterSale) && ["REQUESTED", "DISPUTED", "APPROVED"].includes(detail.value.afterSale.status);
@@ -18429,8 +18620,8 @@
           if (request2.current()) loading.value = false;
         }
       }
-      onMounted$6(load);
-      watch$6([page, tab], () => {
+      onMounted$5(load);
+      watch$5([page, tab], () => {
         if (!id.value) load();
       });
       async function action(endpoint, method = "POST", body) {
@@ -18476,7 +18667,7 @@
       function statusClass(s) {
         return ["PAID", "COMPLETED"].includes(s) ? "ok" : ["CANCELED", "REFUNDED"].includes(s) ? "muted" : "warn";
       }
-      const allowToken = computed$7(
+      const allowToken = computed$6(
         () => {
           var _a, _b, _c, _d, _e;
           return ((_a = detail.value) == null ? void 0 : _a.status) === "PAID" && ((_c = (_b = detail.value) == null ? void 0 : _b.pickup) == null ? void 0 : _c.status) === "READY" && !["REQUESTED", "DISPUTED", "APPROVED"].includes((_e = (_d = detail.value) == null ? void 0 : _d.afterSale) == null ? void 0 : _e.status);
@@ -19057,16 +19248,16 @@
       };
     })()
   };
-  const { ref: ref$6, computed: computed$6, onMounted: onMounted$5, onUnmounted: onUnmounted$5, watch: watch$5 } = Vue;
+  const { ref: ref$5, computed: computed$5, onMounted: onMounted$4, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
   const Account = {
     name: "Account",
     components: { ConsumerShell, AuthDialog },
     setup() {
       const scope = requestScope();
-      const page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false });
-      const login = ref$6(false), apps = ref$6([]), invitations = ref$6([]), invitePage = ref$6(1), error = ref$6(""), busy = ref$6(false), loading = ref$6(false), key = ref$6(""), fingerprint = ref$6("");
+      const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
+      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5(""), fingerprint = ref$5("");
       let loadEpoch = 0;
-      const form = ref$6({
+      const form = ref$5({
         merchantName: "",
         category: "便利零售",
         contactName: "",
@@ -19074,8 +19265,8 @@
         storeName: "",
         location: ""
       });
-      const isApply = computed$6(() => store.route === "/apply");
-      const isInvite = computed$6(() => store.route === "/invitations");
+      const isApply = computed$5(() => store.route === "/apply");
+      const isInvite = computed$5(() => store.route === "/invitations");
       async function load() {
         var _a, _b;
         const stamp = ++loadEpoch;
@@ -19115,10 +19306,10 @@
           if (stamp === loadEpoch) loading.value = false;
         }
       }
-      onMounted$5(load);
-      watch$5(page, load);
-      watch$5(invitePage, load);
-      onUnmounted$5(() => ++loadEpoch);
+      onMounted$4(load);
+      watch$4(page, load);
+      watch$4(invitePage, load);
+      onUnmounted$4(() => ++loadEpoch);
       async function submit() {
         if (preview || busy.value) return;
         const f = { ...form.value }, current = scope.capture();
@@ -19560,290 +19751,6 @@
           _: 1
           /* STABLE */
         });
-      };
-    })()
-  };
-  const { ref: ref$5, computed: computed$5, watch: watch$4, nextTick, onMounted: onMounted$4, onUnmounted: onUnmounted$4 } = Vue;
-  const merchantNav = [
-    ["home", "工作台", "/merchant"],
-    ["package", "商品管理", "/merchant/products"],
-    ["box", "库存管理", "/merchant/inventory"],
-    ["order", "订单管理", "/merchant/orders"],
-    ["scan", "自提核销", "/merchant/pickup"],
-    ["clipboard", "售后处理", "/merchant/aftersales"],
-    ["users", "店员管理", "/merchant/team"],
-    ["shield", "角色权限", "/merchant/roles"],
-    ["book", "知识库", "/merchant/knowledge"],
-    ["search", "RAG 调试", "/merchant/knowledge/debug"],
-    ["settings", "门店设置", "/merchant/settings"]
-  ];
-  const adminNav = [
-    ["home", "平台总览", "/admin"],
-    ["store", "商户审核", "/admin/applications"],
-    ["users", "商户监管", "/admin/merchants"],
-    ["package", "商品监管", "/admin/products"],
-    ["order", "订单监管", "/admin/orders"],
-    ["shield", "争议处理", "/admin/disputes"],
-    ["book", "知识库", "/admin/knowledge"],
-    ["search", "RAG 调试", "/admin/knowledge/debug"],
-    ["grid", "分类管理", "/admin/categories"]
-  ];
-  const BackofficeShell = {
-    name: "BackofficeShell",
-    props: { role: { type: String, default: "merchant" }, title: String },
-    components: { AuthDialog },
-    setup() {
-      const loginOpen = ref$5(false), mobileNav = ref$5(null);
-      const required = {
-        "/merchant": "order.read",
-        "/merchant/products": "product.read",
-        "/merchant/inventory": "stock.read",
-        "/merchant/orders": "order.read",
-        "/merchant/pickup": "pickup.verify",
-        "/merchant/aftersales": "aftersale.read",
-        "/merchant/team": "team.manage",
-        "/merchant/roles": "role.manage",
-        "/merchant/knowledge": "knowledge.read",
-        "/merchant/knowledge/debug": "knowledge.read",
-        "/merchant/settings": "store.manage"
-      };
-      const visibleMerchantNav = computed$5(
-        () => merchantNav.filter(([, , path]) => hasPermission(required[path]))
-      );
-      const alignMobileNav = () => {
-        var _a;
-        const nav = mobileNav.value;
-        if (nav == null ? void 0 : nav.clientWidth)
-          (_a = nav.querySelector("button.active")) == null ? void 0 : _a.scrollIntoView({ inline: "center", block: "nearest" });
-      };
-      watch$4(
-        [() => store.route, () => visibleMerchantNav.value.map((item) => item[2]).join("|")],
-        async () => {
-          await nextTick();
-          alignMobileNav();
-        },
-        { immediate: true, flush: "post" }
-      );
-      onMounted$4(() => window.addEventListener("resize", alignMobileNav));
-      onUnmounted$4(() => window.removeEventListener("resize", alignMobileNav));
-      async function switchShop(e) {
-        if (preview) {
-          notify("演示模式不能切换真实商户");
-          return;
-        }
-        switchMerchantContext(e.target.value);
-      }
-      return {
-        store,
-        go,
-        preview,
-        loginOpen,
-        mobileNav,
-        merchantNav,
-        visibleMerchantNav,
-        adminNav,
-        switchShop
-      };
-    },
-    render: (() => {
-      const { createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
-      return function render2(_ctx, _cache) {
-        const _component_Icon = _resolveComponent("Icon");
-        const _component_AuthDialog = _resolveComponent("AuthDialog");
-        return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
-          _createElementVNode("aside", { class: "merchant-sidebar" }, [
-            _createElementVNode("button", {
-              class: "merchant-brand",
-              onClick: ($event) => _ctx.go("/")
-            }, [
-              _createElementVNode("span", { class: "brand-pin" }, [
-                _createElementVNode("span")
-              ]),
-              _createElementVNode("span", { class: "brand-word" }, [
-                _createTextVNode("青柠校园 "),
-                _createElementVNode(
-                  "span",
-                  { class: "brand-suffix" },
-                  "/ " + _toDisplayString(_ctx.role === "admin" ? "平台端" : "商户端"),
-                  1
-                  /* TEXT */
-                )
-              ])
-            ], 8, ["onClick"]),
-            _createElementVNode("nav", { class: "merchant-nav" }, [
-              (_openBlock(true), _createElementBlock(
-                _Fragment,
-                null,
-                _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
-                  return _openBlock(), _createElementBlock("button", {
-                    key: path,
-                    class: _normalizeClass({ active: _ctx.store.route === path }),
-                    onClick: ($event) => _ctx.go(path)
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: ico,
-                      size: 19
-                    }, null, 8, ["name"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(label),
-                      1
-                      /* TEXT */
-                    ),
-                    _ctx.store.route === path ? (_openBlock(), _createElementBlock("span", {
-                      key: 0,
-                      class: "nav-left-bar"
-                    })) : _createCommentVNode("v-if", true)
-                  ], 10, ["onClick"]);
-                }),
-                128
-                /* KEYED_FRAGMENT */
-              ))
-            ]),
-            _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
-              _createElementVNode("button", {
-                class: "sidebar-back",
-                onClick: ($event) => _ctx.go("/")
-              }, [
-                _createVNode2(_component_Icon, {
-                  name: "arrowLeft",
-                  size: 16
-                }),
-                _createTextVNode(" 返回购物端")
-              ], 8, ["onClick"])
-            ])
-          ]),
-          _createElementVNode("div", { class: "merchant-content-shell" }, [
-            _createElementVNode("header", { class: "merchant-topbar" }, [
-              _createElementVNode("div", { class: "topbar-crumb" }, [
-                _createTextVNode(
-                  _toDisplayString(_ctx.role === "admin" ? "平台运营" : "店铺运营") + " ",
-                  1
-                  /* TEXT */
-                ),
-                _createVNode2(_component_Icon, {
-                  name: "chevronRight",
-                  size: 14
-                }),
-                _createElementVNode(
-                  "strong",
-                  null,
-                  _toDisplayString(_ctx.title),
-                  1
-                  /* TEXT */
-                )
-              ]),
-              _createElementVNode("div", { class: "merchant-topbar-tools" }, [
-                _ctx.preview ? (_openBlock(), _createElementBlock("span", {
-                  key: 0,
-                  class: "admin-preview-tag"
-                }, "设计预览")) : _createCommentVNode("v-if", true),
-                _ctx.role === "merchant" ? (_openBlock(), _createElementBlock("label", {
-                  key: 1,
-                  class: "topbar-merchant-select"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "store",
-                    size: 16
-                  }),
-                  _createElementVNode("select", {
-                    value: _ctx.store.merchantId,
-                    onChange: _ctx.switchShop,
-                    disabled: _ctx.preview || _ctx.store.loading
-                  }, [
-                    (_openBlock(true), _createElementBlock(
-                      _Fragment,
-                      null,
-                      _renderList(_ctx.store.merchants, (m) => {
-                        return _openBlock(), _createElementBlock("option", {
-                          key: m.merchantId,
-                          value: m.merchantId
-                        }, _toDisplayString(m.name), 9, ["value"]);
-                      }),
-                      128
-                      /* KEYED_FRAGMENT */
-                    ))
-                  ], 40, ["value", "onChange", "disabled"])
-                ])) : _createCommentVNode("v-if", true),
-                _createElementVNode("button", {
-                  class: "topbar-avatar",
-                  onClick: ($event) => _ctx.loginOpen = true
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "user",
-                    size: 18
-                  })
-                ], 8, ["onClick"])
-              ])
-            ]),
-            _createElementVNode(
-              "nav",
-              {
-                ref: "mobileNav",
-                class: "merchant-mobile-nav",
-                "aria-label": "工作台导航"
-              },
-              [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
-                    return _openBlock(), _createElementBlock("button", {
-                      key: path,
-                      class: _normalizeClass({ active: _ctx.store.route === path }),
-                      onClick: ($event) => _ctx.go(path)
-                    }, [
-                      _createVNode2(_component_Icon, {
-                        name: ico,
-                        size: 16
-                      }, null, 8, ["name"]),
-                      _createTextVNode(
-                        _toDisplayString(label),
-                        1
-                        /* TEXT */
-                      )
-                    ], 10, ["onClick"]);
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                ))
-              ],
-              512
-              /* NEED_PATCH */
-            ),
-            _createElementVNode("main", { class: "merchant-main" }, [
-              _createElementVNode("div", { class: "merchant-page-heading" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode(
-                    "h1",
-                    null,
-                    _toDisplayString(_ctx.title),
-                    1
-                    /* TEXT */
-                  )
-                ]),
-                _renderSlot(_ctx.$slots, "actions")
-              ]),
-              _ctx.store.error ? (_openBlock(), _createElementBlock(
-                "div",
-                {
-                  key: 0,
-                  class: "inline-error merchant-error"
-                },
-                _toDisplayString(_ctx.store.error),
-                1
-                /* TEXT */
-              )) : _createCommentVNode("v-if", true),
-              _renderSlot(_ctx.$slots, "default")
-            ])
-          ]),
-          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
-            key: 0,
-            onClose: ($event) => _ctx.loginOpen = false,
-            onSuccess: ($event) => _ctx.role === "merchant" ? _ctx.loadMerchant() : null
-          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
-        ]);
       };
     })()
   };
@@ -24634,26 +24541,8 @@
         if (r === "/merchant/knowledge" || r === "/admin/knowledge") return "Knowledge";
         if (r === "/merchant/knowledge/debug" || r === "/admin/knowledge/debug")
           return "KnowledgeDebug";
-        if ([
-          "/merchant",
-          "/merchant/inventory",
-          "/merchant/orders",
-          "/merchant/pickup",
-          "/merchant/aftersales",
-          "/merchant/team",
-          "/merchant/settings"
-        ].includes(r))
-          return "MerchantOps";
-        if ([
-          "/admin",
-          "/admin/applications",
-          "/admin/merchants",
-          "/admin/products",
-          "/admin/orders",
-          "/admin/disputes",
-          "/admin/categories"
-        ].includes(r))
-          return "Platform";
+        if (backofficeRoutes.includes(r) && r.startsWith("/merchant")) return "MerchantOps";
+        if (backofficeRoutes.includes(r) && r.startsWith("/admin")) return "Platform";
         if (r.startsWith("/product/")) return "ProductDetail";
         if (r.startsWith("/shops/")) return "Shop";
         if (r === "/cart") return "Cart";

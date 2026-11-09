@@ -2,6 +2,7 @@
 from __future__ import annotations
 import json,re,time
 from .retrieval import KnowledgeStore,bm25
+from .ranking import reciprocal_rank_contribution, reciprocal_rank_fusion, stable_top_k
 from .sku_constraints import spec_constraints, SpecConstraints
 
 class StreamCancelled(Exception):
@@ -160,11 +161,13 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     ranked=bm25(query,[o['title']+' '+o['specKey']+' '+o.get('description','') for o in eligible])
     semantic_rank={sku_id: rank for rank, sku_id in enumerate(semantic_sku_ids or [], 1)}
     # RRF: 当前 Java 排列顺序是融合后的商品次序；语义命中且无词面重合的商品仍可被推荐。
-    scores={}
-    for rank,(i,_) in enumerate(ranked,1):scores[i]=scores.get(i,0)+1/(60+rank)
+    rankings=[ranked]
     semantic=[(i, semantic_rank[o['skuId']]) for i,o in enumerate(eligible) if o['skuId'] in semantic_rank]
-    for i, rank in semantic:scores[i]=scores.get(i,0)+1/(60+rank)
-    candidates=[eligible[i] for i in sorted(scores,key=lambda i:(-scores[i],i))[:12]]
+    scores=reciprocal_rank_fusion(*rankings)
+    for i, rank in semantic:
+        scores[i]=scores.get(i,0)+reciprocal_rank_contribution(rank)
+    candidate_indices=stable_top_k(scores,tie_breaker=lambda i:i,limit=12)
+    candidates=[eligible[i] for i in candidate_indices]
     if _trace is not None:_trace.update(eligible=[o['skuId'] for o in eligible], candidates=[o['skuId'] for o in candidates])
     recommendations=[];total=0
     for o in candidates:
