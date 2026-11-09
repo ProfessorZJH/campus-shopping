@@ -241,6 +241,21 @@ CREATE TABLE IF NOT EXISTS sys_schema_migration (
  version VARCHAR(32) PRIMARY KEY, checksum CHAR(64) NOT NULL,
  installed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS sys_schema_migration_drift (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ database_name VARCHAR(64) NOT NULL,
+ event_type VARCHAR(32) NOT NULL,
+ release_name VARCHAR(128) NULL,
+ target_fingerprint CHAR(64) NULL,
+ actual_fingerprint CHAR(64) NULL,
+ operator_name VARCHAR(128) NULL,
+ reason VARCHAR(1000) NULL,
+ detail TEXT NOT NULL,
+ detected_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ PRIMARY KEY (id),
+ KEY ix_schema_drift_database(database_name,detected_at),
+ KEY ix_schema_drift_type(event_type,detected_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_01','7fe7d76b5e4f579b07167a3216af93dbc006216f7ab9a56ff95c3a807e2e95a7' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_02','271f49d26dd7a5538f32851d6cbe5ccb2a9592be6722da2190b0a329940a39cd' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261029_01','efdc1a9b032afcea14d4e0ee0198011beb2d9088850da21b5a5ead10881040ef' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
@@ -251,6 +266,7 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261104_01','1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_01','f3dc21f54f23e3f142cf2ec5d82a8c2a7fec36abe219a16936a3cea985b290cb' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_02','4c4802ee8e2e31262def368c0536b2f227923d1bb219d4280babe64878e86c48' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_01','fcc1851f8933857c4531d126ba46d4a49754310693c006589f3b9363f033e977' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_02','338723eaf6a7f12ce1ecd11aca2cba58d7c0c01d2050d8f75999502694076c5a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_03','044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

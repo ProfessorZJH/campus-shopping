@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "schemaFingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc",
+  "schemaFingerprint": "6c77e8dc45f0c5c541f7bad79702e9c609ce8a13794f7b359178db1b806ed6e3",
   "migrations": [
     {
       "version": "V20261028_01",
@@ -51,6 +51,11 @@
       "version": "V20261105_01",
       "file": "V20261105_01__inventory_integrity_and_query_indexes.sql",
       "sha256": "f3dc21f54f23e3f142cf2ec5d82a8c2a7fec36abe219a16936a3cea985b290cb"
+    },
+    {
+      "version": "V20261105_02",
+      "file": "V20261105_02__migration_drift_audit.sql",
+      "sha256": "4c4802ee8e2e31262def368c0536b2f227923d1bb219d4280babe64878e86c48"
     },
     {
       "version": "V20261106_01",
