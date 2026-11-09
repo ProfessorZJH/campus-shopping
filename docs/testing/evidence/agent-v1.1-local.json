@@ -1,0 +1,75 @@
+{
+  "runId": "f471b2b8426229e8d88d0fd3",
+  "scope": "Agent v1.1 M0/M1",
+  "evidenceStatus": "NOT_RUN",
+  "startedAt": "2026-11-09T07:21:46.411508+00:00",
+  "checks": [
+    {
+      "name": "stub_native_tool_call_and_continued_answer",
+      "outcome": "PASS",
+      "toolCalls": 1,
+      "durationMs": 7,
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 3,
+        "total_tokens": 13
+      }
+    },
+    {
+      "name": "stub_streaming_tool_arguments_execute_once",
+      "outcome": "PASS",
+      "toolCalls": 1,
+      "durationMs": 1
+    },
+    {
+      "name": "stub_no_business_write",
+      "outcome": "PASS",
+      "businessWrites": false,
+      "registeredTools": [
+        "search_products"
+      ]
+    },
+    {
+      "name": "real_native_tool_call",
+      "outcome": "NOT_RUN",
+      "reason": "LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 未完整配置"
+    },
+    {
+      "name": "real_streaming_tool_call",
+      "outcome": "NOT_RUN",
+      "reason": "LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 未完整配置"
+    },
+    {
+      "name": "real_milvus_isolated_lifecycle",
+      "outcome": "NOT_RUN",
+      "reason": "EMBEDDING_* 与 MILVUS_* 未完整配置"
+    },
+    {
+      "name": "real_java_mysql_fact_revalidation",
+      "outcome": "NOT_RUN",
+      "reason": "本次未配置 Java Agent/商品事实复验入口"
+    },
+    {
+      "name": "real_end_to_end_agent_chain",
+      "outcome": "NOT_RUN",
+      "reason": "真实 Embedding/Milvus/Java 复验前置条件未满足"
+    }
+  ],
+  "productionProductCollectionModified": false,
+  "javaMySqlTested": false,
+  "businessWrites": false,
+  "configured": {
+    "llm": false,
+    "embedding": false,
+    "milvus": false,
+    "serviceKey": false
+  },
+  "model": null,
+  "embeddingModel": null,
+  "finishedAt": "2026-11-09T07:21:46.423107+00:00",
+  "summary": {
+    "passed": 3,
+    "failed": 0,
+    "notRun": 5
+  }
+}
