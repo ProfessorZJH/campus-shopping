@@ -24,7 +24,7 @@
 ## 4. Java/Python HTTP Harness 与证据
 
 - [x] 4.1 编写 Java loopback HTTP 集成测试，串起 Run 创建、内部 Runtime native TOOL_CALL、Java `search_products` 事实复验、CONTINUE 和 FINAL；使用隔离数据并断言购物车、订单、库存、支付未被写入。
-- [ ] 4.2 扩展真实 harness 启动隔离 Uvicorn 与 Java 服务，覆盖服务认证、Scope/租约、幂等、超时、429、5xx、脱敏和清理；输出 `REAL`、`STUB`、`DEGRADED` 或 `NOT_RUN`，缺 Java/隔离依赖时不能伪造 PASS。
+- [x] 4.2 扩展真实 harness 启动隔离 Uvicorn 与 Java 服务，覆盖服务认证、Scope/租约、幂等、超时、429、5xx、脱敏和清理；输出 `REAL`、`STUB`、`DEGRADED` 或 `NOT_RUN`，缺 Java/隔离依赖时不能伪造 PASS。
 - [x] 4.3 在 `docs/testing/` 保存本变更的实际命令、环境范围、协议版本、Run/工具调用数量、耗时、错误矩阵和清理证据；明确旧 `/v1/query`、外部模型、Embedding、Milvus 以及 M1 4.3/4.4 的未验证边界。
 
 ## 5. 交付门禁

@@ -1,0 +1,8 @@
+{
+  "tool": "knowledge_qa",
+  "version": "1.0",
+  "readOnly": true,
+  "arguments": {
+    "question": "How does campus pickup work?"
+  }
+}

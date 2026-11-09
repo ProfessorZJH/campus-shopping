@@ -1,0 +1,10 @@
+{
+  "status": "DEGRADED",
+  "evidenceStatus": "DEGRADED",
+  "reason": "Runtime returned invalid protocol response",
+  "httpStatus": 422,
+  "endpoint": "http://127.0.0.1:56329/internal/v1/agent/runtime/turn",
+  "checks": [],
+  "startedAt": "2026-11-09T19:25:00.864263+00:00",
+  "finishedAt": "2026-11-09T19:25:07.868394+00:00"
+}

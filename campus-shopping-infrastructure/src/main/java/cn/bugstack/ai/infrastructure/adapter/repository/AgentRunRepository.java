@@ -6,6 +6,7 @@ import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAgentRunRepository;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentScopeVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationResultVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
 import cn.bugstack.ai.infrastructure.dao.IAgentRunDao;
 import cn.bugstack.ai.infrastructure.dao.po.AgentRunPO;
@@ -96,6 +97,17 @@ public class AgentRunRepository implements IAgentRunRepository {
     }
 
     @Override
+    public boolean completeInvocationEnvelope(
+        String runId,
+        String invocationKey,
+        String inputFingerprint,
+        AgentToolInvocationResultVO result,
+        Instant completedAt
+    ) {
+        return dao.completeInvocation(runId, invocationKey, inputFingerprint, write(result), completedAt) == 1;
+    }
+
+    @Override
     public boolean failInvocation(String runId, String invocationKey, String inputFingerprint, String errorCode, Instant completedAt) {
         return dao.failInvocation(runId, invocationKey, inputFingerprint, errorCode, completedAt) == 1;
     }
@@ -125,7 +137,7 @@ public class AgentRunRepository implements IAgentRunRepository {
             p.getToolName(),
             p.getInputFingerprint(),
             p.getStatus(),
-            p.getOutputJson() == null ? null : read(p.getOutputJson(), AgentToolResultVO.class),
+            p.getOutputJson() == null ? null : read(p.getOutputJson(), AgentToolInvocationResultVO.class),
             p.getErrorCode(),
             p.getCreatedAt(),
             p.getCompletedAt()

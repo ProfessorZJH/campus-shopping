@@ -3,6 +3,7 @@ package cn.bugstack.ai.cases.agent.impl;
 import static cn.bugstack.ai.types.common.Checks.require;
 import static cn.bugstack.ai.types.common.Checks.text;
 
+import cn.bugstack.ai.cases.agent.IAgentConsumerReadToolCase;
 import cn.bugstack.ai.cases.agent.IAgentToolInvocationCase;
 import cn.bugstack.ai.cases.agent.model.AgentToolInvocationCommand;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductCandidateSnapshot;
@@ -18,8 +19,12 @@ import cn.bugstack.ai.domain.shoppingai.model.agent.AgentProductCandidateVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentSkuFactVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationResultVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolRegistry;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentKnowledgeQaRequestVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentMyOrdersRequestVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentScopeVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.SearchProductsRequestVO;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -37,8 +42,10 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
-/** M2 首批只读工具：候选召回后由 Java 重新核验经营状态、报价和库存。 */
+/** M2 妫ｆ牗澹掗崣顏囶嚢瀹搞儱鍙块敍姘偓娆撯偓澶婂将閸ョ偛鎮楅悽?Java 闁插秵鏌婇弽鎼佺崣缂佸繗鎯€閻樿埖鈧降鈧焦濮ゆ禒宄版嫲鎼存挸鐡ㄩ妴?*/
 @Service
 public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
 
@@ -49,6 +56,8 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
     private final IMerchantService merchants;
     private final IUserAccountService accounts;
     private final Clock clock;
+    private final IAgentConsumerReadToolCase consumerReadTools;
+    private final boolean consumerReadOnlyEnabled;
 
     public AgentToolInvocationCaseImpl(
         IAgentRunRepository repository,
@@ -59,6 +68,21 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
         IUserAccountService accounts,
         Clock clock
     ) {
+        this(repository, runs, catalog, inventory, merchants, accounts, clock, null, false);
+    }
+
+    @Autowired
+    public AgentToolInvocationCaseImpl(
+        IAgentRunRepository repository,
+        AgentRunCaseImpl runs,
+        ICatalogCandidateQuery catalog,
+        IInventoryService inventory,
+        IMerchantService merchants,
+        IUserAccountService accounts,
+        Clock clock,
+        IAgentConsumerReadToolCase consumerReadTools,
+        @Value("${campus.ai.agent-consumer-readonly.enabled:false}") boolean consumerReadOnlyEnabled
+    ) {
         this.repository = repository;
         this.runs = runs;
         this.catalog = catalog;
@@ -66,17 +90,19 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
         this.merchants = merchants;
         this.accounts = accounts;
         this.clock = clock;
+        this.consumerReadTools = consumerReadTools;
+        this.consumerReadOnlyEnabled = consumerReadOnlyEnabled;
     }
 
     @Override
     public AgentToolResultVO invoke(AgentToolInvocationCommand command) {
         require(command != null, ResponseCode.ILLEGAL_PARAMETER);
-        String actor = text(command.actor(), "用户", 64);
+        String actor = text(command.actor(), "actor", 64);
         accounts.requireActive(actor);
         String runId = text(command.runId(), "Run", 64);
-        String capabilityToken = text(command.capabilityToken(), "Run凭据", 200);
-        String invocationKey = text(command.invocationKey(), "调用键", 100);
-        String toolName = text(command.toolName(), "工具", 64);
+        String capabilityToken = text(command.capabilityToken(), "capability", 200);
+        String invocationKey = text(command.invocationKey(), "invocationKey", 100);
+        String toolName = text(command.toolName(), "tool", 64);
         require(AgentToolRegistry.contains(toolName), ResponseCode.ILLEGAL_PARAMETER);
 
         AgentRunVO run = runs.usable(actor, runId, capabilityToken);
@@ -90,7 +116,7 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
         AgentToolInvocationVO existing = repository.invocation(run.id(), invocationKey);
         if (existing != null) {
             require(inputFingerprint.equals(existing.inputFingerprint()), ResponseCode.REQUEST_CONFLICT);
-            if (existing.completed()) return existing.result();
+            if (existing.completed()) return existing.result().asSearchResult();
             throw new AppException(ResponseCode.STATE_CONFLICT);
         }
 
@@ -101,7 +127,7 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
             toolName,
             inputFingerprint,
             "RUNNING",
-            null,
+            (AgentToolResultVO) null,
             null,
             clock.instant(),
             null
@@ -118,6 +144,76 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
             repository.failInvocation(run.id(), invocationKey, inputFingerprint, ResponseCode.AI_UNAVAILABLE.getCode(), clock.instant());
             throw new AppException(ResponseCode.AI_UNAVAILABLE, error);
         }
+    }
+
+    @Override
+    public AgentToolInvocationResultVO invokeResult(AgentToolInvocationCommand command) {
+        require(command != null, ResponseCode.ILLEGAL_PARAMETER);
+        if (AgentToolRegistry.SEARCH_PRODUCTS.equals(command.toolName())) return new AgentToolInvocationResultVO(invoke(command));
+        String actor = text(command.actor(), "actor", 64);
+        accounts.requireActive(actor);
+        String runId = text(command.runId(), "Run", 64);
+        String capabilityToken = text(command.capabilityToken(), "capability", 200);
+        String invocationKey = text(command.invocationKey(), "invocationKey", 100);
+        String toolName = text(command.toolName(), "tool", 64);
+        require(AgentToolRegistry.contains(toolName), ResponseCode.ILLEGAL_PARAMETER);
+        require(AgentToolRegistry.enabled(toolName, consumerReadOnlyEnabled), ResponseCode.ILLEGAL_PARAMETER);
+
+        AgentRunVO run = runs.usable(actor, runId, capabilityToken);
+        require(run.allowedTools().contains(toolName), ResponseCode.AUTH_FORBIDDEN);
+        require(AgentScopeVO.CONSUMER.equals(run.scope().identityKind()), ResponseCode.AUTH_FORBIDDEN);
+        String inputFingerprint = versionedFingerprint(toolName, command);
+        AgentToolInvocationVO existing = repository.invocation(run.id(), invocationKey);
+        if (existing != null) {
+            require(inputFingerprint.equals(existing.inputFingerprint()), ResponseCode.REQUEST_CONFLICT);
+            if (existing.completed()) return existing.result();
+            throw new AppException(ResponseCode.STATE_CONFLICT);
+        }
+        AgentToolInvocationVO invocation = new AgentToolInvocationVO(
+            UUID.randomUUID().toString(),
+            run.id(),
+            invocationKey,
+            toolName,
+            inputFingerprint,
+            "RUNNING",
+            (AgentToolInvocationResultVO) null,
+            null,
+            clock.instant(),
+            null
+        );
+        require(repository.claimInvocation(invocation), ResponseCode.STATE_CONFLICT);
+        try {
+            AgentToolInvocationResultVO result = dispatchConsumer(run, command);
+            require(repository.completeInvocationEnvelope(run.id(), invocationKey, inputFingerprint, result, clock.instant()), ResponseCode.STATE_CONFLICT);
+            return result;
+        } catch (AppException error) {
+            repository.failInvocation(run.id(), invocationKey, inputFingerprint, error.getCode(), clock.instant());
+            throw error;
+        } catch (RuntimeException error) {
+            repository.failInvocation(run.id(), invocationKey, inputFingerprint, ResponseCode.AI_UNAVAILABLE.getCode(), clock.instant());
+            throw new AppException(ResponseCode.AI_UNAVAILABLE, error);
+        }
+    }
+
+    private String versionedFingerprint(String toolName, AgentToolInvocationCommand command) {
+        if (AgentToolRegistry.KNOWLEDGE_QA.equals(toolName)) {
+            AgentKnowledgeQaRequestVO request = new AgentKnowledgeQaRequestVO(command.query());
+            return Fingerprints.of(toolName, request.version(), request.question());
+        }
+        require(AgentToolRegistry.GET_MY_ORDERS.equals(toolName), ResponseCode.ILLEGAL_PARAMETER);
+        AgentMyOrdersRequestVO request = new AgentMyOrdersRequestVO(command.state(), command.page(), command.size());
+        return Fingerprints.of(toolName, request.version(), request.state(), request.page(), request.size());
+    }
+
+    private AgentToolInvocationResultVO dispatchConsumer(AgentRunVO run, AgentToolInvocationCommand command) {
+        require(consumerReadTools != null, ResponseCode.AI_UNAVAILABLE);
+        if (AgentToolRegistry.KNOWLEDGE_QA.equals(command.toolName())) {
+            return AgentToolInvocationResultVO.knowledge(consumerReadTools.knowledgeQa(run.userId(), new AgentKnowledgeQaRequestVO(command.query())));
+        }
+        require(AgentToolRegistry.GET_MY_ORDERS.equals(command.toolName()), ResponseCode.ILLEGAL_PARAMETER);
+        return AgentToolInvocationResultVO.orders(
+            consumerReadTools.myOrders(run.userId(), new AgentMyOrdersRequestVO(command.state(), command.page(), command.size()))
+        );
     }
 
     private AgentToolResultVO searchProducts(SearchProductsRequestVO request) {
@@ -183,7 +279,7 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
     }
 
     private List<String> terms(String query) {
-        return Arrays.stream(query.split("[\\s,，。；;、]+"))
+        return Arrays.stream(query.split("[\\s,\\uFF0C\\u3002\\uFF1B;\\u3001]+"))
             .map(String::strip)
             .flatMap(this::chunks)
             .filter(term -> term.length() >= 2 && term.length() <= 20 && term.matches("[\\p{L}\\p{N}_-]+"))

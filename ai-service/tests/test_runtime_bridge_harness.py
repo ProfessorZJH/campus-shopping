@@ -64,4 +64,79 @@ def test_run_without_service_key_is_not_run(monkeypatch):
     result = MODULE.run(args)
     assert result["status"] == "NOT_RUN"
     assert result["evidenceStatus"] == "NOT_RUN"
+    assert result["scope"] == "protocol_probe_only"
+    assert result["realAgentIntegration"] == "NOT_RUN"
     assert "secret" not in json.dumps(result)
+
+
+def test_java_process_test_reports_stub_without_claiming_real(monkeypatch):
+    captured = {}
+
+    def fake_run(command, **kwargs):
+        captured["command"] = command
+        captured["kwargs"] = kwargs
+        return MODULE.subprocess.CompletedProcess(command, 0)
+
+    monkeypatch.setattr(MODULE.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        MODULE,
+        "_java_process_test_report",
+        lambda root, before: {"tests": 1, "errors": 0, "failures": 0, "skipped": 0, "durationSeconds": 1.2},
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_surefire_report",
+        lambda root, class_name, before: {"tests": 8, "errors": 0, "failures": 0, "skipped": 0, "durationSeconds": 0.8},
+    )
+    args = type("Args", (), {"java_process_test": True, "maven": "mvnw.cmd", "python": ""})()
+
+    result = MODULE.run(args)
+
+    assert result["status"] == "PASS"
+    assert result["evidenceStatus"] == "STUB"
+    assert result["realAgentIntegration"] == "NOT_RUN"
+    assert result["businessWrites"] is False
+    assert "AgentRuntimeUvicornProcessIntegrationTest" in " ".join(captured["command"])
+    assert captured["kwargs"]["env"]["AGENT_RUNTIME_PROCESS_TEST"] == "true"
+    assert "provider secret body" not in json.dumps(result)
+
+
+def test_java_process_test_failure_is_degraded_without_process_output(monkeypatch):
+    def fake_run(command, **kwargs):
+        return MODULE.subprocess.CompletedProcess(command, 1)
+
+    monkeypatch.setattr(MODULE.subprocess, "run", fake_run)
+    monkeypatch.setattr(MODULE, "_java_process_test_report", lambda root, before: None)
+    monkeypatch.setattr(MODULE, "_surefire_report", lambda root, class_name, before: None)
+    args = type("Args", (), {"java_process_test": True, "maven": "mvnw.cmd", "python": ""})()
+
+    result = MODULE.run(args)
+
+    assert result["status"] == "DEGRADED"
+    assert result["evidenceStatus"] == "DEGRADED"
+    assert result["realAgentIntegration"] == "NOT_RUN"
+    assert "stdout" not in result and "stderr" not in result
+
+
+def test_java_process_test_skipped_is_not_run(monkeypatch):
+    monkeypatch.setattr(
+        MODULE.subprocess,
+        "run",
+        lambda command, **kwargs: MODULE.subprocess.CompletedProcess(command, 0),
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_java_process_test_report",
+        lambda root, before: {"tests": 1, "errors": 0, "failures": 0, "skipped": 1, "durationSeconds": 0.0},
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_surefire_report",
+        lambda root, class_name, before: {"tests": 8, "errors": 0, "failures": 0, "skipped": 0, "durationSeconds": 0.0},
+    )
+    args = type("Args", (), {"java_process_test": True, "maven": "mvnw.cmd", "python": ""})()
+
+    result = MODULE.run(args)
+
+    assert result["status"] == "NOT_RUN"
+    assert result["evidenceStatus"] == "NOT_RUN"

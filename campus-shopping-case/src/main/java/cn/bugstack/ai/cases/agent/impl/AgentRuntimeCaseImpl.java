@@ -8,7 +8,6 @@ import cn.bugstack.ai.cases.agent.model.AgentToolInvocationCommand;
 import cn.bugstack.ai.cases.agent.model.RunAgentCommand;
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAgentRuntimePort;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAgentRunRepository;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentProductCandidateVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeCommandVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeResultVO;
@@ -16,16 +15,17 @@ import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStageVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeToolCallVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeToolResultVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentSkuFactVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationResultVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolRegistry;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Conditional;
@@ -131,51 +131,64 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
     private List<AgentRuntimeToolResultVO> invokeTools(RunAgentCommand command, List<AgentRuntimeToolCallVO> calls) {
         require(calls != null && !calls.isEmpty(), ResponseCode.AI_UNAVAILABLE);
         List<AgentRuntimeToolResultVO> results = new ArrayList<>(calls.size());
+        Set<String> callIds = new HashSet<>();
         for (AgentRuntimeToolCallVO call : calls) {
+            require(callIds.add(call.callId()), ResponseCode.REQUEST_CONFLICT);
             Map<String, Object> arguments = call.arguments();
-            String query = requiredText(arguments, "query", 2000);
-            int limit = integer(arguments, "limit", 1, 20, 10);
-            String merchantId = optionalText(arguments, "merchantId", 64);
             String invocationKey = "runtime-" + Fingerprints.sha256(command.runId() + "|" + call.callId()).substring(0, 60);
-            AgentToolResultVO result = tools.invoke(new AgentToolInvocationCommand(
-                command.actor(), command.runId(), command.capabilityToken(), invocationKey, call.name(), query, limit, merchantId
-            ));
-            results.add(new AgentRuntimeToolResultVO(call.callId(), call.name(), resultPayload(result), null));
+            AgentToolInvocationCommand invocation = invocationCommand(command, call.name(), invocationKey, arguments);
+            AgentToolInvocationResultVO result = AgentToolRegistry.SEARCH_PRODUCTS.equals(call.name())
+                ? new AgentToolInvocationResultVO(tools.invoke(invocation))
+                : tools.invokeResult(invocation);
+            results.add(new AgentRuntimeToolResultVO(call.callId(), call.name(), result.runtimePayload(), null));
         }
         return List.copyOf(results);
     }
 
-    private Map<String, Object> resultPayload(AgentToolResultVO result) {
-        List<Map<String, Object>> candidates = result.candidates().stream().map(this::candidatePayload).toList();
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("tool", result.tool());
-        payload.put("version", result.version());
-        payload.put("readOnly", result.readOnly());
-        payload.put("candidates", candidates);
-        return Map.copyOf(payload);
+    private AgentToolInvocationCommand invocationCommand(
+        RunAgentCommand command,
+        String toolName,
+        String invocationKey,
+        Map<String, Object> arguments
+    ) {
+        if (AgentToolRegistry.SEARCH_PRODUCTS.equals(toolName)) {
+            requireKeys(arguments, Set.of("query", "limit", "merchantId"));
+            return new AgentToolInvocationCommand(
+                command.actor(),
+                command.runId(),
+                command.capabilityToken(),
+                invocationKey,
+                toolName,
+                requiredText(arguments, "query", 2000),
+                integer(arguments, "limit", 1, 20, 10),
+                optionalText(arguments, "merchantId", 64)
+            );
+        }
+        if (AgentToolRegistry.KNOWLEDGE_QA.equals(toolName)) {
+            requireKeys(arguments, Set.of("question"));
+            return new AgentToolInvocationCommand(
+                command.actor(), command.runId(), command.capabilityToken(), invocationKey, toolName,
+                requiredText(arguments, "question", 1000), 0, null, null, 1, 10
+            );
+        }
+        require(AgentToolRegistry.GET_MY_ORDERS.equals(toolName), ResponseCode.ILLEGAL_PARAMETER);
+        require(arguments.containsKey("page") && arguments.containsKey("size"), ResponseCode.ILLEGAL_PARAMETER);
+        requireKeys(arguments, Set.of("state", "page", "size"));
+        return new AgentToolInvocationCommand(
+            command.actor(), command.runId(), command.capabilityToken(), invocationKey, toolName, null, 0, null,
+            optionalState(arguments, "state"), integer(arguments, "page", 1, 10_000, 1), integer(arguments, "size", 1, 20, 10)
+        );
     }
 
-    private Map<String, Object> candidatePayload(AgentProductCandidateVO candidate) {
-        List<Map<String, Object>> offers = candidate.offers().stream().map(this::offerPayload).toList();
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("productId", candidate.productId());
-        payload.put("merchantId", candidate.merchantId());
-        payload.put("storeId", candidate.storeId());
-        payload.put("title", candidate.title());
-        payload.put("source", candidate.source());
-        payload.put("verified", candidate.factVerified());
-        payload.put("offers", offers);
-        return Map.copyOf(payload);
+    private void requireKeys(Map<String, Object> arguments, Set<String> allowed) {
+        require(arguments.keySet().stream().allMatch(allowed::contains), ResponseCode.ILLEGAL_PARAMETER);
     }
 
-    private Map<String, Object> offerPayload(AgentSkuFactVO offer) {
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("skuId", offer.skuId());
-        payload.put("specKey", offer.specKey());
-        payload.put("priceCent", offer.priceCent());
-        payload.put("priceVersion", offer.priceVersion());
-        payload.put("availableQuantity", offer.availableQuantity());
-        return Map.copyOf(payload);
+    private String optionalState(Map<String, Object> arguments, String key) {
+        Object value = arguments.get(key);
+        if (value == null) return null;
+        require(value instanceof String && ((String) value).length() <= 32, ResponseCode.ILLEGAL_PARAMETER);
+        return ((String) value).strip();
     }
 
     private AgentRuntimeReceipt receipt(AgentRuntimeResultVO result, int rounds) {

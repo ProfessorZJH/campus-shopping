@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "evidenceStatus": "STUB",
+  "endpoint": "http://127.0.0.1:60087/internal/v1/agent/runtime/turn",
+  "scope": "protocol_probe_only",
+  "protocolVersion": "1.0",
+  "runtimeStatus": "TOOL_CALLS",
+  "toolCallCount": 1,
+  "durationMs": 4843,
+  "businessWrites": false,
+  "checks": [
+    "double authentication accepted",
+    "run and request correlation preserved",
+    "response status is versioned",
+    "no business write endpoint was called"
+  ],
+  "startedAt": "2026-11-09T19:27:29.719058+00:00",
+  "finishedAt": "2026-11-09T19:27:36.180716+00:00"
+}

@@ -1,0 +1,129 @@
+{
+  "$defs": {
+    "KnowledgeCitation": {
+      "additionalProperties": false,
+      "properties": {
+        "documentId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Documentid",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "snippet": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Snippet",
+          "type": "string"
+        },
+        "score": {
+          "minimum": 0.0,
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "documentId",
+        "title",
+        "snippet",
+        "score"
+      ],
+      "title": "KnowledgeCitation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "tool": {
+      "const": "knowledge_qa",
+      "enum": [
+        "knowledge_qa"
+      ],
+      "title": "Tool",
+      "type": "string"
+    },
+    "version": {
+      "const": "1.0",
+      "enum": [
+        "1.0"
+      ],
+      "title": "Version",
+      "type": "string"
+    },
+    "readOnly": {
+      "const": true,
+      "enum": [
+        true
+      ],
+      "title": "Readonly",
+      "type": "boolean"
+    },
+    "query": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Query",
+      "type": "string"
+    },
+    "answer": {
+      "default": "",
+      "maxLength": 8000,
+      "title": "Answer",
+      "type": "string"
+    },
+    "answerMode": {
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Answermode",
+      "type": "string"
+    },
+    "retrievalMode": {
+      "maxLength": 32,
+      "minLength": 1,
+      "title": "Retrievalmode",
+      "type": "string"
+    },
+    "warning": {
+      "anyOf": [
+        {
+          "maxLength": 500,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Warning"
+    },
+    "citations": {
+      "items": {
+        "$ref": "#/$defs/KnowledgeCitation"
+      },
+      "maxItems": 20,
+      "title": "Citations",
+      "type": "array"
+    },
+    "durationMs": {
+      "maximum": 120000,
+      "minimum": 0,
+      "title": "Durationms",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "tool",
+    "version",
+    "readOnly",
+    "query",
+    "answerMode",
+    "retrievalMode",
+    "durationMs"
+  ],
+  "title": "KnowledgeQaResult",
+  "type": "object"
+}

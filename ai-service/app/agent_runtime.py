@@ -251,7 +251,11 @@ def _merge_usage(total: dict[str, int], current: Mapping[str, int]) -> dict[str,
 
 def _looks_like_plain_text_tool_call(answer: str) -> bool:
     return bool(
-        re.search(r"(?:调用|执行|call|invoke)\s*[`'\"]?search_products", answer, flags=re.IGNORECASE)
+        re.search(
+            r"(?:调用|执行|call|invoke)\s*[`'\"]?(?:search_products|knowledge_qa|get_my_orders)",
+            answer,
+            flags=re.IGNORECASE,
+        )
     )
 
 

@@ -1,15 +1,18 @@
 {
   "status": "NOT_RUN",
   "evidenceStatus": "NOT_RUN",
-  "reason": "Runtime endpoint unavailable",
-  "endpoint": "http://127.0.0.1:8100/internal/v1/agent/runtime/turn",
+  "reason": "AI_SERVICE_KEY is not configured",
   "checks": [
     "loopback URL validation",
     "capability SHA-256 digest header contract",
-    "HMAC request signature helper"
+    "HMAC request signature helper",
+    "shared Java/Python search_products fixture and fail-closed schema validator"
   ],
   "scope": "protocol_probe_only",
   "realAgentIntegration": "NOT_RUN",
-  "startedAt": "2026-11-09T19:08:09.617380+00:00",
-  "finishedAt": "2026-11-09T19:08:11.672797+00:00"
+  "businessWrites": false,
+  "redactionChecked": true,
+  "startedAt": "2026-11-09T19:19:17.313035+00:00",
+  "finishedAt": "2026-11-09T19:19:17.313035+00:00",
+  "javaRuntimeEntry": "NOT_RUN"
 }

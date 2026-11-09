@@ -21,6 +21,8 @@ import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +33,7 @@ public class AgentRunCaseImpl implements IAgentRunCase {
     private final IUserAccountService accounts;
     private final IAccessService access;
     private final Clock clock;
+    private final boolean consumerReadOnlyEnabled;
 
     public AgentRunCaseImpl(
         IAgentRunRepository repository,
@@ -38,10 +41,22 @@ public class AgentRunCaseImpl implements IAgentRunCase {
         IAccessService access,
         Clock clock
     ) {
+        this(repository, accounts, access, clock, false);
+    }
+
+    @Autowired
+    public AgentRunCaseImpl(
+        IAgentRunRepository repository,
+        IUserAccountService accounts,
+        IAccessService access,
+        Clock clock,
+        @Value("${campus.ai.agent-consumer-readonly.enabled:false}") boolean consumerReadOnlyEnabled
+    ) {
         this.repository = repository;
         this.accounts = accounts;
         this.access = access;
         this.clock = clock;
+        this.consumerReadOnlyEnabled = consumerReadOnlyEnabled;
     }
 
     @Override
@@ -54,10 +69,13 @@ public class AgentRunCaseImpl implements IAgentRunCase {
         String turnToken = text(command.turnToken(), "会话租约", 64);
         String idempotencyKey = text(command.idempotencyKey(), "幂等键", 100);
         Set<String> allowedTools = command.allowedTools();
-        require(!allowedTools.isEmpty() && allowedTools.stream().allMatch(AgentToolRegistry::contains), ResponseCode.ILLEGAL_PARAMETER);
+        require(!allowedTools.isEmpty() && allowedTools.stream().allMatch(tool -> AgentToolRegistry.enabled(tool, consumerReadOnlyEnabled)), ResponseCode.ILLEGAL_PARAMETER);
         Instant turnExpiresAt = repository.activeTurnExpiry(actor, conversationId, turnToken);
         require(turnExpiresAt != null && turnExpiresAt.isAfter(clock.instant()), ResponseCode.STATE_CONFLICT);
         AgentScopeVO scope = buildScope(actor, conversationId, turnToken, turnExpiresAt, command.merchantId());
+        if (allowedTools.stream().anyMatch(AgentToolRegistry.CONSUMER_READ_ONLY_TOOLS::contains)) {
+            require(AgentScopeVO.CONSUMER.equals(scope.identityKind()), ResponseCode.AUTH_FORBIDDEN);
+        }
         AgentRunVO existing = repository.findByIdempotency(actor, idempotencyKey);
         if (existing != null) {
             require(existing.scope().equals(scope) && existing.allowedTools().equals(allowedTools), ResponseCode.REQUEST_CONFLICT);

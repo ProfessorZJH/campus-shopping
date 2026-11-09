@@ -53,6 +53,8 @@ campus:
     agent-runtime:
       enabled: ${AI_AGENT_RUNTIME_ENABLED:false}
       timeout-seconds: ${AI_AGENT_RUNTIME_TIMEOUT_SECONDS:60}
+    agent-consumer-readonly:
+      enabled: ${AI_AGENT_CONSUMER_READONLY_ENABLED:false}
     egress:
       base-ids: ${AI_EGRESS_BASE_IDS:}
       merchant-ids: ${AI_EGRESS_MERCHANT_IDS:}

@@ -1,0 +1,19 @@
+{
+  "tool": "knowledge_qa",
+  "version": "1.0",
+  "readOnly": true,
+  "query": "How does campus pickup work?",
+  "answer": "The authorized pickup instructions are shown on the order page.",
+  "answerMode": "LOCAL_RETRIEVAL_DEMO",
+  "retrievalMode": "LOCAL_CHAR_NGRAM_DEMO",
+  "warning": null,
+  "citations": [
+    {
+      "documentId": "doc-public-001",
+      "title": "Campus pickup guide",
+      "snippet": "Pickup instructions are shown on the order page.",
+      "score": 0.91
+    }
+  ],
+  "durationMs": 42
+}

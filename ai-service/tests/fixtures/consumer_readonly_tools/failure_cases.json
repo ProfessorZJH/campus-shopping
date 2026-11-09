@@ -1,0 +1,16 @@
+{
+  "unknown_tool": {
+    "name": "delete_order",
+    "arguments": {}
+  },
+  "missing_knowledge_arguments": {
+    "name": "knowledge_qa",
+    "arguments": {}
+  },
+  "fake_text": "I will call knowledge_qa after checking your account.",
+  "secret_markers": [
+    "fixture-api-key",
+    "fixture-private-prompt",
+    "fixture-provider-body"
+  ]
+}

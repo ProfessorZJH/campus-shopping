@@ -5,6 +5,7 @@ import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeCommandVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeResultVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeToolCallVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolRegistry;
 import cn.bugstack.ai.infrastructure.gateway.dto.AgentRuntimeDTO;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
@@ -13,13 +14,13 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +34,8 @@ import org.springframework.stereotype.Service;
 public class AgentRuntimeGateway implements IAgentRuntimePort {
     private static final Logger log = LoggerFactory.getLogger(AgentRuntimeGateway.class);
     private static final String PROTOCOL = "1.0";
+    /** M2 Python Runtime contract; consumer tools remain gated until both sides are released together. */
+    private static final Set<String> EXECUTABLE_BRIDGE_TOOLS = Set.of(AgentToolRegistry.SEARCH_PRODUCTS);
     private final ObjectMapper mapper;
     private final HttpClient client;
     private final String baseUrl;
@@ -58,6 +61,9 @@ public class AgentRuntimeGateway implements IAgentRuntimePort {
     @Override
     public AgentRuntimeResultVO run(AgentRuntimeCommandVO command) {
         if (!enabled || serviceKey == null || serviceKey.length() < 24) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        if (command.allowedTools().stream().anyMatch(name -> !EXECUTABLE_BRIDGE_TOOLS.contains(name))) {
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
         String requestId = command.requestId();
         double expires = command.scope().turnExpiresAt().toEpochMilli() / 1000.0;
         AgentRuntimeDTO.Command payload = new AgentRuntimeDTO.Command(
@@ -93,8 +99,14 @@ public class AgentRuntimeGateway implements IAgentRuntimePort {
         if ("search_products".equals(name)) {
             Map<String, Object> properties = new LinkedHashMap<>();
             properties.put("query", Map.of("type", "string", "minLength", 1, "maxLength", 2000));
-            properties.put("limit", Map.of("type", "integer", "minimum", 1, "maximum", 20));
-            properties.put("merchantId", Map.of("type", "string"));
+            properties.put("limit", Map.of("type", "integer", "minimum", 1, "maximum", 20, "default", 10));
+            Map<String, Object> merchantId = new LinkedHashMap<>();
+            merchantId.put("anyOf", List.of(
+                Map.of("type", "string", "minLength", 1, "maxLength", 64),
+                Map.of("type", "null")
+            ));
+            merchantId.put("default", null);
+            properties.put("merchantId", merchantId);
             return Map.of("type", "object", "additionalProperties", false, "properties", properties, "required", List.of("query"));
         }
         return Map.of("type", "object", "additionalProperties", false);
@@ -112,8 +124,40 @@ public class AgentRuntimeGateway implements IAgentRuntimePort {
         if (dto == null || !PROTOCOL.equals(dto.protocolVersion()) || !command.runId().equals(dto.runId()) || !command.requestId().equals(dto.requestId())) throw new AppException(ResponseCode.AI_UNAVAILABLE);
         AgentRuntimeStatusVO status;
         try { status = AgentRuntimeStatusVO.valueOf(dto.status()); } catch (RuntimeException error) { throw new AppException(ResponseCode.AI_UNAVAILABLE); }
-        List<AgentRuntimeToolCallVO> calls = dto.toolCalls() == null ? List.of() : dto.toolCalls().stream().map(call -> new AgentRuntimeToolCallVO(call.callId(), call.name(), call.arguments())).toList();
+        if (status != AgentRuntimeStatusVO.TOOL_CALLS && dto.toolCalls() != null && !dto.toolCalls().isEmpty()) {
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
+        List<AgentRuntimeToolCallVO> calls = dto.toolCalls() == null ? List.of() : dto.toolCalls().stream().map(call -> {
+            if (call == null || !command.allowedTools().contains(call.name()) || !EXECUTABLE_BRIDGE_TOOLS.contains(call.name())) {
+                throw new AppException(ResponseCode.AI_UNAVAILABLE);
+            }
+            validateSearchArguments(call.arguments());
+            return new AgentRuntimeToolCallVO(call.callId(), call.name(), call.arguments());
+        }).toList();
         return new AgentRuntimeResultVO(dto.runId(), dto.requestId(), status, dto.continuationId(), calls, dto.answer(), dto.evidenceStatus(), dto.usage(), dto.durationMs(), dto.errorCode());
+    }
+
+    private void validateSearchArguments(Map<String, Object> arguments) {
+        if (arguments == null || arguments.keySet().stream().anyMatch(key -> !Set.of("query", "limit", "merchantId").contains(key))) {
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
+        Object query = arguments.get("query");
+        if (!(query instanceof String)) {
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
+        String queryText = (String) query;
+        if (queryText.isBlank() || queryText.length() > 2000) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        Object limit = arguments.get("limit");
+        if (limit != null && (!(limit instanceof Number number) || limit instanceof Float || limit instanceof Double
+            || number.longValue() < 1 || number.longValue() > 20 || number.longValue() != number.doubleValue())) {
+            throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
+        Object merchantId = arguments.get("merchantId");
+        if (merchantId != null) {
+            if (!(merchantId instanceof String)) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+            String merchantText = (String) merchantId;
+            if (merchantText.isBlank() || merchantText.length() > 64) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
     }
 
     private AppException unavailable(String type, String requestId, long started) {

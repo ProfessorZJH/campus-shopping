@@ -1,0 +1,182 @@
+{
+  "$defs": {
+    "OrderItemSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "skuId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Skuid",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "specKey": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Speckey",
+          "type": "string"
+        },
+        "unitPriceCent": {
+          "maximum": 100000000,
+          "minimum": 0,
+          "title": "Unitpricecent",
+          "type": "integer"
+        },
+        "quantity": {
+          "maximum": 99,
+          "minimum": 1,
+          "title": "Quantity",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "skuId",
+        "title",
+        "specKey",
+        "unitPriceCent",
+        "quantity"
+      ],
+      "title": "OrderItemSummary",
+      "type": "object"
+    },
+    "OrderSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "orderId": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Orderid",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "PENDING_PAYMENT",
+            "PAID",
+            "COMPLETED",
+            "CANCELED",
+            "REFUNDED"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "totalCent": {
+          "maximum": 2000000000,
+          "minimum": 0,
+          "title": "Totalcent",
+          "type": "integer"
+        },
+        "createdAt": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Createdat",
+          "type": "string"
+        },
+        "merchantName": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Merchantname",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/OrderItemSummary"
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "orderId",
+        "status",
+        "totalCent",
+        "createdAt",
+        "merchantName",
+        "items"
+      ],
+      "title": "OrderSummary",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "tool": {
+      "const": "get_my_orders",
+      "enum": [
+        "get_my_orders"
+      ],
+      "title": "Tool",
+      "type": "string"
+    },
+    "version": {
+      "const": "1.0",
+      "enum": [
+        "1.0"
+      ],
+      "title": "Version",
+      "type": "string"
+    },
+    "readOnly": {
+      "const": true,
+      "enum": [
+        true
+      ],
+      "title": "Readonly",
+      "type": "boolean"
+    },
+    "state": {
+      "enum": [
+        "",
+        "PENDING_PAYMENT",
+        "PAID",
+        "COMPLETED",
+        "CANCELED",
+        "REFUNDED"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "page": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Page",
+      "type": "integer"
+    },
+    "size": {
+      "maximum": 20,
+      "minimum": 1,
+      "title": "Size",
+      "type": "integer"
+    },
+    "total": {
+      "minimum": 0,
+      "title": "Total",
+      "type": "integer"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/OrderSummary"
+      },
+      "maxItems": 20,
+      "title": "Items",
+      "type": "array"
+    }
+  },
+  "required": [
+    "tool",
+    "version",
+    "readOnly",
+    "state",
+    "page",
+    "size",
+    "total"
+  ],
+  "title": "GetMyOrdersResult",
+  "type": "object"
+}

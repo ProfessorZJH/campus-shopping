@@ -1,0 +1,121 @@
+{
+  "runId": "e23cbca7af17719a142eac51",
+  "scope": "Agent v1.1 M0/M1",
+  "evidenceStatus": "DEGRADED",
+  "startedAt": "2026-11-09T19:19:06.695370+00:00",
+  "checks": [
+    {
+      "name": "stub_native_tool_call_and_continued_answer",
+      "outcome": "PASS",
+      "toolCalls": 1,
+      "durationMs": 5,
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 3,
+        "total_tokens": 13
+      }
+    },
+    {
+      "name": "stub_streaming_tool_arguments_execute_once",
+      "outcome": "PASS",
+      "toolCalls": 1,
+      "durationMs": 1
+    },
+    {
+      "name": "stub_no_business_write",
+      "outcome": "PASS",
+      "businessWrites": false,
+      "registeredTools": [
+        "search_products"
+      ],
+      "durationMs": 0
+    },
+    {
+      "name": "real_configuration_safety_gate",
+      "outcome": "PASS",
+      "validated": true
+    },
+    {
+      "name": "real_native_tool_call",
+      "outcome": "PASS",
+      "model": "spark-x2.6",
+      "toolCalls": 1,
+      "toolCallStatuses": [
+        "SUCCEEDED"
+      ],
+      "continuedAnswer": true,
+      "answerChars": 149,
+      "usage": {
+        "prompt_tokens": 657,
+        "completion_tokens": 256,
+        "total_tokens": 913
+      },
+      "durationMs": 15106
+    },
+    {
+      "name": "real_streaming_tool_call",
+      "outcome": "PASS",
+      "model": "spark-x2.6",
+      "toolCalls": 1,
+      "toolCallStatuses": [
+        "SUCCEEDED"
+      ],
+      "continuedAnswer": true,
+      "answerChars": 262,
+      "usage": {
+        "prompt_tokens": 668,
+        "completion_tokens": 298,
+        "total_tokens": 966
+      },
+      "durationMs": 19310
+    },
+    {
+      "name": "real_embedding_passage_query",
+      "outcome": "PASS",
+      "model": "nvidia/nemotron-3.5-embed-1b",
+      "dimensions": 2048,
+      "passageCount": 1,
+      "queryCount": 1,
+      "durationMs": 5450
+    },
+    {
+      "name": "real_milvus_isolated_lifecycle",
+      "outcome": "FAIL",
+      "errorCode": "UPSTREAM_TIMEOUT",
+      "durationMs": 47357
+    },
+    {
+      "name": "real_milvus_isolated_cleanup",
+      "outcome": "PASS",
+      "durationMs": 1583
+    },
+    {
+      "name": "real_java_mysql_fact_revalidation",
+      "outcome": "NOT_RUN",
+      "reason": "M0/M1 未新增 Java Agent/商品事实 HTTP Port；需要后续 M2 受控 Gateway"
+    },
+    {
+      "name": "real_end_to_end_agent_chain",
+      "outcome": "NOT_RUN",
+      "reason": "真实 Milvus 候选尚未接入 Java/MySQL 事实复验"
+    }
+  ],
+  "productionProductCollectionModified": false,
+  "javaMySqlTested": false,
+  "businessWrites": false,
+  "configured": {
+    "llm": true,
+    "embedding": true,
+    "milvus": true,
+    "serviceKey": true
+  },
+  "configuredEvidenceStatus": "REAL",
+  "model": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "finishedAt": "2026-11-09T19:20:38.057208+00:00",
+  "summary": {
+    "passed": 8,
+    "failed": 1,
+    "notRun": 2
+  }
+}

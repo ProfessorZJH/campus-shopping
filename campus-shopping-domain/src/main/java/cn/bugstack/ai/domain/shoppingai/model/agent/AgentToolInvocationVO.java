@@ -12,7 +12,7 @@ public record AgentToolInvocationVO(
     String toolName,
     String inputFingerprint,
     String status,
-    AgentToolResultVO result,
+    AgentToolInvocationResultVO result,
     String errorCode,
     Instant createdAt,
     Instant completedAt
@@ -25,6 +25,33 @@ public record AgentToolInvocationVO(
         require(inputFingerprint != null && !inputFingerprint.isBlank(), ResponseCode.ILLEGAL_PARAMETER);
         require(status != null && !status.isBlank(), ResponseCode.ILLEGAL_PARAMETER);
         require(createdAt != null, ResponseCode.ILLEGAL_PARAMETER);
+    }
+
+    /** Compatibility constructor for the M2 search_products persistence shape. */
+    public AgentToolInvocationVO(
+        String id,
+        String runId,
+        String invocationKey,
+        String toolName,
+        String inputFingerprint,
+        String status,
+        AgentToolResultVO result,
+        String errorCode,
+        Instant createdAt,
+        Instant completedAt
+    ) {
+        this(
+            id,
+            runId,
+            invocationKey,
+            toolName,
+            inputFingerprint,
+            status,
+            result == null ? null : new AgentToolInvocationResultVO(result),
+            errorCode,
+            createdAt,
+            completedAt
+        );
     }
 
     public boolean completed() {
