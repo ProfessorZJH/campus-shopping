@@ -16,6 +16,7 @@
 | **Agent v1.1 Milvus REST probe (2026-11-10)** | [REST lifecycle report](testing/AGENT-V1.1-MILVUS-REST-PROBE-20261110.md); isolated REST CRUD/search and cleanup passed, while gRPC/TLS 443 and full M1 acceptance remain blocked |
 | **Agent v1.1 M2 HTTP integration audit (2026-11-10)** | [HTTP audit](testing/AGENT-V1.1-M2-HTTP-INTEGRATION-AUDIT-20261110.md); the harness is read-only and remains `NOT_RUN` until a loopback Java service is available |
 | **Agent v1.1 M2 Gateway（2026-11-09）** | [OpenSpec](../openspec/changes/agent-v1-1-m2-gateway/proposal.md)、[Java Gateway 实施与自动验证](testing/AGENT-V1.1-M2-GATEWAY-20261109.md)；真实 Python/Milvus/HTTP 联调仍待后续验收 |
+| **Agent v1.1 Java/MySQL fact revalidation (2026-11-10)** | [Isolated verification](testing/AGENT-V1.1-JAVA-MYSQL-FACT-REVALIDATION-20261110.md); 406 Maven tests passed with 0 failures and 0 errors; Redis-only tests skipped without an explicit test instance |
 | **FR-023 智能导购评测** | [工具/指标/实验/复现](../ai-service/evaluation/README.md)、[120例草稿与人工标注](../ai-service/evaluation/datasets/campus-shopping-v1/README.md)、[最新审查修复与完整验收](testing/AI-SKU-REVIEW-20261031.md)、[前轮防御补强](testing/AI-SKU-DEFENSE-20261031.md)、[前轮规格过滤修复](testing/AI-SKU-CONSTRAINTS-20261031.md)、[前轮审查与原始失败](testing/AI-EVALUATION-REVIEW-20261031.md)、[历史实现验证](testing/AI-EVALUATION-20261031.md) |
 | **当前 SDD-12 Redis 交付** | [规格与验收矩阵](specs/SDD-REDIS-12.md)、[主线整合实际验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)、[配置、升级与回退](operations/REDIS-12-runbook.md) |
 | **PR #11 审查收口** | [文档状态与Python资源容量修复、复现及65项回归](testing/REDIS-REVIEW-FOLLOWUP-20261031.md) |

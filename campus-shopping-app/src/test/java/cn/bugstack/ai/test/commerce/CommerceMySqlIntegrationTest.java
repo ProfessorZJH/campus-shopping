@@ -9,6 +9,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import cn.bugstack.ai.Application;
+import cn.bugstack.ai.cases.agent.IAgentRunCase;
+import cn.bugstack.ai.cases.agent.IAgentToolInvocationCase;
+import cn.bugstack.ai.cases.agent.model.AgentToolInvocationCommand;
+import cn.bugstack.ai.cases.agent.model.CreateAgentRunCommand;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.merchant.IMerchantAdmissionCase;
@@ -140,6 +144,12 @@ class CommerceMySqlIntegrationTest {
     IShoppingAiCase ai;
 
     @Autowired
+    IAgentRunCase agentRuns;
+
+    @Autowired
+    IAgentToolInvocationCase agentTools;
+
+    @Autowired
     IKnowledgeService aiState;
 
     @Autowired
@@ -204,6 +214,8 @@ class CommerceMySqlIntegrationTest {
         assertEquals("campus_shopping_it", jdbc.queryForObject("SELECT DATABASE()", String.class));
         // 固定表清单，绝不拼接用户输入。JUnit 默认顺序执行，CI 不启用并行测试类。
         for (String table : List.of(
+            "ai_run_invocation",
+            "ai_run",
             "ai_proposal",
             "ai_message",
             "ai_conversation",
@@ -641,6 +653,43 @@ class CommerceMySqlIntegrationTest {
         catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
         if (quantity > 0) catalog.replenishStock(owner, merchant.id(), p.getSkus().get(0).id(), quantity, UUID.randomUUID().toString());
         return catalogSearch.findForDisplay(p.getId());
+    }
+
+    @Test
+    void agentSearchRevalidatesMySqlFactsAndReplaysOnlyTheSameInvocation() {
+        var p = product(3);
+        var conversation = conversations.conversation(buyer, null, "考试中性笔");
+        var turn = conversations.beginTurn(buyer, conversation.id(), "考试中性笔");
+        var run = agentRuns.create(
+            new CreateAgentRunCommand(buyer, conversation.id(), turn.token(), "agent-fact-revalidation", null, Set.of("search_products"))
+        );
+        long cartBefore = scalar("SELECT COUNT(*) FROM trd_cart_item");
+        long orderBefore = scalar("SELECT COUNT(*) FROM trd_order");
+        try {
+            var first = agentTools.invoke(
+                new AgentToolInvocationCommand(buyer, run.runId(), run.capabilityToken(), "search-1", "search_products", "考试中性笔", 5, null)
+            );
+            assertEquals(1, first.candidates().size());
+            assertEquals(p.getId(), first.candidates().get(0).productId());
+            assertTrue(first.candidates().get(0).factVerified());
+            assertEquals(3, first.candidates().get(0).offers().get(0).availableQuantity());
+
+            catalog.forceUnpublishProduct(admin, p.getId());
+            var hidden = agentTools.invoke(
+                new AgentToolInvocationCommand(buyer, run.runId(), run.capabilityToken(), "search-2", "search_products", "考试中性笔", 5, null)
+            );
+            assertTrue(hidden.candidates().isEmpty());
+
+            var replay = agentTools.invoke(
+                new AgentToolInvocationCommand(buyer, run.runId(), run.capabilityToken(), "search-1", "search_products", "考试中性笔", 5, null)
+            );
+            assertEquals(first, replay);
+            assertEquals(cartBefore, scalar("SELECT COUNT(*) FROM trd_cart_item"));
+            assertEquals(orderBefore, scalar("SELECT COUNT(*) FROM trd_order"));
+        } finally {
+            catalog.setProductPublished(owner, merchant.id(), p.getId(), true);
+            conversations.releaseTurn(turn);
+        }
     }
 
     @Test
