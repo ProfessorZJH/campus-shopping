@@ -4,7 +4,7 @@
 > 分支：`codex/agent-v1-1-proposal`  
 > OpenSpec：`agent-v1-1`  
 > 基线：`main` `7408926`  
-> 本记录不代表真实供应商、生产 Milvus 或 Java/MySQL Agent Gateway 验收通过。
+> 当前真实证据总体为 `DEGRADED`：讯飞 Tool Calling 与 NVIDIA Embedding 已取得真实样本，Milvus 因 TLS 配置门禁未运行，Java/MySQL 事实复验和完整链路仍未运行。
 
 ## 本次实施
 
@@ -40,11 +40,35 @@ python scripts/smoke-agent-v1-1.py --output docs/testing/evidence/agent-v1.1-loc
 | Stub 无业务写入 | PASS / `STUB` | 注册工具只有 `search_products` |
 | 真实原生 Tool Calling | `NOT_RUN` | 本地未配置 `LLM_BASE_URL/LLM_API_KEY/LLM_MODEL` |
 | 真实流式 Tool Calling | `NOT_RUN` | 本地未配置真实模型 |
+| 真实 Embedding passage/query | `NOT_RUN` | 本地未配置 `EMBEDDING_BASE_URL/EMBEDDING_API_KEY/EMBEDDING_MODEL` |
 | 真实 Milvus 隔离生命周期 | `NOT_RUN` | 本地未配置 `EMBEDDING_*` 与 `MILVUS_*` |
 | Java/MySQL 商品事实复验 | `NOT_RUN` | M0/M1 未新增 Java Agent/商品事实 HTTP Port |
 | 真实端到端 Agent 链路 | `NOT_RUN` | 等待真实模型、Milvus 和后续受控 Java Gateway |
 
-当前报告的顶层状态是 `NOT_RUN`，`productionProductCollectionModified=false`、`javaMySqlTested=false`、`businessWrites=false`。本地没有 `.env`，也没有发现 `LLM_*`、`EMBEDDING_*`、`MILVUS_*` 或 `REDIS_TEST_ADDRESS` 环境变量；没有发送真实凭据或操作既有业务库。
+当前本地 Stub 报告的顶层状态是 `NOT_RUN`，`productionProductCollectionModified=false`、`javaMySqlTested=false`、`businessWrites=false`。该报告不代表后续私有 `.env` 真实运行结果。
+
+## 私有配置真实运行证据
+
+证据文件：[agent-v1.1-live.json](evidence/agent-v1.1-live.json)、[agent-v1.1-stream-retry.json](evidence/agent-v1.1-stream-retry.json)
+
+执行命令（配置文件只在进程内读取，未复制到分支或报告）：
+
+```powershell
+python scripts/smoke-agent-v1-1.py --env-file G:\develop\campus-shopping\.env --output docs/testing/evidence/agent-v1.1-live.json --require-live
+```
+
+真实结果如下：
+
+| 检查 | 状态 | 证据 |
+| --- | --- | --- |
+| 讯飞原生 Tool Calling | `PASS / REAL` | `spark-x2.6` 返回 1 个原生工具调用，回执状态 `SUCCEEDED`，随后继续回答；本次 631 tokens，约 58.8 秒 |
+| 讯飞流式 Tool Calling | 首轮 `FAIL / REAL`，定向重试 `PASS / REAL` | 首轮安全记录为 `ASSERTIONERROR`；重试返回 1 个 `SUCCEEDED` 调用并继续回答，740 tokens，约 21.3 秒 |
+| NVIDIA Embedding passage/query | `PASS / REAL` | `nvidia/nemotron-3.5-embed-1b`，2048 维，passage/query 数量和维度一致 |
+| Milvus 隔离集合生命周期 | `NOT_RUN` | 配置为公网 `http` 地址，服务端 TLS 校验拒绝；443 证书与域名不匹配，未跳过证书校验 |
+| Java/MySQL 商品事实复验 | `NOT_RUN` | M0/M1 未新增 Java Agent/商品事实 HTTP Port |
+| 真实端到端 Agent 链路 | `NOT_RUN` | Milvus 未建立安全连接，且尚无受控 Java Gateway |
+
+真实报告明确记录 `productionProductCollectionModified=false`、`javaMySqlTested=false`、`businessWrites=false`；本轮没有创建或清理任何 Milvus 集合，也没有访问既有商品集合。`--require-live` 因必需的 Milvus 检查未完成返回非零，不能把本轮宣称为完整 M1 通过。
 
 ## 已执行验证
 
@@ -59,9 +83,10 @@ python scripts/smoke-agent-v1-1.py --output docs/testing/evidence/agent-v1.1-loc
 - `python scripts/verify-release.py`、`python scripts/verify-source.py`、`python scripts/verify-supply-chain.py`：通过。
 - 变更文件凭据模式扫描：未发现私钥、云访问密钥或 Slack Token 模式。
 - `git diff --check`：通过。
+- 私有配置真实运行：真实原生/流式 Tool Calling 重试和 NVIDIA Embedding 已记录；Milvus 因 TLS/证书门禁 `NOT_RUN`。
 
 ## 未完成与下一步
 
-M1 的真实模型、真实 Embedding、隔离 Milvus 生命周期和 Java/MySQL 事实复验仍未执行，不能勾选 OpenSpec 任务 4.1～4.4。它们需要私有环境中的真实配置和受控运行环境；具备条件后使用 `scripts/smoke-agent-v1-1.py --require-live`，并将实际样本、工具次数、时延、Token/成本、故障和清理证据追加到 `docs/testing/`。
+OpenSpec 任务 4.1 已有真实讯飞/NVIDIA 样本和一次流式重试证据；4.2～4.4 仍不能完成。4.2 需要修复 Milvus 的 TLS/证书配置后重新执行随机集合写入、检索、更新、删除和清理；4.3/4.4 还需要后续 M2 的受控 Java Agent/商品事实 Gateway。真实模型的流式首轮失败必须保留在报告中，不能用重试结果覆盖供应商稳定性事实。
 
 M2 前不得把本次实验模块挂入公开 `/ai/chat`、SSE 或交易写链路，也不得创建 `ai_run`。Java 受控 Run、Tool Gateway 和事实复验 Port 应作为下一项独立 OpenSpec 变更提出。

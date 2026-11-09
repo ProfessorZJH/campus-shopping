@@ -3,7 +3,7 @@
 > 日期：2026-11-09  
 > 变更：`agent-v1-1`  
 > 基线：`main` `7408926`  
-> 状态：矩阵与独立运行时已实现；真实供应商、Milvus 和 Java/MySQL 结果以实际运行报告为准。
+> 状态：矩阵与独立运行时已实现；2026-11-09 私有配置运行总体为 `DEGRADED`，真实模型/Embedding 结果、Milvus TLS 门禁和 Java/MySQL 未运行项见实际报告。
 
 ## 证据状态
 
@@ -47,4 +47,4 @@ python scripts/smoke-agent-v1-1.py --env-file .env --output docs/testing/evidenc
 
 ## 当前未决运行项
 
-本地工作树未发现 `LLM_*`、`EMBEDDING_*`、`MILVUS_*` 或 `REDIS_TEST_ADDRESS` 环境变量，不能在本轮把真实供应商、远端 Milvus 或 Java/MySQL 事实复验写成通过。历史报告只作为背景，不自动合并到本次 M1 结果。
+2026-11-09 私有配置运行已取得真实讯飞 Tool Calling 和 NVIDIA Embedding 证据；流式样本首轮失败、定向重试通过，必须同时保留。Milvus 配置的公网 `http` 地址未通过 TLS 校验，HTTPS 证书也与域名不匹配，因此隔离集合生命周期为 `NOT_RUN`；Java/MySQL 事实复验和完整端到端链路没有受控入口，保持 `NOT_RUN`。历史报告只作为背景，不自动合并到本次 M1 结果。

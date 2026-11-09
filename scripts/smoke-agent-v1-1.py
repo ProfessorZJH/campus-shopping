@@ -173,7 +173,15 @@ def run_real_model(recorder: EvidenceRecorder, settings: Settings) -> None:
         result = runtime.run("请检索考试签字笔", scope())
         if result.status != "COMPLETED" or not result.tool_calls:
             raise AssertionError("真实模型未产生可验证的原生 Tool Calling")
-        return {"model": settings.llm_model, "toolCalls": len(result.tool_calls), "usage": result.usage, "durationMs": result.duration_ms}
+        return {
+            "model": settings.llm_model,
+            "toolCalls": len(result.tool_calls),
+            "toolCallStatuses": [item.status for item in result.tool_calls],
+            "continuedAnswer": bool(result.answer.strip()),
+            "answerChars": len(result.answer),
+            "usage": result.usage,
+            "durationMs": result.duration_ms,
+        }
 
     recorder.check("real_native_tool_call", native_tool_call)
 
@@ -181,9 +189,34 @@ def run_real_model(recorder: EvidenceRecorder, settings: Settings) -> None:
         result = runtime.run_stream("请流式检索无糖茶", scope())
         if result.status != "COMPLETED" or not result.tool_calls:
             raise AssertionError("真实流式模型未产生可验证工具调用")
-        return {"model": settings.llm_model, "toolCalls": len(result.tool_calls), "usage": result.usage, "durationMs": result.duration_ms}
+        return {
+            "model": settings.llm_model,
+            "toolCalls": len(result.tool_calls),
+            "toolCallStatuses": [item.status for item in result.tool_calls],
+            "continuedAnswer": bool(result.answer.strip()),
+            "answerChars": len(result.answer),
+            "usage": result.usage,
+            "durationMs": result.duration_ms,
+        }
 
     recorder.check("real_streaming_tool_call", streaming_tool_call)
+
+
+def run_real_embedding(recorder: EvidenceRecorder, settings: Settings) -> None:
+    if not live_configured(settings)["embedding"]:
+        recorder.mark_not_run("real_embedding_passage_query", "EMBEDDING_BASE_URL/EMBEDDING_API_KEY/EMBEDDING_MODEL 未完整配置")
+        return
+
+    provider = Provider(settings)
+
+    def passage_query_embedding():
+        passage = provider.embed(["校园商城考试签字笔商品描述"], input_type="passage")
+        query = provider.embed(["考试签字笔"], input_type="query")
+        if len(passage) != 1 or len(query) != 1 or not passage[0] or len(passage[0]) != len(query[0]):
+            raise AssertionError("真实 Embedding 返回数量或维度不一致")
+        return {"model": settings.embedding_model, "dimensions": len(passage[0]), "passageCount": len(passage), "queryCount": len(query)}
+
+    recorder.check("real_embedding_passage_query", passage_query_embedding)
 
 
 def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
@@ -198,7 +231,14 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
     assert_isolated_collection(collection)
     with tempfile.TemporaryDirectory(prefix="campus-agent-v1-1-") as directory:
         isolated = replace(settings, product_collection=collection, db_path=str(Path(directory) / "agent.db"))
-        isolated.validate()
+        try:
+            isolated.validate()
+        except Exception:  # noqa: BLE001 - 配置门禁只记录稳定状态，不输出异常正文
+            recorder.mark_not_run("real_milvus_isolated_lifecycle", "Milvus 配置未通过服务端安全校验")
+            recorder.mark_not_run("real_milvus_isolated_cleanup", "Milvus 未建立连接，无法执行隔离集合清理")
+            recorder.mark_not_run("real_java_mysql_fact_revalidation", "本次未配置 Java Agent/商品事实复验入口")
+            recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Milvus 配置未通过安全校验")
+            return
         index = ProductIndex(isolated, Provider(isolated))
         client = None
         try:
@@ -262,7 +302,16 @@ def main() -> int:
     recorder.write()
     run_stub(recorder)
     run_real_model(recorder, settings)
+    run_real_embedding(recorder, settings)
     run_real_milvus(recorder, settings)
+    real_checks = [item for item in recorder.data["checks"] if item["name"].startswith("real_")]
+    if not real_checks or all(item["outcome"] == "NOT_RUN" for item in real_checks):
+        recorder.evidence_status = "NOT_RUN"
+    elif any(item["outcome"] != "PASS" for item in real_checks):
+        recorder.evidence_status = "DEGRADED"
+    else:
+        recorder.evidence_status = "REAL"
+    recorder.data["evidenceStatus"] = recorder.evidence_status
     recorder.data["summary"] = {
         "passed": sum(item["outcome"] == "PASS" for item in recorder.data["checks"]),
         "failed": sum(item["outcome"] == "FAIL" for item in recorder.data["checks"]),
@@ -270,8 +319,17 @@ def main() -> int:
     }
     recorder.write()
     print(json.dumps({"evidenceStatus": recorder.evidence_status, "summary": recorder.data["summary"]}, ensure_ascii=True))
-    if args.require_live and not all(configured[name] for name in ("llm", "embedding", "milvus")):
-        return 2
+    if args.require_live:
+        required_checks = {
+            "real_native_tool_call",
+            "real_streaming_tool_call",
+            "real_embedding_passage_query",
+            "real_milvus_isolated_lifecycle",
+            "real_milvus_isolated_cleanup",
+        }
+        checks = {item["name"]: item["outcome"] for item in recorder.data["checks"]}
+        if not all(configured[name] for name in ("llm", "embedding", "milvus")) or any(checks.get(name) != "PASS" for name in required_checks):
+            return 2
     return 1 if recorder.data["summary"]["failed"] else 0
 
 
