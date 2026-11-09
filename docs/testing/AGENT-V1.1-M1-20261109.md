@@ -73,7 +73,7 @@ python scripts/smoke-agent-v1-1.py --env-file G:\develop\campus-shopping\.env --
 ## 已执行验证
 
 - `python -m pytest -q`（工作目录 `ai-service`）：276 passed，1 个既有 Starlette `PendingDeprecationWarning`。
-- 审查修复后重新执行 `python -m pytest -q`（工作目录 `ai-service`）：282 passed，1 个既有 Starlette `PendingDeprecationWarning`。
+- 审查修复后重新执行 `python -m pytest -q`（工作目录 `ai-service`）：285 passed，1 个既有 Starlette `PendingDeprecationWarning`。
 - Agent 定向测试：17 passed。
 - `python -m compileall -q app tests`：通过。
 - `openspec validate agent-v1-1 --strict --no-interactive`：通过。
@@ -86,7 +86,7 @@ python scripts/smoke-agent-v1-1.py --env-file G:\develop\campus-shopping\.env --
 - `git diff --check`：通过。
 - 私有配置真实运行：真实原生/流式 Tool Calling 重试和 NVIDIA Embedding 已记录；Milvus 因 TLS/证书门禁 `NOT_RUN`。
 
-审查修复后的代码还增加了流式终止标记与响应大小门禁、供应商调用 ID 校验、轮次 Token 累加、模型/工具调用后的租约复验、Milvus 删除后查询证明，以及完整 `--require-live` 阻断条件。现有 `agent-v1.1-live.json` 是修复前的真实采样，保留作故障和供应商行为证据；当前配置未通过 TLS/证书安全门禁，因此没有用不安全地址重跑真实请求。
+审查修复后的代码还增加了完整 turn lease 校验、商户单身份范围收敛、原生响应终止原因校验、流式终止标记与响应大小门禁、供应商调用 ID 校验、轮次 Token 累加、模型/工具调用后的租约复验、Milvus 连接与删除证据，以及完整 `--require-live` 阻断条件。现有 `agent-v1.1-live.json` 是修复前的真实采样，保留作故障和供应商行为证据；当前配置未通过 TLS/证书安全门禁，因此没有用不安全地址重跑真实请求。
 
 ## 未完成与下一步
 

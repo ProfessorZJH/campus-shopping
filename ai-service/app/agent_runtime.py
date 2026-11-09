@@ -180,6 +180,15 @@ def _message(response: Mapping[str, Any]) -> Mapping[str, Any]:
     raise AgentModelError("INVALID_MODEL_RESPONSE")
 
 
+def _finish_reason(response: Mapping[str, Any]) -> str | None:
+    choices = response.get("choices")
+    if isinstance(choices, list) and choices and isinstance(choices[0], Mapping):
+        reason = choices[0].get("finish_reason")
+        return reason if isinstance(reason, str) else None
+    reason = response.get("finish_reason")
+    return reason if isinstance(reason, str) else None
+
+
 def _tool_calls(message: Mapping[str, Any]) -> list[ToolCall]:
     raw_calls = message.get("tool_calls") or []
     if not isinstance(raw_calls, list):
@@ -271,8 +280,15 @@ class AgentRuntime:
                 scope.assert_active()
                 usage = _merge_usage(usage, _usage(response))
                 message = _message(response)
+                finish_reason = _finish_reason(response)
                 requested = _tool_calls(message)
+                if finish_reason not in ("stop", "tool_calls"):
+                    raise AgentModelError("MODEL_NOT_NORMALLY_TERMINATED")
+                if requested and finish_reason != "tool_calls":
+                    raise AgentModelError("MODEL_TOOL_CALL_FINISH_MISMATCH")
                 if not requested:
+                    if finish_reason != "stop":
+                        raise AgentModelError("MODEL_FINISH_REASON_MISMATCH")
                     answer = message.get("content", "")
                     if not isinstance(answer, str) or not answer.strip():
                         raise AgentModelError("EMPTY_MODEL_ANSWER")
@@ -296,7 +312,8 @@ class AgentRuntime:
                     messages.append({"role": "tool", "tool_call_id": call.call_id, "name": call.name, "content": json.dumps(payload, ensure_ascii=False)})
             raise AgentModelError("TOOL_CALL_LIMIT")
         except AgentContractError as error:
-            result = AgentRunResult(run_id, "", "FAILED", self.evidence_status, calls, error.code, 0, usage)
+            evidence_status = "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status
+            result = AgentRunResult(run_id, "", "FAILED", evidence_status, calls, error.code, 0, usage)
             return self._finish(result, started)
         except AgentModelError as error:
             result = AgentRunResult(run_id, "", "FAILED", "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status, calls, error.code, 0, usage)
@@ -347,7 +364,8 @@ class AgentRuntime:
                     messages.append({"role": "tool", "tool_call_id": call.call_id, "name": call.name, "content": json.dumps(payload, ensure_ascii=False)})
             raise AgentModelError("TOOL_CALL_LIMIT")
         except AgentContractError as error:
-            return self._finish(AgentRunResult(run_id, "", "FAILED", self.evidence_status, calls, error.code, 0, usage), started)
+            evidence_status = "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status
+            return self._finish(AgentRunResult(run_id, "", "FAILED", evidence_status, calls, error.code, 0, usage), started)
         except AgentModelError as error:
             return self._finish(AgentRunResult(run_id, "", "FAILED", "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status, calls, error.code, 0, usage), started)
         except Exception as error:  # noqa: BLE001

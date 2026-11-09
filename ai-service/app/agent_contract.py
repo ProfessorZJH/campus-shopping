@@ -104,26 +104,34 @@ class AgentScope:
     turn_token: str | None = None
     turn_expires_at: float | None = None
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.turn_token, str) or not self.turn_token.strip():
+            raise ValueError("AgentScope 必须包含 turn_token")
+        if not isinstance(self.turn_expires_at, (int, float)) or isinstance(self.turn_expires_at, bool):
+            raise ValueError("AgentScope 必须包含 turn_expires_at")
+
     def assert_active(self, now: float | None = None) -> None:
-        if self.turn_expires_at is None:
-            return
+        if not self.turn_token or self.turn_expires_at is None:
+            raise ScopeDeniedError("TURN_LEASE_MISSING")
         current = now if now is not None else datetime.now(timezone.utc).timestamp()
         if current >= self.turn_expires_at:
             raise ScopeDeniedError("TURN_LEASE_EXPIRED")
 
-    def assert_product_search(self, merchant_id: str | None) -> None:
+    def assert_product_search(self, merchant_id: str | None) -> str | None:
         self.assert_active()
         if PRODUCT_SEARCH_PERMISSION not in self.permissions:
             raise ScopeDeniedError("PRODUCT_SEARCH_NOT_AUTHORIZED")
         if merchant_id is None:
-            # 消费者可查询公开目录；商户多身份必须先选择具体范围。
-            if self.identity_kind == "merchant" and len(self.authorized_merchant_ids) > 1:
+            if self.identity_kind != "merchant":
+                return None
+            if len(self.authorized_merchant_ids) != 1:
                 raise ScopeDeniedError("MERCHANT_SCOPE_AMBIGUOUS")
-            return
+            merchant_id = next(iter(self.authorized_merchant_ids))
         if merchant_id not in self.authorized_merchant_ids:
             raise ScopeDeniedError("MERCHANT_RESOURCE_DENIED")
         if self.identity_kind == "merchant" and self.identity_id not in (None, merchant_id):
             raise ScopeDeniedError("MERCHANT_IDENTITY_MISMATCH")
+        return merchant_id
 
 
 class ProductSearchPort(Protocol):
@@ -170,7 +178,9 @@ class ToolSpec:
         except (TypeError, ValueError, ValidationError):
             raise ToolArgumentError() from None
         if isinstance(parsed, SearchProductsArguments):
-            scope.assert_product_search(parsed.merchantId)
+            merchant_id = scope.assert_product_search(parsed.merchantId)
+            if merchant_id != parsed.merchantId:
+                parsed = parsed.model_copy(update={"merchantId": merchant_id})
         try:
             raw = self.handler(parsed, scope)
             result = self.output_model.model_validate(raw, strict=True)

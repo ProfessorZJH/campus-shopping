@@ -22,6 +22,8 @@ from app.agent_fact import revalidate_product_candidates
 
 
 def scope(*, identity_kind="consumer", merchants=(), identity_id=None, expires=None):
+    if expires is None:
+        expires = time.time() + 600
     return AgentScope(
         user_id="user-1",
         identity_kind=identity_kind,
@@ -72,12 +74,13 @@ def tool_call(call_id="call-1", name="search_products", arguments=None):
                 }
             ],
         },
+        "finish_reason": "tool_calls",
         "usage": {"prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16},
     }
 
 
 def answer(text="已找到可核验的商品候选"):
-    return {"message": {"role": "assistant", "content": text}}
+    return {"message": {"role": "assistant", "content": text}, "finish_reason": "stop"}
 
 
 def test_registry_exposes_only_read_only_search_tool():
@@ -95,6 +98,23 @@ def test_registry_exposes_only_read_only_search_tool():
         registry.invoke("search_products", {}, scope())
 
 
+def test_scope_requires_complete_turn_lease():
+    with pytest.raises(ValueError, match="turn_expires_at"):
+        AgentScope(
+            user_id="user-1",
+            identity_kind="consumer",
+            permissions=frozenset({"catalog.product.search"}),
+            turn_token="turn-test",
+        )
+    with pytest.raises(ValueError, match="turn_token"):
+        AgentScope(
+            user_id="user-1",
+            identity_kind="consumer",
+            permissions=frozenset({"catalog.product.search"}),
+            turn_expires_at=time.time() + 600,
+        )
+
+
 def test_scope_denies_ambiguous_or_foreign_merchant_and_expired_turn():
     registry = default_registry(searcher)
     with pytest.raises(ScopeDeniedError, match="MERCHANT_SCOPE_AMBIGUOUS"):
@@ -103,6 +123,22 @@ def test_scope_denies_ambiguous_or_foreign_merchant_and_expired_turn():
         registry.invoke("search_products", {"query": "商品", "merchantId": "m-2"}, scope(identity_kind="merchant", merchants=("m-1",), identity_id="m-1"))
     with pytest.raises(ScopeDeniedError, match="TURN_LEASE_EXPIRED"):
         registry.invoke("search_products", {"query": "商品"}, scope(expires=0))
+
+
+def test_single_merchant_scope_is_applied_when_model_omits_merchant_id():
+    calls = []
+
+    def scoped_searcher(query, limit, merchant_id, current_scope):
+        calls.append(merchant_id)
+        return searcher(query, limit, merchant_id, current_scope)
+
+    result = default_registry(scoped_searcher).invoke(
+        "search_products",
+        {"query": "商品"},
+        scope(identity_kind="merchant", merchants=("m-1",), identity_id="m-1"),
+    )
+    assert calls == ["m-1"]
+    assert {candidate["merchantId"] for candidate in result["candidates"]} == {"m-1"}
 
 
 def test_runtime_executes_native_tool_once_then_continues():
@@ -162,6 +198,20 @@ def test_runtime_rejects_unknown_tool_without_business_write():
     assert result.error_code == "UNKNOWN_TOOL"
     assert result.tool_calls[0].status == "REJECTED"
     assert result.tool_calls[0].error_code == "UNKNOWN_TOOL"
+
+
+def test_runtime_rejects_abnormal_native_finish_reason_and_degrades_real_contract_failures():
+    abnormal = {**tool_call(), "finish_reason": "length"}
+    result = AgentRuntime(FakeModel([abnormal]), default_registry(searcher), evidence_status="REAL").run("查商品", scope())
+    assert result.status == "FAILED"
+    assert result.error_code == "MODEL_NOT_NORMALLY_TERMINATED"
+    assert result.evidence_status == "DEGRADED"
+
+    denied = AgentRuntime(FakeModel([tool_call(name="delete_order")]), default_registry(searcher), evidence_status="REAL").run(
+        "删除订单", scope()
+    )
+    assert denied.error_code == "UNKNOWN_TOOL"
+    assert denied.evidence_status == "DEGRADED"
 
 
 def test_m0_does_not_add_public_agent_route_or_business_write_port(tmp_path):

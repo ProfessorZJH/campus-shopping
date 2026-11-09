@@ -18,12 +18,13 @@ from pathlib import Path
 import secrets
 import sys
 import tempfile
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ai-service"))
 
 from app.agent_contract import AgentScope, TOOL_NAME, default_registry
-from app.agent_evidence import EvidenceRecorder, assert_isolated_collection, isolated_collection_name
+from app.agent_evidence import EvidenceRecorder, assert_isolated_collection, isolated_collection_name, safe_exception_code
 from app.agent_provider import OpenAICompatibleToolModel
 from app.agent_runtime import AgentRuntime
 from app.config import Settings, validate_service_url
@@ -57,6 +58,7 @@ def scope() -> AgentScope:
         permissions=frozenset({"catalog.product.search"}),
         authorization_source="test-java-scope",
         turn_token="agent-test-turn",
+        turn_expires_at=time.time() + 600,
     )
 
 
@@ -108,13 +110,17 @@ class ScriptedModel:
                                     "function": {"name": "search_products", "arguments": '{"query":"考试签字笔"}'},
                                 }
                             ],
-                        }
+                        },
+                        "finish_reason": "tool_calls",
                     }
                 ],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13},
             }
         assert messages[-1]["role"] == "tool"
-        return {"message": {"role": "assistant", "content": "已返回只读商品候选，请以当前商品页事实为准。"}}
+        return {
+            "message": {"role": "assistant", "content": "已返回只读商品候选，请以当前商品页事实为准。"},
+            "finish_reason": "stop",
+        }
 
     def stream(self, *, messages, tools, metadata):
         del tools, metadata
@@ -254,10 +260,16 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
         client = None
         created_by_run = False
         try:
-            client = index._connect()
-            if client.has_collection(collection_name=collection):
-                raise AssertionError("随机集合在本次运行前已经存在")
-            created_by_run = True
+            try:
+                client = index._connect()
+                if client.has_collection(collection_name=collection):
+                    raise AssertionError("随机集合在本次运行前已经存在")
+                created_by_run = True
+            except Exception as error:  # noqa: BLE001 - 错误类型只记录稳定码
+                recorder.add("real_milvus_isolated_lifecycle", "FAIL", errorCode=safe_exception_code(error))
+                recorder.mark_not_run("real_java_mysql_fact_revalidation", "本次未配置 Java Agent/商品事实复验入口")
+                recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Milvus 连接失败，未进入 Java/MySQL 事实复验")
+                return
 
             def lifecycle():
                 first = index.upsert(FIXTURES)
@@ -297,8 +309,8 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
                 if created_by_run and client is not None and client.has_collection(collection_name=collection):
                     raise AssertionError("Milvus 隔离集合清理失败")
 
-            if client is None:
-                recorder.mark_not_run("real_milvus_isolated_cleanup", "Milvus 未建立连接，无法执行隔离集合清理")
+            if client is None or not created_by_run:
+                recorder.mark_not_run("real_milvus_isolated_cleanup", "本次运行未成功创建隔离集合，无法证明清理结果")
             else:
                 recorder.check("real_milvus_isolated_cleanup", cleanup)
             if client is not None:
