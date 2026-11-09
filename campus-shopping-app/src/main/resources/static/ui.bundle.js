@@ -15943,11 +15943,12 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, normalizeStyle: _normalizeStyle, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, vModelSelect: _vModelSelect, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, normalizeStyle: _normalizeStyle, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, vModelSelect: _vModelSelect, withModifiers: _withModifiers, resolveDirective: _resolveDirective, createBlock: _createBlock, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ProductImageListField = _resolveComponent("ProductImageListField");
+        const _component_AuthDialog = _resolveComponent("AuthDialog");
         const _component_BackofficeShell = _resolveComponent("BackofficeShell");
         const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_BackofficeShell, { title: "商品管理" }, {
@@ -17062,7 +17063,12 @@
                 ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
               ], 8, ["onClick"])), [
                 [_directive_modal, () => _ctx.modal = ""]
-              ]) : _createCommentVNode("v-if", true)
+              ]) : _createCommentVNode("v-if", true),
+              _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+                key: 4,
+                onClose: ($event) => _ctx.loginOpen = false,
+                onSuccess: _ctx.loadMerchant
+              }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
             ];
           }),
           _: 1
