@@ -22,9 +22,9 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.AiRecallVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeScopeVO;
+import cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
-import cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import java.time.Instant;
@@ -72,13 +72,7 @@ class AgentConsumerReadToolCaseTest {
         );
         when(knowledge.citationDocuments("buyer", List.of("doc-1"))).thenReturn(List.of(document));
 
-        AgentConsumerReadToolCaseImpl read = new AgentConsumerReadToolCaseImpl(
-            accounts,
-            knowledge,
-            engine,
-            new KnowledgeEgressPolicy("", ""),
-            orders
-        );
+        AgentConsumerReadToolCaseImpl read = new AgentConsumerReadToolCaseImpl(accounts, knowledge, engine, new KnowledgeEgressPolicy("", ""), orders);
 
         var result = read.knowledgeQa("buyer", new AgentKnowledgeQaRequestVO("退货规则"));
 
@@ -120,16 +114,7 @@ class AgentConsumerReadToolCaseTest {
         when(knowledge.readableScope("buyer")).thenReturn(List.of(scope), List.of(scope));
         when(engine.recall("问题", List.of())).thenReturn(new AiRecallVO("问题", List.of()));
         when(engine.query(any())).thenReturn(
-            new AiAnswerVO(
-                "回答",
-                "REAL",
-                "VECTOR",
-                "问题",
-                null,
-                List.of(new AiCitationVO("doc-2", "chunk-2", "越权", "越权内容", 0.9)),
-                List.of(),
-                1
-            )
+            new AiAnswerVO("回答", "REAL", "VECTOR", "问题", null, List.of(new AiCitationVO("doc-2", "chunk-2", "越权", "越权内容", 0.9)), List.of(), 1)
         );
         AgentConsumerReadToolCaseImpl read = new AgentConsumerReadToolCaseImpl(
             accounts,
@@ -148,9 +133,7 @@ class AgentConsumerReadToolCaseTest {
         IUserAccountService accounts = mock(IUserAccountService.class);
         IKnowledgeCase knowledge = mock(IKnowledgeCase.class);
         IAiEnginePort engine = mock(IAiEnginePort.class);
-        when(knowledge.readableScope("buyer")).thenReturn(
-            List.of(new KnowledgeScopeVO("doc-1", "校园 FAQ", "PUBLIC", "base-1", null))
-        );
+        when(knowledge.readableScope("buyer")).thenReturn(List.of(new KnowledgeScopeVO("doc-1", "校园 FAQ", "PUBLIC", "base-1", null)));
         when(engine.recall("问题", List.of())).thenReturn(new AiRecallVO("问题", List.of()));
         when(engine.query(any())).thenThrow(new AppException(ResponseCode.AI_UNAVAILABLE));
         AgentConsumerReadToolCaseImpl read = new AgentConsumerReadToolCaseImpl(
@@ -179,9 +162,7 @@ class AgentConsumerReadToolCaseTest {
             NOW.plusSeconds(600),
             NOW
         );
-        when(orders.mine("buyer", "PAID", 2, 5)).thenReturn(
-            new OrderPage(List.of(new OrderReadModel(aggregate, "商户一", null, null)), 1)
-        );
+        when(orders.mine("buyer", "PAID", 2, 5)).thenReturn(new OrderPage(List.of(new OrderReadModel(aggregate, "商户一", null, null)), 1));
 
         AgentConsumerReadToolCaseImpl read = new AgentConsumerReadToolCaseImpl(
             accounts,

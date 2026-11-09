@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class AgentRuntimeConfigTest {
+
     @Test
     void runtimeCaseIsNotRegisteredWhenBridgeIsDisabledByDefault() {
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext()) {

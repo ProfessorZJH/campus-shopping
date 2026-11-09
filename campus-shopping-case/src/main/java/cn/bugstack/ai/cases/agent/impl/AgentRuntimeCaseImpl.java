@@ -27,8 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Conditional;
+import org.springframework.stereotype.Service;
 
 /** Java 权限/事实裁决与 Python 模型决策之间的受控编排。 */
 @Service
@@ -70,17 +70,19 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
         int rounds = 0;
         try {
             String requestId = command.requestId() == null ? UUID.randomUUID().toString() : command.requestId();
-            result = runtime.run(new AgentRuntimeCommandVO(
-                run.id(),
-                requestId,
-                command.capabilityToken(),
-                AgentRuntimeStageVO.START,
-                command.question(),
-                run.scope(),
-                run.allowedTools(),
-                null,
-                List.of()
-            ));
+            result = runtime.run(
+                new AgentRuntimeCommandVO(
+                    run.id(),
+                    requestId,
+                    command.capabilityToken(),
+                    AgentRuntimeStageVO.START,
+                    command.question(),
+                    run.scope(),
+                    run.allowedTools(),
+                    null,
+                    List.of()
+                )
+            );
             for (rounds = 1; rounds <= MAX_ROUNDS; rounds++) {
                 if (result.status() == AgentRuntimeStatusVO.FINAL) {
                     runs.complete(command.actor(), run.id(), command.capabilityToken());
@@ -98,17 +100,19 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
                     return new AgentRuntimeReceipt(run.id(), AgentRuntimeStatusVO.FAILED, null, "DEGRADED", "ROUND_TRIP_LIMIT", rounds, result);
                 }
                 AgentRunVO current = loadUsableRun(command);
-                result = runtime.run(new AgentRuntimeCommandVO(
-                    current.id(),
-                    continuationRequestId(command.requestId(), rounds),
-                    command.capabilityToken(),
-                    AgentRuntimeStageVO.CONTINUE,
-                    null,
-                    current.scope(),
-                    current.allowedTools(),
-                    result.continuationId(),
-                    toolResults
-                ));
+                result = runtime.run(
+                    new AgentRuntimeCommandVO(
+                        current.id(),
+                        continuationRequestId(command.requestId(), rounds),
+                        command.capabilityToken(),
+                        AgentRuntimeStageVO.CONTINUE,
+                        null,
+                        current.scope(),
+                        current.allowedTools(),
+                        result.continuationId(),
+                        toolResults
+                    )
+                );
             }
             failRun(command, "ROUND_TRIP_LIMIT");
             return new AgentRuntimeReceipt(run.id(), AgentRuntimeStatusVO.FAILED, null, "DEGRADED", "ROUND_TRIP_LIMIT", rounds, result);
@@ -145,12 +149,7 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
         return List.copyOf(results);
     }
 
-    private AgentToolInvocationCommand invocationCommand(
-        RunAgentCommand command,
-        String toolName,
-        String invocationKey,
-        Map<String, Object> arguments
-    ) {
+    private AgentToolInvocationCommand invocationCommand(RunAgentCommand command, String toolName, String invocationKey, Map<String, Object> arguments) {
         if (AgentToolRegistry.SEARCH_PRODUCTS.equals(toolName)) {
             requireKeys(arguments, Set.of("query", "limit", "merchantId"));
             return new AgentToolInvocationCommand(
@@ -167,16 +166,34 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
         if (AgentToolRegistry.KNOWLEDGE_QA.equals(toolName)) {
             requireKeys(arguments, Set.of("question"));
             return new AgentToolInvocationCommand(
-                command.actor(), command.runId(), command.capabilityToken(), invocationKey, toolName,
-                requiredText(arguments, "question", 1000), 0, null, null, 1, 10
+                command.actor(),
+                command.runId(),
+                command.capabilityToken(),
+                invocationKey,
+                toolName,
+                requiredText(arguments, "question", 1000),
+                0,
+                null,
+                null,
+                1,
+                10
             );
         }
         require(AgentToolRegistry.GET_MY_ORDERS.equals(toolName), ResponseCode.ILLEGAL_PARAMETER);
         require(arguments.containsKey("page") && arguments.containsKey("size"), ResponseCode.ILLEGAL_PARAMETER);
         requireKeys(arguments, Set.of("state", "page", "size"));
         return new AgentToolInvocationCommand(
-            command.actor(), command.runId(), command.capabilityToken(), invocationKey, toolName, null, 0, null,
-            optionalState(arguments, "state"), integer(arguments, "page", 1, 10_000, 1), integer(arguments, "size", 1, 20, 10)
+            command.actor(),
+            command.runId(),
+            command.capabilityToken(),
+            invocationKey,
+            toolName,
+            null,
+            0,
+            null,
+            optionalState(arguments, "state"),
+            integer(arguments, "page", 1, 10_000, 1),
+            integer(arguments, "size", 1, 20, 10)
         );
     }
 
@@ -192,9 +209,7 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
     }
 
     private AgentRuntimeReceipt receipt(AgentRuntimeResultVO result, int rounds) {
-        return new AgentRuntimeReceipt(
-            result.runId(), result.status(), result.answer(), result.evidenceStatus(), result.errorCode(), rounds, result
-        );
+        return new AgentRuntimeReceipt(result.runId(), result.status(), result.answer(), result.evidenceStatus(), result.errorCode(), rounds, result);
     }
 
     private void failRun(RunAgentCommand command, String errorCode) {

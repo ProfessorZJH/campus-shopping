@@ -17,12 +17,12 @@ import cn.bugstack.ai.domain.identity.service.IAccessService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAgentRuntimePort;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAgentRunRepository;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeCommandVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStageVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentProductCandidateVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeCommandVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStageVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentScopeVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentSkuFactVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
@@ -148,12 +148,7 @@ class AgentRuntimeUvicornProcessIntegrationTest {
             current.set(invocation.getArgument(1));
             return true;
         });
-        AgentRunCaseImpl runs = new AgentRunCaseImpl(
-            repository,
-            mock(IUserAccountService.class),
-            mock(IAccessService.class),
-            Clock.fixed(NOW, ZoneOffset.UTC)
-        );
+        AgentRunCaseImpl runs = new AgentRunCaseImpl(repository, mock(IUserAccountService.class), mock(IAccessService.class), Clock.fixed(NOW, ZoneOffset.UTC));
 
         IAgentToolInvocationCase tools = mock(IAgentToolInvocationCase.class);
         when(tools.invoke(any())).thenReturn(
@@ -161,24 +156,20 @@ class AgentRuntimeUvicornProcessIntegrationTest {
                 "search_products",
                 "1.0",
                 true,
-                List.of(new AgentProductCandidateVO(
-                    "product-tea",
-                    "merchant-1",
-                    "store-1",
-                    "Verified tea",
-                    "CATALOG_READ_MODEL",
-                    true,
-                    List.of(new AgentSkuFactVO("sku-tea", "default", 500, 1, 4))
-                ))
+                List.of(
+                    new AgentProductCandidateVO(
+                        "product-tea",
+                        "merchant-1",
+                        "store-1",
+                        "Verified tea",
+                        "CATALOG_READ_MODEL",
+                        true,
+                        List.of(new AgentSkuFactVO("sku-tea", "default", 500, 1, 4))
+                    )
+                )
             )
         );
-        IAgentRuntimePort runtime = new AgentRuntimeGateway(
-            mapper,
-            runtimeUrl,
-            SERVICE_KEY,
-            true,
-            10
-        );
+        IAgentRuntimePort runtime = new AgentRuntimeGateway(mapper, runtimeUrl, SERVICE_KEY, true, 10);
 
         AgentRuntimeCommandVO replayCommand = new AgentRuntimeCommandVO(
             "run-process",
@@ -195,33 +186,26 @@ class AgentRuntimeUvicornProcessIntegrationTest {
         var secondReplay = runtime.run(replayCommand);
         assertEquals(AgentRuntimeStatusVO.TOOL_CALLS, firstReplay.status());
         assertEquals(firstReplay, secondReplay);
-        AppException replayConflict = org.junit.jupiter.api.Assertions.assertThrows(
-            AppException.class,
-            () -> runtime.run(new AgentRuntimeCommandVO(
-                "run-process",
-                "request-replay",
-                CAPABILITY,
-                AgentRuntimeStageVO.START,
-                "Find coffee",
-                scope(),
-                Set.of("search_products"),
-                null,
-                List.of()
-            ))
+        AppException replayConflict = org.junit.jupiter.api.Assertions.assertThrows(AppException.class, () ->
+            runtime.run(
+                new AgentRuntimeCommandVO(
+                    "run-process",
+                    "request-replay",
+                    CAPABILITY,
+                    AgentRuntimeStageVO.START,
+                    "Find coffee",
+                    scope(),
+                    Set.of("search_products"),
+                    null,
+                    List.of()
+                )
+            )
         );
         assertEquals(ResponseCode.AI_UNAVAILABLE.getCode(), replayConflict.getCode());
 
-        IAgentRuntimeCase runtimeCase = new AgentRuntimeCaseImpl(
-            runs,
-            repository,
-            tools,
-            runtime,
-            Clock.fixed(NOW, ZoneOffset.UTC)
-        );
+        IAgentRuntimeCase runtimeCase = new AgentRuntimeCaseImpl(runs, repository, tools, runtime, Clock.fixed(NOW, ZoneOffset.UTC));
 
-        AgentRuntimeReceipt receipt = runtimeCase.run(
-            new RunAgentCommand("buyer", "run-process", CAPABILITY, "Find tea", "request-process")
-        );
+        AgentRuntimeReceipt receipt = runtimeCase.run(new RunAgentCommand("buyer", "run-process", CAPABILITY, "Find tea", "request-process"));
 
         assertEquals(AgentRunStatusVO.COMPLETED, current.get().status());
         assertEquals("FINAL", receipt.status().name());
@@ -303,7 +287,9 @@ class AgentRuntimeUvicornProcessIntegrationTest {
             if (!process.isAlive()) throw new IllegalStateException("Uvicorn exited before readiness");
             try {
                 HttpResponse<String> response = client.send(
-                    HttpRequest.newBuilder(URI.create(baseUrl + "/health")).GET().build(),
+                    HttpRequest.newBuilder(URI.create(baseUrl + "/health"))
+                        .GET()
+                        .build(),
                     HttpResponse.BodyHandlers.ofString()
                 );
                 if (response.statusCode() == 200 && response.body().contains("UP")) return;

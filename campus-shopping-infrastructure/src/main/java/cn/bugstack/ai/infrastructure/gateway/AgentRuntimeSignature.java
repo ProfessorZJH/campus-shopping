@@ -8,6 +8,7 @@ import javax.crypto.spec.SecretKeySpec;
 
 /** 内部请求签名；原始 capability 只参与调用，不进入日志或持久化。 */
 public final class AgentRuntimeSignature {
+
     private AgentRuntimeSignature() {}
 
     public static String canonical(String runId, String requestId, double turnExpiresAt) {
@@ -25,8 +26,6 @@ public final class AgentRuntimeSignature {
     }
 
     public static boolean constantTimeEquals(String expected, String actual) {
-        return expected != null && actual != null && MessageDigest.isEqual(
-            expected.getBytes(StandardCharsets.UTF_8), actual.getBytes(StandardCharsets.UTF_8)
-        );
+        return expected != null && actual != null && MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8), actual.getBytes(StandardCharsets.UTF_8));
     }
 }

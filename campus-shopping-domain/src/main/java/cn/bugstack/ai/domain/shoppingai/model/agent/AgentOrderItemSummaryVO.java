@@ -7,7 +7,6 @@ import cn.bugstack.ai.types.enums.ResponseCode;
 
 /** 订单商品成交快照的最小只读投影。 */
 public record AgentOrderItemSummaryVO(String skuId, String title, String specKey, long unitPriceCent, int quantity) {
-
     public AgentOrderItemSummaryVO {
         skuId = text(skuId, "规格", 64);
         title = text(title, "商品标题", 200);

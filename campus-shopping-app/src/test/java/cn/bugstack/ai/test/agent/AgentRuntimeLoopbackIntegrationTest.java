@@ -66,16 +66,35 @@ class AgentRuntimeLoopbackIntegrationTest {
             double expires = request.get("scope").get("turnExpiresAt").asDouble();
             assertEquals(SERVICE_KEY, exchange.getRequestHeaders().getFirst("X-Service-Key"));
             assertEquals(CAPABILITY, exchange.getRequestHeaders().getFirst("X-Agent-Capability"));
-            assertEquals(AgentRuntimeSignature.hmacSha256(SERVICE_KEY, runId, requestId, expires), exchange.getRequestHeaders().getFirst("X-Agent-Capability-Signature"));
+            assertEquals(
+                AgentRuntimeSignature.hmacSha256(SERVICE_KEY, runId, requestId, expires),
+                exchange.getRequestHeaders().getFirst("X-Agent-Capability-Signature")
+            );
             assertEquals(requestId, exchange.getRequestHeaders().getFirst("X-Request-ID"));
             int turn = turns.incrementAndGet();
             if (turn == 1) {
-                respond(exchange, 200, "{\"protocolVersion\":\"1.0\",\"runId\":\"" + runId + "\",\"requestId\":\"" + requestId + "\",\"status\":\"TOOL_CALLS\",\"continuationId\":\"continuation-loopback\",\"toolCalls\":[{\"callId\":\"call-loopback\",\"name\":\"search_products\",\"arguments\":{\"query\":\"tea\",\"limit\":5}}],\"evidenceStatus\":\"STUB\",\"usage\":{\"total_tokens\":3},\"durationMs\":8}");
+                respond(
+                    exchange,
+                    200,
+                    "{\"protocolVersion\":\"1.0\",\"runId\":\"" +
+                        runId +
+                        "\",\"requestId\":\"" +
+                        requestId +
+                        "\",\"status\":\"TOOL_CALLS\",\"continuationId\":\"continuation-loopback\",\"toolCalls\":[{\"callId\":\"call-loopback\",\"name\":\"search_products\",\"arguments\":{\"query\":\"tea\",\"limit\":5}}],\"evidenceStatus\":\"STUB\",\"usage\":{\"total_tokens\":3},\"durationMs\":8}"
+                );
                 return;
             }
             assertEquals("CONTINUE", request.get("phase").asText());
             assertTrue(request.get("toolResults").isArray() && request.get("toolResults").size() == 1);
-            respond(exchange, 200, "{\"protocolVersion\":\"1.0\",\"runId\":\"" + runId + "\",\"requestId\":\"" + requestId + "\",\"status\":\"FINAL\",\"continuationId\":\"continuation-loopback\",\"answer\":\"Found verified tea\",\"evidenceStatus\":\"STUB\",\"usage\":{\"total_tokens\":6},\"durationMs\":11}");
+            respond(
+                exchange,
+                200,
+                "{\"protocolVersion\":\"1.0\",\"runId\":\"" +
+                    runId +
+                    "\",\"requestId\":\"" +
+                    requestId +
+                    "\",\"status\":\"FINAL\",\"continuationId\":\"continuation-loopback\",\"answer\":\"Found verified tea\",\"evidenceStatus\":\"STUB\",\"usage\":{\"total_tokens\":6},\"durationMs\":11}"
+            );
         });
         server.start();
 
@@ -106,8 +125,28 @@ class AgentRuntimeLoopbackIntegrationTest {
     }
 
     private AgentRunVO run(AgentRunStatusVO status) {
-        AgentScopeVO scope = new AgentScopeVO("buyer", AgentScopeVO.CONSUMER, null, Set.of(), Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION), "conversation", "turn-token", NOW.plusSeconds(600));
-        return new AgentRunVO("run-loopback", "buyer", "request-loopback", Fingerprints.sha256(CAPABILITY), scope, Set.of("search_products"), status, NOW, NOW, 0);
+        AgentScopeVO scope = new AgentScopeVO(
+            "buyer",
+            AgentScopeVO.CONSUMER,
+            null,
+            Set.of(),
+            Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION),
+            "conversation",
+            "turn-token",
+            NOW.plusSeconds(600)
+        );
+        return new AgentRunVO(
+            "run-loopback",
+            "buyer",
+            "request-loopback",
+            Fingerprints.sha256(CAPABILITY),
+            scope,
+            Set.of("search_products"),
+            status,
+            NOW,
+            NOW,
+            0
+        );
     }
 
     private static void respond(HttpExchange exchange, int status, String body) throws IOException {

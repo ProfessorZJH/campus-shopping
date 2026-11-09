@@ -15,16 +15,16 @@ import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAgentRunRepository;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentProductCandidateVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentSkuFactVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationResultVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolRegistry;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentKnowledgeQaRequestVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentMyOrdersRequestVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentProductCandidateVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentScopeVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentSkuFactVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationResultVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolRegistry;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.SearchProductsRequestVO;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -41,9 +41,9 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
 
 /** M2 妫ｆ牗澹掗崣顏囶嚢瀹搞儱鍙块敍姘偓娆撯偓澶婂将閸ョ偛鎮楅悽?Java 闁插秵鏌婇弽鎼佺崣缂佸繗鎯€閻樿埖鈧降鈧焦濮ゆ禒宄版嫲鎼存挸鐡ㄩ妴?*/
 @Service
@@ -232,7 +232,10 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
             .toList();
         if (skuIds.isEmpty()) return new AgentToolResultVO(AgentToolRegistry.SEARCH_PRODUCTS, AgentToolRegistry.VERSION, true, List.of());
 
-        Map<String, StockVO> stocks = inventory.stocks(skuIds).stream().collect(Collectors.toMap(StockVO::skuId, Function.identity(), (left, right) -> left));
+        Map<String, StockVO> stocks = inventory
+            .stocks(skuIds)
+            .stream()
+            .collect(Collectors.toMap(StockVO::skuId, Function.identity(), (left, right) -> left));
         List<SkuOfferVO> offers = catalog.availableOffers(skuIds);
         Set<String> merchantIds = offers.stream().map(SkuOfferVO::merchantId).collect(Collectors.toSet());
         Map<String, MerchantVO> activeMerchants = merchants

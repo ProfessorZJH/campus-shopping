@@ -36,9 +36,8 @@ class AgentConsumerReadModelTest {
 
         assertEquals(1, result.items().size());
         assertThrows(UnsupportedOperationException.class, () -> result.items().add(order));
-        assertThrows(
-            AppException.class,
-            () -> new AgentKnowledgeQaResultVO("knowledge_qa", "1.0", false, "问题", "回答", "REAL", "VECTOR", null, List.of(), 1)
+        assertThrows(AppException.class, () ->
+            new AgentKnowledgeQaResultVO("knowledge_qa", "1.0", false, "问题", "回答", "REAL", "VECTOR", null, List.of(), 1)
         );
     }
 }

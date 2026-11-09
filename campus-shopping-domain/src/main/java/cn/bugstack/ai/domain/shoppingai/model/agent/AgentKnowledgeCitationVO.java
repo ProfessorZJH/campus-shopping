@@ -7,7 +7,6 @@ import cn.bugstack.ai.types.enums.ResponseCode;
 
 /** 已通过 Java 知识权限和版本校验的有限引用摘要。 */
 public record AgentKnowledgeCitationVO(String documentId, String title, String snippet, double score) {
-
     public AgentKnowledgeCitationVO {
         documentId = text(documentId, "文档", 64);
         title = text(title, "标题", 200);

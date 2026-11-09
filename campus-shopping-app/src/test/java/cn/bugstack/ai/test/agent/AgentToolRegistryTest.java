@@ -47,9 +47,8 @@ class AgentToolRegistryTest {
         when(repository.activeTurnExpiry("buyer", "conversation", "turn-token")).thenReturn(NOW.plusSeconds(600));
         AgentRunCaseImpl runs = new AgentRunCaseImpl(repository, mock(IUserAccountService.class), mock(IAccessService.class), clock);
 
-        AppException error = assertThrows(
-            AppException.class,
-            () -> runs.create(new CreateAgentRunCommand("buyer", "conversation", "turn-token", "request-1", null, Set.of(AgentToolRegistry.KNOWLEDGE_QA)))
+        AppException error = assertThrows(AppException.class, () ->
+            runs.create(new CreateAgentRunCommand("buyer", "conversation", "turn-token", "request-1", null, Set.of(AgentToolRegistry.KNOWLEDGE_QA)))
         );
 
         assertEquals(ResponseCode.ILLEGAL_PARAMETER.getCode(), error.getCode());

@@ -1,12 +1,13 @@
 package cn.bugstack.ai.infrastructure.gateway.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import com.fasterxml.jackson.annotation.JsonInclude;
 
 /** 内部 Runtime 协议 DTO；只在 infrastructure 与 Python 服务之间使用。 */
 public final class AgentRuntimeDTO {
+
     private AgentRuntimeDTO() {}
 
     @JsonInclude(JsonInclude.Include.NON_NULL)

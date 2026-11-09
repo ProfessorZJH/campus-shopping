@@ -29,18 +29,14 @@ import org.springframework.transaction.annotation.Transactional;
 /** 受控 Run 生命周期；只依赖现有会话租约和身份/权限领域能力。 */
 @Service
 public class AgentRunCaseImpl implements IAgentRunCase {
+
     private final IAgentRunRepository repository;
     private final IUserAccountService accounts;
     private final IAccessService access;
     private final Clock clock;
     private final boolean consumerReadOnlyEnabled;
 
-    public AgentRunCaseImpl(
-        IAgentRunRepository repository,
-        IUserAccountService accounts,
-        IAccessService access,
-        Clock clock
-    ) {
+    public AgentRunCaseImpl(IAgentRunRepository repository, IUserAccountService accounts, IAccessService access, Clock clock) {
         this(repository, accounts, access, clock, false);
     }
 
@@ -69,7 +65,10 @@ public class AgentRunCaseImpl implements IAgentRunCase {
         String turnToken = text(command.turnToken(), "会话租约", 64);
         String idempotencyKey = text(command.idempotencyKey(), "幂等键", 100);
         Set<String> allowedTools = command.allowedTools();
-        require(!allowedTools.isEmpty() && allowedTools.stream().allMatch(tool -> AgentToolRegistry.enabled(tool, consumerReadOnlyEnabled)), ResponseCode.ILLEGAL_PARAMETER);
+        require(
+            !allowedTools.isEmpty() && allowedTools.stream().allMatch(tool -> AgentToolRegistry.enabled(tool, consumerReadOnlyEnabled)),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
         Instant turnExpiresAt = repository.activeTurnExpiry(actor, conversationId, turnToken);
         require(turnExpiresAt != null && turnExpiresAt.isAfter(clock.instant()), ResponseCode.STATE_CONFLICT);
         AgentScopeVO scope = buildScope(actor, conversationId, turnToken, turnExpiresAt, command.merchantId());
@@ -145,7 +144,11 @@ public class AgentRunCaseImpl implements IAgentRunCase {
     }
 
     private AgentScopeVO buildScope(String actor, String conversationId, String token, Instant expiresAt, String requestedMerchant) {
-        var memberships = access.memberships(actor).stream().filter(m -> "ACTIVE".equals(m.status())).toList();
+        var memberships = access
+            .memberships(actor)
+            .stream()
+            .filter(m -> "ACTIVE".equals(m.status()))
+            .toList();
         if (requestedMerchant == null) {
             return new AgentScopeVO(
                 actor,

@@ -80,9 +80,8 @@ class AgentGatewayTest {
         when(repository.activeTurnExpiry("buyer", "conversation", "turn-token")).thenReturn(NOW.minusSeconds(1));
         AgentRunCaseImpl runs = new AgentRunCaseImpl(repository, mock(IUserAccountService.class), mock(IAccessService.class), clock);
 
-        AppException error = assertThrows(
-            AppException.class,
-            () -> runs.create(new CreateAgentRunCommand("buyer", "conversation", "turn-token", "request-1", null, Set.of("search_products")))
+        AppException error = assertThrows(AppException.class, () ->
+            runs.create(new CreateAgentRunCommand("buyer", "conversation", "turn-token", "request-1", null, Set.of("search_products")))
         );
         assertEquals(ResponseCode.STATE_CONFLICT.getCode(), error.getCode());
     }
@@ -101,19 +100,14 @@ class AgentGatewayTest {
         ICatalogCandidateQuery catalog = mock(ICatalogCandidateQuery.class);
         when(catalog.candidateRecall(List.of("笔记本"), 50)).thenReturn(List.of(new ProductCandidateSnapshot("product-1", List.of("sku-1", "sku-2"))));
         when(catalog.availableOffers(List.of("sku-1", "sku-2"))).thenReturn(
-            List.of(
-                offer("sku-1", "product-1", "merchant-1", "store-1", "笔记本", 1000),
-                offer("sku-2", "product-1", "merchant-2", "store-2", "笔记本", 900)
-            )
+            List.of(offer("sku-1", "product-1", "merchant-1", "store-1", "笔记本", 1000), offer("sku-2", "product-1", "merchant-2", "store-2", "笔记本", 900))
         );
         IInventoryService inventory = mock(IInventoryService.class);
         when(inventory.stocks(List.of("sku-1", "sku-2"))).thenReturn(
             List.of(new StockVO("merchant-1", "store-1", "sku-1", 5, 1, 3), new StockVO("merchant-2", "store-2", "sku-2", 1, 1, 2))
         );
         IMerchantService merchants = mock(IMerchantService.class);
-        when(merchants.findAll(List.of("merchant-1", "merchant-2"))).thenReturn(
-            List.of(merchant("merchant-1", "ACTIVE"), merchant("merchant-2", "ACTIVE"))
-        );
+        when(merchants.findAll(List.of("merchant-1", "merchant-2"))).thenReturn(List.of(merchant("merchant-1", "ACTIVE"), merchant("merchant-2", "ACTIVE")));
 
         AgentToolInvocationCaseImpl tools = new AgentToolInvocationCaseImpl(
             repository,
@@ -161,9 +155,8 @@ class AgentGatewayTest {
         when(repository.invocation("run-1", "call-2")).thenReturn(
             new AgentToolInvocationVO("invocation-2", "run-1", "call-2", "search_products", fingerprint, "COMPLETED", result, null, NOW, NOW)
         );
-        AppException conflict = assertThrows(
-            AppException.class,
-            () -> tools.invoke(new AgentToolInvocationCommand("buyer", "run-1", "capability", "call-2", "search_products", "水杯", 5, null))
+        AppException conflict = assertThrows(AppException.class, () ->
+            tools.invoke(new AgentToolInvocationCommand("buyer", "run-1", "capability", "call-2", "search_products", "水杯", 5, null))
         );
         assertEquals(ResponseCode.REQUEST_CONFLICT.getCode(), conflict.getCode());
     }
@@ -184,9 +177,8 @@ class AgentGatewayTest {
             accounts,
             clock
         );
-        AppException error = assertThrows(
-            AppException.class,
-            () -> tools.invoke(new AgentToolInvocationCommand("merchant-user", "run-1", "capability", "call-1", "search_products", "笔记本", 5, "merchant-2"))
+        AppException error = assertThrows(AppException.class, () ->
+            tools.invoke(new AgentToolInvocationCommand("merchant-user", "run-1", "capability", "call-1", "search_products", "笔记本", 5, "merchant-2"))
         );
         assertEquals(ResponseCode.AUTH_FORBIDDEN.getCode(), error.getCode());
         verify(repository, never()).claimInvocation(any());
@@ -207,7 +199,18 @@ class AgentGatewayTest {
             "turn-token",
             NOW.plusSeconds(600)
         );
-        return new AgentRunVO("run-1", userId, "request-1", Fingerprints.sha256(capability), scope, Set.of("search_products"), AgentRunStatusVO.RUNNING, NOW, NOW, 0);
+        return new AgentRunVO(
+            "run-1",
+            userId,
+            "request-1",
+            Fingerprints.sha256(capability),
+            scope,
+            Set.of("search_products"),
+            AgentRunStatusVO.RUNNING,
+            NOW,
+            NOW,
+            0
+        );
     }
 
     private SkuOfferVO offer(String sku, String product, String merchant, String store, String title, long price) {

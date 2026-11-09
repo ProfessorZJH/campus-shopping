@@ -52,8 +52,30 @@ class AgentRuntimeCaseTest {
         AgentRunCaseImpl runs = new AgentRunCaseImpl(repository, accounts, mock(IAccessService.class), clock);
         IAgentRuntimePort runtime = mock(IAgentRuntimePort.class);
         AgentRuntimeToolCallVO call = new AgentRuntimeToolCallVO("call-1", "search_products", Map.of("query", "茶", "limit", 5));
-        AgentRuntimeResultVO toolCalls = new AgentRuntimeResultVO("run-1", "req-1", AgentRuntimeStatusVO.TOOL_CALLS, "cont-1", List.of(call), null, "STUB", Map.of(), 12, null);
-        AgentRuntimeResultVO finalAnswer = new AgentRuntimeResultVO("run-1", "req-2", AgentRuntimeStatusVO.FINAL, "cont-1", List.of(), "已找到", "STUB", Map.of(), 12, null);
+        AgentRuntimeResultVO toolCalls = new AgentRuntimeResultVO(
+            "run-1",
+            "req-1",
+            AgentRuntimeStatusVO.TOOL_CALLS,
+            "cont-1",
+            List.of(call),
+            null,
+            "STUB",
+            Map.of(),
+            12,
+            null
+        );
+        AgentRuntimeResultVO finalAnswer = new AgentRuntimeResultVO(
+            "run-1",
+            "req-2",
+            AgentRuntimeStatusVO.FINAL,
+            "cont-1",
+            List.of(),
+            "已找到",
+            "STUB",
+            Map.of(),
+            12,
+            null
+        );
         when(runtime.run(any(AgentRuntimeCommandVO.class))).thenReturn(toolCalls, finalAnswer);
         IAgentToolInvocationCase tools = mock(IAgentToolInvocationCase.class);
         when(tools.invoke(any())).thenReturn(new AgentToolResultVO("search_products", "1.0", true, List.of()));
@@ -78,17 +100,25 @@ class AgentRuntimeCaseTest {
         when(repository.update(any(), any())).thenReturn(true);
         AgentRunCaseImpl runs = new AgentRunCaseImpl(repository, accounts, mock(IAccessService.class), clock);
         IAgentRuntimePort runtime = mock(IAgentRuntimePort.class);
-        when(runtime.run(any())).thenReturn(new AgentRuntimeResultVO(
-            "run-1", "req-1", AgentRuntimeStatusVO.TOOL_CALLS, "cont-1",
-            List.of(new AgentRuntimeToolCallVO("call-1", "search_products", Map.of("query", "茶", "limit", 999))),
-            null, "STUB", Map.of(), 12, null
-        ));
+        when(runtime.run(any())).thenReturn(
+            new AgentRuntimeResultVO(
+                "run-1",
+                "req-1",
+                AgentRuntimeStatusVO.TOOL_CALLS,
+                "cont-1",
+                List.of(new AgentRuntimeToolCallVO("call-1", "search_products", Map.of("query", "茶", "limit", 999))),
+                null,
+                "STUB",
+                Map.of(),
+                12,
+                null
+            )
+        );
         IAgentToolInvocationCase tools = mock(IAgentToolInvocationCase.class);
         AgentRuntimeCaseImpl runtimeCase = new AgentRuntimeCaseImpl(runs, repository, tools, runtime, clock);
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-            cn.bugstack.ai.types.exception.AppException.class,
-            () -> runtimeCase.run(new RunAgentCommand("buyer", "run-1", "capability", "找茶", "req-1"))
+        org.junit.jupiter.api.Assertions.assertThrows(cn.bugstack.ai.types.exception.AppException.class, () ->
+            runtimeCase.run(new RunAgentCommand("buyer", "run-1", "capability", "找茶", "req-1"))
         );
         verify(tools, org.mockito.Mockito.never()).invoke(any());
     }
@@ -103,9 +133,8 @@ class AgentRuntimeCaseTest {
         IAgentToolInvocationCase tools = mock(IAgentToolInvocationCase.class);
         AgentRuntimeCaseImpl runtimeCase = new AgentRuntimeCaseImpl(runs, repository, tools, runtime, clock);
 
-        org.junit.jupiter.api.Assertions.assertThrows(
-            cn.bugstack.ai.types.exception.AppException.class,
-            () -> runtimeCase.run(new RunAgentCommand("buyer", "run-1", "capability", "找茶", "req-1"))
+        org.junit.jupiter.api.Assertions.assertThrows(cn.bugstack.ai.types.exception.AppException.class, () ->
+            runtimeCase.run(new RunAgentCommand("buyer", "run-1", "capability", "找茶", "req-1"))
         );
         verify(runtime, org.mockito.Mockito.never()).run(any());
         verify(tools, org.mockito.Mockito.never()).invoke(any());
@@ -113,10 +142,26 @@ class AgentRuntimeCaseTest {
 
     private AgentRunVO run() {
         var scope = new AgentScopeVO(
-            "buyer", AgentScopeVO.CONSUMER, null, Set.of("merchant-1"), Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION),
-            "conversation", "turn-token", NOW.plusSeconds(600)
+            "buyer",
+            AgentScopeVO.CONSUMER,
+            null,
+            Set.of("merchant-1"),
+            Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION),
+            "conversation",
+            "turn-token",
+            NOW.plusSeconds(600)
         );
-        return new AgentRunVO("run-1", "buyer", "request-1", Fingerprints.sha256("capability"), scope,
-            Set.of("search_products"), AgentRunStatusVO.CREATED, NOW, NOW, 0);
+        return new AgentRunVO(
+            "run-1",
+            "buyer",
+            "request-1",
+            Fingerprints.sha256("capability"),
+            scope,
+            Set.of("search_products"),
+            AgentRunStatusVO.CREATED,
+            NOW,
+            NOW,
+            0
+        );
     }
 }

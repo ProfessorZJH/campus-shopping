@@ -19,7 +19,6 @@ public record AgentKnowledgeQaResultVO(
     List<AgentKnowledgeCitationVO> citations,
     long durationMs
 ) {
-
     public AgentKnowledgeQaResultVO {
         require(AgentKnowledgeQaRequestVO.TOOL.equals(tool), ResponseCode.ILLEGAL_PARAMETER);
         require(AgentKnowledgeQaRequestVO.VERSION.equals(version), ResponseCode.ILLEGAL_PARAMETER);

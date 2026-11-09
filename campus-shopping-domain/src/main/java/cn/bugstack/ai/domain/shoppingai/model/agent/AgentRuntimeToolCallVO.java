@@ -1,6 +1,7 @@
 package cn.bugstack.ai.domain.shoppingai.model.agent;
 
 import static cn.bugstack.ai.types.common.Checks.require;
+
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.util.Collections;
 import java.util.LinkedHashMap;

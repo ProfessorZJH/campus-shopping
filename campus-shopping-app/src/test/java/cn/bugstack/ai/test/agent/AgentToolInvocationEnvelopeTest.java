@@ -14,8 +14,8 @@ import cn.bugstack.ai.cases.agent.impl.AgentRunCaseImpl;
 import cn.bugstack.ai.cases.agent.impl.AgentToolInvocationCaseImpl;
 import cn.bugstack.ai.cases.agent.model.AgentToolInvocationCommand;
 import cn.bugstack.ai.domain.catalog.service.ICatalogCandidateQuery;
-import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.identity.service.IAccessService;
+import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
 import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAgentRunRepository;
@@ -53,9 +53,7 @@ class AgentToolInvocationEnvelopeTest {
         when(repository.invocation("run-1", "call-1")).thenReturn(null);
         when(repository.claimInvocation(any())).thenReturn(true);
         when(repository.completeInvocationEnvelope(eq("run-1"), eq("call-1"), any(), any(), any())).thenReturn(true);
-        AgentKnowledgeQaResultVO answer = new AgentKnowledgeQaResultVO(
-            "knowledge_qa", "1.0", true, "question", "answer", "ANSWER", "REAL", null, List.of(), 8
-        );
+        AgentKnowledgeQaResultVO answer = new AgentKnowledgeQaResultVO("knowledge_qa", "1.0", true, "question", "answer", "ANSWER", "REAL", null, List.of(), 8);
         when(consumer.knowledgeQa(eq("buyer"), any())).thenReturn(answer);
 
         AgentToolInvocationCaseImpl tools = new AgentToolInvocationCaseImpl(
@@ -70,9 +68,7 @@ class AgentToolInvocationEnvelopeTest {
             true
         );
 
-        AgentToolInvocationResultVO result = tools.invokeResult(
-            AgentToolInvocationCommand.knowledge("buyer", "run-1", "capability", "call-1", "question")
-        );
+        AgentToolInvocationResultVO result = tools.invokeResult(AgentToolInvocationCommand.knowledge("buyer", "run-1", "capability", "call-1", "question"));
 
         assertEquals("knowledge_qa", result.tool());
         assertTrue(result.runtimePayload().containsKey("warning"));
@@ -93,11 +89,14 @@ class AgentToolInvocationEnvelopeTest {
         when(repository.claimInvocation(any())).thenReturn(true);
         when(repository.completeInvocationEnvelope(eq("run-1"), eq("call-2"), any(), any(), any())).thenReturn(true);
         AgentMyOrdersResultVO orders = new AgentMyOrdersResultVO(
-            "get_my_orders", "1.0", true, "PAID", 1, 10, 1,
-            List.of(new AgentOrderSummaryVO(
-                "order-1", "PAID", 1200, NOW, "merchant",
-                List.of(new AgentOrderItemSummaryVO("sku-1", "pen", "black", 1200, 1))
-            ))
+            "get_my_orders",
+            "1.0",
+            true,
+            "PAID",
+            1,
+            10,
+            1,
+            List.of(new AgentOrderSummaryVO("order-1", "PAID", 1200, NOW, "merchant", List.of(new AgentOrderItemSummaryVO("sku-1", "pen", "black", 1200, 1))))
         );
         when(consumer.myOrders(eq("buyer"), any())).thenReturn(orders);
 
@@ -118,7 +117,16 @@ class AgentToolInvocationEnvelopeTest {
         String fingerprint = Fingerprints.of("get_my_orders", "1.0", "PAID", 1, 10);
         when(repository.invocation("run-1", "call-2")).thenReturn(
             new cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO(
-                "invocation-1", "run-1", "call-2", "get_my_orders", fingerprint, "COMPLETED", result, null, NOW, NOW
+                "invocation-1",
+                "run-1",
+                "call-2",
+                "get_my_orders",
+                fingerprint,
+                "COMPLETED",
+                result,
+                null,
+                NOW,
+                NOW
             )
         );
         AgentToolInvocationResultVO replay = tools.invokeResult(command);
@@ -129,8 +137,14 @@ class AgentToolInvocationEnvelopeTest {
 
     private AgentRunVO run(Set<String> tools) {
         AgentScopeVO scope = new AgentScopeVO(
-            "buyer", AgentScopeVO.CONSUMER, null, Set.of(), Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION),
-            "conversation", "turn-token", NOW.plusSeconds(600)
+            "buyer",
+            AgentScopeVO.CONSUMER,
+            null,
+            Set.of(),
+            Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION),
+            "conversation",
+            "turn-token",
+            NOW.plusSeconds(600)
         );
         return new AgentRunVO("run-1", "buyer", "request-1", Fingerprints.sha256("capability"), scope, tools, AgentRunStatusVO.RUNNING, NOW, NOW, 0);
     }

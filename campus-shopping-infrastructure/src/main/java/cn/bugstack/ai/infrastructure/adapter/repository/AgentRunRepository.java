@@ -5,8 +5,8 @@ import static cn.bugstack.ai.types.common.Checks.require;
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAgentRunRepository;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRunVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentScopeVO;
-import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationResultVO;
+import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolInvocationVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolResultVO;
 import cn.bugstack.ai.infrastructure.dao.IAgentRunDao;
 import cn.bugstack.ai.infrastructure.dao.po.AgentRunPO;
@@ -47,22 +47,24 @@ public class AgentRunRepository implements IAgentRunRepository {
 
     @Override
     public boolean insert(AgentRunVO run) {
-        return dao.insert(
-            AgentRunPO.builder()
-                .id(run.id())
-                .userId(run.userId())
-                .idempotencyKey(run.idempotencyKey())
-                .capabilityTokenHash(run.capabilityTokenHash())
-                .conversationId(run.scope().conversationId())
-                .turnToken(run.scope().turnToken())
-                .scopeJson(write(run.scope()))
-                .toolsJson(write(run.allowedTools()))
-                .status(run.status().name())
-                .version(run.version())
-                .createdAt(run.createdAt())
-                .updatedAt(run.updatedAt())
-                .build()
-        ) == 1;
+        return (
+            dao.insert(
+                AgentRunPO.builder()
+                    .id(run.id())
+                    .userId(run.userId())
+                    .idempotencyKey(run.idempotencyKey())
+                    .capabilityTokenHash(run.capabilityTokenHash())
+                    .conversationId(run.scope().conversationId())
+                    .turnToken(run.scope().turnToken())
+                    .scopeJson(write(run.scope()))
+                    .toolsJson(write(run.allowedTools()))
+                    .status(run.status().name())
+                    .version(run.version())
+                    .createdAt(run.createdAt())
+                    .updatedAt(run.updatedAt())
+                    .build()
+            ) == 1
+        );
     }
 
     @Override
@@ -77,18 +79,20 @@ public class AgentRunRepository implements IAgentRunRepository {
 
     @Override
     public boolean claimInvocation(AgentToolInvocationVO invocation) {
-        return dao.claimInvocation(
-            AgentToolInvocationPO.builder()
-                .id(invocation.id())
-                .runId(invocation.runId())
-                .invocationKey(invocation.invocationKey())
-                .toolName(invocation.toolName())
-                .inputFingerprint(invocation.inputFingerprint())
-                .status(invocation.status())
-                .inputJson("{}")
-                .createdAt(invocation.createdAt())
-                .build()
-        ) == 1;
+        return (
+            dao.claimInvocation(
+                AgentToolInvocationPO.builder()
+                    .id(invocation.id())
+                    .runId(invocation.runId())
+                    .invocationKey(invocation.invocationKey())
+                    .toolName(invocation.toolName())
+                    .inputFingerprint(invocation.inputFingerprint())
+                    .status(invocation.status())
+                    .inputJson("{}")
+                    .createdAt(invocation.createdAt())
+                    .build()
+            ) == 1
+        );
     }
 
     @Override

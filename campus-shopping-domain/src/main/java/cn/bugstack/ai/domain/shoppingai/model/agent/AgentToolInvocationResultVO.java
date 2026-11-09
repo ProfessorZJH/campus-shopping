@@ -23,7 +23,6 @@ public record AgentToolInvocationResultVO(
     Map<String, Object> payload,
     List<AgentProductCandidateVO> candidates
 ) {
-
     public AgentToolInvocationResultVO {
         require(AgentToolRegistry.contains(tool), ResponseCode.ILLEGAL_PARAMETER);
         require(AgentToolRegistry.VERSION.equals(version), ResponseCode.ILLEGAL_PARAMETER);
@@ -34,13 +33,7 @@ public record AgentToolInvocationResultVO(
     }
 
     public AgentToolInvocationResultVO(AgentToolResultVO result) {
-        this(
-            result.tool(),
-            result.version(),
-            result.readOnly(),
-            Map.of(),
-            result.candidates()
-        );
+        this(result.tool(), result.version(), result.readOnly(), Map.of(), result.candidates());
     }
 
     public AgentToolInvocationResultVO(String tool, String version, boolean readOnly, Map<String, Object> payload) {
@@ -58,14 +51,21 @@ public record AgentToolInvocationResultVO(
         payload.put("answerMode", result.answerMode());
         payload.put("retrievalMode", result.retrievalMode());
         payload.put("warning", result.warning());
-        payload.put("citations", result.citations().stream().map(citation -> {
-            LinkedHashMap<String, Object> value = new LinkedHashMap<>();
-            value.put("documentId", citation.documentId());
-            value.put("title", citation.title());
-            value.put("snippet", citation.snippet());
-            value.put("score", citation.score());
-            return immutableMap(value);
-        }).toList());
+        payload.put(
+            "citations",
+            result
+                .citations()
+                .stream()
+                .map(citation -> {
+                    LinkedHashMap<String, Object> value = new LinkedHashMap<>();
+                    value.put("documentId", citation.documentId());
+                    value.put("title", citation.title());
+                    value.put("snippet", citation.snippet());
+                    value.put("score", citation.score());
+                    return immutableMap(value);
+                })
+                .toList()
+        );
         payload.put("durationMs", result.durationMs());
         return new AgentToolInvocationResultVO(result.tool(), result.version(), result.readOnly(), payload);
     }
@@ -76,24 +76,38 @@ public record AgentToolInvocationResultVO(
         payload.put("page", result.page());
         payload.put("size", result.size());
         payload.put("total", result.total());
-        payload.put("items", result.items().stream().map(order -> {
-            LinkedHashMap<String, Object> value = new LinkedHashMap<>();
-            value.put("orderId", order.orderId());
-            value.put("status", order.status());
-            value.put("totalCent", order.totalCent());
-            value.put("createdAt", order.createdAt().toString());
-            value.put("merchantName", order.merchantName());
-            value.put("items", order.items().stream().map(item -> {
-                LinkedHashMap<String, Object> itemValue = new LinkedHashMap<>();
-                itemValue.put("skuId", item.skuId());
-                itemValue.put("title", item.title());
-                itemValue.put("specKey", item.specKey());
-                itemValue.put("unitPriceCent", item.unitPriceCent());
-                itemValue.put("quantity", item.quantity());
-                return immutableMap(itemValue);
-            }).toList());
-            return immutableMap(value);
-        }).toList());
+        payload.put(
+            "items",
+            result
+                .items()
+                .stream()
+                .map(order -> {
+                    LinkedHashMap<String, Object> value = new LinkedHashMap<>();
+                    value.put("orderId", order.orderId());
+                    value.put("status", order.status());
+                    value.put("totalCent", order.totalCent());
+                    value.put("createdAt", order.createdAt().toString());
+                    value.put("merchantName", order.merchantName());
+                    value.put(
+                        "items",
+                        order
+                            .items()
+                            .stream()
+                            .map(item -> {
+                                LinkedHashMap<String, Object> itemValue = new LinkedHashMap<>();
+                                itemValue.put("skuId", item.skuId());
+                                itemValue.put("title", item.title());
+                                itemValue.put("specKey", item.specKey());
+                                itemValue.put("unitPriceCent", item.unitPriceCent());
+                                itemValue.put("quantity", item.quantity());
+                                return immutableMap(itemValue);
+                            })
+                            .toList()
+                    );
+                    return immutableMap(value);
+                })
+                .toList()
+        );
         return new AgentToolInvocationResultVO(result.tool(), result.version(), result.readOnly(), payload);
     }
 

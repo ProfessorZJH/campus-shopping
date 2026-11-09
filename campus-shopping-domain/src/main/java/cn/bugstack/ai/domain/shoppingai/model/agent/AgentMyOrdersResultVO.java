@@ -16,7 +16,6 @@ public record AgentMyOrdersResultVO(
     long total,
     List<AgentOrderSummaryVO> items
 ) {
-
     public AgentMyOrdersResultVO {
         require(AgentMyOrdersRequestVO.TOOL.equals(tool), ResponseCode.ILLEGAL_PARAMETER);
         require(AgentMyOrdersRequestVO.VERSION.equals(version), ResponseCode.ILLEGAL_PARAMETER);

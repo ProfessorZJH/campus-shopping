@@ -41,13 +41,7 @@ public record AgentToolInvocationCommand(
     }
 
     /** Consumer read-only knowledge constructor. */
-    public static AgentToolInvocationCommand knowledge(
-        String actor,
-        String runId,
-        String capabilityToken,
-        String invocationKey,
-        String question
-    ) {
+    public static AgentToolInvocationCommand knowledge(String actor, String runId, String capabilityToken, String invocationKey, String question) {
         return new AgentToolInvocationCommand(actor, runId, capabilityToken, invocationKey, "knowledge_qa", question, 0, null, null, 1, 10);
     }
 }

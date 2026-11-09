@@ -74,15 +74,7 @@ public class AgentConsumerReadToolCaseImpl implements IAgentConsumerReadToolCase
             .filter(document -> egress.allows(document.visibility(), document.baseId(), document.merchantId()))
             .map(KnowledgeScopeVO::id)
             .toList();
-        AiQueryEntity query = new AiQueryEntity(
-            request.question(),
-            allowed,
-            List.of(),
-            List.of(),
-            recall.query(),
-            List.of(),
-            external
-        );
+        AiQueryEntity query = new AiQueryEntity(request.question(), allowed, List.of(), List.of(), recall.query(), List.of(), external);
         AiAnswerVO answer = engine.query(query);
         require(answer != null, ResponseCode.AI_UNAVAILABLE);
 
@@ -110,7 +102,11 @@ public class AgentConsumerReadToolCaseImpl implements IAgentConsumerReadToolCase
         require(request != null, ResponseCode.ILLEGAL_PARAMETER);
         accounts.requireActive(user);
         OrderPage page = orders.mine(user, request.state(), request.page(), request.size());
-        List<AgentOrderSummaryVO> summaries = page.items().stream().map(order -> summary(user, order)).toList();
+        List<AgentOrderSummaryVO> summaries = page
+            .items()
+            .stream()
+            .map(order -> summary(user, order))
+            .toList();
         return new AgentMyOrdersResultVO(
             AgentMyOrdersRequestVO.TOOL,
             AgentMyOrdersRequestVO.VERSION,

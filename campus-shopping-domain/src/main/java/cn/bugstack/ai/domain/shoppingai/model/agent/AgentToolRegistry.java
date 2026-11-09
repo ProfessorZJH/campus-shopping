@@ -4,6 +4,7 @@ import java.util.Set;
 
 /** 首期显式注册的工具集合；不接受模型提供的 URL、类名或动态函数。 */
 public final class AgentToolRegistry {
+
     public static final String SEARCH_PRODUCTS = "search_products";
     public static final String KNOWLEDGE_QA = "knowledge_qa";
     public static final String GET_MY_ORDERS = "get_my_orders";

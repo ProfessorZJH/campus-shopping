@@ -77,7 +77,11 @@ class AgentRuntimeConsumerContractTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/internal/v1/agent/runtime/turn", exchange -> {
             request.set(mapper.readTree(exchange.getRequestBody().readAllBytes()));
-            respond(exchange, 200, "{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"FINAL\",\"answer\":\"compatible\",\"evidenceStatus\":\"STUB\",\"usage\":{\"total_tokens\":1},\"durationMs\":1}");
+            respond(
+                exchange,
+                200,
+                "{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"FINAL\",\"answer\":\"compatible\",\"evidenceStatus\":\"STUB\",\"usage\":{\"total_tokens\":1},\"durationMs\":1}"
+            );
         });
         server.start();
 
@@ -104,7 +108,9 @@ class AgentRuntimeConsumerContractTest {
 
     @Test
     void rejectsKnownConsumerToolReturnedBeforePythonSchemaRollout() throws Exception {
-        startResponseServer("{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"TOOL_CALLS\",\"continuationId\":\"cont-contract\",\"toolCalls\":[{\"callId\":\"call-contract\",\"name\":\"knowledge_qa\",\"arguments\":{\"question\":\"pickup\"}}],\"evidenceStatus\":\"STUB\",\"usage\":{},\"durationMs\":1}");
+        startResponseServer(
+            "{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"TOOL_CALLS\",\"continuationId\":\"cont-contract\",\"toolCalls\":[{\"callId\":\"call-contract\",\"name\":\"knowledge_qa\",\"arguments\":{\"question\":\"pickup\"}}],\"evidenceStatus\":\"STUB\",\"usage\":{},\"durationMs\":1}"
+        );
 
         AppException error = assertThrows(AppException.class, () -> gateway().run(command(Set.of(AgentToolRegistry.SEARCH_PRODUCTS))));
 
@@ -113,7 +119,9 @@ class AgentRuntimeConsumerContractTest {
 
     @Test
     void rejectsSearchSchemaMismatchBeforeToolExecution() throws Exception {
-        startResponseServer("{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"TOOL_CALLS\",\"continuationId\":\"cont-contract\",\"toolCalls\":[{\"callId\":\"call-contract\",\"name\":\"search_products\",\"arguments\":{\"limit\":5,\"buyerId\":\"other-user\"}}],\"evidenceStatus\":\"STUB\",\"usage\":{},\"durationMs\":1}");
+        startResponseServer(
+            "{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"TOOL_CALLS\",\"continuationId\":\"cont-contract\",\"toolCalls\":[{\"callId\":\"call-contract\",\"name\":\"search_products\",\"arguments\":{\"limit\":5,\"buyerId\":\"other-user\"}}],\"evidenceStatus\":\"STUB\",\"usage\":{},\"durationMs\":1}"
+        );
 
         AppException error = assertThrows(AppException.class, () -> gateway().run(command(Set.of(AgentToolRegistry.SEARCH_PRODUCTS))));
 
@@ -122,10 +130,7 @@ class AgentRuntimeConsumerContractTest {
 
     @Test
     void refusesToSendConsumerToolsThroughM2Gateway() {
-        AppException error = assertThrows(
-            AppException.class,
-            () -> gateway().run(command(Set.of(AgentToolRegistry.KNOWLEDGE_QA)))
-        );
+        AppException error = assertThrows(AppException.class, () -> gateway().run(command(Set.of(AgentToolRegistry.KNOWLEDGE_QA))));
 
         assertEquals(ResponseCode.AI_UNAVAILABLE.getCode(), error.getCode());
     }
@@ -136,7 +141,9 @@ class AgentRuntimeConsumerContractTest {
         Set<String> errors = new HashSet<>(jsonStrings(shared.path("errors")));
         assertTrue(errors.containsAll(Set.of("INVALID_TOOL_CALL", "INVALID_TOOL_ARGUMENTS", "UPSTREAM_429", "UPSTREAM_5XX", "UPSTREAM_TIMEOUT")));
 
-        startResponseServer("{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"FAILED\",\"errorCode\":\"UPSTREAM_429\",\"evidenceStatus\":\"DEGRADED\",\"usage\":{},\"durationMs\":1}");
+        startResponseServer(
+            "{\"protocolVersion\":\"1.0\",\"runId\":\"run-contract\",\"requestId\":\"request-contract\",\"status\":\"FAILED\",\"errorCode\":\"UPSTREAM_429\",\"evidenceStatus\":\"DEGRADED\",\"usage\":{},\"durationMs\":1}"
+        );
         var result = gateway().run(command(Set.of(AgentToolRegistry.SEARCH_PRODUCTS)));
 
         assertEquals(AgentRuntimeStatusVO.FAILED, result.status());
@@ -156,7 +163,16 @@ class AgentRuntimeConsumerContractTest {
             "capability-contract",
             AgentRuntimeStageVO.START,
             "Find tea",
-            new AgentScopeVO("buyer", AgentScopeVO.CONSUMER, null, Set.of(), Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION), "conversation", "turn-token", Instant.now().plusSeconds(600)),
+            new AgentScopeVO(
+                "buyer",
+                AgentScopeVO.CONSUMER,
+                null,
+                Set.of(),
+                Set.of(AgentScopeVO.PRODUCT_SEARCH_PERMISSION),
+                "conversation",
+                "turn-token",
+                Instant.now().plusSeconds(600)
+            ),
             tools,
             null,
             List.of()

@@ -8,15 +8,7 @@ import java.time.Instant;
 import java.util.List;
 
 /** 不含取货、售后和事件时间线的本人订单摘要。 */
-public record AgentOrderSummaryVO(
-    String orderId,
-    String status,
-    long totalCent,
-    Instant createdAt,
-    String merchantName,
-    List<AgentOrderItemSummaryVO> items
-) {
-
+public record AgentOrderSummaryVO(String orderId, String status, long totalCent, Instant createdAt, String merchantName, List<AgentOrderItemSummaryVO> items) {
     public AgentOrderSummaryVO {
         orderId = text(orderId, "订单", 64);
         status = AgentOrderStateVO.filter(status);

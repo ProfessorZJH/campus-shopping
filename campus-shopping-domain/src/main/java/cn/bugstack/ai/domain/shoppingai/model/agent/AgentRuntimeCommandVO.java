@@ -1,6 +1,7 @@
 package cn.bugstack.ai.domain.shoppingai.model.agent;
 
 import static cn.bugstack.ai.types.common.Checks.require;
+
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.util.List;
 
@@ -25,7 +26,10 @@ public record AgentRuntimeCommandVO(
         if (question != null) require(question.length() <= 2000, ResponseCode.REQUEST_TOO_LARGE);
         allowedTools = java.util.Set.copyOf(allowedTools == null ? java.util.Set.of() : allowedTools);
         require(!allowedTools.isEmpty() && allowedTools.stream().allMatch(AgentToolRegistry::contains), ResponseCode.AUTH_FORBIDDEN);
-        require(stage == AgentRuntimeStageVO.START ? continuationId == null : continuationId != null && !continuationId.isBlank(), ResponseCode.ILLEGAL_PARAMETER);
+        require(
+            stage == AgentRuntimeStageVO.START ? continuationId == null : continuationId != null && !continuationId.isBlank(),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
         toolResults = List.copyOf(toolResults == null ? List.of() : toolResults);
         require(toolResults.size() <= 8, ResponseCode.REQUEST_TOO_LARGE);
     }
