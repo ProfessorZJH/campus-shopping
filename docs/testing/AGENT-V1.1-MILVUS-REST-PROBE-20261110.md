@@ -32,4 +32,4 @@ The M1 task checkboxes remain unchanged:
 - **4.3 remains unchecked.** No Milvus candidate was passed through the Java/MySQL fact revalidation chain in this probe. The independent Java/MySQL evidence is recorded in the M1 fact-revalidation report on the companion branch/PR.
 - **4.4 remains unchecked.** A real Uvicorn + model + embedding + Milvus + Java end-to-end run was not performed.
 
-This report records a useful partial result without promoting a blocked gRPC transport or a synthetic REST probe to full M1 completion.
+This report records the transport-only result from the first probe. A later ProductIndex acceptance closed task 4.2 with real isolated REST CRUD/search/update/delete/cleanup evidence; see [the ProductIndex acceptance report](AGENT-V1.1-M1-MILVUS-PRODUCT-INDEX-20261110.md). Tasks 4.3 and 4.4 remain open.
