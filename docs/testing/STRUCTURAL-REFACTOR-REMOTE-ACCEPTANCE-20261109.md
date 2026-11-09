@@ -4,7 +4,7 @@
 > Pull Request：[PR #63](https://github.com/ProfessorZJH/campus-shopping/pull/63)
 > 代码提交：`afe7ce4`
 > 合并提交：`89e2981`
-> GitHub Actions：[Campus Shopping - Real Acceptance #324](https://github.com/ProfessorZJH/campus-shopping/actions/runs/42547947832)
+> GitHub Actions：[Campus Shopping - Real Acceptance #325](https://github.com/ProfessorZJH/campus-shopping/actions/runs/42547947832)
 
 ## 结果
 
