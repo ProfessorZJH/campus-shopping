@@ -1,0 +1,13 @@
+{
+  "protocolVersion": "1.0",
+  "runId": "run-redacted-002",
+  "requestId": "request-redacted-failed",
+  "status": "FAILED",
+  "continuationId": null,
+  "toolCalls": [],
+  "answer": null,
+  "evidenceStatus": "STUB",
+  "usage": {},
+  "durationMs": 0,
+  "errorCode": "AI_UNAVAILABLE"
+}

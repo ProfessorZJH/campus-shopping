@@ -50,6 +50,9 @@ campus:
   ai:
     url: ${AI_SERVICE_URL:http://127.0.0.1:8100}
     service-key: ${AI_SERVICE_KEY:}
+    agent-runtime:
+      enabled: ${AI_AGENT_RUNTIME_ENABLED:false}
+      timeout-seconds: ${AI_AGENT_RUNTIME_TIMEOUT_SECONDS:60}
     egress:
       base-ids: ${AI_EGRESS_BASE_IDS:}
       merchant-ids: ${AI_EGRESS_MERCHANT_IDS:}

@@ -13,6 +13,7 @@ from .retrieval import KnowledgeStore
 from .engine import answer,recall_terms,StreamCancelled
 from .product_index import ProductIndex
 from .observability import RequestContext, failure, diagnostics, ExecutionGate
+from .runtime_bridge import RuntimeBridge, RuntimeBridgeError, RuntimeBridgeRequest
 
 class RequestBodyLimit:
     """同时限制有 Content-Length 和分块传输的请求，不能只信任请求头。"""
@@ -92,7 +93,7 @@ def create_app(settings: Settings|None=None):
         yield
         store.close()
     app=FastAPI(title='校园导购检索服务',version='1.0.0',lifespan=lifespan,docs_url=None,redoc_url=None,openapi_url=None)
-    app.state.store=store;app.state.products=products;app.state.gate=gate
+    app.state.store=store;app.state.products=products;app.state.gate=gate;app.state.runtime_bridge=RuntimeBridge(settings)
     def authorized(x_service_key: Annotated[str|None,Header()]=None):
         if x_service_key is None or not secrets.compare_digest(x_service_key,settings.api_key):raise HTTPException(401,'服务身份无效')
     app.add_middleware(RequestBodyLimit, limit=4_000_000)
@@ -112,6 +113,34 @@ def create_app(settings: Settings|None=None):
             dependencies[name]={'configured':configured,'state':'DISABLED' if not configured else 'DEGRADED' if failed>success else 'UP' if success else 'UNVERIFIED','lastSuccessAt':success or None,'lastFailureAt':failed or None}
         degraded=any(d['configured'] and d['state'] in ('DEGRADED','UNVERIFIED') for d in dependencies.values())
         return {'status':'DEGRADED' if degraded else 'UP','storage':'UP','execution':gate.snapshot(),'dependencies':dependencies}
+    @app.post('/internal/v1/agent/runtime/turn')
+    def agent_runtime_turn(
+        request: RuntimeBridgeRequest,
+        x_service_key: Annotated[str | None, Header(alias="X-Service-Key")] = None,
+        x_agent_capability: Annotated[str | None, Header(alias="X-Agent-Capability")] = None,
+        x_agent_capability_signature: Annotated[str | None, Header(alias="X-Agent-Capability-Signature")] = None,
+        x_agent_capability_digest: Annotated[str | None, Header(alias="X-Agent-Capability-Digest")] = None,
+        x_request_id: Annotated[str | None, Header(alias="X-Request-ID")] = None,
+    ):
+        if not x_request_id or x_request_id != request.requestId:
+            return JSONResponse(status_code=422, content={"errorCode": "REQUEST_ID_INVALID"})
+        if not gate.acquire(blocking=False):
+            return JSONResponse(status_code=429, content={"errorCode": "RUNTIME_BUSY"})
+        try:
+            return app.state.runtime_bridge.turn(
+                request,
+                service_key=x_service_key or "",
+                capability=x_agent_capability,
+                signature=x_agent_capability_signature,
+                capability_digest=x_agent_capability_digest,
+            ).model_dump(by_alias=True, exclude_none=True)
+        except RuntimeBridgeError as error:
+            return JSONResponse(status_code=error.status, content={"errorCode": error.code})
+        except Exception as error:
+            failure("agent.runtime", error)
+            return JSONResponse(status_code=503, content={"errorCode": "AI_UNAVAILABLE"})
+        finally:
+            gate.release()
     @app.post('/v1/index',dependencies=[Depends(authorized)])
     def index(request: IndexRequest):
         if not gate.acquire(blocking=False):raise HTTPException(429,'索引服务繁忙')
