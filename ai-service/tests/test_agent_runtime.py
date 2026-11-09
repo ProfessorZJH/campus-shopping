@@ -31,8 +31,10 @@ def scope(*, identity_kind="consumer", merchants=(), identity_id=None, expires=N
         identity_id=identity_id,
         authorized_merchant_ids=frozenset(merchants),
         permissions=frozenset({"catalog.product.search"}),
+        authorization_source="test-java-scope",
         turn_token="turn-test",
         turn_expires_at=expires,
+        lease_checker=lambda token, expires_at: token == "turn-test",
     )
 
 
@@ -124,6 +126,17 @@ def test_scope_denies_ambiguous_or_foreign_merchant_and_expired_turn():
         registry.invoke("search_products", {"query": "商品", "merchantId": "m-2"}, scope(identity_kind="merchant", merchants=("m-1",), identity_id="m-1"))
     with pytest.raises(ScopeDeniedError, match="TURN_LEASE_EXPIRED"):
         registry.invoke("search_products", {"query": "商品"}, scope(expires=0))
+    invalid_lease = AgentScope(
+        user_id="user-1",
+        identity_kind="consumer",
+        permissions=frozenset({"catalog.product.search"}),
+        authorization_source="test-java-scope",
+        turn_token="turn-test",
+        turn_expires_at=time.time() + 600,
+        lease_checker=lambda token, expires_at: False,
+    )
+    with pytest.raises(ScopeDeniedError, match="TURN_LEASE_INVALID"):
+        registry.invoke("search_products", {"query": "商品"}, invalid_lease)
 
 
 def test_single_merchant_scope_is_applied_when_model_omits_merchant_id():
@@ -140,6 +153,20 @@ def test_single_merchant_scope_is_applied_when_model_omits_merchant_id():
     )
     assert calls == ["m-1"]
     assert {candidate["merchantId"] for candidate in result["candidates"]} == {"m-1"}
+
+
+def test_scope_rejects_candidates_outside_selected_merchant():
+    def leaking_searcher(query, limit, merchant_id, current_scope):
+        return [
+            {"productId": "p-2", "merchantId": "m-2", "title": "越界候选", "source": "CATALOG_READ_MODEL", "verified": False}
+        ]
+
+    with pytest.raises(ScopeDeniedError, match="MERCHANT_RESOURCE_DENIED"):
+        default_registry(leaking_searcher).invoke(
+            "search_products",
+            {"query": "商品"},
+            scope(identity_kind="merchant", merchants=("m-1",), identity_id="m-1"),
+        )
 
 
 def test_runtime_executes_native_tool_once_then_continues():
@@ -230,6 +257,23 @@ def test_runtime_rejects_non_function_native_calls_and_records_tool_transport_fa
     assert failed.tool_calls[0].error_code == "UPSTREAM_TIMEOUT"
 
 
+def test_runtime_rejects_duplicate_tool_ids_before_first_execution():
+    response = tool_call()
+    response["message"]["tool_calls"].append(response["message"]["tool_calls"][0].copy())
+    result = AgentRuntime(FakeModel([response]), default_registry(searcher), evidence_status="STUB").run("查商品", scope())
+    assert result.error_code == "DUPLICATE_TOOL_CALL"
+    assert result.tool_calls == []
+
+
+def test_runtime_preserves_stub_status_for_unexpected_failures():
+    def failing_searcher(query, limit, merchant_id, current_scope):
+        raise RuntimeError("boom")
+
+    result = AgentRuntime(FakeModel([tool_call()]), default_registry(failing_searcher), evidence_status="STUB").run("查商品", scope())
+    assert result.status == "FAILED"
+    assert result.evidence_status == "STUB"
+
+
 def test_m0_does_not_add_public_agent_route_or_business_write_port(tmp_path):
     app = create_app(Settings("agent-route-test-key-not-production", str(tmp_path / "route.db")))
     paths = {route.path for route in app.routes}
@@ -316,6 +360,29 @@ def test_stream_accumulator_requires_terminal_finish_reason_and_provider_call_id
     accumulator.accept({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]})
     with pytest.raises(AgentContractError, match="INVALID_STREAM_TOOL_CALL"):
         accumulator.finish()
+
+
+def test_stream_accumulator_rejects_non_function_tool_type():
+    accumulator = ToolCallAccumulator()
+    with pytest.raises(AgentContractError, match="INVALID_STREAM_TOOL_CALL"):
+        accumulator.accept(
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {
+                                    "index": 0,
+                                    "type": "custom",
+                                    "id": "call-1",
+                                    "function": {"name": "search_products", "arguments": '{"query":"茶"}'},
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        )
 
 
 def test_stream_accumulator_deduplicates_only_explicit_event_replays():

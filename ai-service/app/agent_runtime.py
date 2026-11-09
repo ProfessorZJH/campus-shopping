@@ -135,6 +135,9 @@ class ToolCallAccumulator:
             function = call.get("function") or {}
             if not isinstance(function, Mapping):
                 raise AgentContractError("INVALID_STREAM_TOOL_CALL")
+            call_type = call.get("type")
+            if call_type is not None and call_type != "function":
+                raise AgentContractError("INVALID_STREAM_TOOL_CALL")
             call_id = call.get("id")
             name = function.get("name")
             fragment = function.get("arguments", "")
@@ -300,6 +303,9 @@ class AgentRuntime:
                     return self._finish(result, started)
                 if len(calls) + len(requested) > self.max_tool_calls:
                     raise AgentModelError("TOOL_CALL_LIMIT")
+                requested_ids = [call.call_id for call in requested]
+                if len(set(requested_ids)) != len(requested_ids) or any(item.call_id in requested_ids for item in calls):
+                    raise AgentModelError("DUPLICATE_TOOL_CALL")
                 messages.append({"role": "assistant", "tool_calls": [self._wire_call(call) for call in requested]})
                 for call in requested:
                     if any(item.call_id == call.call_id for item in calls):
@@ -325,7 +331,8 @@ class AgentRuntime:
             return self._finish(result, started)
         except Exception as error:  # noqa: BLE001 - 对外只保留安全错误类型
             code = safe_exception_code(error)
-            result = AgentRunResult(run_id, "", "FAILED", "DEGRADED", calls, code, 0, usage)
+            evidence_status = "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status
+            result = AgentRunResult(run_id, "", "FAILED", evidence_status, calls, code, 0, usage)
             return self._finish(result, started)
 
     def run_stream(self, question: str, scope: AgentScope) -> AgentRunResult:
@@ -355,6 +362,9 @@ class AgentRuntime:
                     return self._finish(AgentRunResult(run_id, answer.strip(), "COMPLETED", self.evidence_status, calls, None, 0, usage), started)
                 if len(calls) + len(requested) > self.max_tool_calls:
                     raise AgentModelError("TOOL_CALL_LIMIT")
+                requested_ids = [call.call_id for call in requested]
+                if len(set(requested_ids)) != len(requested_ids) or any(item.call_id in requested_ids for item in calls):
+                    raise AgentModelError("DUPLICATE_TOOL_CALL")
                 messages.append({"role": "assistant", "tool_calls": [self._wire_call(call) for call in requested]})
                 for call in requested:
                     if any(item.call_id == call.call_id for item in calls):
@@ -377,7 +387,8 @@ class AgentRuntime:
         except AgentModelError as error:
             return self._finish(AgentRunResult(run_id, "", "FAILED", "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status, calls, error.code, 0, usage), started)
         except Exception as error:  # noqa: BLE001
-            return self._finish(AgentRunResult(run_id, "", "FAILED", "DEGRADED", calls, safe_exception_code(error), 0, usage), started)
+            evidence_status = "DEGRADED" if self.evidence_status == "REAL" else self.evidence_status
+            return self._finish(AgentRunResult(run_id, "", "FAILED", evidence_status, calls, safe_exception_code(error), 0, usage), started)
 
     @staticmethod
     def _wire_call(call: ToolCall) -> dict[str, Any]:

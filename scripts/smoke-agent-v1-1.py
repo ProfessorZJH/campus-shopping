@@ -59,6 +59,7 @@ def scope() -> AgentScope:
         authorization_source="test-java-scope",
         turn_token="agent-test-turn",
         turn_expires_at=time.time() + 600,
+        lease_checker=lambda token, expires_at: token == "agent-test-turn",
     )
 
 

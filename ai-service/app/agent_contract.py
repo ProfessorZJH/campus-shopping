@@ -103,12 +103,15 @@ class AgentScope:
     authorization_source: str = "java"
     turn_token: str | None = None
     turn_expires_at: float | None = None
+    lease_checker: Callable[[str, float], bool] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.turn_token, str) or not self.turn_token.strip():
             raise ValueError("AgentScope 必须包含 turn_token")
         if not isinstance(self.turn_expires_at, (int, float)) or isinstance(self.turn_expires_at, bool):
             raise ValueError("AgentScope 必须包含 turn_expires_at")
+        if not callable(self.lease_checker):
+            raise ValueError("AgentScope 必须包含 lease_checker")
 
     def assert_active(self, now: float | None = None) -> None:
         if not self.turn_token or self.turn_expires_at is None:
@@ -116,6 +119,12 @@ class AgentScope:
         current = now if now is not None else datetime.now(timezone.utc).timestamp()
         if current >= self.turn_expires_at:
             raise ScopeDeniedError("TURN_LEASE_EXPIRED")
+        try:
+            active = self.lease_checker(self.turn_token, float(self.turn_expires_at))
+        except Exception:  # noqa: BLE001 - 租约端口故障只暴露稳定错误码
+            raise ScopeDeniedError("TURN_LEASE_UNAVAILABLE") from None
+        if active is not True:
+            raise ScopeDeniedError("TURN_LEASE_INVALID")
 
     def assert_product_search(self, merchant_id: str | None) -> str | None:
         self.assert_active()
@@ -184,6 +193,9 @@ class ToolSpec:
         try:
             raw = self.handler(parsed, scope)
             result = self.output_model.model_validate(raw, strict=True)
+            if isinstance(parsed, SearchProductsArguments) and parsed.merchantId is not None:
+                if any(candidate.merchantId != parsed.merchantId for candidate in result.candidates):
+                    raise ScopeDeniedError("MERCHANT_RESOURCE_DENIED")
         except AgentContractError:
             raise
         except (TypeError, ValueError, ValidationError):
