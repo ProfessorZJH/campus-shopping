@@ -6,11 +6,11 @@
 
 本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。随后约定的结构重构也已在独立分支 `codex/shoppingai-structure-refactor` 完成，整体进度为 **100%**；实施、验证和边界说明见[结构重构分支记录](testing/STRUCTURAL-REFACTOR-20261108.md)。完成范围包括 ShoppingAI 候选/证据职责、Catalog 快照与候选查询、后台 Shell 元数据、Guide transport、Python Provider 和检索融合。
 
-该分支尚未合入 `main` 只表示合并状态，不表示重构未完成。Docker、真实供应商、生产部署和性能属于完成后的独立验收范围，待证据回传后补充，不改变本次结构重构完成结论。
+结构重构已通过 PR #63 合入 `main`，合并提交为 `89e2981`。对应的[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #324 已通过；真实外部供应商 smoke、生产部署和性能仍属于完成后的独立验收范围，不改变本次结构重构完成结论。
 
 AnswerFlow 规则树、Agent v1.1 和 Trading/Repository P2 是完成后的独立演进边界：前者在出现稳定的第二回答分支时再扩展，Agent 等待独立产品决策，Trading/Repository 仅在出现可量化的 SQL、并发或审计收益时继续优化。
 
-另一个会话正在 Docker 环境执行真实验收。本文件暂不记录其通过结论；待命令、版本、环境和结果证据回传后，单独写入 `docs/testing/` 并更新引用。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
+PR #63 的远端验收已完成并通过；命令、版本、环境和结果见[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)，原始日志由 GitHub Actions run #324 保留。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
 
 原始规划资料仍保留在以下 OpenSpec 文件中：
 
