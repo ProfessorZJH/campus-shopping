@@ -16,7 +16,7 @@
 
 截至 2026 年 11 月 8 日，`productize-campus-shopping-experience` 的 46 项任务已在 `main` 版本全部完成。M0～M6 已覆盖消费者、AI 导购、商户、店员、平台和知识库的产品化链路；后续工作应从“补齐产品功能”转为“在不改变交易不变量的前提下收敛内部职责”。
 
-PR #63 对应的远端 `Campus Shopping - Real Acceptance` workflow #324 已通过，覆盖隔离镜像、MySQL、Redis、FastAPI、真实 Maven、HTTP 和浏览器链路；真实外部供应商 smoke 仍按配置跳过，生产部署和性能目标继续单独验收。
+PR #63 对应的[远端真实验收记录](../testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #324 已通过，覆盖隔离镜像、MySQL、Redis、FastAPI、真实 Maven、HTTP 和浏览器链路；真实外部供应商 smoke 仍按配置跳过，生产部署和性能目标继续单独验收。
 
 结构重构已经在独立分支 `codex/shoppingai-structure-refactor` 上完成，最终代码提交为 `afe7ce4`，并通过 PR #63 合入 `main`，合并提交为 `89e2981`。实现范围、定向测试和完成后的独立演进边界见[结构重构分支实施与验证记录](../testing/STRUCTURAL-REFACTOR-20261108.md)。
 
@@ -85,13 +85,13 @@ Agent v1.1 作为完成后的独立产品阶段，未来采用受控 Tool Gatewa
 
 ## 五、完成后的验收与演进顺序
 
-1. **合入准备**：以 `codex/shoppingai-structure-refactor` 的完成记录、OpenSpec 状态和定向验证结果为依据，在获得授权后合入 `main`。
-2. **运行环境验收**：接收 Docker 真实验收的命令、镜像/容器版本、数据库与 Redis 范围及结果证据，作为完成后的独立运行验证。
+1. **合并记录**：结构重构已通过 PR #63 合入 `main`，合并提交为 `89e2981`；后续变更以主线和对应 PR 为准。
+2. **运行环境验收**：Docker、隔离 MySQL/Redis、FastAPI、真实 Maven、HTTP 和浏览器验收已完成，摘要见[远端真实验收记录](../testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)。
 3. **真实组件与性能验收**：分别验证真实供应商、Milvus/Qdrant、生产部署和性能目标，不把这些运行证据倒推为结构重构完成条件。
 4. **独立产品演进**：若出现第二回答分支或 Agent 产品决策，再分别推进 AnswerFlow、Agent v1.1；Trading/Repository 仅在出现可量化收益时继续优化。
 5. **持续维护**：后续每个独立变更继续同步 OpenSpec、API/Schema、测试和 `docs/testing/` 证据。
 
-每个批次都要有独立目标、影响范围、不变量和可观察验收条件。Docker 真实验收完成后，将具体命令、镜像/容器版本、数据库与 Redis 范围、失败与修复结果写入 `docs/testing/`，并在本文件或最终状态报告中补充链接。
+每个后续批次都要有独立目标、影响范围、不变量和可观察验收条件。远端真实验收的命令、版本、环境、范围和结果已写入 `docs/testing/`；后续真实供应商、生产部署和性能验收继续补充各自证据。
 
 ## 六、已完成范围的边界约束
 
