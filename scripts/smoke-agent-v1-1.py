@@ -357,7 +357,25 @@ def main() -> int:
     parser.add_argument("--require-live", action="store_true", help="真实必需检查未完成时返回非零")
     args = parser.parse_args()
     load_env(args.env_file)
-    settings = Settings.from_env()
+    try:
+        settings = Settings.from_env()
+    except Exception:  # noqa: BLE001 - 解析错误只落稳定脱敏证据
+        recorder = EvidenceRecorder(args.output, secrets.token_hex(12), "Agent v1.1 M0/M1", "NOT_RUN")
+        recorder.data.update(
+            {
+                "startedAt": datetime.now(timezone.utc).isoformat(),
+                "configured": {},
+                "configurationParseFailed": True,
+                "productionProductCollectionModified": False,
+                "javaMySqlTested": False,
+                "businessWrites": False,
+            }
+        )
+        recorder.add("real_configuration_parse", "FAIL", errorCode="INVALID_CONFIGURATION")
+        recorder.data["summary"] = {"passed": 0, "failed": 1, "notRun": 0}
+        recorder.write()
+        print(json.dumps({"evidenceStatus": recorder.evidence_status, "summary": recorder.data["summary"]}, ensure_ascii=True))
+        return 2 if args.require_live else 1
     configured = live_configured(settings)
     live_count = sum(configured[name] for name in ("llm", "embedding", "milvus"))
     configured_evidence_status = "REAL" if live_count == 3 else "DEGRADED" if live_count else "NOT_RUN"

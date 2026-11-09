@@ -131,7 +131,10 @@ class ToolCallAccumulator:
         for position, call in enumerate(calls):
             if not isinstance(call, Mapping):
                 raise AgentContractError("INVALID_STREAM_TOOL_CALL")
-            index = int(call.get("index", position))
+            raw_index = call.get("index", position)
+            if isinstance(raw_index, bool) or not isinstance(raw_index, int) or raw_index < 0:
+                raise AgentContractError("INVALID_STREAM_TOOL_CALL")
+            index = raw_index
             function = call.get("function") or {}
             if not isinstance(function, Mapping):
                 raise AgentContractError("INVALID_STREAM_TOOL_CALL")
@@ -168,6 +171,8 @@ class ToolCallAccumulator:
         if self.finish_reason not in ("stop", "tool_calls"):
             raise AgentContractError("STREAM_NOT_NORMALLY_TERMINATED")
         calls = [self.calls[index].build(index) for index in sorted(self.calls)]
+        if self.finish_reason == "tool_calls" and not calls:
+            raise AgentContractError("STREAM_TOOL_CALL_FINISH_MISMATCH")
         if calls and self.finish_reason != "tool_calls":
             raise AgentContractError("STREAM_TOOL_CALL_FINISH_MISMATCH")
         return "".join(self.content), calls, dict(self.usage)
@@ -301,7 +306,7 @@ class AgentRuntime:
                     answer = message.get("content", "")
                     if not isinstance(answer, str) or not answer.strip():
                         raise AgentModelError("EMPTY_MODEL_ANSWER")
-                    if _looks_like_plain_text_tool_call(answer):
+                    if not calls and _looks_like_plain_text_tool_call(answer):
                         raise AgentModelError("PLAIN_TEXT_TOOL_CALL_REJECTED")
                     result = AgentRunResult(run_id, answer.strip(), "COMPLETED", self.evidence_status, calls, None, 0, usage)
                     return self._finish(result, started)
@@ -361,7 +366,7 @@ class AgentRuntime:
                 if not requested:
                     if not answer.strip():
                         raise AgentModelError("EMPTY_MODEL_ANSWER")
-                    if _looks_like_plain_text_tool_call(answer):
+                    if not calls and _looks_like_plain_text_tool_call(answer):
                         raise AgentModelError("PLAIN_TEXT_TOOL_CALL_REJECTED")
                     return self._finish(AgentRunResult(run_id, answer.strip(), "COMPLETED", self.evidence_status, calls, None, 0, usage), started)
                 if len(calls) + len(requested) > self.max_tool_calls:

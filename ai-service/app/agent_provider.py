@@ -119,11 +119,12 @@ class OpenAICompatibleToolModel:
                             chunk = json.loads(body)
                         except (TypeError, ValueError):
                             raise AgentModelError("INVALID_STREAM_CHUNK") from None
-                        if isinstance(chunk, dict):
-                            if event_id is not None:
-                                chunk["_event_id"] = event_id
-                                event_id = None
-                            yield chunk
+                        if not isinstance(chunk, Mapping):
+                            raise AgentModelError("INVALID_STREAM_CHUNK")
+                        if event_id is not None:
+                            chunk["_event_id"] = event_id
+                            event_id = None
+                        yield chunk
                     if not saw_done:
                         raise AgentModelError("STREAM_NOT_TERMINATED")
         except httpx.HTTPStatusError as error:

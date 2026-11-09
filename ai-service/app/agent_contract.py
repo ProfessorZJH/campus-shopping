@@ -8,9 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import math
 from typing import Any, Callable, Literal, Mapping, Protocol, TypeVar
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 
 TOOL_NAME = "search_products"
@@ -65,6 +66,15 @@ class SearchProductsArguments(BaseModel):
     limit: int = Field(default=10, ge=1, le=20)
     merchantId: str | None = Field(default=None, min_length=1, max_length=64)
 
+    @field_validator("query", mode="before")
+    @classmethod
+    def normalize_query(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                raise ValueError("query 不能为空")
+        return value
+
 
 class ProductCandidate(BaseModel):
     """只读候选快照；价格/库存等交易事实不由实验工具声明。"""
@@ -106,10 +116,18 @@ class AgentScope:
     lease_checker: Callable[[str, float], bool] | None = None
 
     def __post_init__(self) -> None:
+        if not isinstance(self.user_id, str) or not self.user_id.strip():
+            raise ValueError("AgentScope 必须包含 user_id")
+        if self.identity_kind not in ("consumer", "merchant"):
+            raise ValueError("AgentScope identity_kind 无效")
+        if self.identity_id is not None and (not isinstance(self.identity_id, str) or not self.identity_id.strip()):
+            raise ValueError("AgentScope identity_id 无效")
         if not isinstance(self.turn_token, str) or not self.turn_token.strip():
             raise ValueError("AgentScope 必须包含 turn_token")
         if not isinstance(self.turn_expires_at, (int, float)) or isinstance(self.turn_expires_at, bool):
             raise ValueError("AgentScope 必须包含 turn_expires_at")
+        if not math.isfinite(float(self.turn_expires_at)):
+            raise ValueError("AgentScope turn_expires_at 无效")
         if not callable(self.lease_checker):
             raise ValueError("AgentScope 必须包含 lease_checker")
 
@@ -238,6 +256,8 @@ def search_products_tool(searcher: ProductSearchPort) -> ToolSpec:
         candidates = searcher(arguments.query, arguments.limit, arguments.merchantId, scope)
         normalized = []
         for candidate in candidates[: arguments.limit]:
+            if not isinstance(candidate, Mapping):
+                raise ToolOutputError()
             normalized.append(
                 ProductCandidate.model_validate(
                     {

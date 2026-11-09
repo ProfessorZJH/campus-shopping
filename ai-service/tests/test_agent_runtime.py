@@ -12,6 +12,7 @@ from app.agent_contract import (
     AgentScope,
     ScopeDeniedError,
     ToolArgumentError,
+    ToolOutputError,
     UnknownToolError,
     default_registry,
 )
@@ -99,6 +100,13 @@ def test_registry_exposes_only_read_only_search_tool():
         registry.invoke("search_products", {"query": "茶", "unknown": True}, scope())
     with pytest.raises(ToolArgumentError):
         registry.invoke("search_products", {}, scope())
+    with pytest.raises(ToolArgumentError):
+        registry.invoke("search_products", {"query": "   "}, scope())
+
+    with pytest.raises(ToolOutputError):
+        default_registry(lambda query, limit, merchant_id, current_scope: [None]).invoke(
+            "search_products", {"query": "商品"}, scope()
+        )
 
 
 def test_scope_requires_complete_turn_lease():
@@ -115,6 +123,26 @@ def test_scope_requires_complete_turn_lease():
             identity_kind="consumer",
             permissions=frozenset({"catalog.product.search"}),
             turn_expires_at=time.time() + 600,
+        )
+    with pytest.raises(ValueError, match="turn_expires_at"):
+        AgentScope(
+            user_id="user-1",
+            identity_kind="consumer",
+            permissions=frozenset({"catalog.product.search"}),
+            authorization_source="test-java-scope",
+            turn_token="turn-test",
+            turn_expires_at=float("nan"),
+            lease_checker=lambda token, expires_at: True,
+        )
+    with pytest.raises(ValueError, match="identity_kind"):
+        AgentScope(
+            user_id="user-1",
+            identity_kind="operator",
+            permissions=frozenset({"catalog.product.search"}),
+            authorization_source="test-java-scope",
+            turn_token="turn-test",
+            turn_expires_at=time.time() + 600,
+            lease_checker=lambda token, expires_at: True,
         )
 
 
@@ -179,6 +207,12 @@ def test_runtime_executes_native_tool_once_then_continues():
     assert len(model.requests) == 2
     assert model.requests[0][1][0]["function"]["name"] == "search_products"
     assert result.usage["total_tokens"] == 16
+
+
+def test_runtime_allows_final_answer_to_mention_successful_tool():
+    model = FakeModel([tool_call(), answer("已调用 search_products 查询商品")])
+    result = AgentRuntime(model, default_registry(searcher), evidence_status="STUB").run("查商品", scope())
+    assert result.status == "COMPLETED"
 
 
 def test_runtime_accumulates_usage_across_model_rounds():
@@ -397,6 +431,61 @@ def test_stream_accumulator_rejects_non_function_tool_type():
         )
 
 
+def test_stream_accumulator_rejects_conflicting_call_identity_and_tool_only_without_calls():
+    accumulator = ToolCallAccumulator()
+    accumulator.accept(
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "tool_calls": [
+                            {"index": 0, "id": "call-1", "function": {"name": "search_products", "arguments": "{"}},
+                        ]
+                    }
+                }
+            ]
+        }
+    )
+    with pytest.raises(AgentContractError, match="STREAM_TOOL_CALL_CONFLICT"):
+        accumulator.accept(
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {"index": 0, "id": "call-2", "function": {"arguments": "}"}},
+                            ]
+                        }
+                    }
+                ]
+            }
+        )
+
+    empty = ToolCallAccumulator()
+    empty.accept({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]})
+    with pytest.raises(AgentContractError, match="STREAM_TOOL_CALL_FINISH_MISMATCH"):
+        empty.finish()
+
+
+@pytest.mark.parametrize("index", [-1, True, 1.5, "1"])
+def test_stream_accumulator_rejects_malformed_tool_index(index):
+    accumulator = ToolCallAccumulator()
+    with pytest.raises(AgentContractError, match="INVALID_STREAM_TOOL_CALL"):
+        accumulator.accept(
+            {
+                "choices": [
+                    {
+                        "delta": {
+                            "tool_calls": [
+                                {"index": index, "id": "call-1", "function": {"name": "search_products", "arguments": "{}"}},
+                            ]
+                        }
+                    }
+                ]
+            }
+        )
+
+
 def test_stream_accumulator_deduplicates_only_explicit_event_replays():
     accumulator = ToolCallAccumulator()
     chunk = {
@@ -490,4 +579,8 @@ def test_evidence_metadata_redacts_credentials_prompts_and_downstream_body(tmp_p
     assert credentials == {}
     assert safe_exception_code(httpx.ReadTimeout("timed out")) == "UPSTREAM_TIMEOUT"
     assert safe_exception_code(httpx.ConnectError("failed")) == "UPSTREAM_CONNECTION"
+    class UnsafeCodeError(RuntimeError):
+        code = "secret=credential"
+
+    assert safe_exception_code(UnsafeCodeError()) == "UNSAFECODEERROR"
     assert payload["checks"][1]["durationMs"] >= 0

@@ -131,6 +131,13 @@ def test_stream_rejects_invalid_chunk_and_maps_transport_timeout(tmp_path, monke
     with pytest.raises(AgentModelError, match="INVALID_STREAM_CHUNK"):
         list(model.stream(messages=[], tools=TOOLS, metadata={}))
 
+    def non_object(request):
+        return httpx.Response(200, content=b"data: []\n\ndata: [DONE]\n")
+
+    monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(non_object), **kwargs))
+    with pytest.raises(AgentModelError, match="INVALID_STREAM_CHUNK"):
+        list(model.stream(messages=[], tools=TOOLS, metadata={}))
+
     def timeout(request):
         raise httpx.ReadTimeout("provider timed out", request=request)
 

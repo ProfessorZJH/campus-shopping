@@ -37,8 +37,8 @@ _SENSITIVE_KEYS = frozenset(
 
 def safe_exception_code(error: BaseException) -> str:
     explicit_code = getattr(error, "code", None)
-    if isinstance(explicit_code, str) and explicit_code:
-        return explicit_code[:64]
+    if isinstance(explicit_code, str) and re.fullmatch(r"[A-Z][A-Z0-9_]{0,63}", explicit_code):
+        return explicit_code
     status = getattr(getattr(error, "response", None), "status_code", None)
     if status == 429:
         return "UPSTREAM_429"
