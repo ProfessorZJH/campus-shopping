@@ -90,6 +90,11 @@
       "version": "V20261107_05",
       "file": "V20261107_05__order_created_at_reporting_index.sql",
       "sha256": "2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813"
+    },
+    {
+      "version": "V20261109_01",
+      "file": "V20261109_01__agent_run_gateway.sql",
+      "sha256": "6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac"
     }
   ]
 }

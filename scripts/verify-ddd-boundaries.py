@@ -12,7 +12,7 @@ DOMAIN = ROOT/'campus-shopping-domain/src/main/java/cn/bugstack/ai/domain'
 OWNERS = {'IAccessDao': 'iam_', 'IUserAccountDao': 'iam_', 'IAiDao': 'ai_',
           'ICatalogDao': 'cat_', 'ICatalogQueryDao': 'cat_', 'IInventoryDao': 'inv_',
           'IInventoryQueryDao': 'inv_', 'ITradingDao': 'trd_', 'IOrderEventDao': 'trd_', 'IFulfillmentDao': 'ful_',
-          'IMerchantDao': 'mer_', 'IMerchantApplicationDao': 'mer_'}
+          'IMerchantDao': 'mer_', 'IMerchantApplicationDao': 'mer_', 'IAgentRunDao': 'ai_'}
 # 同库单体的明确只读投影。新增跨域表必须说明业务目的并修改此白名单。
 READS = {
     ('ICatalogQueryDao', 'search'): {'mer_merchant', 'inv_stock_balance'},

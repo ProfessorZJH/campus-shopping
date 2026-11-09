@@ -195,6 +195,20 @@ CREATE TABLE IF NOT EXISTS ai_proposal (
  items_json TEXT NOT NULL, selection_hash CHAR(64), expires_at DATETIME(3) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_proposal_conversation(user_id,conversation_id,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS ai_run (
+ id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, idempotency_key VARCHAR(100) NOT NULL, capability_token_hash CHAR(64) NOT NULL,
+ conversation_id VARCHAR(36) NOT NULL, turn_token VARCHAR(36) NOT NULL, scope_json JSON NOT NULL, tools_json JSON NOT NULL,
+ status VARCHAR(24) NOT NULL, version BIGINT NOT NULL DEFAULT 0, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY uk_ai_run_user_idempotency(user_id,idempotency_key), KEY ix_ai_run_conversation(conversation_id,user_id,created_at DESC,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ai_run_invocation (
+ id VARCHAR(36) PRIMARY KEY, run_id VARCHAR(36) NOT NULL, invocation_key VARCHAR(100) NOT NULL, tool_name VARCHAR(64) NOT NULL,
+ input_fingerprint CHAR(64) NOT NULL, status VARCHAR(24) NOT NULL, input_json JSON NOT NULL, output_json JSON NULL, error_code VARCHAR(64) NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), completed_at DATETIME(3) NULL,
+ UNIQUE KEY uk_ai_run_invocation(run_id,invocation_key), KEY ix_ai_run_invocation_status(run_id,status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS sys_schema_version (
  version INT PRIMARY KEY, installed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -243,3 +257,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_02','ac00dc
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_03','464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_04','49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_05','2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261109_01','6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
