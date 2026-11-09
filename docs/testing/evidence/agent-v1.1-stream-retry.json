@@ -1,0 +1,23 @@
+{
+  "runId": "bf14fcd4b5a8bbc7299d1d6f",
+  "scope": "Agent v1.1 M1 targeted streaming retry",
+  "startedAt": "2026-11-09T08:26:34.022048+00:00",
+  "model": "spark-x2.6",
+  "outcome": "PASS",
+  "status": "COMPLETED",
+  "toolCalls": 1,
+  "toolCallStatuses": [
+    "SUCCEEDED"
+  ],
+  "continuedAnswer": true,
+  "answerChars": 355,
+  "errorCode": null,
+  "usage": {
+    "prompt_tokens": 441,
+    "completion_tokens": 299,
+    "total_tokens": 740
+  },
+  "durationMs": 21287,
+  "businessWrites": false,
+  "finishedAt": "2026-11-09T08:26:55.309462+00:00"
+}

@@ -1,0 +1,337 @@
+#!/usr/bin/env python3
+"""Agent v1.1 M1 独立验收脚本。
+
+默认先运行不触网的协议/边界 Stub，再按私有环境变量尝试真实模型和隔离 Milvus。
+脚本不会挂接旧 /ai/chat，不执行购物车/订单写入，也不会把异常正文写入报告。
+
+运行示例：
+  python scripts/smoke-agent-v1-1.py --env-file .env
+"""
+from __future__ import annotations
+
+import argparse
+from dataclasses import replace
+from datetime import datetime, timezone
+import json
+import os
+from pathlib import Path
+import secrets
+import sys
+import tempfile
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "ai-service"))
+
+from app.agent_contract import AgentScope, TOOL_NAME, default_registry
+from app.agent_evidence import EvidenceRecorder, assert_isolated_collection, isolated_collection_name
+from app.agent_provider import OpenAICompatibleToolModel
+from app.agent_runtime import AgentRuntime
+from app.config import Settings
+from app.product_index import ProductIndex
+from app.provider import Provider
+
+
+def load_env(path: Path) -> None:
+    if not path.exists():
+        return
+    for raw in path.read_text(encoding="utf-8-sig").splitlines():
+        line = raw.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            os.environ.setdefault(key.strip(), value.strip())
+
+
+def live_configured(settings: Settings) -> dict[str, bool]:
+    return {
+        "llm": bool(settings.llm_url and settings.llm_key and settings.llm_model),
+        "embedding": bool(settings.embedding_url and settings.embedding_key and settings.embedding_model),
+        "milvus": bool(settings.milvus_uri and settings.milvus_token),
+        "serviceKey": bool(settings.api_key),
+    }
+
+
+def scope() -> AgentScope:
+    return AgentScope(
+        user_id="agent-test-user",
+        identity_kind="consumer",
+        permissions=frozenset({"catalog.product.search"}),
+        authorization_source="test-java-scope",
+        turn_token="agent-test-turn",
+    )
+
+
+FIXTURES = [
+    {"productId": "agent-fixture-pen", "merchantId": "agent-store-a", "title": "考试签字笔", "description": "黑色中性笔", "categoryCode": "stationery", "specs": ["0.5mm"]},
+    {"productId": "agent-fixture-tea", "merchantId": "agent-store-a", "title": "无糖乌龙茶", "description": "无糖茶饮", "categoryCode": "drink", "specs": ["500ml"]},
+    {"productId": "agent-fixture-notebook", "merchantId": "agent-store-b", "title": "课堂笔记本", "description": "横线笔记本", "categoryCode": "stationery", "specs": ["一本"]},
+]
+
+
+class FixtureSearcher:
+    def __init__(self, records=None):
+        self.records = list(records or FIXTURES)
+        self.calls = 0
+
+    def __call__(self, query, limit, merchant_id, current_scope):
+        del query, current_scope
+        self.calls += 1
+        rows = self.records if merchant_id is None else [row for row in self.records if row["merchantId"] == merchant_id]
+        return [
+            {
+                "productId": row["productId"],
+                "merchantId": row["merchantId"],
+                "title": row["title"],
+                "source": "CATALOG_READ_MODEL",
+                "verified": False,
+            }
+            for row in rows[:limit]
+        ]
+
+
+class ScriptedModel:
+    def __init__(self):
+        self.calls = 0
+
+    def complete(self, *, messages, tools, metadata):
+        del tools, metadata
+        self.calls += 1
+        if self.calls == 1:
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "tool_calls": [
+                                {
+                                    "id": "stub-call-1",
+                                    "type": "function",
+                                    "function": {"name": "search_products", "arguments": '{"query":"考试签字笔"}'},
+                                }
+                            ],
+                        }
+                    }
+                ],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 3, "total_tokens": 13},
+            }
+        assert messages[-1]["role"] == "tool"
+        return {"message": {"role": "assistant", "content": "已返回只读商品候选，请以当前商品页事实为准。"}}
+
+    def stream(self, *, messages, tools, metadata):
+        del tools, metadata
+        if len(messages) == 1:
+            yield {"choices": [{"delta": {"tool_calls": [{"index": 0, "id": "stub-stream-1", "function": {"name": "search_products", "arguments": '{"query":'}}]}}]}
+            yield {"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": '"茶"}'}}]}}]}
+            yield {"choices": [{"delta": {}, "finish_reason": "tool_calls"}]}
+        else:
+            yield {"choices": [{"delta": {"content": "已完成只读查询。"}, "finish_reason": "stop"}]}
+
+
+def run_stub(recorder: EvidenceRecorder) -> None:
+    searcher = FixtureSearcher()
+    registry = default_registry(searcher)
+    runtime = AgentRuntime(ScriptedModel(), registry, model_name="controlled-stub", evidence_status="STUB")
+
+    def native_tool_call():
+        result = runtime.run("找考试签字笔", scope())
+        if result.status != "COMPLETED" or len(result.tool_calls) != 1 or result.tool_calls[0].status != "SUCCEEDED":
+            raise AssertionError("Stub native tool call contract failed")
+        return {"toolCalls": len(result.tool_calls), "durationMs": result.duration_ms, "usage": result.usage}
+
+    recorder.check("stub_native_tool_call_and_continued_answer", native_tool_call)
+
+    def streaming_tool_call():
+        streamed = AgentRuntime(ScriptedModel(), registry, model_name="controlled-stub", evidence_status="STUB").run_stream("找茶", scope())
+        if streamed.status != "COMPLETED" or len(streamed.tool_calls) != 1:
+            raise AssertionError("Stub streaming tool call contract failed")
+        return {"toolCalls": len(streamed.tool_calls), "durationMs": streamed.duration_ms}
+
+    recorder.check("stub_streaming_tool_arguments_execute_once", streaming_tool_call)
+
+    def no_business_write():
+        if searcher.calls != 2:
+            raise AssertionError("stub should invoke only the read-only searcher")
+        return {"businessWrites": False, "registeredTools": [item["function"]["name"] for item in registry.definitions()]}
+
+    recorder.check("stub_no_business_write", no_business_write)
+
+
+def run_real_model(recorder: EvidenceRecorder, settings: Settings) -> None:
+    if not live_configured(settings)["llm"]:
+        recorder.mark_not_run("real_native_tool_call", "LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 未完整配置")
+        recorder.mark_not_run("real_streaming_tool_call", "LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 未完整配置")
+        return
+    searcher = FixtureSearcher()
+    runtime = AgentRuntime(
+        OpenAICompatibleToolModel(settings),
+        default_registry(searcher),
+        model_name=settings.llm_model,
+        evidence_status="REAL",
+        first_tool_name=TOOL_NAME,
+    )
+
+    def native_tool_call():
+        result = runtime.run("请检索考试签字笔", scope())
+        if result.status != "COMPLETED" or not result.tool_calls:
+            raise AssertionError("真实模型未产生可验证的原生 Tool Calling")
+        return {
+            "model": settings.llm_model,
+            "toolCalls": len(result.tool_calls),
+            "toolCallStatuses": [item.status for item in result.tool_calls],
+            "continuedAnswer": bool(result.answer.strip()),
+            "answerChars": len(result.answer),
+            "usage": result.usage,
+            "durationMs": result.duration_ms,
+        }
+
+    recorder.check("real_native_tool_call", native_tool_call)
+
+    def streaming_tool_call():
+        result = runtime.run_stream("请流式检索无糖茶", scope())
+        if result.status != "COMPLETED" or not result.tool_calls:
+            raise AssertionError("真实流式模型未产生可验证工具调用")
+        return {
+            "model": settings.llm_model,
+            "toolCalls": len(result.tool_calls),
+            "toolCallStatuses": [item.status for item in result.tool_calls],
+            "continuedAnswer": bool(result.answer.strip()),
+            "answerChars": len(result.answer),
+            "usage": result.usage,
+            "durationMs": result.duration_ms,
+        }
+
+    recorder.check("real_streaming_tool_call", streaming_tool_call)
+
+
+def run_real_embedding(recorder: EvidenceRecorder, settings: Settings) -> None:
+    if not live_configured(settings)["embedding"]:
+        recorder.mark_not_run("real_embedding_passage_query", "EMBEDDING_BASE_URL/EMBEDDING_API_KEY/EMBEDDING_MODEL 未完整配置")
+        return
+
+    provider = Provider(settings)
+
+    def passage_query_embedding():
+        passage = provider.embed(["校园商城考试签字笔商品描述"], input_type="passage")
+        query = provider.embed(["考试签字笔"], input_type="query")
+        if len(passage) != 1 or len(query) != 1 or not passage[0] or len(passage[0]) != len(query[0]):
+            raise AssertionError("真实 Embedding 返回数量或维度不一致")
+        return {"model": settings.embedding_model, "dimensions": len(passage[0]), "passageCount": len(passage), "queryCount": len(query)}
+
+    recorder.check("real_embedding_passage_query", passage_query_embedding)
+
+
+def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
+    configured = live_configured(settings)
+    if not (configured["embedding"] and configured["milvus"]):
+        recorder.mark_not_run("real_milvus_isolated_lifecycle", "EMBEDDING_* 与 MILVUS_* 未完整配置")
+        recorder.mark_not_run("real_java_mysql_fact_revalidation", "本次未配置 Java Agent/商品事实复验入口")
+        recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Embedding/Milvus/Java 复验前置条件未满足")
+        return
+
+    collection = isolated_collection_name()
+    assert_isolated_collection(collection)
+    with tempfile.TemporaryDirectory(prefix="campus-agent-v1-1-") as directory:
+        isolated = replace(settings, product_collection=collection, db_path=str(Path(directory) / "agent.db"))
+        try:
+            isolated.validate()
+        except Exception:  # noqa: BLE001 - 配置门禁只记录稳定状态，不输出异常正文
+            recorder.mark_not_run("real_milvus_isolated_lifecycle", "Milvus 配置未通过服务端安全校验")
+            recorder.mark_not_run("real_milvus_isolated_cleanup", "Milvus 未建立连接，无法执行隔离集合清理")
+            recorder.mark_not_run("real_java_mysql_fact_revalidation", "本次未配置 Java Agent/商品事实复验入口")
+            recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Milvus 配置未通过安全校验")
+            return
+        index = ProductIndex(isolated, Provider(isolated))
+        client = None
+        try:
+            client = index._connect()
+            if client.has_collection(collection_name=collection):
+                raise AssertionError("随机集合在本次运行前已经存在")
+
+            def lifecycle():
+                first = index.upsert(FIXTURES)
+                if first.get("indexed") != len(FIXTURES):
+                    raise AssertionError("Milvus 商品写入数量不匹配")
+                search = index.search("校园考试书写用品", 3)
+                if not search.get("productIds"):
+                    raise AssertionError("Milvus 真实检索没有返回候选")
+                changed = [dict(FIXTURES[0], title="考试黑色签字笔")]
+                if index.upsert(changed).get("indexed") != 1:
+                    raise AssertionError("Milvus 增量更新未生效")
+                if index.delete([FIXTURES[1]["productId"]]).get("deleted") != 1:
+                    raise AssertionError("Milvus 删除未生效")
+                return {"collection": collection, "indexed": first["indexed"], "searchCount": len(search["productIds"]), "productionCollectionModified": False}
+
+            recorder.check("real_milvus_isolated_lifecycle", lifecycle)
+        finally:
+            def cleanup():
+                if client is not None and client.has_collection(collection_name=collection):
+                    client.drop_collection(collection_name=collection)
+                if client is not None and client.has_collection(collection_name=collection):
+                    raise AssertionError("Milvus 隔离集合清理失败")
+
+            recorder.check("real_milvus_isolated_cleanup", cleanup)
+            if client is not None:
+                client.close()
+
+    recorder.mark_not_run("real_java_mysql_fact_revalidation", "M0/M1 未新增 Java Agent/商品事实 HTTP Port；需要后续 M2 受控 Gateway")
+    recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Milvus 候选尚未接入 Java/MySQL 事实复验")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
+    parser.add_argument("--output", type=Path, default=ROOT / "docs/testing/evidence/agent-v1.1.json")
+    parser.add_argument("--require-live", action="store_true", help="缺少真实配置时返回非零")
+    args = parser.parse_args()
+    load_env(args.env_file)
+    settings = Settings.from_env()
+    configured = live_configured(settings)
+    live_count = sum(configured[name] for name in ("llm", "embedding", "milvus"))
+    evidence_status = "REAL" if live_count == 3 else "DEGRADED" if live_count else "NOT_RUN"
+    recorder = EvidenceRecorder(args.output, secrets.token_hex(12), "Agent v1.1 M0/M1", evidence_status)
+    recorder.data.update(
+        {
+            "startedAt": datetime.now(timezone.utc).isoformat(),
+            "configured": configured,
+            "model": settings.llm_model or None,
+            "embeddingModel": settings.embedding_model or None,
+            "productionProductCollectionModified": False,
+            "javaMySqlTested": False,
+            "businessWrites": False,
+        }
+    )
+    recorder.write()
+    run_stub(recorder)
+    run_real_model(recorder, settings)
+    run_real_embedding(recorder, settings)
+    run_real_milvus(recorder, settings)
+    real_checks = [item for item in recorder.data["checks"] if item["name"].startswith("real_")]
+    if not real_checks or all(item["outcome"] == "NOT_RUN" for item in real_checks):
+        recorder.evidence_status = "NOT_RUN"
+    elif any(item["outcome"] != "PASS" for item in real_checks):
+        recorder.evidence_status = "DEGRADED"
+    else:
+        recorder.evidence_status = "REAL"
+    recorder.data["evidenceStatus"] = recorder.evidence_status
+    recorder.data["summary"] = {
+        "passed": sum(item["outcome"] == "PASS" for item in recorder.data["checks"]),
+        "failed": sum(item["outcome"] == "FAIL" for item in recorder.data["checks"]),
+        "notRun": sum(item["outcome"] == "NOT_RUN" for item in recorder.data["checks"]),
+    }
+    recorder.write()
+    print(json.dumps({"evidenceStatus": recorder.evidence_status, "summary": recorder.data["summary"]}, ensure_ascii=True))
+    if args.require_live:
+        required_checks = {
+            "real_native_tool_call",
+            "real_streaming_tool_call",
+            "real_embedding_passage_query",
+            "real_milvus_isolated_lifecycle",
+            "real_milvus_isolated_cleanup",
+        }
+        checks = {item["name"]: item["outcome"] for item in recorder.data["checks"]}
+        if not all(configured[name] for name in ("llm", "embedding", "milvus")) or any(checks.get(name) != "PASS" for name in required_checks):
+            return 2
+    return 1 if recorder.data["summary"]["failed"] else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

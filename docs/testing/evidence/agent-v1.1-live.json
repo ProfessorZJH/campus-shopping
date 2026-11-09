@@ -1,0 +1,100 @@
+{
+  "runId": "4b0385f0a2bcf91eb9fd93c8",
+  "scope": "Agent v1.1 M0/M1",
+  "evidenceStatus": "DEGRADED",
+  "startedAt": "2026-11-09T08:10:44.165480+00:00",
+  "checks": [
+    {
+      "name": "stub_native_tool_call_and_continued_answer",
+      "outcome": "PASS",
+      "toolCalls": 1,
+      "durationMs": 7,
+      "usage": {
+        "prompt_tokens": 10,
+        "completion_tokens": 3,
+        "total_tokens": 13
+      }
+    },
+    {
+      "name": "stub_streaming_tool_arguments_execute_once",
+      "outcome": "PASS",
+      "toolCalls": 1,
+      "durationMs": 1
+    },
+    {
+      "name": "stub_no_business_write",
+      "outcome": "PASS",
+      "businessWrites": false,
+      "registeredTools": [
+        "search_products"
+      ]
+    },
+    {
+      "name": "real_native_tool_call",
+      "outcome": "PASS",
+      "model": "spark-x2.6",
+      "toolCalls": 1,
+      "toolCallStatuses": [
+        "SUCCEEDED"
+      ],
+      "continuedAnswer": true,
+      "answerChars": 233,
+      "usage": {
+        "prompt_tokens": 439,
+        "completion_tokens": 192,
+        "total_tokens": 631
+      },
+      "durationMs": 58842
+    },
+    {
+      "name": "real_streaming_tool_call",
+      "outcome": "FAIL",
+      "errorCode": "ASSERTIONERROR"
+    },
+    {
+      "name": "real_embedding_passage_query",
+      "outcome": "PASS",
+      "model": "nvidia/nemotron-3.5-embed-1b",
+      "dimensions": 2048,
+      "passageCount": 1,
+      "queryCount": 1
+    },
+    {
+      "name": "real_milvus_isolated_lifecycle",
+      "outcome": "NOT_RUN",
+      "reason": "Milvus 配置未通过服务端安全校验"
+    },
+    {
+      "name": "real_milvus_isolated_cleanup",
+      "outcome": "NOT_RUN",
+      "reason": "Milvus 未建立连接，无法执行隔离集合清理"
+    },
+    {
+      "name": "real_java_mysql_fact_revalidation",
+      "outcome": "NOT_RUN",
+      "reason": "本次未配置 Java Agent/商品事实复验入口"
+    },
+    {
+      "name": "real_end_to_end_agent_chain",
+      "outcome": "NOT_RUN",
+      "reason": "真实 Milvus 配置未通过安全校验"
+    }
+  ],
+  "productionProductCollectionModified": false,
+  "javaMySqlTested": false,
+  "businessWrites": false,
+  "configured": {
+    "llm": true,
+    "embedding": true,
+    "milvus": true,
+    "serviceKey": true
+  },
+  "model": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "finishedAt": "2026-11-09T08:12:08.380726+00:00",
+  "summary": {
+    "passed": 5,
+    "failed": 1,
+    "notRun": 4
+  }
+}
