@@ -22,7 +22,7 @@
           "type": "string"
         },
         "score": {
-          "minimum": 0.0,
+          "minimum": 0,
           "title": "Score",
           "type": "number"
         }
@@ -41,25 +41,16 @@
   "properties": {
     "tool": {
       "const": "knowledge_qa",
-      "enum": [
-        "knowledge_qa"
-      ],
       "title": "Tool",
       "type": "string"
     },
     "version": {
       "const": "1.0",
-      "enum": [
-        "1.0"
-      ],
       "title": "Version",
       "type": "string"
     },
     "readOnly": {
       "const": true,
-      "enum": [
-        true
-      ],
       "title": "Readonly",
       "type": "boolean"
     },

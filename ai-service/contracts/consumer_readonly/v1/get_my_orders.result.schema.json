@@ -108,25 +108,16 @@
   "properties": {
     "tool": {
       "const": "get_my_orders",
-      "enum": [
-        "get_my_orders"
-      ],
       "title": "Tool",
       "type": "string"
     },
     "version": {
       "const": "1.0",
-      "enum": [
-        "1.0"
-      ],
       "title": "Version",
       "type": "string"
     },
     "readOnly": {
       "const": true,
-      "enum": [
-        true
-      ],
       "title": "Readonly",
       "type": "boolean"
     },
