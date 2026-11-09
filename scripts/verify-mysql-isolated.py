@@ -452,7 +452,7 @@ def run(args, report):
             build_root = workspace/'build'
             build_root.mkdir()
             shutil.copy2(ROOT/'pom.xml', build_root/'pom.xml')
-            for name in ('frontend', 'scripts', '.mvn'):
+            for name in ('ai-service', 'frontend', 'scripts', '.mvn'):
                 shutil.copytree(ROOT/name, build_root/name,
                                 ignore=shutil.ignore_patterns('node_modules', 'dist', '__pycache__', 'target'))
             for name in ('mvnw', 'mvnw.cmd'):
