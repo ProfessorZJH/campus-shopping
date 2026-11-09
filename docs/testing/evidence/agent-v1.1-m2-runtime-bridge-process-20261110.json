@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "evidenceStatus": "STUB",
+  "scope": "java_gateway_to_isolated_uvicorn_process",
+  "realAgentIntegration": "NOT_RUN",
+  "javaProcessTestCount": 1,
+  "javaProcessTestDurationSeconds": 5.465,
+  "gatewayHttpTestCount": 8,
+  "gatewayHttpTestDurationSeconds": 0.732,
+  "runtimeTurns": 2,
+  "replayHttpTurns": 2,
+  "totalHttpTurns": 4,
+  "toolCallCount": 1,
+  "javaToolInvocationCount": 1,
+  "providerModelCalls": 3,
+  "requestReplayChecks": 1,
+  "businessWrites": false,
+  "redactionChecked": true,
+  "checks": [
+    "Java AgentRuntimeGateway reached a real isolated Uvicorn process over loopback HTTP",
+    "service key, capability digest/signature, request correlation and lease scope were exercised",
+    "native search_products TOOL_CALL was followed by Java tool result and FINAL continuation",
+    "same START request replayed the cached response and changed-payload replay was rejected",
+    "temporary Uvicorn/model/SQLite resources were stopped and removed by the Java test cleanup",
+    "Gateway 401/403/422/429/5xx and malformed JSON mapping tests passed in the same run"
+  ],
+  "notRun": [
+    "external NVIDIA/Xunfei model quality",
+    "real Spring Java service with MySQL/Redis",
+    "production Milvus and business write paths"
+  ],
+  "startedAt": "2026-11-09T21:20:04.880099+00:00",
+  "finishedAt": "2026-11-09T21:20:17.241231+00:00"
+}

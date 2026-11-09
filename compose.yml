@@ -64,6 +64,7 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-campus_knowledge_v1}
       MILVUS_URI: ${MILVUS_URI:-}
       MILVUS_TOKEN: ${MILVUS_TOKEN:-}
+      MILVUS_TRANSPORT: ${MILVUS_TRANSPORT:-auto}
       MILVUS_PRODUCT_COLLECTION: ${MILVUS_PRODUCT_COLLECTION:-campus_products_v1}
     volumes:
       - ai-data:/app/var

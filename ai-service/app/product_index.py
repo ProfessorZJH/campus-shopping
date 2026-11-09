@@ -16,8 +16,18 @@ class ProductIndex:
 
     def _connect(self):
         if self._client is None:
-            from pymilvus import MilvusClient  # imported only for Milvus deployments
-            self._client=MilvusClient(uri=self.settings.milvus_uri,token=self.settings.milvus_token,timeout=10)
+            transport = getattr(self.settings, 'milvus_transport', 'auto')
+            use_rest = transport == 'rest' or (transport == 'auto' and self.settings.milvus_uri.startswith('https://'))
+            if use_rest:
+                from .milvus_rest import MilvusRestClient
+                self._client = MilvusRestClient(
+                    uri=self.settings.milvus_uri,
+                    token=self.settings.milvus_token,
+                    timeout=10,
+                )
+            else:
+                from pymilvus import MilvusClient  # imported only for Milvus deployments
+                self._client=MilvusClient(uri=self.settings.milvus_uri,token=self.settings.milvus_token,timeout=10)
         return self._client
 
     def _collection(self,dimension: int):

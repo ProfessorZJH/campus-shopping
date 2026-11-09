@@ -1,0 +1,37 @@
+{
+  "additionalProperties": false,
+  "description": "Bounded own-order filter; buyer and merchant scope are never arguments.",
+  "properties": {
+    "state": {
+      "default": "",
+      "enum": [
+        "",
+        "PENDING_PAYMENT",
+        "PAID",
+        "COMPLETED",
+        "CANCELED",
+        "REFUNDED"
+      ],
+      "title": "State",
+      "type": "string"
+    },
+    "page": {
+      "maximum": 10000,
+      "minimum": 1,
+      "title": "Page",
+      "type": "integer"
+    },
+    "size": {
+      "maximum": 20,
+      "minimum": 1,
+      "title": "Size",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "page",
+    "size"
+  ],
+  "title": "GetMyOrdersArguments",
+  "type": "object"
+}

@@ -1,0 +1,21 @@
+{
+  "scope": "Agent v1.1 M3 consumer read-only tools",
+  "change": "agent-v1-1-m3-consumer-readonly-tools",
+  "protocolVersion": "1.0",
+  "evidenceStatus": "DEGRADED",
+  "businessWrites": false,
+  "consumerToolsDefaultEnabled": false,
+  "checks": [
+    {"name": "python_consumer_contract", "outcome": "PASS", "classification": "STUB", "tests": 21},
+    {"name": "python_full_suite", "outcome": "PASS", "classification": "STUB", "tests": 361, "warnings": 1},
+    {"name": "java_consumer_target_suite", "outcome": "PASS", "classification": "STUB", "tests": 42, "failures": 0, "errors": 0},
+    {"name": "java_full_verify", "outcome": "PASS", "classification": "STUB", "tests": 434, "failures": 0, "errors": 0, "skipped": 111},
+    {"name": "static_contract_and_openspec_gates", "outcome": "PASS", "classification": "STUB"},
+    {"name": "real_consumer_java_mysql_runtime_chain", "outcome": "NOT_RUN", "reason": "No confirmed isolated Java HTTP entry and independent test database"},
+    {"name": "real_consumer_external_model_and_milvus", "outcome": "NOT_RUN", "reason": "M1 external evidence is tracked separately"}
+  ],
+  "publicAgentTriggerAdded": false,
+  "transactionWritePortsAdded": false,
+  "productionDataModified": false,
+  "redactionChecked": true
+}

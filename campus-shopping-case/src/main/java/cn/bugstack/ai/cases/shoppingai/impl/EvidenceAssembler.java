@@ -20,16 +20,17 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /** 只负责引用授权、版本和脱敏组装，不负责回答文本或会话编排。 */
-final class EvidenceAssembler {
+/** Knowledge citation verifier shared by read-only AI cases; it never writes conversation state. */
+public final class EvidenceAssembler {
 
     private final IKnowledgeCase knowledge;
 
-    EvidenceAssembler(IKnowledgeCase knowledge) {
+    public EvidenceAssembler(IKnowledgeCase knowledge) {
         this.knowledge = knowledge;
     }
 
     /** 只返回当前授权知识范围中的可核实引用，内部文档始终隐藏原文。 */
-    List<AiCitationVO> verifyOutput(String actor, List<AiCitationVO> requested, List<KnowledgeScopeVO> readable) {
+    public List<AiCitationVO> verifyOutput(String actor, List<AiCitationVO> requested, List<KnowledgeScopeVO> readable) {
         Set<String> allowedIds = readable.stream().map(KnowledgeScopeVO::id).collect(Collectors.toSet());
         List<String> citedIds = requested.stream().map(AiCitationVO::documentId).distinct().toList();
         require(allowedIds.containsAll(citedIds), ResponseCode.KNOWLEDGE_NOT_READY);

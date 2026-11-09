@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "1.0",
+  "tools": [
+    {
+      "name": "knowledge_qa",
+      "version": "1.0",
+      "readOnly": true,
+      "argumentsSchema": "knowledge_qa.arguments.schema.json",
+      "resultSchema": "knowledge_qa.result.schema.json"
+    },
+    {
+      "name": "get_my_orders",
+      "version": "1.0",
+      "readOnly": true,
+      "argumentsSchema": "get_my_orders.arguments.schema.json",
+      "resultSchema": "get_my_orders.result.schema.json"
+    }
+  ]
+}

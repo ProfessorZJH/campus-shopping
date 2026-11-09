@@ -1,0 +1,17 @@
+{
+  "additionalProperties": false,
+  "description": "Arguments sent by a model; Java supplies actor and readable scope.",
+  "properties": {
+    "question": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "title": "Question",
+      "type": "string"
+    }
+  },
+  "required": [
+    "question"
+  ],
+  "title": "KnowledgeQaArguments",
+  "type": "object"
+}

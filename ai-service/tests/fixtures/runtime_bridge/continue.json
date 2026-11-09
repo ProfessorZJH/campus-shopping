@@ -1,0 +1,47 @@
+{
+  "protocolVersion": "1.0",
+  "runId": "run-redacted-001",
+  "requestId": "request-redacted-continue",
+  "phase": "CONTINUE",
+  "question": null,
+  "continuationId": "continuation-redacted-001",
+  "scope": {
+    "userId": "user-redacted-001",
+    "identityKind": "consumer",
+    "identityId": null,
+    "authorizedMerchantIds": [],
+    "permissions": ["catalog.product.search"],
+    "conversationId": "conversation-redacted-001",
+    "turnToken": "turn-token-redacted",
+    "turnExpiresAt": 4102444800.0
+  },
+  "allowedTools": [
+    {
+      "name": "search_products",
+      "description": "Search published products",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {"type": "string"},
+          "limit": {"type": "integer", "minimum": 1, "maximum": 20},
+          "merchantId": {"type": ["string", "null"]}
+        },
+        "required": ["query"]
+      },
+      "readOnly": true
+    }
+  ],
+  "toolResults": [
+    {
+      "callId": "call-redacted-001",
+      "name": "search_products",
+      "result": {
+        "verifiedBy": "java-facts",
+        "candidates": [
+          {"productId": "product-redacted-001", "skuId": "sku-redacted-001", "priceCent": 299, "available": 4}
+        ]
+      },
+      "errorCode": null
+    }
+  ]
+}

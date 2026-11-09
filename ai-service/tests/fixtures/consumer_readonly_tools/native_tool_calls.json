@@ -1,0 +1,42 @@
+{
+  "knowledge_qa": {
+    "choices": [
+      {
+        "message": {
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "id": "call-knowledge-fixture",
+              "type": "function",
+              "function": {
+                "name": "knowledge_qa",
+                "arguments": "{\"question\":\"How does campus pickup work?\"}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "tool_calls"
+      }
+    ]
+  },
+  "get_my_orders": {
+    "choices": [
+      {
+        "message": {
+          "role": "assistant",
+          "tool_calls": [
+            {
+              "id": "call-orders-fixture",
+              "type": "function",
+              "function": {
+                "name": "get_my_orders",
+                "arguments": "{\"state\":\"PAID\",\"page\":1,\"size\":10}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "tool_calls"
+      }
+    ]
+  }
+}

@@ -1,0 +1,81 @@
+{
+  "startedAtEpoch": 1794244536.5309029,
+  "finishedAtEpoch": 1794244553.139301,
+  "transport": "Milvus REST v2",
+  "endpoint": "https://milvus.professorzjhai.com:19530",
+  "collectionName": "codex_agent_v1_1_9ebffe4056c7a7f2",
+  "collectionIsolation": "random ephemeral collection; synthetic 3-dimensional vectors",
+  "steps": [
+    {
+      "name": "create",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "has_after_create",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "insert",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "load",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "search",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "upsert",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "delete",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "drop",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0
+    },
+    {
+      "name": "has_after_drop",
+      "status": "PASS",
+      "httpStatus": 200,
+      "responseCode": 0,
+      "has": false
+    }
+  ],
+  "cleanupAttempted": true,
+  "cleanupVerified": true,
+  "productionProductCollectionModified": false,
+  "formalM1TasksCompleted": {
+    "4.2": false,
+    "4.3": false,
+    "4.4": false
+  },
+  "status": "PASS",
+  "limitations": [
+    "This probe validates REST transport and isolated CRUD/search lifecycle only.",
+    "It does not validate the application ProductIndex path, 2048-dimensional embeddings, semantic product recall, or Java/MySQL fact revalidation.",
+    "PyMilvus gRPC and TLS 443 remain separately blocked in the diagnostic evidence."
+  ],
+  "startedAt": "2026-11-09T17:15:36.530903+00:00",
+  "finishedAt": "2026-11-09T17:15:53.139301+00:00"
+}

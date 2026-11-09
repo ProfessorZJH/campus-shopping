@@ -1,0 +1,27 @@
+{
+  "tool": "get_my_orders",
+  "version": "1.0",
+  "readOnly": true,
+  "state": "PAID",
+  "page": 1,
+  "size": 10,
+  "total": 1,
+  "items": [
+    {
+      "orderId": "order-fixture-001",
+      "status": "PAID",
+      "totalCent": 1299,
+      "createdAt": "2026-11-10T08:00:00Z",
+      "merchantName": "Fixture campus shop",
+      "items": [
+        {
+          "skuId": "sku-fixture-001",
+          "title": "Exam notebook",
+          "specKey": "A5 / blue",
+          "unitPriceCent": 1299,
+          "quantity": 1
+        }
+      ]
+    }
+  ]
+}
