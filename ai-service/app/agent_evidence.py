@@ -9,6 +9,8 @@ import re
 import secrets
 from typing import Any, Callable
 
+import httpx
+
 from .observability import logger
 
 
@@ -33,6 +35,9 @@ _SENSITIVE_KEYS = frozenset(
 
 
 def safe_exception_code(error: BaseException) -> str:
+    explicit_code = getattr(error, "code", None)
+    if isinstance(explicit_code, str) and explicit_code:
+        return explicit_code[:64]
     status = getattr(getattr(error, "response", None), "status_code", None)
     if status == 429:
         return "UPSTREAM_429"
@@ -41,6 +46,10 @@ def safe_exception_code(error: BaseException) -> str:
     if isinstance(error, TimeoutError):
         return "UPSTREAM_TIMEOUT"
     if isinstance(error, (ConnectionError, OSError)):
+        return "UPSTREAM_CONNECTION"
+    if isinstance(error, httpx.TimeoutException):
+        return "UPSTREAM_TIMEOUT"
+    if isinstance(error, httpx.TransportError):
         return "UPSTREAM_CONNECTION"
     return type(error).__name__.upper()
 
@@ -59,10 +68,10 @@ def assert_isolated_collection(name: str, production_name: str = "campus_product
 def safe_metadata(value: Any, key: str = "") -> Any:
     """递归保留诊断类型和计数，删除凭据、提示词及下游正文。"""
 
-    if key.lower() in _SENSITIVE_KEYS:
+    if _is_sensitive_key(key):
         return "[REDACTED]"
     if isinstance(value, dict):
-        return {str(k): safe_metadata(v, str(k)) for k, v in value.items() if str(k).lower() not in _SENSITIVE_KEYS}
+        return {str(k): safe_metadata(v, str(k)) for k, v in value.items() if not _is_sensitive_key(str(k))}
     if isinstance(value, (list, tuple)):
         return [safe_metadata(item, key) for item in value[:32]]
     if isinstance(value, (str, int, float, bool)) or value is None:
@@ -70,6 +79,13 @@ def safe_metadata(value: Any, key: str = "") -> Any:
             return value[:200]
         return value
     return type(value).__name__
+
+
+def _is_sensitive_key(key: str) -> bool:
+    normalized = re.sub(r"[^a-z0-9]", "", key.lower())
+    if normalized in {re.sub(r"[^a-z0-9]", "", item) for item in _SENSITIVE_KEYS}:
+        return True
+    return normalized.endswith(("key", "token", "password", "secret"))
 
 
 @dataclass

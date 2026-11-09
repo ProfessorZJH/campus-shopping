@@ -197,6 +197,8 @@ def _tool_calls(message: Mapping[str, Any]) -> list[ToolCall]:
     for index, raw in enumerate(raw_calls):
         if not isinstance(raw, Mapping):
             raise AgentModelError("INVALID_MODEL_TOOL_CALL")
+        if raw.get("type") != "function":
+            raise AgentModelError("INVALID_MODEL_TOOL_CALL")
         function = raw.get("function") or {}
         if not isinstance(function, Mapping) or not isinstance(function.get("name"), str):
             raise AgentModelError("INVALID_MODEL_TOOL_CALL")
@@ -308,6 +310,9 @@ class AgentRuntime:
                     except AgentContractError as error:
                         calls.append(ToolCallRecord(call.call_id, call.name, "REJECTED", error.code))
                         raise
+                    except Exception as error:  # noqa: BLE001 - 对外只保留稳定错误码
+                        calls.append(ToolCallRecord(call.call_id, call.name, "FAILED", safe_exception_code(error)))
+                        raise
                     calls.append(ToolCallRecord(call.call_id, call.name, "SUCCEEDED"))
                     messages.append({"role": "tool", "tool_call_id": call.call_id, "name": call.name, "content": json.dumps(payload, ensure_ascii=False)})
             raise AgentModelError("TOOL_CALL_LIMIT")
@@ -359,6 +364,9 @@ class AgentRuntime:
                         scope.assert_active()
                     except AgentContractError as error:
                         calls.append(ToolCallRecord(call.call_id, call.name, "REJECTED", error.code))
+                        raise
+                    except Exception as error:  # noqa: BLE001 - 对外只保留稳定错误码
+                        calls.append(ToolCallRecord(call.call_id, call.name, "FAILED", safe_exception_code(error)))
                         raise
                     calls.append(ToolCallRecord(call.call_id, call.name, "SUCCEEDED"))
                     messages.append({"role": "tool", "tool_call_id": call.call_id, "name": call.name, "content": json.dumps(payload, ensure_ascii=False)})

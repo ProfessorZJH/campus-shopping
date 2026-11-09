@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT / "ai-service"))
 from app.agent_contract import AgentScope, TOOL_NAME, default_registry
 from app.agent_evidence import EvidenceRecorder, assert_isolated_collection, isolated_collection_name, safe_exception_code
 from app.agent_provider import OpenAICompatibleToolModel
-from app.agent_runtime import AgentRuntime
+from app.agent_runtime import AgentModelError, AgentRuntime
 from app.config import Settings, validate_service_url
 from app.product_index import ProductIndex
 from app.provider import Provider
@@ -184,7 +184,7 @@ def run_real_model(recorder: EvidenceRecorder, settings: Settings) -> None:
     def native_tool_call():
         result = runtime.run("请检索考试签字笔", scope())
         if result.status != "COMPLETED" or not result.tool_calls:
-            raise AssertionError("真实模型未产生可验证的原生 Tool Calling")
+            raise AgentModelError(result.error_code or "REAL_NATIVE_TOOL_CALL_FAILED")
         return {
             "model": settings.llm_model,
             "toolCalls": len(result.tool_calls),
@@ -200,7 +200,7 @@ def run_real_model(recorder: EvidenceRecorder, settings: Settings) -> None:
     def streaming_tool_call():
         result = runtime.run_stream("请流式检索无糖茶", scope())
         if result.status != "COMPLETED" or not result.tool_calls:
-            raise AssertionError("真实流式模型未产生可验证工具调用")
+            raise AgentModelError(result.error_code or "REAL_STREAMING_TOOL_CALL_FAILED")
         return {
             "model": settings.llm_model,
             "toolCalls": len(result.tool_calls),
@@ -240,6 +240,7 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
     configured = live_configured(settings)
     if not (configured["embedding"] and configured["milvus"]):
         recorder.mark_not_run("real_milvus_isolated_lifecycle", "EMBEDDING_* 与 MILVUS_* 未完整配置")
+        recorder.mark_not_run("real_milvus_isolated_cleanup", "EMBEDDING_* 与 MILVUS_* 未完整配置，未创建隔离集合")
         recorder.mark_not_run("real_java_mysql_fact_revalidation", "本次未配置 Java Agent/商品事实复验入口")
         recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Embedding/Milvus/Java 复验前置条件未满足")
         return

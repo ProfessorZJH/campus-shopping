@@ -44,6 +44,7 @@ def revalidate_product_candidates(
     if not product_ids:
         return []
     rows = port.read_current_product_facts(list(dict.fromkeys(product_ids)), scope)
+    scope.assert_active()
     by_id: dict[str, CatalogFactSnapshot] = {}
     for row in rows:
         fact = CatalogFactSnapshot.model_validate(row, strict=True)

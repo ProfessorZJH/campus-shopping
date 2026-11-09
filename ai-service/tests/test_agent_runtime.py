@@ -5,6 +5,7 @@ import json
 import logging
 import time
 
+import httpx
 import pytest
 
 from app.agent_contract import (
@@ -15,7 +16,7 @@ from app.agent_contract import (
     default_registry,
 )
 from app.agent_runtime import AgentContractError, AgentRuntime, ToolCallAccumulator
-from app.agent_evidence import EvidenceRecorder, safe_metadata
+from app.agent_evidence import EvidenceRecorder, safe_exception_code, safe_metadata
 from app.config import Settings
 from app.main import create_app
 from app.agent_fact import revalidate_product_candidates
@@ -214,6 +215,21 @@ def test_runtime_rejects_abnormal_native_finish_reason_and_degrades_real_contrac
     assert denied.evidence_status == "DEGRADED"
 
 
+def test_runtime_rejects_non_function_native_calls_and_records_tool_transport_failures():
+    malformed = tool_call()
+    malformed["message"]["tool_calls"][0]["type"] = "custom"
+    result = AgentRuntime(FakeModel([malformed]), default_registry(searcher), evidence_status="STUB").run("查商品", scope())
+    assert result.error_code == "INVALID_MODEL_TOOL_CALL"
+
+    def failing_searcher(query, limit, merchant_id, current_scope):
+        raise TimeoutError("upstream")
+
+    failed = AgentRuntime(FakeModel([tool_call()]), default_registry(failing_searcher), evidence_status="STUB").run("查商品", scope())
+    assert failed.error_code == "UPSTREAM_TIMEOUT"
+    assert failed.tool_calls[0].status == "FAILED"
+    assert failed.tool_calls[0].error_code == "UPSTREAM_TIMEOUT"
+
+
 def test_m0_does_not_add_public_agent_route_or_business_write_port(tmp_path):
     app = create_app(Settings("agent-route-test-key-not-production", str(tmp_path / "route.db")))
     paths = {route.path for route in app.routes}
@@ -238,6 +254,16 @@ def test_fact_revalidation_filters_stale_candidates_without_copying_transaction_
     candidates = revalidate_product_candidates(["p-1", "p-2", "p-3"], scope(), FactPort())
     assert [candidate["productId"] for candidate in candidates] == ["p-1"]
     assert candidates[0]["verified"] is True
+
+
+def test_fact_revalidation_rechecks_lease_after_java_lookup():
+    class SlowFactPort:
+        def read_current_product_facts(self, product_ids, current_scope):
+            time.sleep(0.03)
+            return []
+
+    with pytest.raises(ScopeDeniedError, match="TURN_LEASE_EXPIRED"):
+        revalidate_product_candidates(["p-1"], scope(expires=time.time() + 0.01), SlowFactPort())
 
 
 def test_stream_accumulator_preserves_repeated_argument_fragments():
@@ -380,3 +406,7 @@ def test_evidence_metadata_redacts_credentials_prompts_and_downstream_body(tmp_p
     assert "downstream private body" not in serialized
     assert "SECRET" not in caplog.text
     assert "token" not in safe_metadata({"token": "secret", "count": 2})
+    credentials = safe_metadata({"llm_key": "secret", "embedding_key": "secret", "qdrant_key": "secret", "milvus_token": "secret"})
+    assert credentials == {}
+    assert safe_exception_code(httpx.ReadTimeout("timed out")) == "UPSTREAM_TIMEOUT"
+    assert safe_exception_code(httpx.ConnectError("failed")) == "UPSTREAM_CONNECTION"
