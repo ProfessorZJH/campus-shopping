@@ -39,7 +39,19 @@ class _ProviderCore:
                     payload.update(input_type=input_type,truncate='END')
                 # 审计仅含供应商、用途、数量和字节，不含待嵌入文本。
                 audit(s.embedding_url, 'embedding.'+input_type, len(batch), payload)
-                data=_bounded_json(client,'POST',s.embedding_url+'/embeddings',limit=8_388_608,headers={'Authorization':'Bearer '+s.embedding_key},json=payload)['data'];data.sort(key=lambda x:x['index'])
+                try:
+                    data=_bounded_json(client,'POST',s.embedding_url+'/embeddings',limit=8_388_608,headers={'Authorization':'Bearer '+s.embedding_key},json=payload)['data']
+                except httpx.HTTPStatusError as error:
+                    status=getattr(getattr(error,'response',None),'status_code',None)
+                    if len(batch)<=1 or status not in (413,422,500):
+                        raise
+                    data=[]
+                    for text in batch:
+                        single_payload=dict(payload)
+                        single_payload['input']=[text]
+                        audit(s.embedding_url, 'embedding.'+input_type, 1, single_payload)
+                        data.extend(_bounded_json(client,'POST',s.embedding_url+'/embeddings',limit=8_388_608,headers={'Authorization':'Bearer '+s.embedding_key},json=single_payload)['data'])
+                data.sort(key=lambda x:x['index'])
                 if len(data)!=len(batch):raise ValueError('向量数量不匹配')
                 for item in data:
                     vector=item['embedding']

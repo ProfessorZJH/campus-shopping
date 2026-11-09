@@ -48,6 +48,7 @@ class Settings:
     max_concurrent_requests: int = 4
     llm_timeout_seconds: int = 60
     trusted_http_hosts: tuple[str, ...] = ('milvus', 'qdrant')
+    milvus_transport: str = "auto"
 
     @classmethod
     def from_env(cls):
@@ -57,6 +58,7 @@ class Settings:
             embedding_url=os.getenv("EMBEDDING_BASE_URL", "").rstrip("/"),embedding_key=os.getenv("EMBEDDING_API_KEY", ""),embedding_model=os.getenv("EMBEDDING_MODEL", ""),
             llm_url=os.getenv("LLM_BASE_URL", "").rstrip("/"),llm_key=os.getenv("LLM_API_KEY", ""),llm_model=os.getenv("LLM_MODEL", ""),
             milvus_uri=os.getenv("MILVUS_URI", "").rstrip("/"),milvus_token=os.getenv("MILVUS_TOKEN", ""),
+            milvus_transport=os.getenv("MILVUS_TRANSPORT", "auto").strip().lower() or "auto",
             product_collection=os.getenv("MILVUS_PRODUCT_COLLECTION", "campus_products_v1"),
             max_concurrent_requests=int(os.getenv("AI_MAX_CONCURRENT_REQUESTS", "4")),
             llm_timeout_seconds=int(os.getenv("LLM_TIMEOUT_SECONDS", "60")),
@@ -76,6 +78,8 @@ class Settings:
                 raise ValueError(prefix+" 的地址、密钥、模型名称必须同时配置")
         if not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", self.product_collection):
             raise ValueError("非法 Milvus 商品集合名")
+        if self.milvus_transport not in ("auto", "grpc", "rest"):
+            raise ValueError("MILVUS_TRANSPORT 必须是 auto、grpc 或 rest")
         if bool(self.milvus_uri)!=bool(self.milvus_token):
             raise ValueError("Milvus 的地址与凭据必须一起配置")
         if self.milvus_uri and not (self.embedding_url and self.embedding_key and self.embedding_model):
