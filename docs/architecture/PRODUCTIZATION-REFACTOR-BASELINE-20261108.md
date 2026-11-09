@@ -16,9 +16,9 @@
 
 截至 2026 年 11 月 8 日，`productize-campus-shopping-experience` 的 46 项任务已在 `main` 版本全部完成。M0～M6 已覆盖消费者、AI 导购、商户、店员、平台和知识库的产品化链路；后续工作应从“补齐产品功能”转为“在不改变交易不变量的前提下收敛内部职责”。
 
-另一个会话正在 Docker 环境执行真实验收。本轮没有读取其运行结果，因此 Docker 验收在该证据回传前保持 `IN_PROGRESS`，不在此文档中预填 `PASS`。
+PR #63 对应的远端 `Campus Shopping - Real Acceptance` workflow #324 已通过，覆盖隔离镜像、MySQL、Redis、FastAPI、真实 Maven、HTTP 和浏览器链路；真实外部供应商 smoke 仍按配置跳过，生产部署和性能目标继续单独验收。
 
-结构重构已经在独立分支 `codex/shoppingai-structure-refactor` 上完成，分支代码基线为 `ce56d09`。实现范围、定向测试和完成后的独立演进边界见[结构重构分支实施与验证记录](../testing/STRUCTURAL-REFACTOR-20261108.md)；分支尚未合入 `main` 只表示合并状态，不表示重构未完成。
+结构重构已经在独立分支 `codex/shoppingai-structure-refactor` 上完成，最终代码提交为 `afe7ce4`，并通过 PR #63 合入 `main`，合并提交为 `89e2981`。实现范围、定向测试和完成后的独立演进边界见[结构重构分支实施与验证记录](../testing/STRUCTURAL-REFACTOR-20261108.md)。
 
 ## 二、已完成的产品化基线
 
