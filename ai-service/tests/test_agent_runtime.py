@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 
 import pytest
 
@@ -13,7 +14,7 @@ from app.agent_contract import (
     UnknownToolError,
     default_registry,
 )
-from app.agent_runtime import AgentRuntime, ToolCallAccumulator
+from app.agent_runtime import AgentContractError, AgentRuntime, ToolCallAccumulator
 from app.agent_evidence import EvidenceRecorder, safe_metadata
 from app.config import Settings
 from app.main import create_app
@@ -116,6 +117,36 @@ def test_runtime_executes_native_tool_once_then_continues():
     assert result.usage["total_tokens"] == 16
 
 
+def test_runtime_accumulates_usage_across_model_rounds():
+    model = FakeModel([tool_call(), {**answer(), "usage": {"prompt_tokens": 5, "completion_tokens": 2, "total_tokens": 7}}])
+    result = AgentRuntime(model, default_registry(searcher), evidence_status="STUB").run("查商品", scope())
+    assert result.status == "COMPLETED"
+    assert result.usage == {"prompt_tokens": 17, "completion_tokens": 6, "total_tokens": 23}
+
+
+def test_runtime_rechecks_turn_lease_after_model_call():
+    class SlowModel(FakeModel):
+        def complete(self, *, messages, tools, metadata):
+            time.sleep(0.03)
+            return super().complete(messages=messages, tools=tools, metadata=metadata)
+
+    result = AgentRuntime(SlowModel([answer()]), default_registry(searcher), evidence_status="STUB").run(
+        "查商品", scope(expires=time.time() + 0.01)
+    )
+    assert result.status == "FAILED"
+    assert result.error_code == "TURN_LEASE_EXPIRED"
+
+    def slow_searcher(query, limit, merchant_id, current_scope):
+        time.sleep(0.03)
+        return searcher(query, limit, merchant_id, current_scope)
+
+    result = AgentRuntime(FakeModel([tool_call(), answer()]), default_registry(slow_searcher), evidence_status="STUB").run(
+        "查商品", scope(expires=time.time() + 0.01)
+    )
+    assert result.status == "FAILED"
+    assert result.error_code == "TURN_LEASE_EXPIRED"
+
+
 def test_runtime_rejects_plain_text_that_pretends_to_call_tool():
     runtime = AgentRuntime(FakeModel([answer("我将调用 search_products 查询商品")]), default_registry(searcher), evidence_status="STUB")
     result = runtime.run("查商品", scope())
@@ -159,7 +190,7 @@ def test_fact_revalidation_filters_stale_candidates_without_copying_transaction_
     assert candidates[0]["verified"] is True
 
 
-def test_stream_accumulator_assembles_fragments_and_deduplicates_duplicate_fragment():
+def test_stream_accumulator_preserves_repeated_argument_fragments():
     accumulator = ToolCallAccumulator()
     accumulator.accept(
         {
@@ -170,7 +201,7 @@ def test_stream_accumulator_assembles_fragments_and_deduplicates_duplicate_fragm
                             {
                                 "index": 0,
                                 "id": "call-1",
-                                "function": {"name": "search_products", "arguments": "{\"query\":"},
+                                "function": {"name": "search_products", "arguments": "{\"query\":\""},
                             }
                         ]
                     }
@@ -178,18 +209,51 @@ def test_stream_accumulator_assembles_fragments_and_deduplicates_duplicate_fragm
             ]
         }
     )
-    fragment = {
-        "choices": [
-            {"delta": {"tool_calls": [{"index": 0, "function": {"arguments": "\"茶\"}"}}]}}
-        ]
-    }
-    accumulator.accept(fragment)
-    accumulator.accept(fragment)
+    accumulator.accept({"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": "ab"}}]}}]})
+    accumulator.accept({"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": "ab"}}]}}]})
+    accumulator.accept({"choices": [{"delta": {"tool_calls": [{"index": 0, "function": {"arguments": "\"}"}}]}}]})
     accumulator.accept({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]})
     content, calls, usage = accumulator.finish()
     assert content == ""
-    assert len(calls) == 1 and calls[0].arguments == {"query": "茶"}
+    assert len(calls) == 1 and calls[0].arguments == {"query": "abab"}
     assert usage == {}
+
+
+def test_stream_accumulator_requires_terminal_finish_reason_and_provider_call_id():
+    accumulator = ToolCallAccumulator()
+    accumulator.accept(
+        {
+            "choices": [
+                {
+                    "delta": {
+                        "tool_calls": [
+                            {"index": 0, "function": {"name": "search_products", "arguments": '{"query":"茶"}'}}
+                        ]
+                    }
+                }
+            ]
+        }
+    )
+    with pytest.raises(AgentContractError, match="STREAM_NOT_NORMALLY_TERMINATED"):
+        accumulator.finish()
+
+    accumulator.accept({"choices": [{"delta": {}, "finish_reason": "tool_calls"}]})
+    with pytest.raises(AgentContractError, match="INVALID_STREAM_TOOL_CALL"):
+        accumulator.finish()
+
+
+def test_stream_accumulator_deduplicates_only_explicit_event_replays():
+    accumulator = ToolCallAccumulator()
+    chunk = {
+        "_event_id": "event-1",
+        "choices": [{"delta": {"content": "a"}}],
+    }
+    accumulator.accept(chunk)
+    accumulator.accept(chunk)
+    accumulator.accept({"choices": [{"delta": {}, "finish_reason": "stop"}]})
+    content, calls, _ = accumulator.finish()
+    assert content == "a"
+    assert calls == []
 
 
 def test_stream_runtime_executes_tool_once_and_handles_invalid_json_safely():
@@ -238,6 +302,13 @@ def test_stream_runtime_executes_tool_once_and_handles_invalid_json_safely():
     )
     with pytest.raises(Exception):
         bad.finish()
+
+
+def test_runtime_rejects_native_tool_call_without_provider_id():
+    runtime = AgentRuntime(FakeModel([tool_call(call_id="")]), default_registry(searcher), evidence_status="STUB")
+    result = runtime.run("查商品", scope())
+    assert result.status == "FAILED"
+    assert result.error_code == "INVALID_MODEL_TOOL_CALL"
 
 
 def test_evidence_metadata_redacts_credentials_prompts_and_downstream_body(tmp_path, caplog):

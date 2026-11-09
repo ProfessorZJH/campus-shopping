@@ -81,24 +81,31 @@ class _PartialToolCall:
             payload = json.loads("".join(self.arguments))
         except (TypeError, ValueError):
             raise AgentContractError("INVALID_STREAM_TOOL_ARGUMENTS") from None
-        if not isinstance(payload, dict) or not self.name:
+        if not isinstance(payload, dict) or not self.name or not self.call_id:
             raise AgentContractError("INVALID_STREAM_TOOL_CALL")
-        return ToolCall(self.call_id or f"stream-call-{index}", self.name, payload)
+        return ToolCall(self.call_id, self.name, payload)
 
 
 class ToolCallAccumulator:
-    """合并 OpenAI 兼容流式 tool_calls，并对重复分片去重。"""
+    """合并 OpenAI 兼容流式 tool_calls，保留供应商原始分片顺序。"""
 
     def __init__(self) -> None:
         self.content: list[str] = []
         self.calls: dict[int, _PartialToolCall] = {}
-        self._seen_fragments: set[tuple[Any, ...]] = set()
+        self._seen_event_ids: set[str] = set()
         self.finish_reason: str | None = None
         self.usage: dict[str, int] = {}
 
     def accept(self, chunk: Mapping[str, Any]) -> None:
         if not isinstance(chunk, Mapping):
             raise AgentContractError("INVALID_STREAM_CHUNK")
+        event_id = chunk.get("_event_id")
+        if event_id is not None:
+            if not isinstance(event_id, str) or not event_id or len(event_id) > 256:
+                raise AgentContractError("INVALID_STREAM_EVENT_ID")
+            if event_id in self._seen_event_ids:
+                return
+            self._seen_event_ids.add(event_id)
         if isinstance(chunk.get("usage"), Mapping):
             self._merge_usage(chunk["usage"])
         choices = chunk.get("choices")
@@ -137,10 +144,6 @@ class ToolCallAccumulator:
                 raise AgentContractError("INVALID_STREAM_TOOL_CALL")
             if not isinstance(fragment, str):
                 raise AgentContractError("INVALID_STREAM_TOOL_ARGUMENTS")
-            marker = (index, call_id or "", name or "", fragment)
-            if marker in self._seen_fragments:
-                continue
-            self._seen_fragments.add(marker)
             target = self.calls.setdefault(index, _PartialToolCall())
             if call_id:
                 target.call_id = call_id
@@ -152,13 +155,13 @@ class ToolCallAccumulator:
         for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
             value = usage.get(key)
             if isinstance(value, int) and value >= 0:
-                self.usage[key] = value
+                self.usage[key] = max(self.usage.get(key, 0), value)
 
     def finish(self) -> tuple[str, list[ToolCall], dict[str, int]]:
-        if self.finish_reason not in ("stop", "tool_calls", None):
+        if self.finish_reason not in ("stop", "tool_calls"):
             raise AgentContractError("STREAM_NOT_NORMALLY_TERMINATED")
         calls = [self.calls[index].build(index) for index in sorted(self.calls)]
-        if calls and self.finish_reason not in ("tool_calls", None):
+        if calls and self.finish_reason != "tool_calls":
             raise AgentContractError("STREAM_TOOL_CALL_FINISH_MISMATCH")
         return "".join(self.content), calls, dict(self.usage)
 
@@ -196,8 +199,8 @@ def _tool_calls(message: Mapping[str, Any]) -> list[ToolCall]:
                 raise AgentModelError("INVALID_MODEL_TOOL_ARGUMENTS") from None
         if not isinstance(arguments, dict):
             raise AgentModelError("INVALID_MODEL_TOOL_ARGUMENTS")
-        call_id = raw.get("id") or f"call-{index}"
-        if not isinstance(call_id, str):
+        call_id = raw.get("id")
+        if not isinstance(call_id, str) or not call_id:
             raise AgentModelError("INVALID_MODEL_TOOL_CALL")
         result.append(ToolCall(call_id, function["name"], arguments))
     return result
@@ -212,6 +215,15 @@ def _usage(response: Mapping[str, Any]) -> dict[str, int]:
         for key, value in ((key, raw.get(key)) for key in ("prompt_tokens", "completion_tokens", "total_tokens"))
         if isinstance(value, int) and value >= 0
     }
+
+
+def _merge_usage(total: dict[str, int], current: Mapping[str, int]) -> dict[str, int]:
+    merged = dict(total)
+    for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
+        value = current.get(key)
+        if isinstance(value, int) and value >= 0:
+            merged[key] = merged.get(key, 0) + value
+    return merged
 
 
 def _looks_like_plain_text_tool_call(answer: str) -> bool:
@@ -256,7 +268,8 @@ class AgentRuntime:
                     tools=self.registry.definitions(),
                     metadata=self._metadata(run_id, step),
                 )
-                usage.update(_usage(response))
+                scope.assert_active()
+                usage = _merge_usage(usage, _usage(response))
                 message = _message(response)
                 requested = _tool_calls(message)
                 if not requested:
@@ -275,6 +288,7 @@ class AgentRuntime:
                         raise AgentModelError("DUPLICATE_TOOL_CALL")
                     try:
                         payload = self.registry.invoke(call.name, call.arguments, scope)
+                        scope.assert_active()
                     except AgentContractError as error:
                         calls.append(ToolCallRecord(call.call_id, call.name, "REJECTED", error.code))
                         raise
@@ -308,8 +322,9 @@ class AgentRuntime:
                     metadata=self._metadata(run_id, step),
                 ):
                     accumulator.accept(chunk)
+                scope.assert_active()
                 answer, requested, stream_usage = accumulator.finish()
-                usage.update(stream_usage)
+                usage = _merge_usage(usage, stream_usage)
                 if not requested:
                     if not answer.strip():
                         raise AgentModelError("EMPTY_MODEL_ANSWER")
@@ -324,6 +339,7 @@ class AgentRuntime:
                         raise AgentModelError("DUPLICATE_TOOL_CALL")
                     try:
                         payload = self.registry.invoke(call.name, call.arguments, scope)
+                        scope.assert_active()
                     except AgentContractError as error:
                         calls.append(ToolCallRecord(call.call_id, call.name, "REJECTED", error.code))
                         raise

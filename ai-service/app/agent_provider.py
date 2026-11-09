@@ -15,6 +15,10 @@ from .http_limits import bounded_json
 from .observability import failure
 
 
+MAX_STREAM_LINE_BYTES = 65_536
+MAX_STREAM_RESPONSE_BYTES = 4 * 1024 * 1024
+
+
 class OpenAICompatibleToolModel:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -88,22 +92,40 @@ class OpenAICompatibleToolModel:
                     json=payload,
                 ) as response:
                     response.raise_for_status()
+                    total_bytes = 0
+                    saw_done = False
+                    event_id: str | None = None
                     for line in response.iter_lines():
                         if isinstance(line, bytes):
                             line = line.decode("utf-8", "replace")
+                        line_bytes = len(line.encode("utf-8"))
+                        if line_bytes > MAX_STREAM_LINE_BYTES:
+                            raise AgentModelError("STREAM_LINE_TOO_LARGE")
+                        total_bytes += line_bytes
+                        if total_bytes > MAX_STREAM_RESPONSE_BYTES:
+                            raise AgentModelError("STREAM_RESPONSE_TOO_LARGE")
                         if not line or line.startswith(":"):
+                            continue
+                        if line.startswith("id:"):
+                            event_id = line[3:].strip()
                             continue
                         if not line.startswith("data:"):
                             continue
                         body = line[5:].strip()
                         if body == "[DONE]":
+                            saw_done = True
                             return
                         try:
                             chunk = json.loads(body)
                         except (TypeError, ValueError):
                             raise AgentModelError("INVALID_STREAM_CHUNK") from None
                         if isinstance(chunk, dict):
+                            if event_id is not None:
+                                chunk["_event_id"] = event_id
+                                event_id = None
                             yield chunk
+                    if not saw_done:
+                        raise AgentModelError("STREAM_NOT_TERMINATED")
         except httpx.HTTPStatusError as error:
             failure("agent.llm.stream", error)
             status = error.response.status_code

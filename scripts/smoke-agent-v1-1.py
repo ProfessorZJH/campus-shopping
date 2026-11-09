@@ -26,7 +26,7 @@ from app.agent_contract import AgentScope, TOOL_NAME, default_registry
 from app.agent_evidence import EvidenceRecorder, assert_isolated_collection, isolated_collection_name
 from app.agent_provider import OpenAICompatibleToolModel
 from app.agent_runtime import AgentRuntime
-from app.config import Settings
+from app.config import Settings, validate_service_url
 from app.product_index import ProductIndex
 from app.provider import Provider
 
@@ -160,6 +160,12 @@ def run_real_model(recorder: EvidenceRecorder, settings: Settings) -> None:
         recorder.mark_not_run("real_native_tool_call", "LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 未完整配置")
         recorder.mark_not_run("real_streaming_tool_call", "LLM_BASE_URL/LLM_API_KEY/LLM_MODEL 未完整配置")
         return
+    try:
+        validate_service_url(settings.llm_url, "LLM", settings.trusted_http_hosts)
+    except ValueError:
+        recorder.mark_not_run("real_native_tool_call", "LLM 服务地址未通过 TLS/内网 HTTP 安全校验")
+        recorder.mark_not_run("real_streaming_tool_call", "LLM 服务地址未通过 TLS/内网 HTTP 安全校验")
+        return
     searcher = FixtureSearcher()
     runtime = AgentRuntime(
         OpenAICompatibleToolModel(settings),
@@ -206,6 +212,11 @@ def run_real_embedding(recorder: EvidenceRecorder, settings: Settings) -> None:
     if not live_configured(settings)["embedding"]:
         recorder.mark_not_run("real_embedding_passage_query", "EMBEDDING_BASE_URL/EMBEDDING_API_KEY/EMBEDDING_MODEL 未完整配置")
         return
+    try:
+        validate_service_url(settings.embedding_url, "Embedding", settings.trusted_http_hosts)
+    except ValueError:
+        recorder.mark_not_run("real_embedding_passage_query", "Embedding 服务地址未通过 TLS/内网 HTTP 安全校验")
+        return
 
     provider = Provider(settings)
 
@@ -241,10 +252,12 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
             return
         index = ProductIndex(isolated, Provider(isolated))
         client = None
+        created_by_run = False
         try:
             client = index._connect()
             if client.has_collection(collection_name=collection):
                 raise AssertionError("随机集合在本次运行前已经存在")
+            created_by_run = True
 
             def lifecycle():
                 first = index.upsert(FIXTURES)
@@ -256,19 +269,38 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
                 changed = [dict(FIXTURES[0], title="考试黑色签字笔")]
                 if index.upsert(changed).get("indexed") != 1:
                     raise AssertionError("Milvus 增量更新未生效")
-                if index.delete([FIXTURES[1]["productId"]]).get("deleted") != 1:
+                deleted_id = FIXTURES[1]["productId"]
+                if index.delete([deleted_id]).get("deleted") != 1:
                     raise AssertionError("Milvus 删除未生效")
-                return {"collection": collection, "indexed": first["indexed"], "searchCount": len(search["productIds"]), "productionCollectionModified": False}
+                remaining = client.query(
+                    collection_name=collection,
+                    filter="id in " + json.dumps([deleted_id]),
+                    output_fields=["id"],
+                    limit=1,
+                    consistency_level="Strong",
+                )
+                if remaining:
+                    raise AssertionError("Milvus 删除后仍能查询到商品 ID")
+                return {
+                    "collection": collection,
+                    "indexed": first["indexed"],
+                    "searchCount": len(search["productIds"]),
+                    "deletedIdAbsent": True,
+                    "productionCollectionModified": False,
+                }
 
             recorder.check("real_milvus_isolated_lifecycle", lifecycle)
         finally:
             def cleanup():
-                if client is not None and client.has_collection(collection_name=collection):
+                if created_by_run and client is not None and client.has_collection(collection_name=collection):
                     client.drop_collection(collection_name=collection)
-                if client is not None and client.has_collection(collection_name=collection):
+                if created_by_run and client is not None and client.has_collection(collection_name=collection):
                     raise AssertionError("Milvus 隔离集合清理失败")
 
-            recorder.check("real_milvus_isolated_cleanup", cleanup)
+            if client is None:
+                recorder.mark_not_run("real_milvus_isolated_cleanup", "Milvus 未建立连接，无法执行隔离集合清理")
+            else:
+                recorder.check("real_milvus_isolated_cleanup", cleanup)
             if client is not None:
                 client.close()
 
@@ -276,11 +308,31 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
     recorder.mark_not_run("real_end_to_end_agent_chain", "真实 Milvus 候选尚未接入 Java/MySQL 事实复验")
 
 
+def live_endpoint_safety(settings: Settings) -> dict[str, bool]:
+    checks = {
+        "llm": (settings.llm_url, "LLM", False),
+        "embedding": (settings.embedding_url, "Embedding", False),
+        "milvus": (settings.milvus_uri, "Milvus", True),
+    }
+    result = {}
+    for name, (url, label, root_only) in checks.items():
+        if not url:
+            result[name] = True
+            continue
+        try:
+            validate_service_url(url, label, settings.trusted_http_hosts, root_only=root_only)
+        except ValueError:
+            result[name] = False
+        else:
+            result[name] = True
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     parser.add_argument("--output", type=Path, default=ROOT / "docs/testing/evidence/agent-v1.1.json")
-    parser.add_argument("--require-live", action="store_true", help="缺少真实配置时返回非零")
+    parser.add_argument("--require-live", action="store_true", help="真实必需检查未完成时返回非零")
     args = parser.parse_args()
     load_env(args.env_file)
     settings = Settings.from_env()
@@ -301,10 +353,19 @@ def main() -> int:
     )
     recorder.write()
     run_stub(recorder)
+    endpoint_safety = live_endpoint_safety(settings)
+    if all(endpoint_safety.values()):
+        recorder.add("real_configuration_safety_gate", "PASS", validated=True)
+    else:
+        recorder.mark_not_run("real_configuration_safety_gate", "真实服务地址未全部通过 TLS/内网 HTTP 安全校验")
     run_real_model(recorder, settings)
     run_real_embedding(recorder, settings)
     run_real_milvus(recorder, settings)
-    real_checks = [item for item in recorder.data["checks"] if item["name"].startswith("real_")]
+    real_checks = [
+        item
+        for item in recorder.data["checks"]
+        if item["name"].startswith("real_") and item["name"] != "real_configuration_safety_gate"
+    ]
     if not real_checks or all(item["outcome"] == "NOT_RUN" for item in real_checks):
         recorder.evidence_status = "NOT_RUN"
     elif any(item["outcome"] != "PASS" for item in real_checks):
@@ -321,11 +382,14 @@ def main() -> int:
     print(json.dumps({"evidenceStatus": recorder.evidence_status, "summary": recorder.data["summary"]}, ensure_ascii=True))
     if args.require_live:
         required_checks = {
+            "real_configuration_safety_gate",
             "real_native_tool_call",
             "real_streaming_tool_call",
             "real_embedding_passage_query",
             "real_milvus_isolated_lifecycle",
             "real_milvus_isolated_cleanup",
+            "real_java_mysql_fact_revalidation",
+            "real_end_to_end_agent_chain",
         }
         checks = {item["name"]: item["outcome"] for item in recorder.data["checks"]}
         if not all(configured[name] for name in ("llm", "embedding", "milvus")) or any(checks.get(name) != "PASS" for name in required_checks):

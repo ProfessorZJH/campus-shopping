@@ -101,6 +101,7 @@ def test_stream_yields_native_tool_call_chunks(tmp_path, monkeypatch):
     body = "\n".join(
         [
             'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call-1","function":{"name":"search_products","arguments":"{\\"query\\":"}}]}}]}',
+            'id: event-2',
             'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"function":{"arguments":"\\"茶\\"}"}}]},"finish_reason":"tool_calls"}]}',
             "data: [DONE]",
             "",
@@ -116,6 +117,7 @@ def test_stream_yields_native_tool_call_chunks(tmp_path, monkeypatch):
     chunks = list(model.stream(messages=[], tools=TOOLS, metadata={}))
     assert chunks[0]["choices"][0]["delta"]["tool_calls"][0]["function"]["name"] == "search_products"
     assert chunks[1]["choices"][0]["finish_reason"] == "tool_calls"
+    assert chunks[1]["_event_id"] == "event-2"
 
 
 def test_stream_rejects_invalid_chunk_and_maps_transport_timeout(tmp_path, monkeypatch):
@@ -134,4 +136,33 @@ def test_stream_rejects_invalid_chunk_and_maps_transport_timeout(tmp_path, monke
 
     monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(timeout), **kwargs))
     with pytest.raises(AgentModelError, match="UPSTREAM_TIMEOUT"):
+        list(model.stream(messages=[], tools=TOOLS, metadata={}))
+
+
+def test_stream_requires_done_marker_and_bounds_response_size(tmp_path, monkeypatch):
+    original = httpx.Client
+
+    def missing_done(request):
+        return httpx.Response(200, content=b'data: {"choices":[{"delta":{"content":"ok"},"finish_reason":"stop"}]}\n\n')
+
+    monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(missing_done), **kwargs))
+    model = OpenAICompatibleToolModel(settings(tmp_path))
+    with pytest.raises(AgentModelError, match="STREAM_NOT_TERMINATED"):
+        list(model.stream(messages=[], tools=TOOLS, metadata={}))
+
+    def oversized_line(request):
+        line = "data: " + ("x" * 70_000)
+        return httpx.Response(200, content=(line + "\n\ndata: [DONE]\n").encode("utf-8"))
+
+    monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(oversized_line), **kwargs))
+    with pytest.raises(AgentModelError, match="STREAM_LINE_TOO_LARGE"):
+        list(model.stream(messages=[], tools=TOOLS, metadata={}))
+
+    def oversized_response(request):
+        body = ('data: {"choices":[{"delta":{"content":"ok"}}]}\n\n' * 3) + "data: [DONE]\n"
+        return httpx.Response(200, content=body.encode("utf-8"))
+
+    monkeypatch.setattr("app.agent_provider.MAX_STREAM_RESPONSE_BYTES", 64)
+    monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(oversized_response), **kwargs))
+    with pytest.raises(AgentModelError, match="STREAM_RESPONSE_TOO_LARGE"):
         list(model.stream(messages=[], tools=TOOLS, metadata={}))

@@ -68,11 +68,12 @@ python scripts/smoke-agent-v1-1.py --env-file G:\develop\campus-shopping\.env --
 | Java/MySQL 商品事实复验 | `NOT_RUN` | M0/M1 未新增 Java Agent/商品事实 HTTP Port |
 | 真实端到端 Agent 链路 | `NOT_RUN` | Milvus 未建立安全连接，且尚无受控 Java Gateway |
 
-真实报告明确记录 `productionProductCollectionModified=false`、`javaMySqlTested=false`、`businessWrites=false`；本轮没有创建或清理任何 Milvus 集合，也没有访问既有商品集合。`--require-live` 因必需的 Milvus 检查未完成返回非零，不能把本轮宣称为完整 M1 通过。
+真实报告明确记录 `productionProductCollectionModified=false`、`javaMySqlTested=false`、`businessWrites=false`；本轮没有创建或清理任何 Milvus 集合，也没有访问既有商品集合。`--require-live` 会同时阻断 Milvus、Java/MySQL 事实复验或端到端检查未完成的运行，因此本轮不能宣称完整 M1 通过。
 
 ## 已执行验证
 
 - `python -m pytest -q`（工作目录 `ai-service`）：276 passed，1 个既有 Starlette `PendingDeprecationWarning`。
+- 审查修复后重新执行 `python -m pytest -q`（工作目录 `ai-service`）：282 passed，1 个既有 Starlette `PendingDeprecationWarning`。
 - Agent 定向测试：17 passed。
 - `python -m compileall -q app tests`：通过。
 - `openspec validate agent-v1-1 --strict --no-interactive`：通过。
@@ -84,6 +85,8 @@ python scripts/smoke-agent-v1-1.py --env-file G:\develop\campus-shopping\.env --
 - 变更文件凭据模式扫描：未发现私钥、云访问密钥或 Slack Token 模式。
 - `git diff --check`：通过。
 - 私有配置真实运行：真实原生/流式 Tool Calling 重试和 NVIDIA Embedding 已记录；Milvus 因 TLS/证书门禁 `NOT_RUN`。
+
+审查修复后的代码还增加了流式终止标记与响应大小门禁、供应商调用 ID 校验、轮次 Token 累加、模型/工具调用后的租约复验、Milvus 删除后查询证明，以及完整 `--require-live` 阻断条件。现有 `agent-v1.1-live.json` 是修复前的真实采样，保留作故障和供应商行为证据；当前配置未通过 TLS/证书安全门禁，因此没有用不安全地址重跑真实请求。
 
 ## 未完成与下一步
 
