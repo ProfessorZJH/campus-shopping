@@ -7,6 +7,7 @@ import json
 from pathlib import Path
 import re
 import secrets
+import time
 from typing import Any, Callable
 
 import httpx
@@ -124,10 +125,18 @@ class EvidenceRecorder:
         return record
 
     def check(self, name: str, function: Callable[[], dict[str, Any] | None]) -> dict[str, Any]:
+        started = time.perf_counter()
         try:
-            return self.add(name, "PASS", **(function() or {}))
+            details = dict(function() or {})
+            details["durationMs"] = round((time.perf_counter() - started) * 1000)
+            return self.add(name, "PASS", **details)
         except Exception as error:  # noqa: BLE001 - 错误类型已脱敏记录
-            return self.add(name, "FAIL", errorCode=safe_exception_code(error))
+            return self.add(
+                name,
+                "FAIL",
+                errorCode=safe_exception_code(error),
+                durationMs=round((time.perf_counter() - started) * 1000),
+            )
 
     def mark_not_run(self, name: str, reason: str) -> dict[str, Any]:
         return self.add(name, "NOT_RUN", reason=reason)

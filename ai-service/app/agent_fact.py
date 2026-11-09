@@ -45,15 +45,18 @@ def revalidate_product_candidates(
         return []
     rows = port.read_current_product_facts(list(dict.fromkeys(product_ids)), scope)
     scope.assert_active()
-    by_id: dict[str, CatalogFactSnapshot] = {}
+    by_id: dict[str, list[CatalogFactSnapshot]] = {}
     for row in rows:
         fact = CatalogFactSnapshot.model_validate(row, strict=True)
-        if fact.productId not in by_id:
-            by_id[fact.productId] = fact
+        by_id.setdefault(fact.productId, []).append(fact)
     result = []
     for product_id in product_ids:
-        fact = by_id.get(product_id)
-        if fact is None or not fact.published or not fact.merchantEligible or fact.available <= 0:
+        facts = by_id.get(product_id, [])
+        fact = next(
+            (item for item in facts if item.published and item.merchantEligible and item.available > 0),
+            None,
+        )
+        if fact is None:
             continue
         result.append(
             {

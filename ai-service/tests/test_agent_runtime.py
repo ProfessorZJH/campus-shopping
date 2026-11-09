@@ -310,6 +310,18 @@ def test_fact_revalidation_rechecks_lease_after_java_lookup():
         revalidate_product_candidates(["p-1"], scope(expires=time.time() + 0.01), SlowFactPort())
 
 
+def test_fact_revalidation_accepts_any_available_sku_for_a_product():
+    class MultiSkuFactPort:
+        def read_current_product_facts(self, product_ids, current_scope):
+            return [
+                {"productId": "p-1", "merchantId": "m-1", "title": "缺货规格", "skuId": "sku-a", "priceCent": 100, "available": 0, "published": True, "merchantEligible": True},
+                {"productId": "p-1", "merchantId": "m-1", "title": "可售规格", "skuId": "sku-b", "priceCent": 120, "available": 2, "published": True, "merchantEligible": True},
+            ]
+
+    result = revalidate_product_candidates(["p-1"], scope(), MultiSkuFactPort())
+    assert [candidate["productId"] for candidate in result] == ["p-1"]
+
+
 def test_stream_accumulator_preserves_repeated_argument_fragments():
     accumulator = ToolCallAccumulator()
     accumulator.accept(
@@ -466,6 +478,7 @@ def test_evidence_metadata_redacts_credentials_prompts_and_downstream_body(tmp_p
             response_body="downstream private body",
             count=2,
         )
+    recorder.check("timed", lambda: {})
     payload = json.loads(output.read_text("utf-8"))
     serialized = json.dumps(payload, ensure_ascii=False)
     assert "SECRET" not in serialized
@@ -477,3 +490,4 @@ def test_evidence_metadata_redacts_credentials_prompts_and_downstream_body(tmp_p
     assert credentials == {}
     assert safe_exception_code(httpx.ReadTimeout("timed out")) == "UPSTREAM_TIMEOUT"
     assert safe_exception_code(httpx.ConnectError("failed")) == "UPSTREAM_CONNECTION"
+    assert payload["checks"][1]["durationMs"] >= 0

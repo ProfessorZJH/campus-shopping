@@ -149,8 +149,12 @@ class ToolCallAccumulator:
                 raise AgentContractError("INVALID_STREAM_TOOL_ARGUMENTS")
             target = self.calls.setdefault(index, _PartialToolCall())
             if call_id:
+                if target.call_id and target.call_id != call_id:
+                    raise AgentContractError("STREAM_TOOL_CALL_CONFLICT")
                 target.call_id = call_id
             if name:
+                if target.name and target.name != name:
+                    raise AgentContractError("STREAM_TOOL_CALL_CONFLICT")
                 target.name = name
             target.arguments.append(fragment)
 

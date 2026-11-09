@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import re
 import secrets
 import sys
 import tempfile
@@ -251,7 +252,14 @@ def run_real_milvus(recorder: EvidenceRecorder, settings: Settings) -> None:
     with tempfile.TemporaryDirectory(prefix="campus-agent-v1-1-") as directory:
         isolated = replace(settings, product_collection=collection, db_path=str(Path(directory) / "agent.db"))
         try:
-            isolated.validate()
+            if not (isolated.embedding_url and isolated.embedding_key and isolated.embedding_model):
+                raise ValueError("Embedding 配置不完整")
+            if not (isolated.milvus_uri and isolated.milvus_token):
+                raise ValueError("Milvus 配置不完整")
+            if not re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", isolated.product_collection):
+                raise ValueError("Milvus 商品集合名无效")
+            validate_service_url(isolated.embedding_url, "Embedding", isolated.trusted_http_hosts)
+            validate_service_url(isolated.milvus_uri, "Milvus", isolated.trusted_http_hosts, root_only=True)
         except Exception:  # noqa: BLE001 - 配置门禁只记录稳定状态，不输出异常正文
             recorder.mark_not_run("real_milvus_isolated_lifecycle", "Milvus 配置未通过服务端安全校验")
             recorder.mark_not_run("real_milvus_isolated_cleanup", "Milvus 未建立连接，无法执行隔离集合清理")
@@ -352,12 +360,13 @@ def main() -> int:
     settings = Settings.from_env()
     configured = live_configured(settings)
     live_count = sum(configured[name] for name in ("llm", "embedding", "milvus"))
-    evidence_status = "REAL" if live_count == 3 else "DEGRADED" if live_count else "NOT_RUN"
-    recorder = EvidenceRecorder(args.output, secrets.token_hex(12), "Agent v1.1 M0/M1", evidence_status)
+    configured_evidence_status = "REAL" if live_count == 3 else "DEGRADED" if live_count else "NOT_RUN"
+    recorder = EvidenceRecorder(args.output, secrets.token_hex(12), "Agent v1.1 M0/M1", "NOT_RUN")
     recorder.data.update(
         {
             "startedAt": datetime.now(timezone.utc).isoformat(),
             "configured": configured,
+            "configuredEvidenceStatus": configured_evidence_status,
             "model": settings.llm_model or None,
             "embeddingModel": settings.embedding_model or None,
             "productionProductCollectionModified": False,
