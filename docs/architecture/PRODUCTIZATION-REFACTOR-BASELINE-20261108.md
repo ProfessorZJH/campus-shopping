@@ -16,7 +16,7 @@
 
 截至 2026 年 11 月 8 日，`productize-campus-shopping-experience` 的 46 项任务已在 `main` 版本全部完成。M0～M6 已覆盖消费者、AI 导购、商户、店员、平台和知识库的产品化链路；后续工作应从“补齐产品功能”转为“在不改变交易不变量的前提下收敛内部职责”。
 
-PR #63 对应的[远端真实验收记录](../testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #324 已通过，覆盖隔离镜像、MySQL、Redis、FastAPI、真实 Maven、HTTP 和浏览器链路；真实外部供应商 smoke 仍按配置跳过，生产部署和性能目标继续单独验收。
+PR #63 对应的[远端真实验收记录](../testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #325 已通过，覆盖隔离镜像、MySQL、Redis、FastAPI、真实 Maven、HTTP 和浏览器链路；真实外部供应商 smoke 仍按配置跳过，生产部署和性能目标继续单独验收。
 
 结构重构已经在独立分支 `codex/shoppingai-structure-refactor` 上完成，最终代码提交为 `afe7ce4`，并通过 PR #63 合入 `main`，合并提交为 `89e2981`。实现范围、定向测试和完成后的独立演进边界见[结构重构分支实施与验证记录](../testing/STRUCTURAL-REFACTOR-20261108.md)。
 
@@ -63,11 +63,15 @@ PR #63 对应的[远端真实验收记录](../testing/STRUCTURAL-REFACTOR-REMOTE
 
 这不是重新建设一套 CQRS 框架，也不要求为每条 SQL 机械新增 Repository 或领域服务。只有在能改善边界、并发或查询成本时，才收窄接口和调整投影。
 
+审查收口：对外展示和候选消费已经使用不可变快照，但 `ICatalogReadService` 的部分查询仍会恢复 `ProductAggregate`，再提取候选 ID 与有效 SKU。这是当前兼容实现的查询成本问题，不是已复现的业务故障；只有在查询计划和性能数据证明有收益时，才继续改为直接返回所需的只读投影。
+
 ### 3. Python AI/RAG：已完成 Provider 与检索融合边界（P1）
 
 本次已完成 Provider 边界拆分和检索融合/重排边界收敛。Query 理解、商品召回、知识检索、结构化结果生成和评测仍按真实职责分别演进；商品语义索引与知识检索不能因为都使用向量能力就强行合并。
 
 Python 只负责理解、检索和生成；预算、数量、SKU、价格、库存、权限和交易状态由 Java 最终裁决。跨语言契约测试用于防止语义漂移，不能通过复制两份交易规则来解决。
+
+审查收口：当前 `ChatProvider`、`EmbeddingProvider` 仍通过 `_ProviderCore` 保持兼容调用，真实聊天与嵌入实现尚未分别迁入两个类。暂不继续增加 Provider 抽象；只有出现独立替换聊天或嵌入供应商的需求时，才拆出对应实现。
 
 ### 4. Agent v1.1：完成后的独立产品阶段
 
@@ -82,6 +86,8 @@ Agent v1.1 作为完成后的独立产品阶段，未来采用受控 Tool Gatewa
 ### 6. 前端：已完成的渐进式结构整理
 
 本次已完成后台 Shell 元数据统一、Guide transport 抽取、`.vue` 试点、公共状态反馈、TypeScript API 类型、导购/订单/后台关键交互和生成副本校验。后续按业务边界继续拆页面、收敛状态归属和请求生命周期，不进行一次性全仓重写，也不因组件化改变接口或权限语义。
+
+审查收口：Guide、Merchant、MerchantOps 仍保留较大的页面级状态和交互代码；本次保留 transport 与后台 Shell 元数据抽取，后续只按实际修改热点逐步组件化，不重新发起全量 Vue SFC、Pinia 或 Vue Router 改造。
 
 ## 五、完成后的验收与演进顺序
 
