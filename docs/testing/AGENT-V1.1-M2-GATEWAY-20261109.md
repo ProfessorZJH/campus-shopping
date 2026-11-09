@@ -31,3 +31,15 @@ git diff --check
 ## 当前边界
 
 本记录证明 Java 代码与隔离 schema 的自动验证完成，不等同于真实 Python Runtime、NVIDIA/讯飞、Milvus、真实 MySQL 部署或端到端 HTTP 验收完成。M1 中 Milvus TLS 受配置门禁影响的 `DEGRADED/NOT_RUN` 结论仍然有效；真实供应商与跨服务验收留在后续集成阶段。
+
+## 真实配置复验（2026-11-10）
+
+使用根目录私有 `.env` 运行真实验收入口，未打印凭据，也未修改生产商品集合：
+
+- 真实讯飞原生 Tool Calling：`PASS`，1 次工具调用并继续生成回答。
+- 真实讯飞流式 Tool Calling：`PASS`，1 次工具调用并继续生成回答。
+- 真实 NVIDIA Embedding：`PASS`，向量维度 2048。
+- 隔离 Milvus 商品集合：`BLOCKED`；当前配置的 Milvus 业务连接未建立，TLS 19530 探测通过，443 探测超时。
+- Java/MySQL 事实复验和端到端 Agent 链路：`NOT_RUN`，因为本次没有进入可用 Milvus 隔离集合。
+
+脱敏证据：`docs/testing/evidence/agent-v1.1-m2-runtime.json`、`docs/testing/evidence/agent-v1.1-m2-products.json`。
