@@ -105,7 +105,7 @@ python ai-service/evaluate.py --safety-results var/evaluation/verification/evalu
 python -m evaluation.review_validation --dataset campus-shopping-v1 --annotations <复核包目录>/annotations.jsonl
 ```
 
-命令默认输出汇总，增加 `--details` 可查看逐例错误。`PASS` 仅代表这些字段通过结构检查，不能证明人工确实审阅、争议已正确裁决或数据集已冻结；它不会修改标注或把 DRAFT 改为 ACCEPTED。若人工更改 case/qrels，请对对应的已校验数据集运行检查，并按数据 README 更新版本与摘要。正式评测还须独立完成跨 split 近重复复核、数据集冻结和回答评审。
+命令默认输出汇总，增加 `--details` 可查看逐例错误。`PASS` 仅代表这些字段通过结构检查，不能证明人工确实审阅、争议已正确裁决或数据集已冻结；它不会修改标注或把 DRAFT 改为 ACCEPTED。数据集加载与复核包检查使用同一套人工评审元数据规则：空白评审人或来源、非法评审时间、未明确解除争议均不能进入正式评测。若人工更改 case/qrels，请对对应的已校验数据集运行检查，并按数据 README 更新版本与摘要。正式评测还须独立完成跨 split 近重复复核、数据集冻结和回答评审。
 
 重算核对评分器版本、输入和原始输出摘要，重建逐例指标及Markdown；修改review无需重调模型。comparisons.paired要求可比元数据，先按case平均重复，再按family固定seed bootstrap1000次；区间仅探索。报告按queryType给分类宏平均。
 
