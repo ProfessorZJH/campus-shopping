@@ -10,11 +10,10 @@ from __future__ import annotations
 import argparse
 import json
 from collections import Counter
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .dataset import DatasetError, digest, load, read_jsonl
+from .dataset import DatasetError, digest, human_review_metadata_errors, load, read_jsonl
 
 
 def _error(code: str, case_id: str | None = None) -> dict[str, str]:
@@ -22,16 +21,6 @@ def _error(code: str, case_id: str | None = None) -> dict[str, str]:
     if case_id is not None:
         result["caseId"] = case_id
     return result
-
-
-def _parse_timestamp(value: Any) -> bool:
-    if not isinstance(value, str) or not value.strip():
-        return False
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return False
-    return True
 
 
 def validate_review(data: dict[str, Any], annotations: list[dict[str, Any]]) -> dict[str, Any]:
@@ -63,16 +52,7 @@ def validate_review(data: dict[str, Any], annotations: list[dict[str, Any]]) -> 
 
         annotation = rows[0]
         previous_errors = len(errors)
-        if annotation.get("reviewStatus") != "HUMAN_REVIEWED":
-            errors.append(_error("NOT_HUMAN_REVIEWED", case_id))
-        if not isinstance(annotation.get("reviewer"), str) or not annotation["reviewer"].strip():
-            errors.append(_error("MISSING_REVIEWER", case_id))
-        if not _parse_timestamp(annotation.get("reviewedAt")):
-            errors.append(_error("INVALID_REVIEWED_AT", case_id))
-        if not isinstance(annotation.get("annotationSource"), str) or not annotation["annotationSource"].strip():
-            errors.append(_error("MISSING_ANNOTATION_SOURCE", case_id))
-        if annotation.get("disputed") is not False:
-            errors.append(_error("UNRESOLVED_DISPUTE", case_id))
+        errors.extend(_error(code, case_id) for code in human_review_metadata_errors(annotation))
         if annotation.get("datasetVersion") != manifest["version"]:
             errors.append(_error("DATASET_VERSION_MISMATCH", case_id))
         if annotation.get("caseHash") != digest(cases[case_id]):

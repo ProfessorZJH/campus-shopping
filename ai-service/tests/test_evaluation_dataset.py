@@ -52,6 +52,34 @@ def test_fake_accepted_manifest_cannot_promote_unreviewed_gold(data):
         validate(data, formal=True)
 
 
+@pytest.mark.parametrize("changes", [
+    {"reviewer": "  "},
+    {"reviewedAt": "not-a-date"},
+    {"annotationSource": "  "},
+    {"disputed": True},
+    {"disputed": 0},
+])
+def test_formal_validation_rejects_malformed_human_review(data, changes):
+    data["manifest"]["status"] = "ACCEPTED"
+    for annotation in data["annotations"]:
+        annotation.update(reviewStatus="HUMAN_REVIEWED", reviewer="human-1",
+                          reviewedAt="2026-11-10T10:00:00Z", annotationSource="AI_ASSISTED",
+                          disputed=False)
+    data["annotations"][0].update(changes)
+    with pytest.raises(DatasetError, match="invalid human review"):
+        validate(data, formal=True)
+
+
+def test_formal_validation_accepts_structurally_complete_review_records(data):
+    data["manifest"]["status"] = "ACCEPTED"
+    data["manifest"]["reviewedNearDuplicates"] = data["validation"]["nearDuplicateWarnings"]
+    for annotation in data["annotations"]:
+        annotation.update(reviewStatus="HUMAN_REVIEWED", reviewer="human-1",
+                          reviewedAt="2026-11-10T10:00:00Z", annotationSource="AI_ASSISTED",
+                          disputed=False)
+    assert validate(data, formal=True)["reviewed"] == 120
+
+
 def test_file_tampering_is_detected(tmp_path):
     path = generate(tmp_path / "dataset")
     with (path / "qrels.jsonl").open("a", encoding="utf-8") as f:
