@@ -15,6 +15,7 @@ from evaluation.runner import run
 from evaluation.stubs import FakeEmbedding, FakeMilvus
 from evaluation.cli import main
 from evaluation.comparisons import paired
+from app.milvus_rest import MilvusRestClient
 
 
 def test_repeat_and_recompute_are_deterministic_and_legacy_immutable(tmp_path):
@@ -61,6 +62,32 @@ def test_stub_cannot_claim_real_and_network_blocked(tmp_path):
     assert recorder.snapshot()['llm']['source'] == ['STUB']
     assert recorder.snapshot()['embedding']['failure'] == 1
     assert recorder.used == 2
+
+
+def test_real_milvus_rest_endpoint_is_allowlisted_and_recorded(tmp_path, monkeypatch):
+    settings = replace(
+        settings_for('local', tmp_path / 'k.db', 'eval_test'),
+        milvus_uri='https://milvus.example.test',
+        milvus_token='test-only-token',
+    )
+    recorder = Recorder('real-milvus', 4)
+
+    def handle_request(_transport, request):
+        assert str(request.url).startswith(settings.milvus_uri + '/')
+        return httpx.Response(200, json={'code': 0, 'data': {'has': False}})
+
+    monkeypatch.setattr(httpx.HTTPTransport, 'handle_request', handle_request)
+    with transport_scope(settings, recorder):
+        client = RecordedClient(
+            MilvusRestClient(settings.milvus_uri, settings.milvus_token), recorder, 'REAL'
+        )
+        assert client.has_collection(collection_name='eval_test') is False
+
+    product_vector = recorder.snapshot()['productVector']
+    assert product_vector['source'] == ['REAL']
+    assert product_vector['attempts'] == 1
+    assert product_vector['success'] == 1
+    assert product_vector['failure'] == 0
 
 
 def test_live_preflight_budget_failure_and_safe_errors(tmp_path, monkeypatch):
