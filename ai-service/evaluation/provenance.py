@@ -36,6 +36,10 @@ def settings_for(profile, db_path, collection):
         if active:
             for field, suffix in (('url', 'BASE_URL'), ('key', 'API_KEY'), ('model', 'MODEL')):
                 fields[prefix + '_' + field] = os.getenv(prefix.upper() + '_' + suffix, '').rstrip('/')
+    # Live LLM evaluations honor the application's configured read timeout;
+    # local/controlled and embedding-only profiles do not read this setting.
+    if profile in ('real-llm', 'live-full'):
+        fields['llm_timeout_seconds'] = int(os.getenv('LLM_TIMEOUT_SECONDS', '60'))
     if profile in ('real-milvus', 'live-full'):
         fields.update(milvus_uri=os.getenv('MILVUS_URI', ''), milvus_token=os.getenv('MILVUS_TOKEN', ''))
     return replace(base, **fields)
