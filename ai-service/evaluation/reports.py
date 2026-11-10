@@ -10,9 +10,10 @@ from pathlib import Path
 
 from .dataset import digest, write_json, write_jsonl, read_jsonl
 from .metrics import score, aggregate, hard_violations
+from .semantic_review import review_complete
 
 ROOT = Path(__file__).resolve().parents[2]
-SCORER_VERSION = '2'
+SCORER_VERSION = '3'
 
 
 def now():
@@ -59,7 +60,8 @@ def render(manifest, groups, rows):
         lines += ['- ' + g['experiment'] + ': ' + json.dumps({k: g[k] for k in
                   ('planned', 'failed', 'notRun', 'degraded', 'latency')}, ensure_ascii=False),
                   '  实际组件：' + json.dumps(components, ensure_ascii=False)]
-    lines += ['', '## 失败与待评', '', '引用来源合法不代表语义正确；回答/解释/语义泄漏待人类实际评审。', '']
+    lines += ['', '## 失败与待评', '', '人工评审状态：' + manifest['humanReview'] + '。',
+              '引用来源合法不代表语义正确；回答、解释与语义泄漏以人工实际评审记录为准。', '']
     for r in rows:
         if r['status'] not in ('EXECUTED',) or any(m['value'] == 0 for m in r.get('scores', {}).values()):
             lines.append('- ' + '/'.join(str(r.get(k, '')) for k in ('caseId', 'experiment', 'repeat', 'status')) +
@@ -84,7 +86,12 @@ def recompute(path):
         raise ValueError('raw result hash mismatch')
     cases = {c['caseId']: c for c in data['cases']}
     qrels = {c['caseId']: c for c in data['qrels']}
-    reviews = {(r['caseId'], r['experiment'], r['repeat']): r for r in read_jsonl(path / 'review.jsonl')}
+    reviews = {}
+    for review in read_jsonl(path / 'review.jsonl'):
+        key = (review['caseId'], review['experiment'], review['repeat'])
+        if key in reviews:
+            raise ValueError('duplicate review')
+        reviews[key] = review
     for r in rows:
         if r['caseId'] in cases:
             r['scores'] = score(data, cases[r['caseId']], qrels[r['caseId']], r,
@@ -105,10 +112,9 @@ def recompute(path):
                                **paired(left, right, metric, metadata_left=metadata, metadata_right=metadata)))
     write_json(path / 'comparisons.json', comparisons)
     required_reviews = [r for r in rows if r['task'] in ('knowledge', 'recommendation')]
-    completed_reviews = [reviews.get((r['caseId'], r['experiment'], r['repeat']), {}) for r in required_reviews]
-    complete = bool(completed_reviews) and all(r.get('reviewer') and r.get('reviewedAt') and
-                r.get('reviewStatus') == 'HUMAN_REVIEWED' and isinstance(r.get('semanticLeak'), bool)
-                for r in completed_reviews)
+    review_pairs = [(r, reviews.get((r['caseId'], r['experiment'], r['repeat']), {})) for r in required_reviews]
+    completed_reviews = [review for _, review in review_pairs]
+    complete = bool(review_pairs) and all(review_complete(review) for _, review in review_pairs)
     manifest['humanReview'] = 'COMPLETE' if complete else 'PENDING'
     violations = [dict(caseId=r['caseId'], experiment=r['experiment'], repeat=r['repeat'], metrics=hard_violations(r['scores']))
                   for r in rows if hard_violations(r['scores'])]
@@ -121,6 +127,8 @@ def recompute(path):
     if complete and manifest['dataset']['status'] == 'ACCEPTED' and manifest['exitCode'] == 0:
         manifest['status'] = 'FAILED' if any(r.get('semanticLeak') or any(a.get('supported') is False
             for a in r.get('assertions', [])) for r in completed_reviews) else 'PASS'
+    elif not complete and manifest['status'] == 'PASS':
+        manifest['status'] = 'PARTIAL'
     write_json(path / 'manifest.json', manifest)
     write_json(path / 'metrics.json', groups)
     write_jsonl(path / 'cases.jsonl', rows)
@@ -146,7 +154,8 @@ def save(path, data, rows, metadata):
     write_json(path / 'dataset-snapshot.json', data)
     write_jsonl(path / 'cases.jsonl', rows)
     write_jsonl(path / 'review.jsonl', [dict(caseId=r['caseId'], experiment=r['experiment'], repeat=r['repeat'],
-                 reviewStatus='PENDING', reviewer=None, reviewedAt=None, assertions=[], semanticLeak=None)
+                 reviewStatus='PENDING', reviewer=None, reviewedAt=None, assertions=[],
+                 noAssertionsReason=None, semanticLeak=None)
                  for r in rows if r['task'] in ('knowledge', 'recommendation')])
     recompute(path)
     return json.loads((path / 'manifest.json').read_text(encoding='utf-8'))

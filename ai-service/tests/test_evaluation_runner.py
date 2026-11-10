@@ -7,7 +7,7 @@ from pathlib import Path
 import httpx
 import pytest
 from app.retrieval import KnowledgeStore, Provider
-from evaluation.dataset import load, digest
+from evaluation.dataset import load, digest, validate, read_jsonl, write_jsonl
 from evaluation.provenance import (Recorder, RecordedProvider, RecordedClient, preflight, settings_for, transport_scope)
 from evaluation.resources import OwnedIndex, collection_name
 from evaluation.reports import new_run, recompute
@@ -45,6 +45,84 @@ def test_repeat_and_recompute_are_deterministic_and_legacy_immutable(tmp_path):
     assert old.read_bytes() == prior
     assert main(['--dataset', 'campus-shopping-v1', '--formal']) == 2
     assert main(['--dataset', 'campus-shopping-v1', '--split', 'smoke', '--experiments', 'E4', '--output-dir', str(tmp_path / 'bad')]) == 2
+
+
+@pytest.fixture
+def accepted_test_data():
+    """仅在测试内构造已评审数据；不改写仓库的 DRAFT 标注。"""
+    data = load()
+    for annotation in data['annotations']:
+        annotation.update(reviewStatus='HUMAN_REVIEWED', reviewer='fixture-reviewer',
+                          reviewedAt='2026-11-10T10:00:00Z', disputed=False)
+    data['manifest']['reviewedNearDuplicates'] = data['validation']['nearDuplicateWarnings']
+    data['manifest']['status'] = 'ACCEPTED'
+    data['validation'] = validate(data, formal=True)
+    data['datasetHash'] = digest(data['manifest'])
+    return data
+
+
+def test_formal_automatic_run_keeps_pending_human_review_partial(tmp_path, accepted_test_data):
+    path = new_run(tmp_path / 'formal')
+    manifest = run(accepted_test_data, path, split='smoke', experiments=('R-RULE',), release_strict=True)
+    assert manifest['exitCode'] == 0
+    assert manifest['humanReview'] == 'PENDING'
+    assert manifest['status'] == 'PARTIAL'
+
+
+def test_empty_claim_reviews_cannot_complete_or_promote_report(tmp_path, accepted_test_data):
+    path = new_run(tmp_path / 'formal')
+    run(accepted_test_data, path, split='smoke', experiments=('R-RULE',), release_strict=True)
+    reviews = read_jsonl(path / 'review.jsonl')
+    for review in reviews:
+        review.update(reviewStatus='HUMAN_REVIEWED', reviewer='fixture-reviewer',
+                      reviewedAt='2026-11-10T10:00:00Z', semanticLeak=False, assertions=[])
+    write_jsonl(path / 'review.jsonl', reviews)
+    recompute(path)
+    manifest = json.loads((path / 'manifest.json').read_text(encoding='utf-8'))
+    assert manifest['humanReview'] == 'PENDING'
+    assert manifest['status'] == 'PARTIAL'
+
+
+def test_duplicate_review_records_are_rejected(tmp_path, accepted_test_data):
+    path = new_run(tmp_path / 'formal')
+    run(accepted_test_data, path, split='smoke', experiments=('R-RULE',), release_strict=True)
+    reviews = read_jsonl(path / 'review.jsonl')
+    reviews.append(dict(reviews[0], semanticLeak=True))
+    write_jsonl(path / 'review.jsonl', reviews)
+    before = {name: (path / name).read_bytes() for name in ('manifest.json', 'metrics.json', 'cases.jsonl')}
+    with pytest.raises(ValueError, match='duplicate review'):
+        recompute(path)
+    assert before == {name: (path / name).read_bytes() for name in before}
+
+
+def test_report_tracks_actual_review_completion_and_reversion(tmp_path, accepted_test_data):
+    path = new_run(tmp_path / 'formal')
+    run(accepted_test_data, path, split='smoke', experiments=('R-RULE',), release_strict=True)
+    reviews = read_jsonl(path / 'review.jsonl')
+    for review in reviews:
+        review.update(reviewStatus='HUMAN_REVIEWED', reviewer='fixture-reviewer',
+                      reviewedAt='2026-11-10T10:00:00Z', semanticLeak=False,
+                      assertions=[{'supported': True}])
+    write_jsonl(path / 'review.jsonl', reviews)
+    recompute(path)
+    manifest = json.loads((path / 'manifest.json').read_text(encoding='utf-8'))
+    assert manifest['humanReview'] == 'COMPLETE' and manifest['status'] == 'PASS'
+
+    reviews[0]['reviewStatus'] = 'PENDING'
+    write_jsonl(path / 'review.jsonl', reviews)
+    recompute(path)
+    manifest = json.loads((path / 'manifest.json').read_text(encoding='utf-8'))
+    assert manifest['humanReview'] == 'PENDING' and manifest['status'] == 'PARTIAL'
+
+
+def test_scorer_v2_report_cannot_be_silently_recomputed(tmp_path):
+    path = new_run(tmp_path / 'historical')
+    manifest_path = path / 'manifest.json'
+    manifest_path.write_text('{"scorerVersion": "2"}\n', encoding='utf-8')
+    original = manifest_path.read_bytes()
+    with pytest.raises(ValueError, match='scorer version mismatch'):
+        recompute(path)
+    assert manifest_path.read_bytes() == original
 
 
 def test_stub_cannot_claim_real_and_network_blocked(tmp_path):
