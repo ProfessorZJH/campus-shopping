@@ -63,7 +63,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 @EnabledIfEnvironmentVariable(named = "AGENT_RUNTIME_PROCESS_TEST", matches = "true")
 class AgentRuntimeUvicornProcessIntegrationTest {
 
-    private static final Instant NOW = Instant.parse("2026-11-10T00:00:00Z");
+    private static final Instant NOW = Instant.now().plusSeconds(600);
     private static final String SERVICE_KEY = "service-key-for-process-test-123456";
     private static final String CAPABILITY = "capability-process-test";
     private static final String MODEL_KEY = "model-key-for-process-test";
