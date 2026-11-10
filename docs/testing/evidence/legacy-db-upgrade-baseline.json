@@ -1,0 +1,34 @@
+{
+  "status": "PASS",
+  "checks": [
+    "old database without image table upgrades, backfills once, and preserves migration history",
+    "replaying fresh schema on existing tables does not register unapplied upgrades",
+    "dirty historical amount stops migration without changing the row",
+    "all migrations replay twice and preserve historical snapshot",
+    "AI attempt and lease columns added to old schema without changing published knowledge or conversation history",
+    "fresh and upgraded database columns/indexes/constraints match",
+    "recorded migration checksum mismatch rejected before executing DDL",
+    "five invalid amount/quantity writes rejected by real MySQL CHECK"
+  ],
+  "existingDatabaseUsed": false,
+  "baselineReplays": [
+    {
+      "release": "v1.2.3-import",
+      "database": "campus_shopping_migration_it",
+      "fingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+    },
+    {
+      "release": "pre-redis-7bd21e2",
+      "database": "campus_shopping_baseline_pre_redis_7bd21e2",
+      "fingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+    },
+    {
+      "release": "pre-multiimage-ab31f89",
+      "database": "campus_shopping_baseline_pre_multiimage_ab31f89",
+      "fingerprint": "20b34de37cd953a3dd09d671ef22a031df0e77c3c543dd3f5f2f63fa00335bcc"
+    }
+  ],
+  "mysqlVersion": "8.0.31",
+  "maven": "NOT_RUN (--skip-maven)",
+  "temporaryDatabaseCleaned": true
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "baselines": [
+    {
+      "release": "v1.2.3-import",
+      "file": "docs/database/baselines/v1.2.3-import.sql",
+      "sourceCommit": "e5cd2c1",
+      "expectedHistoryPrefix": "",
+      "expectedHistory": [],
+      "sourceFingerprint": "6594fcd4cff4a05c19a8d079dbc9c6dbc6d42f678b450bd16ee9c3f45be6a3f9",
+      "targetFingerprint": "6c77e8dc45f0c5c541f7bad79702e9c609ce8a13794f7b359178db1b806ed6e3"
+    },
+    {
+      "release": "pre-redis-7bd21e2",
+      "file": "docs/database/baselines/pre-redis-7bd21e2.sql",
+      "sourceCommit": "7bd21e2^",
+      "expectedHistoryPrefix": "V20261028_01..V20261030_01",
+      "expectedHistory": ["V20261028_01", "V20261028_02", "V20261029_01", "V20261030_01"],
+      "sourceFingerprint": "0adf2987adf2b2f201599b683eb132834cbec5ee641603d5a6c8a4d1f18cb5a5",
+      "targetFingerprint": "6c77e8dc45f0c5c541f7bad79702e9c609ce8a13794f7b359178db1b806ed6e3"
+    },
+    {
+      "release": "pre-multiimage-ab31f89",
+      "file": "docs/database/baselines/pre-multiimage-ab31f89.sql",
+      "sourceCommit": "ab31f89^",
+      "expectedHistoryPrefix": "V20261028_01..V20261031_03",
+      "expectedHistory": ["V20261028_01", "V20261028_02", "V20261029_01", "V20261030_01", "V20261031_01", "V20261031_02", "V20261031_03"],
+      "sourceFingerprint": "7fc16b68aa7356912644b302df67153e9ad87c8629972c0c4651875958d66541",
+      "targetFingerprint": "6c77e8dc45f0c5c541f7bad79702e9c609ce8a13794f7b359178db1b806ed6e3"
+    }
+  ]
+}
