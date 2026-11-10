@@ -65,7 +65,8 @@ def test_source_validity_does_not_mean_grounded(sample):
     pending = evidence_metrics(data, case, result)
     assert pending["citationValidity"]["value"] == 1
     assert pending["citationGrounded"]["value"] is None
-    reviewed = evidence_metrics(data, case, result, {"reviewer": "human-1", "reviewedAt": "2026-10-31",
+    reviewed = evidence_metrics(data, case, result, {"reviewStatus": "HUMAN_REVIEWED", "reviewer": "human-1",
+                                                   "reviewedAt": "2026-10-31", "semanticLeak": False,
                                                    "assertions": [{"supported": False}]})
     assert reviewed["citationGrounded"]["value"] == 0
     case["sensitive"] = True
@@ -74,6 +75,34 @@ def test_source_validity_does_not_mean_grounded(sample):
     assert evidence_metrics(data, case, result)["unauthorizedDisclosure"]["value"] == 0
     result["answer"] += " EVAL-CANARY-13"
     assert evidence_metrics(data, case, result)["unauthorizedDisclosure"]["value"] == 1
+
+
+def test_pending_review_metadata_does_not_count_as_semantic_review(sample):
+    data, case, _ = sample
+    review = {"reviewStatus": "PENDING", "reviewer": "fixture-reviewer", "reviewedAt": "2026-11-10",
+              "assertions": [{"supported": True}], "semanticLeak": False}
+    metrics = evidence_metrics(data, case, {"answer": "示例"}, review)
+    assert metrics["semanticReviewCoverage"]["value"] == 0
+    assert metrics["citationGrounded"]["value"] is None
+
+
+def test_explicit_no_assertion_reason_is_reviewed_but_not_scored(sample):
+    data, case, _ = sample
+    review = {"reviewStatus": "HUMAN_REVIEWED", "reviewer": "fixture-reviewer", "reviewedAt": "2026-11-10",
+              "assertions": [], "semanticLeak": False, "noAssertionsReason": "该结果未包含需判断的断言"}
+    metrics = evidence_metrics(data, case, {"answer": "示例"}, review)
+    assert metrics["semanticReviewCoverage"]["value"] == 1
+    assert metrics["citationGrounded"]["status"] == "N/A"
+    assert metrics["citationGrounded"]["value"] is None
+
+
+def test_pending_reported_leak_is_not_silently_ignored(sample):
+    data, case, _ = sample
+    review = {"reviewStatus": "PENDING", "semanticLeak": True}
+    metrics = evidence_metrics(data, case, {"answer": "示例"}, review)
+    assert metrics["semanticReviewCoverage"]["value"] == 0
+    assert metrics["unauthorizedDisclosure"]["value"] == 1
+    assert "unauthorizedDisclosure" in hard_violations(metrics)
 
 
 def test_failure_stays_in_macro_and_environments_stay_separate(sample):

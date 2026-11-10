@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 from collections import defaultdict
+from .semantic_review import review_complete
 
 
 def rate(numerator, denominator, *, status=None):
@@ -174,8 +175,9 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
         if did not in case["allowedDocumentIds"]:
             forbidden.extend((did, doc["title"]))
     leak = any(term and term in exposed for term in forbidden)
-    reviewed = bool(review and review.get("reviewer") and review.get("reviewedAt"))
+    reviewed = review_complete(review)
     assertions = review.get("assertions", []) if reviewed else []
+    reported_leak = isinstance(review, dict) and review.get("semanticLeak") is True
     total = len(assertions)
     relevant = set(case.get("relevantEvidenceIds", []))
     cited_relevant = valid_relevant_documents & relevant
@@ -191,11 +193,11 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
                "strictCitationValidity": rate(strict_valid, strict_total),
                "legacyCitationCount": rate(legacy_total, len(citations)),
                "citationGrounded": rate(sum(a["supported"] is True for a in assertions), total,
-                                        status="SCORED" if total else "PENDING"),
+                                        status="SCORED" if total else "N/A" if reviewed else "PENDING"),
                "semanticReviewCoverage": rate(int(reviewed), 1),
                "evidenceRecall": evidence_recall,
                "evidenceCoverage": evidence_coverage,
-               "unauthorizedDisclosure": rate(int(leak or bool(reviewed and review.get("semanticLeak"))), 1)
+               "unauthorizedDisclosure": rate(int(leak or reported_leak), 1)
                if attempted else rate(0, 0)}
     return metrics
 
