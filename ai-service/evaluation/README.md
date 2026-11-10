@@ -99,6 +99,14 @@ python ai-service/evaluate.py --safety-results var/evaluation/verification/evalu
 
 复核包包含120例、完整语料和DRAFT标注副本。实际完成回答评审时还须填写`reviewStatus=HUMAN_REVIEWED`；数据gold冻结与回答评审是两份独立记录。安全汇总若缺少测试导出会保留NOT_RUN并退出1；必须同时核查JUnit失败，缺文件不能证明测试没有执行或已经通过。
 
+人工完成数据标注后，可在 `ai-service` 目录检查复核记录的覆盖率、身份、时间、来源、版本、争议和快照摘要：
+
+```powershell
+python -m evaluation.review_validation --dataset campus-shopping-v1 --annotations <复核包目录>/annotations.jsonl
+```
+
+命令默认输出汇总，增加 `--details` 可查看逐例错误。`PASS` 仅代表这些字段通过结构检查，不能证明人工确实审阅、争议已正确裁决或数据集已冻结；它不会修改标注或把 DRAFT 改为 ACCEPTED。若人工更改 case/qrels，请对对应的已校验数据集运行检查，并按数据 README 更新版本与摘要。正式评测还须独立完成跨 split 近重复复核、数据集冻结和回答评审。
+
 重算核对评分器版本、输入和原始输出摘要，重建逐例指标及Markdown；修改review无需重调模型。comparisons.paired要求可比元数据，先按case平均重复，再按family固定seed bootstrap1000次；区间仅探索。报告按queryType给分类宏平均。
 
 v2不自动改写v1历史报告，跨评分器版本的直接配对会被拒绝。`--recompute`会重新执行相同硬门禁并返回保存结果的退出码；它不会把已失败的suite变成退出0。
