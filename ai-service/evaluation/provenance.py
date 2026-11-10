@@ -117,6 +117,15 @@ def transport_scope(settings, recorder, handler=None):
 
         def handle_request(self, request):
             component = next((p for url, p in origins.items() if str(request.url).startswith(url + '/')), None)
+            # Real Milvus REST traffic is wrapped by RecordedClient, which records
+            # the operation at the ProductIndex boundary.  The transport must
+            # still allow that one configured endpoint through the same explicit
+            # allowlist used for the model providers, without double-counting it.
+            milvus_origin = settings.milvus_uri.rstrip('/') if settings.milvus_uri else ''
+            if component is None and milvus_origin and str(request.url).startswith(milvus_origin + '/'):
+                if offline and source != 'STUB':
+                    raise httpx.TransportError('evaluation network blocked')
+                return self.inner.handle_request(request)
             if component is None or (offline and source != 'STUB'):
                 raise httpx.TransportError('evaluation network blocked')
             outcome = 'FAILED'
