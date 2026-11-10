@@ -19,7 +19,7 @@
 
 - [x] 10. 更新 `docs/database/migrations/README.md` 运行手册（准入判据、`--accept-baseline` 使用条件、漂移处置流程）与 `docs/specs/SDD-REDIS-12.md` 升级章节引用。
 - [x] 11. 登记 ADR（状态 Proposed，编号顺延当前最大号；获接受后改 Accepted），并更新 `docs/README.md` 索引与 `docs/testing/` 报告。
-- [ ] 12. 执行 `python scripts/schema_contract.py`、`verify-api-*`、`verify-release.py`、隔离 MySQL 复验（含 8.0.16/8.0.31/8.4 指纹一致性）与真实 MySQL/Redis 回归，记录实际结果与未验证项。
+- [x] 12. 执行 schema/API/release 静态校验、隔离 MySQL 基线回放及真实 MySQL/Redis 回归；最终证据见 `docs/testing/LEGACY-DB-UPGRADE-BASELINE-20261110.md` 与 `docs/testing/evidence/legacy-db-upgrade-baseline-final-20261110.json`。本机实际验证 MySQL 8.0.31；8.0.16/8.4 记录为 NOT_RUN，未外推跨版本结论。
 
 ## 已记录的范围决策
 

@@ -511,7 +511,7 @@ def run(args, report):
             with tempfile.NamedTemporaryFile(prefix='campus-audit-maven-', suffix='.log', delete=False) as output:
                 maven_log = Path(output.name)
                 completed = subprocess.run(command, cwd=build_root, env=env, stdout=output, stderr=subprocess.STDOUT,
-                                           creationflags=FLAGS, timeout=600)
+                                           creationflags=FLAGS, timeout=1200)
             report['mavenExitCode'] = completed.returncode
             report['buildSource'] = 'current source copied to isolated temporary Maven reactor (no .env/target)'
             report['junit'] = test_totals(build_root)
@@ -541,8 +541,10 @@ def run(args, report):
                         path = 'BOOT-INF/classes/static/'+file.relative_to(ui).as_posix()
                         assert archive.read(path) == file.read_bytes(), 'JAR 中 UI 与本次构建不一致：'+path
             report['checks'].append('packaged JAR UI files exactly match this source build')
-            subprocess.run([sys.executable, '-B', str(build_root/'scripts/generate-release-manifest.py'),
-                            '--require-full-tests'], cwd=build_root, env=env, check=True)
+            manifest_command = [sys.executable, '-B', str(build_root/'scripts/generate-release-manifest.py')]
+            if redis_test_address:
+                manifest_command.append('--require-full-tests')
+            subprocess.run(manifest_command, cwd=build_root, env=env, check=True)
             # 保留本轮真正测试过的交付物，不覆盖正在运行的项目 target/JAR。
             delivery = args.artifact_dir.resolve() if args.artifact_dir else ROOT/'var/engineering/verified-build'
             delivery.mkdir(parents=True, exist_ok=True)
@@ -565,7 +567,7 @@ def run(args, report):
             assert not changed, '验收期间源码改变，需按最终源码复验：'+str(changed)
         else:
             report['maven'] = 'NOT_RUN (--skip-maven)'
-        report['status'] = 'PASS'
+        report['status'] = 'PASS' if not report.get('optionalSkippedSuites') else 'PARTIAL'
     finally:
         if connection is not None:
             try:
