@@ -64,6 +64,17 @@ def test_stub_cannot_claim_real_and_network_blocked(tmp_path):
     assert recorder.used == 2
 
 
+def test_real_profile_copies_configured_llm_timeout(monkeypatch, tmp_path):
+    monkeypatch.setenv('LLM_TIMEOUT_SECONDS', '7')
+    settings = settings_for('real-llm', tmp_path / 'k.db', 'eval_test')
+    assert settings.llm_timeout_seconds == 7
+    monkeypatch.setenv('LLM_TIMEOUT_SECONDS', 'invalid')
+    with pytest.raises(ValueError):
+        settings_for('real-llm', tmp_path / 'k.db', 'eval_test')
+    assert settings_for('local', tmp_path / 'local.db', 'eval_test').llm_timeout_seconds == 60
+    assert settings_for('real-embedding', tmp_path / 'embedding.db', 'eval_test').llm_timeout_seconds == 60
+
+
 def test_real_milvus_rest_endpoint_is_allowlisted_and_recorded(tmp_path, monkeypatch):
     settings = replace(
         settings_for('local', tmp_path / 'k.db', 'eval_test'),
