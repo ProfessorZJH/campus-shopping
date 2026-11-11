@@ -24,6 +24,7 @@ const staticCategoryArt = {
   fruit: './images/category-fruit.webp',
   stationery: './images/category-stationery.webp',
   daily: './images/category-daily.webp',
+  digital: './images/category-digital.webp',
 };
 export default {
   name: 'Home',
