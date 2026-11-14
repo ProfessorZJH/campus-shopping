@@ -24,5 +24,17 @@
             <groupId>cn.bugstack.ai</groupId>
             <artifactId>campus-shopping-types</artifactId>
         </dependency>
+        <!-- 领域层单测：纯 JUnit 5 + ArchUnit，不启动 Spring 上下文、不连数据库。 -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>${archunit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>
