@@ -117,6 +117,8 @@ jobs:
       - name: API / SDD / source safety checks
         run: |
           python scripts/verify-java-readability.py
+          python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions
+          python scripts/verify-mapper-scan.py
           python scripts/verify-api-contract.py
           python scripts/verify-api-schemas.py
           python scripts/verify-fix-regressions.py
