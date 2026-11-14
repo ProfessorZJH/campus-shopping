@@ -1,0 +1,647 @@
+{
+  "meta": {
+    "title": "校园智能导购 · 项目全景代码地图",
+    "h1": "校园智能导购 · 项目全景",
+    "subtitle": "当前工作区源码 · 分支 <b>main</b> · HEAD <b>ea1bf0c</b> · 2026-11-12 · 连线表示主要协作",
+    "stats": [
+      {
+        "num": "3",
+        "lbl": "角色入口"
+      },
+      {
+        "num": "7",
+        "lbl": "业务上下文"
+      },
+      {
+        "num": "7",
+        "lbl": "Java 模块"
+      }
+    ],
+    "project": "campus-shopping",
+    "docCap": "架构与业务 · 当前实现",
+    "slug": "campus-shopping-project-overview-20261112",
+    "welcomeSub": "<b>完整项目导览</b>：角色功能 → Java 七个领域 → AI 与基础设施",
+    "welcomeItems": [
+      {
+        "icon": "🧭",
+        "html": "点击顶部<b>跟着流程走</b>，按 10 站认识消费者、商户、平台以及交易和 AI。"
+      },
+      {
+        "icon": "🔗",
+        "html": "点击工程树、图节点或说明卡查看<b>三栏联动</b>；右侧可打开源码和原有下单专题。"
+      },
+      {
+        "icon": "🔍",
+        "html": "全景看系统分层，时序看 AI 示例，流程看业务能力。灰色为已有代码，蓝色为外部依赖；模板图例中的“1-3 复用”和“外部网关”是示例文字。"
+      }
+    ]
+  },
+  "tabs": [
+    "over",
+    "seq",
+    "flow"
+  ],
+  "over": "flowchart LR\nsubgraph FRONT[\"前端 · 三类角色\"]\n H[\"Home.js<br/>消费者购物\"]\n G[\"Guide.js<br/>智能导购\"]\n M[\"MerchantOps.js<br/>商户管理\"]\n P[\"Platform.js<br/>平台监管\"]\nend\nsubgraph ENTRY[\"启动 / 契约 / 入口\"]\n BOOT[\"Application<br/>启动与配置\"]\n API[\"IOrderApi<br/>接口和 DTO 代表\"]\n HTTP[\"OrderController<br/>HTTP 入口代表\"]\n STREAM[\"AiStreamEndpoint<br/>导购进度\"]\n ERR[\"ResponseCode<br/>公共业务错误\"]\nend\nsubgraph CASE[\"Case · 跨域编排\"]\n CHECK[\"CheckoutCaseImpl<br/>下单事务\"]\n LIFE[\"OrderLifecycleCaseImpl<br/>支付 / 自提 / 售后\"]\n AI[\"ShoppingAiCaseImpl<br/>导购与提案\"]\n AGENT[\"AgentRuntimeCaseImpl<br/>可选智能体\"]\nend\nsubgraph DOM[\"Domain · 七个上下文\"]\n ID[\"AccessServiceImpl<br/>Identity · 账号权限\"]\n MER[\"MerchantServiceImpl<br/>Merchant · 入驻经营\"]\n CAT[\"CatalogServiceImpl<br/>Catalog · 商品报价\"]\n INV[\"InventoryServiceImpl<br/>Inventory · 库存\"]\n TRADE[\"OrderServiceImpl<br/>Trading · 订单售后\"]\n PICK[\"FulfillmentServiceImpl<br/>Fulfillment · 自提\"]\n CONV[\"ConversationServiceImpl<br/>ShoppingAI · 会话知识\"]\nend\nsubgraph ADAPT[\"Infrastructure · 适配与数据\"]\n REPO[\"OrderRepository<br/>MyBatis 仓储代表\"]\n REDCONF[\"RedisInfrastructureConfig<br/>共享运行配置\"]\n GW[\"AiGatewayService<br/>Python HTTP 网关\"]\n DB[(\"MySQL<br/>交易事实库\")]\n RED[(\"Redis / Redisson<br/>会话 / 限流 / 协调\")]\nend\nsubgraph PY[\"ai-service · 检索与模型\"]\n MAIN[\"main.py<br/>FastAPI 入口\"]\n IDX[\"product_index.py<br/>商品语义投影\"]\n MIL[\"Milvus<br/>商品语义 · 可选\"]\n QDR[\"Qdrant<br/>知识检索 · 可选\"]\n MODEL[\"模型服务 / 本地后备<br/>按环境配置\"]\nend\n TEST[\"CommerceMySqlIntegrationTest<br/>既有测试\"]\n H --> HTTP\n M --> HTTP\n P --> HTTP\n G --> STREAM\n BOOT -.装配.-> HTTP\n BOOT -.装配.-> REDCONF\n HTTP -.接口契约.-> API\n HTTP -.错误响应.-> ERR\n HTTP --> CHECK\n HTTP --> LIFE\n STREAM --> AI\n CHECK --> MER\n CHECK --> CAT\n CHECK --> INV\n CHECK --> TRADE\n LIFE --> TRADE\n LIFE --> PICK\n AI --> CONV\n AI -.候选复验协作.-> CAT\n AI -.库存复验协作.-> INV\n AI --> GW\n AGENT -.可选运行时网关.-> MAIN\n HTTP -.身份权限.-> ID\n REPO -.实现领域仓储端口.-> TRADE\n REPO --> DB\n REDCONF --> RED\n GW --> MAIN\n MAIN --> IDX\n IDX -.按配置.-> MIL\n MAIN -.知识检索按配置.-> QDR\n MAIN -.按配置.-> MODEL\n TEST -.覆盖交易用例.-> CHECK\n\nclassDef newc fill:#e6f6ec,stroke:#17a45f,stroke-width:2px,color:#0b5c3a\nclassDef oldc fill:#f1f3f6,stroke:#9aa3af,stroke-width:1.2px,stroke-dasharray:5 3\nclassDef extc fill:#eaf1fe,stroke:#3574f0\nclassDef warnc fill:#fff4e0,stroke:#e6a23c\nclassDef errc fill:#fdecec,stroke:#e5484d\n\nclass H,G,M,P,BOOT,API,HTTP,STREAM,ERR,CHECK,LIFE,AI,AGENT,ID,MER,CAT,INV,TRADE,PICK,CONV,REPO,REDCONF,GW,MAIN,IDX,TEST oldc\nclass DB,RED,MIL,QDR,MODEL extc\n",
+  "seq": "sequenceDiagram\nautonumber\nactor USER as 消费者\nparticipant GUIDE as Guide.js\nparticipant STREAM as AiStreamEndpoint\nparticipant CASE as ShoppingAiCaseImpl\nparticipant CONV as ConversationServiceImpl\nparticipant PORT as AiEnginePort\nparticipant GATE as AiGatewayService\nparticipant PY as main.py\nparticipant SHORT as ConversationTurnCaseImpl\nparticipant CONFIRM as ProposalConfirmationCaseImpl\nparticipant CAT as CatalogServiceImpl\nparticipant INV as InventoryServiceImpl\nparticipant CART as CartServiceImpl\nUSER->>GUIDE: 发起导购会话\nGUIDE->>STREAM: POST /api/v1/ai/chat/stream\nSTREAM->>CASE: chatStream\nCASE->>CONV: beginTurn 获取会话租约\nNote over CASE,PY: Java 收集可读知识范围和候选商品；远程调用期间不持有数据库事务\nCASE->>PORT: IAiEnginePort 召回与查询\nPORT->>GATE: 调用 HTTP 网关\nGATE->>PY: 受控检索 / 流式查询\nPY-->>GATE: 返回建议及知识引用\nGATE-->>PORT: 返回 AI 结果\nPORT-->>CASE: 返回适配结果\nCASE->>CASE: Java 复核候选、报价、库存与知识授权\nCASE->>SHORT: complete 当前轮次\nNote over SHORT: 短事务校验租约并提交消息与提案\nSHORT-->>CASE: 会话与可信提案\nCASE-->>STREAM: 完整结果\nSTREAM-->>GUIDE: completed 事件与进度\nUSER->>GUIDE: 选择商品并确认提案\nGUIDE->>CASE: 经 ShoppingAiController 确认提案\nCASE->>CONFIRM: confirm\nNote over CONFIRM,CART: 单个本地事务内校验本人、商户、报价版本和库存\nCONFIRM->>CAT: 读取并锁定当前报价\nCONFIRM->>INV: 读取当前库存\nCONFIRM->>CART: 幂等确认并加购\nCONFIRM-->>GUIDE: 返回确认状态\nNote over USER,CART: 只加入购物车；下单与模拟付款由用户另行发起\n",
+  "flow": "flowchart TB\nsubgraph ROLES[\"面向三类角色的能力\"]\n H[\"Home.js<br/>消费者\"]\n G[\"Guide.js<br/>智能导购\"]\n M[\"MerchantOps.js<br/>商户后台\"]\n P[\"Platform.js<br/>平台后台\"]\nend\nsubgraph BUSINESS[\"七个业务上下文\"]\n ID[\"AccessServiceImpl<br/>Identity · 账号 / 成员 / 权限\"]\n MER[\"MerchantServiceImpl<br/>Merchant · 入驻 / 审核 / 经营\"]\n CAT[\"CatalogServiceImpl<br/>Catalog · 商品 / SKU / 报价\"]\n INV[\"InventoryServiceImpl<br/>Inventory · 补货 / 预占 / 释放\"]\n TRADE[\"OrderServiceImpl<br/>Trading · 购物车 / 订单 / 模拟支付 / 售后\"]\n PICK[\"FulfillmentServiceImpl<br/>Fulfillment · 备货 / 自提 / 核销\"]\n CONV[\"ConversationServiceImpl<br/>ShoppingAI · 对话 / 提案 / 知识\"]\nend\n H --> CAT\n H --> TRADE\n G --> CONV\n M --> MER\n M --> CAT\n M --> INV\n M --> PICK\n P --> MER\n P --> CAT\n P --> TRADE\n ID -.身份与权限.-> MER\n ID -.身份与权限.-> TRADE\n CAT -.商品 / 库存协作.-> INV\n TRADE -.支付后履约.-> PICK\n CONV -.候选复验.-> CAT\n CONV -.库存复验.-> INV\n CONV -.确认后加购.-> TRADE\n\nclassDef newc fill:#e6f6ec,stroke:#17a45f,stroke-width:2px,color:#0b5c3a\nclassDef oldc fill:#f1f3f6,stroke:#9aa3af,stroke-width:1.2px,stroke-dasharray:5 3\nclassDef extc fill:#eaf1fe,stroke:#3574f0\nclassDef warnc fill:#fff4e0,stroke:#e6a23c\nclassDef errc fill:#fdecec,stroke:#e5484d\n\nclass H,G,M,P,ID,MER,CAT,INV,TRADE,PICK,CONV oldc\n",
+  "tree": [
+    {
+      "t": "module",
+      "n": "frontend",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "src/pages",
+          "children": [
+            {
+              "t": "class",
+              "n": "Home.js",
+              "b": "old",
+              "doc": "home",
+              "kw": [
+                "Home.js"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "Guide.js",
+              "b": "old",
+              "doc": "guide",
+              "kw": [
+                "Guide.js"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "MerchantOps.js",
+              "b": "old",
+              "doc": "merchantui",
+              "kw": [
+                "MerchantOps.js"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "Platform.js",
+              "b": "old",
+              "doc": "platformui",
+              "kw": [
+                "Platform.js"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-api",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "api",
+          "children": [
+            {
+              "t": "iface",
+              "n": "IOrderApi",
+              "b": "old",
+              "doc": "api",
+              "kw": [
+                "IOrderApi"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-trigger",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "trigger/http",
+          "children": [
+            {
+              "t": "class",
+              "n": "OrderController",
+              "b": "old",
+              "doc": "http",
+              "kw": [
+                "OrderController"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "AiStreamEndpoint",
+              "b": "old",
+              "doc": "stream",
+              "kw": [
+                "AiStreamEndpoint"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-case",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "cases",
+          "children": [
+            {
+              "t": "class",
+              "n": "CheckoutCaseImpl",
+              "b": "old",
+              "doc": "checkout",
+              "kw": [
+                "CheckoutCaseImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "OrderLifecycleCaseImpl",
+              "b": "old",
+              "doc": "lifecycle",
+              "kw": [
+                "OrderLifecycleCaseImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "ShoppingAiCaseImpl",
+              "b": "old",
+              "doc": "aicase",
+              "kw": [
+                "ShoppingAiCaseImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "AgentRuntimeCaseImpl",
+              "b": "old",
+              "doc": "agent",
+              "kw": [
+                "AgentRuntimeCaseImpl"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-domain",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "domain · 七个上下文",
+          "children": [
+            {
+              "t": "class",
+              "n": "AccessServiceImpl",
+              "b": "old",
+              "doc": "identity",
+              "kw": [
+                "AccessServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "MerchantServiceImpl",
+              "b": "old",
+              "doc": "merchant",
+              "kw": [
+                "MerchantServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "CatalogServiceImpl",
+              "b": "old",
+              "doc": "catalog",
+              "kw": [
+                "CatalogServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "InventoryServiceImpl",
+              "b": "old",
+              "doc": "inventory",
+              "kw": [
+                "InventoryServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "OrderServiceImpl",
+              "b": "old",
+              "doc": "trading",
+              "kw": [
+                "OrderServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "FulfillmentServiceImpl",
+              "b": "old",
+              "doc": "fulfillment",
+              "kw": [
+                "FulfillmentServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "ConversationServiceImpl",
+              "b": "old",
+              "doc": "aidomain",
+              "kw": [
+                "ConversationServiceImpl"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-infrastructure",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "adapter / gateway / redis",
+          "children": [
+            {
+              "t": "class",
+              "n": "OrderRepository",
+              "b": "old",
+              "doc": "repo",
+              "kw": [
+                "OrderRepository"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "RedisInfrastructureConfig",
+              "b": "old",
+              "doc": "redis",
+              "kw": [
+                "RedisInfrastructureConfig"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "AiGatewayService",
+              "b": "old",
+              "doc": "gateway",
+              "kw": [
+                "AiGatewayService"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-app",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "应用与测试",
+          "children": [
+            {
+              "t": "class",
+              "n": "Application",
+              "b": "old",
+              "doc": "boot",
+              "kw": [
+                "Application"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "CommerceMySqlIntegrationTest",
+              "b": "old",
+              "doc": "test",
+              "kw": [
+                "CommerceMySqlIntegrationTest"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-types",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "types/enums",
+          "children": [
+            {
+              "t": "class",
+              "n": "ResponseCode",
+              "b": "old",
+              "doc": "types",
+              "kw": [
+                "ResponseCode"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "ai-service",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "app",
+          "children": [
+            {
+              "t": "class",
+              "n": "main.py",
+              "b": "old",
+              "doc": "python",
+              "kw": [
+                "main.py"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "product_index.py",
+              "b": "old",
+              "doc": "index",
+              "kw": [
+                "product_index.py"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "docs": [
+    {
+      "id": "home",
+      "b": "复用",
+      "t": "消费者入口 · 浏览到交易",
+      "f": "frontend/src/pages/Home.js",
+      "body": "<ul><li>消费者可浏览首页、商户和商品，管理购物车、订单、自提与售后。</li><li>商品价格、库存和经营资格在 Java 后端复验；页面展示不构成交易事实。</li><li>从 <b>Guide.js</b> 进入智能导购，可将可信提案确认加入购物车。</li></ul><p><a href=\"../../../frontend/src/pages/Home.js\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../frontend/src/pages/Shop.js\" target=\"_blank\" rel=\"noopener\">商品列表</a> · <a href=\"../../../frontend/src/pages/Cart.js\" target=\"_blank\" rel=\"noopener\">购物车</a> · <a href=\"../../../frontend/src/pages/Orders.js\" target=\"_blank\" rel=\"noopener\">订单</a></p>"
+    },
+    {
+      "id": "guide",
+      "b": "复用",
+      "t": "Guide.js · 智能导购界面",
+      "f": "frontend/src/pages/Guide.js",
+      "body": "<ul><li>会话页面接收流式进度与完成结果，展示对话、引用和可确认提案。</li><li>用户确认提案后由服务端复验并加购；不会由模型自动下单或支付。</li><li>会话取消、恢复和失败状态由前后端共同处理。</li></ul><p><a href=\"../../../frontend/src/pages/Guide.js\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../frontend/src/services/guide-conversation.js\" target=\"_blank\" rel=\"noopener\">会话传输</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/ShoppingAiController.java\" target=\"_blank\" rel=\"noopener\">提案入口</a></p>"
+    },
+    {
+      "id": "merchantui",
+      "b": "复用",
+      "t": "商户后台 · 商品、履约、知识与权限",
+      "f": "frontend/src/pages/MerchantOps.js",
+      "body": "<ul><li>商户后台包含工作台、商品和库存管理、订单、自提核销、售后、店员、角色、知识库及门店设置。</li><li>各菜单对应商户权限；界面路由权限只用于展示，实际授权仍由服务端判定。</li><li>商户可管理知识及检索调试，知识可见范围和外发规则须经过 Java 校验。</li></ul><p><a href=\"../../../frontend/src/pages/MerchantOps.js\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../frontend/src/services/backoffice-metadata.js\" target=\"_blank\" rel=\"noopener\">导航与权限</a> · <a href=\"../../../frontend/src/pages/Knowledge.js\" target=\"_blank\" rel=\"noopener\">知识管理</a> · <a href=\"../../../frontend/src/pages/RoleManager.js\" target=\"_blank\" rel=\"noopener\">角色权限</a></p>"
+    },
+    {
+      "id": "platformui",
+      "b": "复用",
+      "t": "平台后台 · 入驻审核与监管",
+      "f": "frontend/src/pages/Platform.js",
+      "body": "<ul><li>平台后台覆盖商户申请审核、商户和商品监管、订单与争议、分类、知识库以及统计。</li><li>商户开通由 Merchant 与 Identity 协作；监管和售后决定遵循服务端的权限与状态规则。</li><li>这些功能与消费者交易共用业务服务，并不是独立部署的后台微服务。</li></ul><p><a href=\"../../../frontend/src/pages/Platform.js\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../frontend/src/services/backoffice-metadata.js\" target=\"_blank\" rel=\"noopener\">后台导航</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/MerchantApplicationController.java\" target=\"_blank\" rel=\"noopener\">商户审核入口</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/AfterSaleController.java\" target=\"_blank\" rel=\"noopener\">售后争议入口</a></p>"
+    },
+    {
+      "id": "api",
+      "b": "复用",
+      "t": "API · 接口与 DTO 契约",
+      "f": "campus-shopping-api/src/main/java/cn/bugstack/ai/api/IOrderApi.java",
+      "body": "<ul><li>campus-shopping-api 定义 HTTP 对应的接口、请求和响应 DTO；图中以 IOrderApi 为代表。</li><li>IShoppingAiApi、ICatalogApi、IAfterSaleApi 等分别描述其他能力。</li><li>修改接口应同步生成契约及字段规则，并核对行为契约。</li></ul><p><a href=\"../../../campus-shopping-api/src/main/java/cn/bugstack/ai/api/IOrderApi.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-api/src/main/java/cn/bugstack/ai/api/IShoppingAiApi.java\" target=\"_blank\" rel=\"noopener\">导购接口</a> · <a href=\"../../../docs/api/http-api.md\" target=\"_blank\" rel=\"noopener\">HTTP 契约</a> · <a href=\"../../../docs/api/behavior-v1.1.md\" target=\"_blank\" rel=\"noopener\">行为契约</a></p>"
+    },
+    {
+      "id": "http",
+      "b": "复用",
+      "t": "Trigger · HTTP 及后台任务入口",
+      "f": "campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/OrderController.java",
+      "body": "<ul><li>OrderController 是订单入口代表；身份、商户、商品、库存、售后、知识和导购各有自己的 Controller。</li><li>入口处理参数、可信身份和业务异常，跨域事务交给 Case。</li><li>后台还有订单超时与商品向量索引任务；向量同步是否执行取决于配置。</li></ul><p><a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/OrderController.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/AuthController.java\" target=\"_blank\" rel=\"noopener\">身份入口</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/CatalogController.java\" target=\"_blank\" rel=\"noopener\">商品入口</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/OrderExpiryJob.java\" target=\"_blank\" rel=\"noopener\">订单到期任务</a></p>"
+    },
+    {
+      "id": "stream",
+      "b": "复用",
+      "t": "AiStreamEndpoint · 导购进度事件",
+      "f": "campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/AiStreamEndpoint.java",
+      "body": "<ul><li>接收导购流请求，调用 ShoppingAiCaseImpl 的 chatStream，并向界面发送 started、progress、completed 等事件。</li><li>完成事件携带经过服务端校验的完整响应；进度事件并不代表逐字展示模型输出。</li><li>超时、取消和失败有独立状态；流式体验不改变会话与提案的交易边界。</li></ul><p><a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/AiStreamEndpoint.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../frontend/src/services/guide-conversation.js\" target=\"_blank\" rel=\"noopener\">浏览器接收端</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java\" target=\"_blank\" rel=\"noopener\">导购编排</a></p>"
+    },
+    {
+      "id": "checkout",
+      "b": "复用",
+      "t": "CheckoutCaseImpl · 交易编排",
+      "f": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java",
+      "body": "<ul><li>下单用例协调账号、商户、商品报价、库存与订单领域，在 MySQL 本地事务中完成关键写入。</li><li>幂等键和请求指纹用于重试；价格、报价版本、商户资格与可售库存需要复验。</li><li>更细的下单、支付、取消和到期过程可打开下单专题地图。</li></ul><p><a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../docs/code-map/order-payment/campus-shopping-order-payment-20261112.html\" target=\"_blank\" rel=\"noopener\">下单专题地图</a> · <a href=\"../../../docs/architecture/context-map.md\" target=\"_blank\" rel=\"noopener\">领域协作约束</a></p>"
+    },
+    {
+      "id": "lifecycle",
+      "b": "复用",
+      "t": "OrderLifecycleCaseImpl · 支付、取消、到期与履约",
+      "f": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/OrderLifecycleCaseImpl.java",
+      "body": "<ul><li>支付是<b>模拟支付</b>；付款相关订单状态和自提任务在本地事务中协调。</li><li>取消、过期、核销和售后需要结合订单状态、库存预占与履约状态进行约束。</li><li>订单到期任务通过此用例触发释放；图中不是消息驱动的真实支付网关。</li></ul><p><a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/OrderLifecycleCaseImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/OrderExpiryJob.java\" target=\"_blank\" rel=\"noopener\">超时扫描</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/service/impl/FulfillmentServiceImpl.java\" target=\"_blank\" rel=\"noopener\">履约领域</a></p>"
+    },
+    {
+      "id": "aicase",
+      "b": "复用",
+      "t": "ShoppingAiCaseImpl · 导购编排与事实复核",
+      "f": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java",
+      "body": "<ul><li>获取会话租约和可读知识范围，查询候选商品、调用 AI 检索/生成，再由 Java 校验引用、报价和库存。</li><li>远程 AI 长调用不持有数据库事务或行锁；短事务完成消息、提案与当前租约。</li><li>用户确认时由 ProposalConfirmationCaseImpl 同事务复验并幂等加购。</li></ul><p><a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ConversationTurnCaseImpl.java\" target=\"_blank\" rel=\"noopener\">轮次短事务</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ProposalConfirmationCaseImpl.java\" target=\"_blank\" rel=\"noopener\">确认提案</a> · <a href=\"../../../docs/specs/SDD-REDIS-12.md\" target=\"_blank\" rel=\"noopener\">租约约束</a></p>"
+    },
+    {
+      "id": "agent",
+      "b": "复用",
+      "t": "AgentRuntimeCaseImpl · 可选智能体运行时",
+      "f": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/agent/impl/AgentRuntimeCaseImpl.java",
+      "body": "<ul><li>Java 侧编排受控的 Agent Runtime 与工具调用；是否启用由配置决定，默认关闭。</li><li>消费者只读工具有明确授权与只读边界；运行时和检索结果不直接拥有商品、库存、订单或支付写权限。</li><li>已有测试或隔离联调不等于全部外部模型、生产环境均通过验收。</li></ul><p><a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/agent/impl/AgentRuntimeCaseImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/agent/impl/AgentRuntimeEnabledCondition.java\" target=\"_blank\" rel=\"noopener\">启用条件</a> · <a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/gateway/AgentRuntimeGateway.java\" target=\"_blank\" rel=\"noopener\">运行时网关</a> · <a href=\"../../../docs/testing/AGENT-V1.1-M3-CONSUMER-READONLY-20261110.md\" target=\"_blank\" rel=\"noopener\">只读工具范围</a></p>"
+    },
+    {
+      "id": "identity",
+      "b": "复用",
+      "t": "Identity · 账户、成员与权限",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/service/impl/AccessServiceImpl.java",
+      "body": "<ul><li>维护用户、平台角色、商户成员和角色权限，并为其他用例提供可信身份与授权判断。</li><li>商户营业状态不属于 Identity；商户成员隔离以 merchantId 为边界。</li><li>相关代码包括 AccessServiceImpl、UserAccountServiceImpl 和 RoleServiceImpl。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/service/impl/AccessServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/service/impl/UserAccountServiceImpl.java\" target=\"_blank\" rel=\"noopener\">账号服务</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/identity/service/impl/RoleServiceImpl.java\" target=\"_blank\" rel=\"noopener\">角色服务</a></p>"
+    },
+    {
+      "id": "merchant",
+      "b": "复用",
+      "t": "Merchant · 商户入驻与经营资格",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/service/impl/MerchantServiceImpl.java",
+      "body": "<ul><li>维护商户申请、审核、商户及门店状态，并对交易用例提供经营资格判断。</li><li>审核开通需要 Merchant 与 Identity 协作，跨域状态变更在 Case 中编排。</li><li>店员授权不由 Merchant 直接维护。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/service/impl/MerchantServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/merchant/service/MerchantApplicationServiceImpl.java\" target=\"_blank\" rel=\"noopener\">入驻申请</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/merchant/impl/MerchantAdmissionCaseImpl.java\" target=\"_blank\" rel=\"noopener\">审核编排</a></p>"
+    },
+    {
+      "id": "catalog",
+      "b": "复用",
+      "t": "Catalog · 商品、SKU 与可信报价",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/service/impl/CatalogServiceImpl.java",
+      "body": "<ul><li>负责商品、规格、SKU、报价和上下架，面向消费者与商户提供查询和管理能力。</li><li>Catalog 不拥有库存余额；跨商品与库存的新增 SKU 等操作由 Case 协调。</li><li>AI 召回的候选最终须回到 Java 商品事实校验，不能将向量投影当作价格。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/service/impl/CatalogServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/catalog/impl/CatalogCaseImpl.java\" target=\"_blank\" rel=\"noopener\">商品编排</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/CatalogController.java\" target=\"_blank\" rel=\"noopener\">商品入口</a></p>"
+    },
+    {
+      "id": "inventory",
+      "b": "复用",
+      "t": "Inventory · 库存与预占",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/service/impl/InventoryServiceImpl.java",
+      "body": "<ul><li>维护每店 SKU 余额、补货流水、订单预占、释放与消耗。</li><li>下单和提案确认读取或锁定当前库存，防止展示缓存或 AI 建议绕过交易复验。</li><li>商品价格属于 Catalog，库存服务不拥有成交价。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/service/impl/InventoryServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/InventoryController.java\" target=\"_blank\" rel=\"noopener\">库存入口</a> · <a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/InventoryRepository.java\" target=\"_blank\" rel=\"noopener\">库存仓储</a></p>"
+    },
+    {
+      "id": "trading",
+      "b": "复用",
+      "t": "Trading · 购物车、订单、模拟支付与售后",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/OrderServiceImpl.java",
+      "body": "<ul><li>维护购物车、订单、交易快照、模拟支付记录与售后申请。</li><li>订单和库存跨域写入由 Case 统一本地事务，领域规则仍在各自服务中。</li><li>整单模拟退款、商户处理与平台争议属于交易/售后相关能力。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/OrderServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/CartServiceImpl.java\" target=\"_blank\" rel=\"noopener\">购物车服务</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/AfterSaleServiceImpl.java\" target=\"_blank\" rel=\"noopener\">售后服务</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/AfterSaleController.java\" target=\"_blank\" rel=\"noopener\">售后入口</a></p>"
+    },
+    {
+      "id": "fulfillment",
+      "b": "复用",
+      "t": "Fulfillment · 备货与自提核销",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/service/impl/FulfillmentServiceImpl.java",
+      "body": "<ul><li>付款后建立自提任务；商户可备货、标记可取，并按权限核销。</li><li>核销凭证、履约状态与订单库存变化需遵循各自领域规则。</li><li>履约不负责真实支付结算或修改商品报价。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/service/impl/FulfillmentServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/FulfillmentController.java\" target=\"_blank\" rel=\"noopener\">履约入口</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/OrderLifecycleCaseImpl.java\" target=\"_blank\" rel=\"noopener\">跨域事务</a></p>"
+    },
+    {
+      "id": "aidomain",
+      "b": "复用",
+      "t": "ShoppingAI · 会话、提案与知识",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/service/impl/ConversationServiceImpl.java",
+      "body": "<ul><li>维护导购会话、提案、知识版本与索引任务；知识访问由可读范围和外发规则控制。</li><li>会话使用 turn_token / turn_expires_at 的 600 秒租约；完成结果必须对应当前有效租约。</li><li>知识索引完成须匹配当前 index_attempt；向量索引是投影而非交易事实。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/service/impl/ConversationServiceImpl.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/service/impl/ProposalServiceImpl.java\" target=\"_blank\" rel=\"noopener\">提案服务</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/shoppingai/service/impl/KnowledgeServiceImpl.java\" target=\"_blank\" rel=\"noopener\">知识服务</a> · <a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/KnowledgeCaseImpl.java\" target=\"_blank\" rel=\"noopener\">知识用例</a></p>"
+    },
+    {
+      "id": "repo",
+      "b": "复用",
+      "t": "Infrastructure · MyBatis 与仓储实现",
+      "f": "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/OrderRepository.java",
+      "body": "<ul><li>OrderRepository 代表基础设施层的领域仓储实现；各领域也有各自 Repository、DAO 和映射。</li><li>MySQL 保存订单、库存、商品、身份等事实；查询侧使用受控的只读投影。</li><li>依赖方向是领域声明 Port、基础设施实现 Port；总览箭头表示运行协作，不表示 Domain 直接依赖 Infrastructure。</li></ul><p><a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/OrderRepository.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/InventoryRepository.java\" target=\"_blank\" rel=\"noopener\">库存仓储</a> · <a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/KnowledgeRepository.java\" target=\"_blank\" rel=\"noopener\">知识仓储</a> · <a href=\"../../../docs/architecture/context-map.md\" target=\"_blank\" rel=\"noopener\">领域依赖约束</a></p>"
+    },
+    {
+      "id": "redis",
+      "b": "复用",
+      "t": "RedisInfrastructureConfig · 共享运行能力",
+      "f": "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/redis/RedisInfrastructureConfig.java",
+      "body": "<ul><li>Redis / Redisson 用于共享会话、限流、展示缓存与任务协调。</li><li>多 Java 实例连接共享 MySQL 和 Redis；缓存和准入不是价格、库存或成交的最终事实。</li><li>共享准入成功不等于长任务已经结束；资源许可的释放须匹配实际执行结束。</li></ul><p><a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/redis/RedisInfrastructureConfig.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-app/src/main/java/cn/bugstack/ai/config/RedisSessionConfig.java\" target=\"_blank\" rel=\"noopener\">共享会话配置</a> · <a href=\"../../../docs/specs/SDD-REDIS-12.md\" target=\"_blank\" rel=\"noopener\">Redis 规格</a> · <a href=\"../../../docs/operations/REDIS-12-runbook.md\" target=\"_blank\" rel=\"noopener\">运行手册</a></p>"
+    },
+    {
+      "id": "gateway",
+      "b": "复用",
+      "t": "AiGatewayService · Java / Python 受控边界",
+      "f": "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/gateway/AiGatewayService.java",
+      "body": "<ul><li>Java 通过领域 Port 和网关调用 Python 的检索、生成及流式能力。</li><li>网关侧处理网络调用边界；知识访问范围与可对外提供的数据先由 Java 决定。</li><li>Agent Runtime 有独立网关和启用条件，不能把 Python 当作交易写服务。</li></ul><p><a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/port/AiEnginePort.java\" target=\"_blank\" rel=\"noopener\">领域 Port 适配器</a> · <a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/gateway/AiGatewayService.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/gateway/AgentRuntimeGateway.java\" target=\"_blank\" rel=\"noopener\">Agent 网关</a> · <a href=\"../../../ai-service/app/main.py\" target=\"_blank\" rel=\"noopener\">Python HTTP 入口</a></p>"
+    },
+    {
+      "id": "boot",
+      "b": "复用",
+      "t": "Application · 应用启动与环境",
+      "f": "campus-shopping-app/src/main/java/cn/bugstack/ai/Application.java",
+      "body": "<ul><li>campus-shopping-app 负责 Spring Boot 启动、配置装配、Web 资源、会话安全和数据库版本检查。</li><li>项目依赖 Java 17、Node 22.16.0、Python 3.11，以及按运行手册配置的 MySQL / Redis。</li><li>实际启动方式、隔离环境与配置要求以本地开发和运行手册为准；不要把启动成功当成完整业务验收。</li></ul><p><a href=\"../../../campus-shopping-app/src/main/java/cn/bugstack/ai/Application.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-app/src/main/java/cn/bugstack/ai/config/SchemaVersionGuard.java\" target=\"_blank\" rel=\"noopener\">数据库版本核验</a> · <a href=\"../../../docs/operations/local-development.md\" target=\"_blank\" rel=\"noopener\">本地开发</a> · <a href=\"../../../docs/operations/R1-runbook.md\" target=\"_blank\" rel=\"noopener\">运行手册</a></p>"
+    },
+    {
+      "id": "types",
+      "b": "复用",
+      "t": "Types · 公共业务类型与错误",
+      "f": "campus-shopping-types/src/main/java/cn/bugstack/ai/types/enums/ResponseCode.java",
+      "body": "<ul><li>campus-shopping-types 提供 ResponseCode、AppException 及通用检查工具。</li><li>业务异常按现有 Controller 处理规范返回，不能为了绕过失败而放宽响应契约。</li><li>领域层可依赖通用类型，不应反向依赖 HTTP 或基础设施实现。</li></ul><p><a href=\"../../../campus-shopping-types/src/main/java/cn/bugstack/ai/types/enums/ResponseCode.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../campus-shopping-types/src/main/java/cn/bugstack/ai/types/exception/AppException.java\" target=\"_blank\" rel=\"noopener\">业务异常</a> · <a href=\"../../../docs/development/JAVA-STYLE.md\" target=\"_blank\" rel=\"noopener\">Java 规范</a></p>"
+    },
+    {
+      "id": "python",
+      "b": "复用",
+      "t": "ai-service · FastAPI 与模型/检索",
+      "f": "ai-service/app/main.py",
+      "body": "<ul><li>Python 服务提供知识索引、召回、查询、商品向量检索及受控 Agent Runtime 入口。</li><li>与 Java 通过受控 HTTP 边界交互；知识向量、外部模型及检索后备能力取决于环境配置。</li><li>Python 不直接写订单、库存和支付；当前部署范围是共享数据依赖的多 Java 实例与单 Python 服务。</li></ul><p><a href=\"../../../ai-service/app/main.py\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../ai-service/app/engine.py\" target=\"_blank\" rel=\"noopener\">检索与生成</a> · <a href=\"../../../ai-service/app/runtime_bridge.py\" target=\"_blank\" rel=\"noopener\">Agent 桥接</a> · <a href=\"../../../docs/architecture/decisions.md\" target=\"_blank\" rel=\"noopener\">架构决策</a></p>"
+    },
+    {
+      "id": "index",
+      "b": "复用",
+      "t": "ProductIndex · 商品与知识检索投影",
+      "f": "ai-service/app/product_index.py",
+      "body": "<ul><li>商品语义索引可使用 Milvus，知识检索可按配置使用 Qdrant；未启用或故障时须看实际后备路径。</li><li>商品索引是公开商品检索投影，不保存实时库存、成交或可信售价。</li><li>全量公开商品召回不能无条件预截断到最新 100 件；索引失败不得记录成功时间。</li></ul><p><a href=\"../../../ai-service/app/product_index.py\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../ai-service/app/retrieval.py\" target=\"_blank\" rel=\"noopener\">知识检索</a> · <a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/ProductVectorSyncJob.java\" target=\"_blank\" rel=\"noopener\">商品索引任务</a> · <a href=\"../../../docs/architecture/decisions.md\" target=\"_blank\" rel=\"noopener\">索引边界</a></p>"
+    },
+    {
+      "id": "test",
+      "b": "测试",
+      "t": "既有测试 · 按实际范围验证",
+      "f": "campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java",
+      "body": "<ul><li>已有 Java/MySQL 交易集成测试、身份/Redis 测试与 Python 检索和 Agent 测试。</li><li>当前地图是源码走读和浏览器渲染结果，本次没有启动业务服务或运行这些业务测试。</li><li>真实 MySQL、Redis、外部模型、生产与性能范围应分别查验对应报告。</li></ul><p><a href=\"../../../campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java\" target=\"_blank\" rel=\"noopener\">代表源码</a> · <a href=\"../../../ai-service/tests/test_service.py\" target=\"_blank\" rel=\"noopener\">Python 测试</a> · <a href=\"../../../campus-shopping-app/src/test/java/cn/bugstack/ai/test/identity/RedisInfrastructureIntegrationTest.java\" target=\"_blank\" rel=\"noopener\">Redis 测试</a> · <a href=\"../../../docs/README.md\" target=\"_blank\" rel=\"noopener\">验证报告索引</a></p>"
+    }
+  ],
+  "tour": [
+    {
+      "tab": "over",
+      "tree": null,
+      "sl": "项目全貌",
+      "title": "第 1 站 · 从角色到系统",
+      "text": "左侧是代表性源码，中间展示项目模块和七个业务领域，右侧说明职责及源码链接。全景线条表达系统协作，部分节点代表一组类，不等同逐方法调用。灰色是已有代码，蓝色是外部数据或模型依赖。"
+    },
+    {
+      "tab": "over",
+      "tree": "Home.js",
+      "sl": "消费者",
+      "title": "第 2 站 · 消费者入口",
+      "text": "从商品浏览到购物车、订单、自提与售后都能进入 Java 业务链路；Guide.js 提供智能导购。浏览界面只是展示，交易仍由服务端复验。"
+    },
+    {
+      "tab": "over",
+      "tree": "MerchantOps.js",
+      "sl": "商户后台",
+      "title": "第 3 站 · 商户经营",
+      "text": "商户后台覆盖商品、库存、订单、自提、售后、店员、角色与知识管理。菜单权限帮助导航，实际访问由服务端再次鉴权。"
+    },
+    {
+      "tab": "over",
+      "tree": "Platform.js",
+      "sl": "平台监管",
+      "title": "第 4 站 · 平台管理",
+      "text": "平台审核商户入驻，监管商户、商品和订单，并处理争议、分类及知识。审核涉及 Merchant 与 Identity 的协作。"
+    },
+    {
+      "tab": "over",
+      "tree": "OrderController",
+      "sl": "HTTP 入口",
+      "title": "第 5 站 · 统一进入 Java",
+      "text": "HTTP 入口接收可信主体与请求参数，接口和 DTO 在 api 模块；不同业务有各自 Controller。跨域规则与事务继续交给 Case。"
+    },
+    {
+      "tab": "over",
+      "tree": "CheckoutCaseImpl",
+      "sl": "交易编排",
+      "title": "第 6 站 · Case 协调跨域",
+      "text": "CheckoutCaseImpl 调用商户、报价、库存与交易能力，用 MySQL 本地事务保证关键写入一致。原下单专题可进一步查看锁、幂等、支付与到期。"
+    },
+    {
+      "tab": "over",
+      "tree": "OrderServiceImpl",
+      "sl": "领域事实",
+      "title": "第 7 站 · 七个领域与数据",
+      "text": "Domain 分为 Identity、Merchant、Catalog、Inventory、Trading、Fulfillment 和 ShoppingAI；各自拥有不同事实。基础设施实现仓储 Port，MySQL 保留交易事实，Redis 提供共享会话等辅助能力。"
+    },
+    {
+      "tab": "seq",
+      "tree": "ShoppingAiCaseImpl",
+      "sl": "导购边界",
+      "title": "第 8 站 · AI 导购的真实路径",
+      "text": "切到时序页查看会话租约、Python 检索、Java 复验与短事务落库。用户确认提案后只加购物车，真实价格、库存与经营资格依旧由 Java 校验。"
+    },
+    {
+      "tab": "seq",
+      "tree": "AiGatewayService",
+      "sl": "受控检索",
+      "title": "第 9 站 · Java 与 Python 协作",
+      "text": "AiGatewayService 连接 FastAPI；商品和知识检索可按配置使用向量与模型服务。Agent Runtime 是可选能力，是否启用和验证范围以配置与报告为准。"
+    },
+    {
+      "tab": "flow",
+      "tree": null,
+      "sl": "继续探索",
+      "title": "第 10 站 · 查看完整业务版图",
+      "text": "流程页按消费者、商户、平台和七个领域梳理主要能力；点击任一业务节点或说明卡可继续探索。源码基线是 main / ea1bf0c / 2026-11-12，本图是源码走读和渲染验证，不代表本次完成业务验收。"
+    }
+  ]
+}

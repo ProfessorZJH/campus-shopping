@@ -16,8 +16,8 @@ AND EXISTS (SELECT 1 FROM cat_sku price_s WHERE price_s.product_id=p.id
 )
 </if>
 </sql>
-<select id="search" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
-SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
+<!-- 公开商品搜索的公共过滤条件：search 与 count 必须共用同一片段，否则列表与总数会分叉。 -->
+<sql id="publicSearchFilter">
 <if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
 <if test="merchantId!=null and merchantId!=''">AND p.merchant_id=#{merchantId}</if>
 <if test="query!=null and query!=''">AND (
@@ -29,6 +29,10 @@ SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
 <include refid="publicPriceMatch"/>
+</sql>
+<select id="search" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
+<include refid="publicSearchFilter"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
    (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
@@ -75,17 +79,7 @@ AND EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE
     </select>
 <select id="count" resultType="long">
 SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
-<if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
-<if test="merchantId!=null and merchantId!=''">AND p.merchant_id=#{merchantId}</if>
-<if test="query!=null and query!=''">AND (
-  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
-  OR LOCATE(LOWER(#{query}),LOWER(m.name)) &gt; 0
-  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id
-      <if test="publicOnly">AND s.status='ACTIVE'</if>
-      AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
-)</if>
-<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
-<include refid="publicPriceMatch"/>
+<include refid="publicSearchFilter"/>
     </select>
 <sql id="managedStatus">
 <choose>
@@ -96,8 +90,8 @@ SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHE
  <otherwise><if test="status!=null and status!=''">AND p.status=#{status}</if></otherwise>
 </choose>
 </sql>
-<select id="searchManaged" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
-SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
+<!-- 商户工作台搜索的公共过滤条件：searchManaged 与 countManaged 必须共用同一片段，且与公开搜索分开（无商户表连接）。 -->
+<sql id="managedSearchFilter">
 <if test="query!=null and query!=''">AND (
   LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
   OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND
@@ -105,6 +99,10 @@ SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
 <include refid="managedStatus"/>
+</sql>
+<select id="searchManaged" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
+<include refid="managedSearchFilter"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
    (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
@@ -118,12 +116,6 @@ SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
     </select>
 <select id="countManaged" resultType="long">
 SELECT COUNT(*) FROM cat_product p WHERE p.merchant_id=#{merchantId}
-<if test="query!=null and query!=''">AND (
-  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
-  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND
-    (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
-)</if>
-<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
-<include refid="managedStatus"/>
+<include refid="managedSearchFilter"/>
     </select>
 </mapper>
