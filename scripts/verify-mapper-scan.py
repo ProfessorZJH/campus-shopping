@@ -18,6 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 MAPPER_GLOB = 'campus-shopping-*/src/main/resources/mybatis/mapper/*.xml'
+APP_MAPPER_DIR = 'campus-shopping-app/src/main/resources/mybatis/mapper'
 
 # 全表扫描谓词：命中任意一条即视为不可索引匹配。
 IDENTIFIER = r'(?:`[^`]+`|[a-z_]\w*)'
@@ -49,49 +50,49 @@ BIND_REFERENCE = re.compile(r'^\s*\(*\s*([a-z_]\w*)\b', re.IGNORECASE)
 
 # 已登记豁免：必须写明原因与到期日；到期后重新评审，不允许无限期挂账。
 ALLOW = {
-    'icatalogquerydao_mapper.xml#search': {
+    f'{APP_MAPPER_DIR}/icatalogquerydao_mapper.xml#search': {
         'reason': '消费者全局搜索，候选集必须覆盖全量已上架商品，无法用等值条件收窄；整改方向见 A2（FULLTEXT/向量召回）。',
         'until': '2027-03-31',
     },
-    'icatalogquerydao_mapper.xml#count': {
+    f'{APP_MAPPER_DIR}/icatalogquerydao_mapper.xml#count': {
         'reason': '与 search 共用同一过滤片段，必须同批整改，否则列表与总数会分叉。',
         'until': '2027-03-31',
     },
-    'icatalogquerydao_mapper.xml#recall': {
+    f'{APP_MAPPER_DIR}/icatalogquerydao_mapper.xml#recall': {
         'reason': 'AI 召回需对全量公开商品打分；整改方向是把打分移出 SQL、只保留有界候选召回。',
         'until': '2027-03-31',
     },
     # 平台后台的全量列表：调用方 /admin/orders、/admin/merchant-applications、/admin/merchants
     # 均把过滤参数声明为可选，不传就没有任何收窄条件。订单表是最大表，优先级最高。
-    'itradingdao_mapper.xml#orders': {
+    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#orders': {
         'reason': '平台后台订单列表，state/q 均可选，不传时全表扫描且 countOrders 同形；整改=强制时间窗或游标。',
         'until': '2026-12-31',
     },
-    'itradingdao_mapper.xml#countOrders': {
+    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#countOrders': {
         'reason': '与 orders 共用同一过滤条件，必须与二者同批整改。',
         'until': '2026-12-31',
     },
-    'itradingdao_mapper.xml#ordersByPickupState': {
+    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#ordersByPickupState': {
         'reason': '平台工作台按履约状态筛订单，buyer/merchant 均为空；整改随 orders 同批。',
         'until': '2026-12-31',
     },
-    'itradingdao_mapper.xml#countOrdersByPickupState': {
+    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#countOrdersByPickupState': {
         'reason': '与 ordersByPickupState 共用条件，必须同批整改。',
         'until': '2026-12-31',
     },
-    'imerchantapplicationdao_mapper.xml#list': {
+    f'{APP_MAPPER_DIR}/imerchantapplicationdao_mapper.xml#list': {
         'reason': '平台审核列表 state 可选；表行数与入驻申请量同级（百量级），分页可接受；整改=待审默认 state=SUBMITTED。',
         'until': '2027-03-31',
     },
-    'imerchantapplicationdao_mapper.xml#count': {
+    f'{APP_MAPPER_DIR}/imerchantapplicationdao_mapper.xml#count': {
         'reason': '与 list 共用条件，必须同批整改。',
         'until': '2027-03-31',
     },
-    'imerchantdao_mapper.xml#list': {
+    f'{APP_MAPPER_DIR}/imerchantdao_mapper.xml#list': {
         'reason': '平台商户列表 activeOnly=false 时无收窄；商户数量与校区规模同级，分页可接受。',
         'until': '2027-03-31',
     },
-    'imerchantdao_mapper.xml#count': {
+    f'{APP_MAPPER_DIR}/imerchantdao_mapper.xml#count': {
         'reason': '与 list 共用条件，必须同批整改。',
         'until': '2027-03-31',
     },
@@ -210,6 +211,9 @@ def scan(path):
     for select in root.findall('select'):
         statement = expanded_sql(select, fragments)
         hits = [name for name, pattern in SCAN_PATTERNS if pattern.search(statement)]
+        if any(token.lastgroup == 'word' and token.group().upper() in {'REGEXP', 'RLIKE', 'REGEXP_LIKE'}
+               for token in SQL_TOKEN.finditer(statement)):
+            hits.append('REGEXP_MATCH')
         bound_wildcards = wildcard_bindings(select, fragments)
         if any(match.group(1) in bound_wildcards for match in LIKE_BIND.finditer(statement)):
             if 'LEADING_WILDCARD' not in hits:
@@ -217,8 +221,12 @@ def scan(path):
         if not hits:
             continue
         unconditional = expanded_sql(select, fragments, include_optional=False)
+        try:
+            filename = path.resolve().relative_to(ROOT.resolve()).as_posix()
+        except ValueError:
+            filename = path.resolve().as_posix()
         findings.append({
-            'file': path.name,
+            'file': filename,
             'statement': select.get('id', '<unknown>'),
             'patterns': hits,
             'narrowed': has_unconditional_narrowing(statement, unconditional),

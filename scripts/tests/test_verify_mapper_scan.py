@@ -2,6 +2,7 @@ import importlib.util
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "verify-mapper-scan.py"
@@ -95,6 +96,36 @@ class MapperScanTest(unittest.TestCase):
         self.assertEqual(self.scan(
             '<mapper><select id="search">SELECT * FROM products WHERE title = LOWER(#{q})</select></mapper>'
         ), [])
+
+    def test_regexp_matches_are_detected_outside_literals(self):
+        for expression in ("p.title REGEXP #{q}", "p.title RLIKE '^book'", "REGEXP_LIKE(p.title, #{q})"):
+            with self.subTest(expression=expression):
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM products p WHERE '
+                    + expression + '</select></mapper>'
+                )
+                self.assertIn("REGEXP_MATCH", findings[0]["patterns"])
+                self.assertFalse(findings[0]["narrowed"])
+        self.assertEqual(self.scan(
+            "<mapper><select id='search'>SELECT * FROM products WHERE title = 'REGEXP example'</select></mapper>"
+        ), [])
+
+    def test_allowlist_is_scoped_to_the_mapper_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            suffix = Path("src/main/resources/mybatis/mapper/icatalogquerydao_mapper.xml")
+            paths = [root / "campus-shopping-app" / suffix, root / "campus-shopping-other" / suffix]
+            for path in paths:
+                path.parent.mkdir(parents=True)
+                path.write_text(
+                    '<mapper><select id="search">SELECT * FROM products WHERE LOCATE(#{q}, title)</select></mapper>',
+                    encoding="utf-8",
+                )
+            with patch.object(mapper_scan, "ROOT", root):
+                findings = [mapper_scan.scan(path)[0] for path in paths]
+            keys = [finding["file"] + "#" + finding["statement"] for finding in findings]
+            self.assertIn(keys[0], mapper_scan.ALLOW)
+            self.assertNotIn(keys[1], mapper_scan.ALLOW)
 
     def test_leading_wildcard_in_literal_or_concat_is_detected(self):
         for expression in (
