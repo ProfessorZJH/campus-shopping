@@ -11,8 +11,8 @@
 
 ## 改动复核
 
-- 商品查询的 SELECT/COUNT 共用原有过滤片段；相应静态回归检查沿无条件 `include` 展开并保留原断言。缺失引用、条件化引用和不一致过滤有拒绝测试。
-- Mapper 子串检查使用 XML 结构递归展开片段，动态条件不能证明无条件收窄；嵌套、循环和未知片段以及 `LIKE CONCAT('%', ...)` 有回归测试。该检查是启发式，不代替 SQL 语义、索引或执行计划审查。订单查询的四项例外到期日为 2026-12-31，其他例外为 2027-03-31，到期后检查将失败并要求重新评审。
+- 商品查询的 SELECT/COUNT 共用原有过滤片段；相应静态回归检查要求无条件引用同一片段，并对照完整过滤和原有关键字断言。缺失引用、条件化引用和不一致过滤有拒绝测试。
+- Mapper 子串检查使用 XML 结构递归展开片段，动态条件不能证明无条件收窄；对顶层 `OR`、任意列别名、嵌套或未知片段及 `LIKE CONCAT('%', ...)` 有回归测试。该检查是启发式，不代替 SQL 语义、索引或执行计划审查。订单查询的四项例外到期日为 2026-12-31，其他例外为 2027-03-31，到期后检查将失败并要求重新评审。
 - 库存完成路径对预占记录再次按 SKU 排序，增加释放与核销锁序测试。`iinventorydao_mapper.xml` 原本已对预占记录使用 `ORDER BY sku_id FOR UPDATE`；这里是领域层防御性约束。**此结论替代 [Wave 0 报告](ENGINEERING-WAVE0-20261112.md)中关于原查询未排序、已修复锁序不一致的表述。** 新建订单预占和已存在订单完成在预占记录、库存行之间仍有顺序差异，适用前提及风险见 [锁顺序文档](../architecture/lock-ordering.md)。
 - 订单过期扫描在存在逾期积压时逐轮记录，无积压时采样；新增审计缺口与业务参数盘点。JaCoCo profile 按需启用，不等于已经设置覆盖率阈值或自动执行依赖卫生门禁。
 - 两份代码地图保留 2026-11-12 的源码基线。浏览器导出由 HTML 序列化改为 XML 序列化，避免 SVG 的换行标签无效；六张 SVG 重新生成并检查 XML。
@@ -25,7 +25,7 @@
 | `npm run format:check --prefix frontend`、`npm run typecheck --prefix frontend` | PASS；Java、前端格式及前端类型检查 |
 | `node --test frontend/tests/*.test.mjs` | PASS，35 项 |
 | `python scripts/build-ui-bundle.py`，随后 `--check` | PASS，源文件与生成静态资源一致 |
-| `python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions` | PASS，10 项；包括条件、嵌套引用、过滤不一致、未知引用及前导通配符的场景 |
+| `python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions` | PASS，15 项；包括条件、嵌套引用、过滤不一致、未知引用、前导通配符和 `OR` 分支的场景 |
 | `verify-mapper-scan.py`、`verify-fix-regressions.py`、`verify-source.py`、`verify-release.py`、`verify-domain.py` | PASS；静态检查与 56 项领域探针，不代表真实服务验收 |
 | API/DDL/供应链检查及 Java 可读性检查 | PASS；`verify-api-schemas.py` 为 75 项 |
 | Maven 目标测试 | PASS，`InventoryFinishLockOrderTest`、`OrderExpiryDiagnosticsTest`、`CatalogCartReadModelTest` 共 18 项；使用 `-Dfrontend.skip=true`，前端已单独构建并检查 |

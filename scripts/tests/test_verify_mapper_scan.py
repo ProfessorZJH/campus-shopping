@@ -57,6 +57,45 @@ class MapperScanTest(unittest.TestCase):
         )
         self.assertTrue(findings[0]["narrowed"])
 
+    def test_narrowing_must_apply_to_every_or_branch(self):
+        cases = (
+            ('WHERE LOCATE(#{q}, p.title) &gt; 0 OR p.merchant_id=#{merchantId}', False),
+            ('WHERE p.merchant_id=#{merchantId} OR LOCATE(#{q}, p.title) &gt; 0', False),
+            ('WHERE p.merchant_id=#{merchantId} AND p.active=1 OR LOCATE(#{q}, p.title) &gt; 0', False),
+            ('WHERE (p.merchant_id=#{merchantId} OR LOCATE(#{q}, p.title) &gt; 0)', False),
+            ('WHERE p.merchant_id=#{merchantId} <if test="extra">OR LOCATE(#{q}, p.title) &gt; 0</if>', False),
+            ('WHERE EXISTS (SELECT 1 FROM other o WHERE o.merchant_id=#{merchantId}) '
+             'AND LOCATE(#{q}, p.title) &gt; 0', False),
+            ('WHERE p.id IN (SELECT id FROM other) AND LOCATE(#{q}, p.title) &gt; 0', False),
+            ('WHERE LOCATE(#{q}, p.title) &gt; 0 # AND merchant_id=#{merchantId}\n', False),
+            ('WHERE p.merchant_id=#{merchantId} AND LOCATE(#{q}, p.title) &gt; 0 '
+             'UNION SELECT * FROM other', False),
+            ('WHERE p.merchant_id=#{merchantId} AND '
+             '(LOCATE(#{q}, p.title) &gt; 0 OR LOCATE(#{q}, p.description) &gt; 0)', True),
+            ("WHERE p.merchant_id=#{merchantId} AND p.title='OR' AND LOCATE(#{q}, p.title) &gt; 0", True),
+            ('WHERE p.id IN (#{first}, #{second}) AND LOCATE(#{q}, p.title) &gt; 0', True),
+        )
+        for condition, expected in cases:
+            with self.subTest(condition=condition):
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM cat_product p '
+                    + condition + '</select></mapper>'
+                )
+                self.assertEqual(findings[0]["narrowed"], expected)
+
+    def test_lower_column_detection_does_not_depend_on_alias(self):
+        for column in ("o.title", "oi.title", "other_alias.title", "`o`.`title`", "title"):
+            with self.subTest(column=column):
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM products o WHERE LOWER('
+                    + column + ') = LOWER(#{q})</select></mapper>'
+                )
+                self.assertIn("FUNCTION_ON_COLUMN", findings[0]["patterns"])
+                self.assertFalse(findings[0]["narrowed"])
+        self.assertEqual(self.scan(
+            '<mapper><select id="search">SELECT * FROM products WHERE title = LOWER(#{q})</select></mapper>'
+        ), [])
+
     def test_leading_wildcard_in_literal_or_concat_is_detected(self):
         for expression in (
             "LIKE '%book%'",

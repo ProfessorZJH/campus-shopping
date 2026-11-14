@@ -20,17 +20,28 @@ ROOT = Path(__file__).resolve().parent.parent
 MAPPER_GLOB = 'campus-shopping-*/src/main/resources/mybatis/mapper/*.xml'
 
 # 全表扫描谓词：命中任意一条即视为不可索引匹配。
+IDENTIFIER = r'(?:`[^`]+`|[a-z_]\w*)'
 SCAN_PATTERNS = [
     ('LOCATE_SUBSTRING', re.compile(r'\blocate\s*\(', re.IGNORECASE)),
     ('LEADING_WILDCARD', re.compile(r'''\blike\b\s*\(?\s*(?:['"]%|concat\s*\(\s*['"]%)''', re.IGNORECASE)),
-    ('FUNCTION_ON_COLUMN', re.compile(r'\blower\s*\(\s*(?:p|s|b|m|c|price_s|active_s)\.\w+\s*\)', re.IGNORECASE)),
+    ('FUNCTION_ON_COLUMN', re.compile(
+        rf'\blower\s*\(\s*(?:{IDENTIFIER}\s*\.\s*)?{IDENTIFIER}\s*\)', re.IGNORECASE)),
 ]
 
-# 无条件等值收窄：把查询限制到单个商户/类目/有界主键集合。
-NARROWING = re.compile(
-    r'\b(?:merchant_id|store_id|product_id|category_code)\s*=\s*#\{'
-    r'|\b(?:id|sku_id|product_id)\s+in\s*\(',
+# 只认可独立的顶层 AND 合取项；不能把 OR 分支或子查询中的条件当成全局收窄。
+NARROWING_TERM = re.compile(
+    r'\s*(?:[a-z_]\w*\s*\.\s*)?(?:merchant_id|store_id|product_id|category_code)\s*=\s*#\{[^}]+\}\s*'
+    r'|\s*(?:[a-z_]\w*\s*\.\s*)?(?:id|sku_id|product_id)\s+in\s*\('
+    r'\s*(?:#\{[^}]+\}|\d+)(?:\s*,\s*(?:#\{[^}]+\}|\d+))*\s*\)\s*',
     re.IGNORECASE,
+)
+
+# 用于保守识别 SQL 顶层 WHERE、AND 和 OR；这不是完整的 SQL 解析器。
+SQL_TOKEN = re.compile(
+    r"(?P<quoted>'(?:''|\\.|[^'\\])*'|\"(?:\"\"|\\.|[^\"\\])*\"|`(?:``|[^`])*`)"
+    r'|(?P<parameter>[#$]\{[^}]*\})|(?P<comment>--[^\n]*|#(?!\{)[^\n]*|/\*[\s\S]*?\*/)'
+    r'|(?P<paren>[()])|(?P<word>[a-z_]\w*)|(?P<other>.)',
+    re.IGNORECASE | re.DOTALL,
 )
 
 # 已登记豁免：必须写明原因与到期日；到期后重新评审，不允许无限期挂账。
@@ -87,6 +98,59 @@ ALLOW = {
 CONDITIONAL_TAGS = {'if', 'choose', 'when', 'otherwise', 'foreach'}
 
 
+def top_level_where(statement):
+    """提取顶层 WHERE 和其顶层关键字；不理解的结构不作为收窄证据。"""
+    depth = 0
+    words = []
+    for token in SQL_TOKEN.finditer(statement):
+        kind, value = token.lastgroup, token.group()
+        if kind == 'paren':
+            depth += 1 if value == '(' else -1
+            if depth < 0:
+                return None
+        elif kind == 'other' and value in "'\"`":
+            return None
+        elif kind == 'word' and depth == 0:
+            words.append((value.upper(), token.start(), token.end()))
+    if depth:
+        return None
+    if any(word in {'UNION', 'INTERSECT', 'EXCEPT'} for word, _, _ in words):
+        return None
+    where = next((i for i, (word, _, _) in enumerate(words) if word == 'WHERE'), None)
+    if where is None:
+        return None
+    start = words[where][2]
+    end = len(statement)
+    for word, position, _ in words[where + 1:]:
+        if word in {'GROUP', 'HAVING', 'ORDER', 'LIMIT', 'OFFSET', 'FOR'}:
+            end = position
+            break
+    relevant = [(word, position, stop) for word, position, stop in words[where + 1:] if position < end]
+    return start, end, relevant
+
+
+def has_unconditional_narrowing(statement, unconditional):
+    """仅在完整和无条件路径均无顶层 OR 时，接受顶层 AND 中的独立收窄项。"""
+    full_where = top_level_where(statement)
+    required_where = top_level_where(unconditional)
+    if full_where is None or required_where is None:
+        return False
+    for where in (full_where, required_where):
+        if any(word in {'OR', 'BETWEEN', 'CASE'} for word, _, _ in where[2]):
+            return False
+    start, end, words = required_where
+    boundaries = [(position, stop) for word, position, stop in words if word == 'AND']
+    for position, stop in boundaries + [(end, end)]:
+        term = unconditional[start:position].strip()
+        # 单层括号包住纯等值条件时也可以安全识别。
+        if term.startswith('(') and term.endswith(')'):
+            term = term[1:-1].strip()
+        if NARROWING_TERM.fullmatch(term):
+            return True
+        start = stop
+    return False
+
+
 def expanded_sql(element, fragments, include_optional=True, stack=()):
     """递归展开片段；判定收窄时跳过可能不执行的动态分支。"""
     parts = [element.text or '']
@@ -119,7 +183,7 @@ def scan(path):
             'file': path.name,
             'statement': select.get('id', '<unknown>'),
             'patterns': hits,
-            'narrowed': bool(NARROWING.search(unconditional)),
+            'narrowed': has_unconditional_narrowing(statement, unconditional),
         })
     return findings
 

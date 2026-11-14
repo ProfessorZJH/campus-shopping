@@ -1,3 +1,4 @@
+import copy
 import importlib.util
 import tempfile
 import unittest
@@ -28,6 +29,30 @@ class MapperPredicateRegressionTest(unittest.TestCase):
     def test_count_cannot_use_the_managed_filter(self):
         include = self.tree.getroot().find("./select[@id='count']/include")
         include.set("refid", "managedSearchFilter")
+        with self.assertRaises(AssertionError):
+            self.verify()
+
+    def test_count_cannot_use_a_partial_copy_of_public_filter(self):
+        root = self.tree.getroot()
+        original = root.find("./sql[@id='publicSearchFilter']")
+        partial = copy.deepcopy(original)
+        partial.set("id", "partialPublicFilter")
+        partial.remove(partial.find("./if[@test='publicOnly']"))
+        root.append(partial)
+        root.find("./select[@id='count']/include").set("refid", "partialPublicFilter")
+        with self.assertRaises(AssertionError):
+            self.verify()
+
+    def test_count_cannot_add_a_separate_filter(self):
+        count = self.tree.getroot().find("./select[@id='count']")
+        extra = ET.SubElement(count, "if", {"test": "extra"})
+        extra.text = "AND p.category_code=#{category}"
+        with self.assertRaises(AssertionError):
+            self.verify()
+
+    def test_count_cannot_change_the_join(self):
+        count = self.tree.getroot().find("./select[@id='count']")
+        count.text = count.text.replace("JOIN mer_merchant m ON p.merchant_id=m.id", "")
         with self.assertRaises(AssertionError):
             self.verify()
 

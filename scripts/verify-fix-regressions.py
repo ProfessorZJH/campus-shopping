@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """SDD-04 源码静态回归门禁；不替代 Maven、MySQL 和 Chromium 动态验证。"""
+import copy
+import re
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -30,6 +32,37 @@ def verify_mapper(mapper_path):
         assert 's.spec_key' in result and 's.id' in result,name
         return result
 
+    def complete_filter(name):
+        select=selectors[name]
+        head=select.text or ''
+        from_clause=re.search(r'\bFROM\b',head,re.IGNORECASE)
+        where=re.search(r'\bWHERE\b',head,re.IGNORECASE)
+        assert from_clause is not None and where is not None and from_clause.start()<where.start(),(name,'无法识别 FROM/WHERE')
+        pieces=[head[from_clause.start():]]
+        includes=[]
+        for index,node in enumerate(select):
+            # 排序 choose 不属于过滤；必须是最后一个动态节点。
+            sort=(node.tag=='choose' and len(node)>0 and
+                  all(child.tag in {'when','otherwise'} and
+                      re.match(r'\s*ORDER\s+BY\b',child.text or '',re.IGNORECASE)
+                      for child in node))
+            if sort:
+                assert index==len(select)-1,(name,'排序后出现动态节点')
+                assert re.fullmatch(r'\s*LIMIT\s*#\{[^}]+\}\s+OFFSET\s*#\{[^}]+\}\s*',
+                                    node.tail or '',re.IGNORECASE),(name,'无法识别分页')
+                break
+            if node.tag=='include':
+                includes.append(node.get('refid'))
+            child=copy.deepcopy(node)
+            child.tail=None
+            pieces.append(ET.tostring(child,encoding='unicode'))
+            pieces.append(node.tail or '')
+        # 必须直接引用同一完整过滤片段；嵌入条件分支不能证明始终执行。
+        assert len(includes)==1 and includes[0] in fragments,(name,includes)
+        return includes[0],''.join(''.join(pieces).split())
+
+    assert complete_filter('search')==complete_filter('count'),'公共商品 SELECT 与 COUNT 的完整过滤不一致'
+    assert complete_filter('searchManaged')==complete_filter('countManaged'),'商户商品 SELECT 与 COUNT 的完整过滤不一致'
     assert predicate('search')==predicate('count'),'公共商品 SELECT 与 COUNT 的 q 条件不一致'
     assert predicate('searchManaged')==predicate('countManaged'),'商户商品 SELECT 与 COUNT 的 q 条件不一致'
     assert 'm.name' in predicate('search'),'公开搜索未匹配商户名'
