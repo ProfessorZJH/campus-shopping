@@ -22,6 +22,7 @@ class StorefrontBackend(TwoMerchantBackend):
         super().__init__()
         self.profile_bodies = []
         self.upload_bodies = []
+        self.transient_attempts = 0
         self.shops[0].update(
             {
                 'description': '校园文具与打印服务，支持到店自提。',
@@ -35,6 +36,13 @@ class StorefrontBackend(TwoMerchantBackend):
         path = urlparse(route.request.url).path.removeprefix('/api/v1')
         if path == '/merchants/public/suspended':
             route.fulfill(status=200, json=self.data(None, 'M0004', '商户当前暂停经营'))
+            return
+        if path == '/merchants/public/transient':
+            self.transient_attempts += 1
+            if self.transient_attempts == 1:
+                route.fulfill(status=200, json=self.data(None, 'M0004', '门店暂时无法加载'))
+            else:
+                route.fulfill(status=200, json=self.data(dict(self.shops[0], merchantId='transient')))
             return
         if route.request.method == 'POST' and path == '/merchants/m1/store/images':
             self.upload_bodies.append(route.request.post_data_json)
@@ -80,8 +88,17 @@ def main():
         close_page(page)
 
         page = browser_page(browser, '/shops/suspended', backend)
-        expect(page.locator('.inline-error')).to_contain_text('暂停经营')
+        expect(page.locator('.status-panel--error')).to_contain_text('暂停经营')
         checks.append('停用商户公开详情被拒绝，营业文案不恢复交易资格')
+        close_page(page)
+
+        page = browser_page(browser, '/shops/transient', backend)
+        expect(page.locator('.status-panel--error')).to_contain_text('门店暂时无法加载')
+        expect(page.locator('.status-panel--empty')).to_have_count(0)
+        page.get_by_role('button', name='重新加载').click()
+        expect(page.locator('.shop-hero')).to_be_visible()
+        assert backend.transient_attempts == 2
+        checks.append('门店请求失败显示可重试错误，成功后恢复页面')
         close_page(page)
 
         page = browser_page(browser, '/merchant/settings', backend)

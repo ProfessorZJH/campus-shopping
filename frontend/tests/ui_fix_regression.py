@@ -1,4 +1,4 @@
-from browser_transport import track_bindings, close_page, close_browser
+from browser_transport import add_campus_styles, track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 import shutil
 """2026-10-28 修复回归：真实 Chromium + Vue 交付 JS + 明确的 API 契约替身。
@@ -58,7 +58,7 @@ def browser_page(browser, route, fixture, *, race=False, before_mount=None):
     page=browser.new_page(viewport={'width':1448,'height':970},locale='zh-CN')
     page.on('pageerror',lambda exc:ERRORS.append(str(exc)))
     page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"></head><body><div id="app"></div></body></html>')
-    page.add_style_tag(path=str(UI/'src/styles/app.css'))
+    add_campus_styles(page, UI)
     page.evaluate('''({route,images})=>{window.__CAMPUS_TEST_DEMO__=false;window.__CAMPUS_TEST_ROUTE__=route;
       window.__CAMPUS_UI_TEST_IMAGES__=images;
       if(!crypto.randomUUID)crypto.randomUUID=()=>String(Date.now())+Math.random();}''',{'route':route,'images':IMAGES})

@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 
 from playwright.sync_api import sync_playwright, expect
 
-from browser_transport import track_bindings, close_page, close_browser
+from browser_transport import add_campus_styles, track_bindings, close_page, close_browser
 from contract_ui import BackendContractDouble, DEADLINE, NOW
 from ui_three_pages import UI, fixture_call
 
@@ -139,7 +139,7 @@ def render(browser, fixture, route, size=(430, 932), hold_order=False, hold_chat
         '<meta name="viewport" content="width=device-width,initial-scale=1"></head>'
         '<body><div id="app"></div></body></html>'
     )
-    page.add_style_tag(path=str(UI / 'src/styles/app.css'))
+    add_campus_styles(page, UI)
     page.evaluate(
         """(route) => {
           window.__CAMPUS_TEST_DEMO__ = false;

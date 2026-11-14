@@ -46,6 +46,30 @@ def main():
         close_page(page)
         page = render(browser, '/invitations', False, fixture=fixture)
         expect(page.locator('.invitation-line')).to_have_count(20)
+        page.evaluate('''() => {
+            const original = window.fetch;
+            window.fetch = (url, options) => {
+                const address = new URL(String(url), 'http://contract.local');
+                if (address.pathname.endsWith('/invitations') && address.searchParams.get('page') === '2') {
+                    return new Promise(resolve => {
+                        window.__releaseInvitationPage = () => resolve(original(url, options));
+                    });
+                }
+                return original(url, options);
+            };
+        }''')
+        page.get_by_role('button', name='下一页').click()
+        page.wait_for_function('typeof window.__releaseInvitationPage === "function"')
+        expect(page.get_by_role('button', name='上一页')).to_be_disabled()
+        expect(page.get_by_role('button', name='下一页')).to_be_disabled()
+        page.evaluate('window.__releaseInvitationPage()')
+        expect(page.locator('.sdd-pager span')).to_have_text('2')
+        expect(page.get_by_role('button', name='上一页')).to_be_enabled()
+        checks.append('邀请分页加载期间禁止重复翻页，响应完成后恢复')
+        close_page(page)
+
+        page = render(browser, '/invitations', False, fixture=fixture)
+        expect(page.locator('.invitation-line')).to_have_count(20)
         expired = page.locator('.invitation-line').first
         expect(expired).to_contain_text('已过期')
         expect(expired.get_by_role('button', name='接受')).to_be_disabled()

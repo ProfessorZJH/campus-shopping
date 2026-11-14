@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from playwright.sync_api import sync_playwright,expect
 from contract_ui import BackendContractDouble
-from browser_transport import track_bindings, close_page, close_browser
+from browser_transport import add_campus_styles, track_bindings, close_page, close_browser
 ROOT=Path(__file__).resolve().parents[2]
 UI=ROOT/'frontend'
 EVIDENCE=ROOT/'docs/testing/evidence/ui-three-pages'
@@ -41,7 +41,7 @@ def render(browser,route='/',demo=True,size=(430,932),fixture=None,routes=None,b
     if routes: routes(page)
     # base 只用于把 /media 等绝对路径解析到拦截域名；不改变任何业务断言。
     page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'+(f'<base href="{base}">' if base else '')+'</head><body><div id="app"></div></body></html>')
-    page.add_style_tag(path=str(UI/'src/styles/app.css'))
+    add_campus_styles(page, UI)
     page.evaluate('''({images,route,demo})=>{
       window.__CAMPUS_TEST_DEMO__=demo;
       window.__CAMPUS_TEST_ROUTE__=route;

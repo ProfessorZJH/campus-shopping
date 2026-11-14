@@ -1,0 +1,77 @@
+* {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+button,
+select,
+input,
+textarea {
+  outline-offset: 3px;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid var(--color-focus);
+}
+a {
+  color: inherit;
+}
+img {
+  max-width: 100%;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+svg {
+  flex-shrink: 0;
+}
+#app {
+  min-height: 100vh;
+}
+button {
+  border: 0;
+  background: none;
+  color: inherit;
+}
+.application {
+  min-height: 100vh;
+}
+.toast {
+  position: fixed;
+  z-index: 800;
+  bottom: 115px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 18px;
+  background: #122b39f0;
+  color: white;
+  max-width: min(90vw, 480px);
+  border-radius: 13px;
+  box-shadow: 0 14px 42px #1e334340;
+  text-align: center;
+  white-space: normal;
+  font-size: 13px;
+}
+/* 消费者两页：以购物、对话和商品图为中心，而不是管理工作台 */

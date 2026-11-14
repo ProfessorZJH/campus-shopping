@@ -11761,6 +11761,98 @@
       });
     }
   };
+  const _hoisted_1$1 = ["aria-label"];
+  const _hoisted_2$1 = { key: 0 };
+  const _hoisted_3$1 = ["disabled"];
+  const _hoisted_4$1 = ["aria-label"];
+  const _hoisted_5 = ["disabled"];
+  const _sfc_main$1 = /* @__PURE__ */ defineComponent({
+    __name: "UiPagination",
+    props: {
+      page: {},
+      hasNext: { type: Boolean },
+      busy: { type: Boolean, default: false },
+      label: { default: "分页" }
+    },
+    emits: ["previous", "next"],
+    setup(__props, { emit: __emit }) {
+      const emit2 = __emit;
+      return (_ctx, _cache) => {
+        return openBlock(), createElementBlock("nav", {
+          class: "sdd-pager",
+          "aria-label": __props.label
+        }, [
+          _ctx.$slots.default ? (openBlock(), createElementBlock("span", _hoisted_2$1, [
+            renderSlot(_ctx.$slots, "default")
+          ])) : createCommentVNode("v-if", true),
+          createBaseVNode("button", {
+            type: "button",
+            disabled: __props.busy || __props.page <= 1,
+            onClick: _cache[0] || (_cache[0] = ($event) => emit2("previous"))
+          }, "上一页", 8, _hoisted_3$1),
+          createBaseVNode("span", {
+            "aria-label": `第 ${__props.page} 页`
+          }, toDisplayString(__props.page), 9, _hoisted_4$1),
+          createBaseVNode("button", {
+            type: "button",
+            disabled: __props.busy || !__props.hasNext,
+            onClick: _cache[1] || (_cache[1] = ($event) => emit2("next"))
+          }, "下一页", 8, _hoisted_5)
+        ], 8, _hoisted_1$1);
+      };
+    }
+  });
+  const _hoisted_1 = ["role", "aria-live"];
+  const _hoisted_2 = {
+    key: 0,
+    class: "mini-spinner",
+    "aria-hidden": "true"
+  };
+  const _hoisted_3 = { class: "status-panel-copy" };
+  const _hoisted_4 = ["disabled"];
+  const _sfc_main = /* @__PURE__ */ defineComponent({
+    __name: "StatusPanel",
+    props: {
+      state: {},
+      message: { default: "" },
+      actionLabel: { default: "" },
+      busy: { type: Boolean, default: false }
+    },
+    emits: ["retry"],
+    setup(__props, { emit: __emit }) {
+      const emit2 = __emit;
+      return (_ctx, _cache) => {
+        return openBlock(), createElementBlock("section", {
+          class: normalizeClass(["status-panel surface-card", `status-panel--${__props.state}`]),
+          role: __props.state === "error" ? "alert" : "status",
+          "aria-live": __props.state === "error" ? "assertive" : "polite"
+        }, [
+          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2)) : (openBlock(), createBlock(unref(Icon), {
+            key: 1,
+            name: __props.state === "error" ? "alert" : "order",
+            size: 26,
+            "aria-hidden": "true"
+          }, null, 8, ["name"])),
+          createBaseVNode("div", _hoisted_3, [
+            createBaseVNode(
+              "strong",
+              null,
+              toDisplayString(__props.state === "loading" ? __props.message || "正在加载…" : __props.message),
+              1
+              /* TEXT */
+            )
+          ]),
+          __props.actionLabel && __props.state !== "loading" ? (openBlock(), createElementBlock("button", {
+            key: 2,
+            type: "button",
+            class: "outline-button",
+            disabled: __props.busy,
+            onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
+          }, toDisplayString(__props.actionLabel), 9, _hoisted_4)) : createCommentVNode("v-if", true)
+        ], 10, _hoisted_1);
+      };
+    }
+  });
   const DEMO_MERCHANTS = [
     {
       merchantId: "preview-m1",
@@ -12722,7 +12814,7 @@
   };
   const Home = {
     name: "Home",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$1, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
       const initialScope = requestScope();
@@ -12960,10 +13052,12 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, withCtx: _withCtx, resolveDirective: _resolveDirective } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
+        const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
@@ -13247,13 +13341,11 @@
                   }, "全局价格", 10, ["onClick"])
                 ])
               ]),
-              _ctx.store.loading ? (_openBlock(), _createElementBlock("div", {
+              _ctx.store.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
                 key: 0,
-                class: "inline-loading"
-              }, [
-                _createElementVNode("div", { class: "mini-spinner" }),
-                _createTextVNode("正在加载")
-              ])) : _createCommentVNode("v-if", true),
+                state: "loading",
+                message: "正在加载"
+              })) : _createCommentVNode("v-if", true),
               _ctx.store.error ? (_openBlock(), _createElementBlock("div", {
                 key: 1,
                 class: "inline-error"
@@ -13272,17 +13364,13 @@
                   href: "/?demo=1#/"
                 }, "查看设计预览")) : _createCommentVNode("v-if", true)
               ])) : _createCommentVNode("v-if", true),
-              !_ctx.store.loading && !_ctx.shown.length && !_ctx.store.error ? (_openBlock(), _createElementBlock("div", {
+              !_ctx.store.loading && !_ctx.shown.length && !_ctx.store.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
                 key: 2,
-                class: "no-results"
-              }, [
-                _createVNode2(_component_Icon, {
-                  name: "search",
-                  size: 22
-                }),
-                _createTextVNode("暂无相关商品"),
-                _createElementVNode("button", { onClick: _ctx.resetFilters }, "查看全部", 8, ["onClick"])
-              ])) : _createCommentVNode("v-if", true),
+                state: "empty",
+                message: "暂无相关商品",
+                "action-label": "查看全部",
+                onRetry: _ctx.resetFilters
+              }, null, 8, ["onRetry"])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", { class: "home-product-grid" }, [
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
@@ -13357,39 +13445,30 @@
                   /* KEYED_FRAGMENT */
                 ))
               ]),
-              !_ctx.preview && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+              !_ctx.preview && _ctx.pageInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                 key: 3,
-                class: "sdd-pager"
-              }, [
-                _createElementVNode(
-                  "span",
-                  null,
-                  "共 " + _toDisplayString(_ctx.pageInfo.total) + " 件",
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode("button", {
-                  disabled: _ctx.page <= 1 || _ctx.store.loading,
-                  onClick: ($event) => {
-                    _ctx.page--;
-                    _ctx.loadSearch();
-                  }
-                }, "上一页", 8, ["disabled", "onClick"]),
-                _createElementVNode(
-                  "span",
-                  null,
-                  _toDisplayString(_ctx.page),
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode("button", {
-                  disabled: !_ctx.pageInfo.hasNext || _ctx.store.loading,
-                  onClick: ($event) => {
-                    _ctx.page++;
-                    _ctx.loadSearch();
-                  }
-                }, "下一页", 8, ["disabled", "onClick"])
-              ])) : _createCommentVNode("v-if", true)
+                page: _ctx.page,
+                "has-next": _ctx.pageInfo.hasNext,
+                busy: _ctx.store.loading,
+                onPrevious: ($event) => {
+                  _ctx.page--;
+                  _ctx.loadSearch();
+                },
+                onNext: ($event) => {
+                  _ctx.page++;
+                  _ctx.loadSearch();
+                }
+              }, {
+                default: _withCtx(() => [
+                  _createTextVNode(
+                    "共 " + _toDisplayString(_ctx.pageInfo.total) + " 件",
+                    1
+                    /* TEXT */
+                  )
+                ]),
+                _: 1
+                /* STABLE */
+              }, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
             ]),
             _ctx.selected ? _withDirectives((_openBlock(), _createElementBlock("div", {
               key: 0,
@@ -17078,57 +17157,6 @@
       };
     })()
   };
-  const _hoisted_1 = ["role", "aria-live"];
-  const _hoisted_2 = {
-    key: 0,
-    class: "mini-spinner",
-    "aria-hidden": "true"
-  };
-  const _hoisted_3 = { class: "status-panel-copy" };
-  const _hoisted_4 = ["disabled"];
-  const _sfc_main = /* @__PURE__ */ defineComponent({
-    __name: "StatusPanel",
-    props: {
-      state: {},
-      message: { default: "" },
-      actionLabel: { default: "" },
-      busy: { type: Boolean, default: false }
-    },
-    emits: ["retry"],
-    setup(__props, { emit: __emit }) {
-      const emit2 = __emit;
-      return (_ctx, _cache) => {
-        return openBlock(), createElementBlock("section", {
-          class: normalizeClass(["status-panel surface-card", `status-panel--${__props.state}`]),
-          role: __props.state === "error" ? "alert" : "status",
-          "aria-live": __props.state === "error" ? "assertive" : "polite"
-        }, [
-          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2)) : (openBlock(), createBlock(unref(Icon), {
-            key: 1,
-            name: __props.state === "error" ? "alert" : "order",
-            size: 26,
-            "aria-hidden": "true"
-          }, null, 8, ["name"])),
-          createBaseVNode("div", _hoisted_3, [
-            createBaseVNode(
-              "strong",
-              null,
-              toDisplayString(__props.state === "loading" ? __props.message || "正在加载…" : __props.message),
-              1
-              /* TEXT */
-            )
-          ]),
-          __props.actionLabel && __props.state !== "loading" ? (openBlock(), createElementBlock("button", {
-            key: 2,
-            type: "button",
-            class: "outline-button",
-            disabled: __props.busy,
-            onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
-          }, toDisplayString(__props.actionLabel), 9, _hoisted_4)) : createCommentVNode("v-if", true)
-        ], 10, _hoisted_1);
-      };
-    }
-  });
   const { ref: ref$9, computed: computed$9, onMounted: onMounted$8, watch: watch$7 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
@@ -17501,7 +17529,7 @@
   const { ref: ref$8, computed: computed$8, onMounted: onMounted$7, onUnmounted: onUnmounted$5, watch: watch$6 } = Vue;
   const Shop = {
     name: "Shop",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$1, StatusPanel: _sfc_main },
     setup() {
       const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
       const id = computed$8(
@@ -17544,13 +17572,15 @@
       onMounted$7(load);
       onUnmounted$5(() => ++loadVersion);
       watch$6(page, load);
-      return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
+      return { merchant, products, error, loading, page, hasNext, go, money, skuOf, load };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createBlock: _createBlock, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
+        const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
           default: _withCtx(() => [
@@ -17564,16 +17594,14 @@
               _createElementVNode("b", null, "商户"),
               _createElementVNode("span")
             ]),
-            _ctx.error ? (_openBlock(), _createElementBlock(
-              "div",
-              {
-                key: 0,
-                class: "inline-error"
-              },
-              _toDisplayString(_ctx.error),
-              1
-              /* TEXT */
-            )) : _createCommentVNode("v-if", true),
+            _ctx.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 0,
+              state: "error",
+              message: _ctx.error,
+              "action-label": "重新加载",
+              busy: _ctx.loading,
+              onRetry: _ctx.load
+            }, null, 8, ["message", "busy", "onRetry"])) : _createCommentVNode("v-if", true),
             _ctx.merchant ? (_openBlock(), _createElementBlock(
               _Fragment,
               { key: 1 },
@@ -17638,6 +17666,11 @@
                 _createElementVNode("div", { class: "section-heading" }, [
                   _createElementVNode("h2", null, "在售商品")
                 ]),
+                _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
+                  key: 0,
+                  state: "loading",
+                  message: "正在加载商品…"
+                })) : _createCommentVNode("v-if", true),
                 _createElementVNode("div", { class: "shop-product-grid" }, [
                   (_openBlock(true), _createElementBlock(
                     _Fragment,
@@ -17672,34 +17705,27 @@
                     /* KEYED_FRAGMENT */
                   ))
                 ]),
-                !_ctx.products.length && !_ctx.loading ? (_openBlock(), _createElementBlock("div", {
-                  key: 0,
-                  class: "mobile-empty"
-                }, "暂无在售商品")) : _createCommentVNode("v-if", true),
-                _createElementVNode("div", { class: "shop-pagination" }, [
-                  _createElementVNode("button", {
-                    disabled: _ctx.page === 1 || _ctx.loading,
-                    onClick: ($event) => _ctx.page--
-                  }, "上一页", 8, ["disabled", "onClick"]),
-                  _createElementVNode(
-                    "span",
-                    null,
-                    _toDisplayString(_ctx.page),
-                    1
-                    /* TEXT */
-                  ),
-                  _createElementVNode("button", {
-                    disabled: !_ctx.hasNext || _ctx.loading,
-                    onClick: ($event) => _ctx.page++
-                  }, "下一页", 8, ["disabled", "onClick"])
-                ])
+                !_ctx.products.length && !_ctx.loading && !_ctx.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
+                  key: 1,
+                  state: "empty",
+                  message: "暂无在售商品"
+                })) : _createCommentVNode("v-if", true),
+                _createVNode2(_component_UiPagination, {
+                  class: "shop-pagination",
+                  page: _ctx.page,
+                  "has-next": _ctx.hasNext,
+                  busy: _ctx.loading,
+                  onPrevious: ($event) => _ctx.page--,
+                  onNext: ($event) => _ctx.page++
+                }, null, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])
               ],
               64
               /* STABLE_FRAGMENT */
-            )) : _ctx.loading ? (_openBlock(), _createElementBlock("div", {
+            )) : _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
               key: 2,
-              class: "mobile-empty"
-            }, "正在加载商户…")) : _createCommentVNode("v-if", true)
+              state: "loading",
+              message: "正在加载商户…"
+            })) : _createCommentVNode("v-if", true)
           ]),
           _: 1
           /* STABLE */
@@ -18563,7 +18589,7 @@
   const { ref: ref$6, computed: computed$6, onMounted: onMounted$5, watch: watch$5 } = Vue;
   const Orders = {
     name: "Orders",
-    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main, UiPagination: _sfc_main$1 },
     setup() {
       const scope = requestScope();
       const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
@@ -18707,11 +18733,12 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, createElementBlock: _createElementBlock, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, vModelText: _vModelText, withDirectives: _withDirectives, withModifiers: _withModifiers, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, createElementBlock: _createElementBlock, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, vModelText: _vModelText, withDirectives: _withDirectives, withModifiers: _withModifiers } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "orders" }, {
           default: _withCtx(() => {
@@ -18859,33 +18886,24 @@
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  !_ctx.preview && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+                  !_ctx.preview && _ctx.pageInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                     key: 1,
-                    class: "sdd-pager"
-                  }, [
-                    _createElementVNode(
-                      "span",
-                      null,
-                      "共 " + _toDisplayString(_ctx.pageInfo.total) + " 单",
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: _ctx.page <= 1,
-                      onClick: ($event) => _ctx.page--
-                    }, "上一页", 8, ["disabled", "onClick"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.page),
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: !_ctx.pageInfo.hasNext,
-                      onClick: ($event) => _ctx.page++
-                    }, "下一页", 8, ["disabled", "onClick"])
-                  ])) : _createCommentVNode("v-if", true)
+                    page: _ctx.page,
+                    "has-next": _ctx.pageInfo.hasNext,
+                    busy: _ctx.loading,
+                    onPrevious: ($event) => _ctx.page--,
+                    onNext: ($event) => _ctx.page++
+                  }, {
+                    default: _withCtx(() => [
+                      _createTextVNode(
+                        "共 " + _toDisplayString(_ctx.pageInfo.total) + " 单",
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _: 1
+                    /* STABLE */
+                  }, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
                 ],
                 64
                 /* STABLE_FRAGMENT */
@@ -19252,7 +19270,7 @@
   const { ref: ref$5, computed: computed$5, onMounted: onMounted$4, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
   const Account = {
     name: "Account",
-    components: { ConsumerShell, AuthDialog },
+    components: { ConsumerShell, AuthDialog, UiPagination: _sfc_main$1 },
     setup() {
       const scope = requestScope();
       const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
@@ -19382,9 +19400,10 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, createBlock: _createBlock, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "account" }, {
@@ -19547,33 +19566,24 @@
                     key: 1,
                     class: "mobile-empty"
                   }, "暂无入驻记录")) : _createCommentVNode("v-if", true),
-                  !_ctx.preview && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+                  !_ctx.preview && _ctx.pageInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                     key: 2,
-                    class: "sdd-pager"
-                  }, [
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.pageInfo.total) + " 条",
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: _ctx.page <= 1,
-                      onClick: ($event) => _ctx.page--
-                    }, "上一页", 8, ["disabled", "onClick"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.page),
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: !_ctx.pageInfo.hasNext,
-                      onClick: ($event) => _ctx.page++
-                    }, "下一页", 8, ["disabled", "onClick"])
-                  ])) : _createCommentVNode("v-if", true)
+                    page: _ctx.page,
+                    "has-next": _ctx.pageInfo.hasNext,
+                    busy: _ctx.loading,
+                    onPrevious: ($event) => _ctx.page--,
+                    onNext: ($event) => _ctx.page++
+                  }, {
+                    default: _withCtx(() => [
+                      _createTextVNode(
+                        _toDisplayString(_ctx.pageInfo.total) + " 条",
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _: 1
+                    /* STABLE */
+                  }, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
                 ],
                 64
                 /* STABLE_FRAGMENT */
@@ -19721,26 +19731,14 @@
                   key: 0,
                   class: "mobile-empty"
                 }, "暂无邀请")) : _createCommentVNode("v-if", true),
-                !_ctx.preview && (_ctx.invitePage > 1 || _ctx.invitations.length === 20) ? (_openBlock(), _createElementBlock("div", {
+                !_ctx.preview && (_ctx.invitePage > 1 || _ctx.invitations.length === 20) ? (_openBlock(), _createBlock(_component_UiPagination, {
                   key: 1,
-                  class: "sdd-pager"
-                }, [
-                  _createElementVNode("button", {
-                    disabled: _ctx.loading || _ctx.invitePage <= 1,
-                    onClick: ($event) => _ctx.invitePage--
-                  }, "上一页", 8, ["disabled", "onClick"]),
-                  _createElementVNode(
-                    "span",
-                    null,
-                    _toDisplayString(_ctx.invitePage),
-                    1
-                    /* TEXT */
-                  ),
-                  _createElementVNode("button", {
-                    disabled: _ctx.loading || _ctx.invitations.length < 20,
-                    onClick: ($event) => _ctx.invitePage++
-                  }, "下一页", 8, ["disabled", "onClick"])
-                ])) : _createCommentVNode("v-if", true)
+                  page: _ctx.invitePage,
+                  "has-next": _ctx.invitations.length >= 20,
+                  busy: _ctx.loading,
+                  onPrevious: ($event) => _ctx.invitePage--,
+                  onNext: ($event) => _ctx.invitePage++
+                }, null, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
               ])),
               _ctx.login ? (_openBlock(), _createBlock(_component_AuthDialog, {
                 key: 3,
@@ -19767,7 +19765,7 @@
   };
   const MerchantOps = {
     name: "MerchantOps",
-    components: { BackofficeShell, ProductImage },
+    components: { BackofficeShell, ProductImage, UiPagination: _sfc_main$1 },
     setup() {
       const scope = requestScope();
       const route = computed$4(() => store.route);
@@ -20246,10 +20244,11 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, createBlock: _createBlock, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_BackofficeShell = _resolveComponent("BackofficeShell");
         return _openBlock(), _createBlock(_component_BackofficeShell, {
           role: "merchant",
@@ -20904,26 +20903,14 @@
                     key: 1,
                     class: "admin-empty"
                   }, "暂无匹配流水")) : _createCommentVNode("v-if", true),
-                  _ctx.movementPageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+                  _ctx.movementPageInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                     key: 2,
-                    class: "sdd-pager"
-                  }, [
-                    _createElementVNode("button", {
-                      disabled: _ctx.movementPage <= 1,
-                      onClick: ($event) => _ctx.movementPage--
-                    }, "上一页", 8, ["disabled", "onClick"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.movementPage),
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: !_ctx.movementPageInfo.hasNext,
-                      onClick: ($event) => _ctx.movementPage++
-                    }, "下一页", 8, ["disabled", "onClick"])
-                  ])) : _createCommentVNode("v-if", true)
+                    page: _ctx.movementPage,
+                    "has-next": _ctx.movementPageInfo.hasNext,
+                    busy: _ctx.loading,
+                    onPrevious: ($event) => _ctx.movementPage--,
+                    onNext: ($event) => _ctx.movementPage++
+                  }, null, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
                 ])
               ])) : _ctx.route === "/merchant/orders" || _ctx.route === "/merchant/pickup" ? (_openBlock(), _createElementBlock("div", {
                 key: 5,
@@ -21568,33 +21555,24 @@
                   }, "保存设置", 8, ["disabled"])
                 ], 40, ["onSubmit"])
               ])) : _createCommentVNode("v-if", true),
-              !_ctx.preview && ["/merchant/orders", "/merchant/pickup", "/merchant/aftersales", "/merchant/inventory"].includes(_ctx.route) && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+              !_ctx.preview && ["/merchant/orders", "/merchant/pickup", "/merchant/aftersales", "/merchant/inventory"].includes(_ctx.route) && _ctx.pageInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                 key: 9,
-                class: "sdd-pager"
-              }, [
-                _createElementVNode(
-                  "span",
-                  null,
-                  "共 " + _toDisplayString(_ctx.pageInfo.total) + " 条",
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode("button", {
-                  disabled: _ctx.page <= 1,
-                  onClick: ($event) => _ctx.page--
-                }, "上一页", 8, ["disabled", "onClick"]),
-                _createElementVNode(
-                  "span",
-                  null,
-                  _toDisplayString(_ctx.page),
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode("button", {
-                  disabled: !_ctx.pageInfo.hasNext,
-                  onClick: ($event) => _ctx.page++
-                }, "下一页", 8, ["disabled", "onClick"])
-              ])) : _createCommentVNode("v-if", true)
+                page: _ctx.page,
+                "has-next": _ctx.pageInfo.hasNext,
+                busy: _ctx.loading,
+                onPrevious: ($event) => _ctx.page--,
+                onNext: ($event) => _ctx.page++
+              }, {
+                default: _withCtx(() => [
+                  _createTextVNode(
+                    "共 " + _toDisplayString(_ctx.pageInfo.total) + " 条",
+                    1
+                    /* TEXT */
+                  )
+                ]),
+                _: 1
+                /* STABLE */
+              }, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
             ];
           }),
           _: 1
@@ -21606,7 +21584,7 @@
   const { ref: ref$3, computed: computed$3, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
   const Knowledge = {
     name: "Knowledge",
-    components: { BackofficeShell },
+    components: { BackofficeShell, UiPagination: _sfc_main$1 },
     setup() {
       const scope = requestScope();
       const docScope = requestScope();
@@ -21922,6 +21900,7 @@
       const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_BackofficeShell = _resolveComponent("BackofficeShell");
         return _openBlock(), _createBlock(_component_BackofficeShell, {
           role: _ctx.role,
@@ -22243,33 +22222,23 @@
                     key: 0,
                     class: "admin-empty"
                   }, "暂无文档")) : _createCommentVNode("v-if", true),
-                  !_ctx.preview && _ctx.docInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+                  !_ctx.preview && _ctx.docInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                     key: 1,
-                    class: "sdd-pager"
-                  }, [
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.docInfo.total) + " 项",
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: _ctx.docPage <= 1,
-                      onClick: ($event) => _ctx.docPage--
-                    }, "上一页", 8, ["disabled", "onClick"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.docPage),
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode("button", {
-                      disabled: !_ctx.docInfo.hasNext,
-                      onClick: ($event) => _ctx.docPage++
-                    }, "下一页", 8, ["disabled", "onClick"])
-                  ])) : _createCommentVNode("v-if", true)
+                    page: _ctx.docPage,
+                    "has-next": _ctx.docInfo.hasNext,
+                    onPrevious: ($event) => _ctx.docPage--,
+                    onNext: ($event) => _ctx.docPage++
+                  }, {
+                    default: _withCtx(() => [
+                      _createTextVNode(
+                        _toDisplayString(_ctx.docInfo.total) + " 项",
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _: 1
+                    /* STABLE */
+                  }, 8, ["page", "has-next", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
                 ]),
                 _createElementVNode("section", { class: "ops-card kb-preview" }, [
                   _createElementVNode("div", { class: "ops-card-header" }, [
@@ -22576,7 +22545,7 @@
   };
   const Platform = {
     name: "Platform",
-    components: { BackofficeShell, ProductImage, StatusPanel: _sfc_main },
+    components: { BackofficeShell, ProductImage, StatusPanel: _sfc_main, UiPagination: _sfc_main$1 },
     setup() {
       const scope = requestScope();
       const route = computed$1(() => store.route), title = computed$1(() => titles[route.value] || "平台总览");
@@ -22874,6 +22843,7 @@
         const _component_Icon = _resolveComponent("Icon");
         const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_UiPagination = _resolveComponent("UiPagination");
         const _component_BackofficeShell = _resolveComponent("BackofficeShell");
         return _openBlock(), _createBlock(_component_BackofficeShell, {
           role: "admin",
@@ -24090,33 +24060,24 @@
                   }, _toDisplayString(_ctx.preview ? "设计预览" : "保存分类"), 9, ["disabled"])
                 ], 40, ["onSubmit"])
               ])) : _createCommentVNode("v-if", true),
-              !_ctx.preview && _ctx.route !== "/admin" && _ctx.route !== "/admin/categories" && _ctx.pageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+              !_ctx.preview && _ctx.route !== "/admin" && _ctx.route !== "/admin/categories" && _ctx.pageInfo.total > 0 ? (_openBlock(), _createBlock(_component_UiPagination, {
                 key: 10,
-                class: "sdd-pager"
-              }, [
-                _createElementVNode(
-                  "span",
-                  null,
-                  "共 " + _toDisplayString(_ctx.pageInfo.total) + " 条",
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode("button", {
-                  disabled: _ctx.page <= 1,
-                  onClick: ($event) => _ctx.page--
-                }, "上一页", 8, ["disabled", "onClick"]),
-                _createElementVNode(
-                  "span",
-                  null,
-                  _toDisplayString(_ctx.page),
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode("button", {
-                  disabled: !_ctx.pageInfo.hasNext,
-                  onClick: ($event) => _ctx.page++
-                }, "下一页", 8, ["disabled", "onClick"])
-              ])) : _createCommentVNode("v-if", true)
+                page: _ctx.page,
+                "has-next": _ctx.pageInfo.hasNext,
+                busy: _ctx.loading,
+                onPrevious: ($event) => _ctx.page--,
+                onNext: ($event) => _ctx.page++
+              }, {
+                default: _withCtx(() => [
+                  _createTextVNode(
+                    "共 " + _toDisplayString(_ctx.pageInfo.total) + " 条",
+                    1
+                    /* TEXT */
+                  )
+                ]),
+                _: 1
+                /* STABLE */
+              }, 8, ["page", "has-next", "busy", "onPrevious", "onNext"])) : _createCommentVNode("v-if", true)
             ];
           }),
           _: 1

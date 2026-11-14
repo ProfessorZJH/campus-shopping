@@ -8,6 +8,7 @@
 - Vue 运行时由 `package.json` 锁定的 `vue` 提供。`src/vue-runtime.js` 必须保持为 `main.js` 的第一个导入：它把打包运行时写入 `window.Vue`，供尚未迁移的旧 JS 组件在模块求值时使用；页面和测试不再加载 `vendor/vue.global.prod.js`。
 - 新组件优先使用 `.vue` 单文件组件；旧 JS 组件在过渡期继续兼容。`vite.config.js` 和 `scripts/build.mjs` 均启用 `@vitejs/plugin-vue`，旧 JS 静态 `template` 仍由 `scripts/template-plugin.mjs` 预编译，不依赖运行时模板编译或 `unsafe-eval`。
 - 公共状态反馈使用 `src/components/StatusPanel.vue`（加载、空态、错误重试、提交中禁用），卡片底色使用 `surface-card`；页面只在确有对应状态时接入，不改变业务动作本身。
+- 品牌变量、样式模块、按钮、表单、弹窗和分页的使用方式见 [前端设计与交互约定](FRONTEND-DESIGN.md)。`UiPagination.vue` 只管理翻页控件的显示与事件，分页数据和请求仍由页面持有。
 
 ## 常用命令
 
@@ -36,4 +37,5 @@ python scripts/build-ui-bundle.py --check
 ## 验证边界
 
 - Chromium 契约测试使用明确的 API 替身时只能证明页面行为，不能声称为 Spring/MySQL 端到端。真实后端页面验收使用 `scripts/verify-mysql-isolated.py --http-smoke` 的隔离 MySQL 环境；本地未执行时在交付报告中写明。
+- 静态/CSP 样式加载和键盘焦点检查见 `frontend/tests/ui_shell_bundle.py`；三端设计预览的 320/390/1440px 检查见 `frontend/tests/ui_design_system.py`。DOM 注入式测试通过 `browser_transport.add_campus_styles` 按入口顺序加载样式模块。
 - Maven `clean verify` 会从源码重新构建 UI。全量构建需要隔离 MySQL/Redis 环境，见 [AI 开发流程](AI-WORKFLOW.md) 的测试矩阵。
