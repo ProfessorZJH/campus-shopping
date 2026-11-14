@@ -36,8 +36,11 @@ class OrderExpiryDiagnosticsTest {
             job.closeExpired();
             job.closeExpired();
 
-            var messages = capture.list.stream().map(ILoggingEvent::getFormattedMessage)
-                .filter(message -> message.startsWith("order_expiry_scan ")).toList();
+            var messages = capture.list
+                .stream()
+                .map(ILoggingEvent::getFormattedMessage)
+                .filter(message -> message.startsWith("order_expiry_scan "))
+                .toList();
             assertEquals(4, messages.size());
             assertTrue(messages.get(0).contains("oldest_overdue_seconds=0 "));
             assertTrue(messages.get(1).contains("oldest_overdue_seconds=0 "));
