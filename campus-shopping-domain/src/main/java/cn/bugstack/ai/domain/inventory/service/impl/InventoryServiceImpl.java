@@ -88,7 +88,8 @@ public class InventoryServiceImpl implements IInventoryService {
         List<ReservationVO> reservations = repository.reservations(order);
         require(!reservations.isEmpty(), ResponseCode.STOCK_STATE_INVALID);
         ReservationStatusEnumVO next = consumed ? ReservationStatusEnumVO.CONSUMED : ReservationStatusEnumVO.RELEASED;
-        for (ReservationVO r : reservations) {
+        // 当前预占查询已按 skuId 排序；此处再排序，防止仓储实现变更后打乱库存行锁序。
+        for (ReservationVO r : reservations.stream().sorted(Comparator.comparing(ReservationVO::skuId)).toList()) {
             if (next == r.state()) continue;
             require(r.state() == ReservationStatusEnumVO.RESERVED, ResponseCode.STOCK_STATE_INVALID);
             StockVO s = required(r.storeId(), r.skuId());
