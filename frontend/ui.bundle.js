@@ -11761,12 +11761,12 @@
       });
     }
   };
-  const _hoisted_1$5 = ["aria-label"];
-  const _hoisted_2$5 = { key: 0 };
-  const _hoisted_3$5 = ["disabled"];
-  const _hoisted_4$5 = ["aria-label"];
-  const _hoisted_5$3 = ["disabled"];
-  const _sfc_main$5 = /* @__PURE__ */ defineComponent({
+  const _hoisted_1$8 = ["aria-label"];
+  const _hoisted_2$8 = { key: 0 };
+  const _hoisted_3$8 = ["disabled"];
+  const _hoisted_4$8 = ["aria-label"];
+  const _hoisted_5$6 = ["disabled"];
+  const _sfc_main$8 = /* @__PURE__ */ defineComponent({
     __name: "UiPagination",
     props: {
       page: {},
@@ -11782,35 +11782,35 @@
           class: "sdd-pager",
           "aria-label": __props.label
         }, [
-          _ctx.$slots.default ? (openBlock(), createElementBlock("span", _hoisted_2$5, [
+          _ctx.$slots.default ? (openBlock(), createElementBlock("span", _hoisted_2$8, [
             renderSlot(_ctx.$slots, "default")
           ])) : createCommentVNode("v-if", true),
           createBaseVNode("button", {
             type: "button",
             disabled: __props.busy || __props.page <= 1,
             onClick: _cache[0] || (_cache[0] = ($event) => emit2("previous"))
-          }, "上一页", 8, _hoisted_3$5),
+          }, "上一页", 8, _hoisted_3$8),
           createBaseVNode("span", {
             "aria-label": `第 ${__props.page} 页`
-          }, toDisplayString(__props.page), 9, _hoisted_4$5),
+          }, toDisplayString(__props.page), 9, _hoisted_4$8),
           createBaseVNode("button", {
             type: "button",
             disabled: __props.busy || !__props.hasNext,
             onClick: _cache[1] || (_cache[1] = ($event) => emit2("next"))
-          }, "下一页", 8, _hoisted_5$3)
-        ], 8, _hoisted_1$5);
+          }, "下一页", 8, _hoisted_5$6)
+        ], 8, _hoisted_1$8);
       };
     }
   });
-  const _hoisted_1$4 = ["role", "aria-live"];
-  const _hoisted_2$4 = {
+  const _hoisted_1$7 = ["role", "aria-live"];
+  const _hoisted_2$7 = {
     key: 0,
     class: "mini-spinner",
     "aria-hidden": "true"
   };
-  const _hoisted_3$4 = { class: "status-panel-copy" };
-  const _hoisted_4$4 = ["disabled"];
-  const _sfc_main$4 = /* @__PURE__ */ defineComponent({
+  const _hoisted_3$7 = { class: "status-panel-copy" };
+  const _hoisted_4$7 = ["disabled"];
+  const _sfc_main$7 = /* @__PURE__ */ defineComponent({
     __name: "StatusPanel",
     props: {
       state: {},
@@ -11827,13 +11827,13 @@
           role: __props.state === "error" ? "alert" : "status",
           "aria-live": __props.state === "error" ? "assertive" : "polite"
         }, [
-          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2$4)) : (openBlock(), createBlock(unref(Icon), {
+          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2$7)) : (openBlock(), createBlock(unref(Icon), {
             key: 1,
             name: __props.state === "error" ? "alert" : "order",
             size: 26,
             "aria-hidden": "true"
           }, null, 8, ["name"])),
-          createBaseVNode("div", _hoisted_3$4, [
+          createBaseVNode("div", _hoisted_3$7, [
             createBaseVNode(
               "strong",
               null,
@@ -11848,8 +11848,8 @@
             class: "outline-button",
             disabled: __props.busy,
             onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
-          }, toDisplayString(__props.actionLabel), 9, _hoisted_4$4)) : createCommentVNode("v-if", true)
-        ], 10, _hoisted_1$4);
+          }, toDisplayString(__props.actionLabel), 9, _hoisted_4$7)) : createCommentVNode("v-if", true)
+        ], 10, _hoisted_1$7);
       };
     }
   });
@@ -12814,7 +12814,7 @@
   };
   const Home = {
     name: "Home",
-    components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$5, StatusPanel: _sfc_main$4 },
+    components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$8, StatusPanel: _sfc_main$7 },
     setup() {
       const scope = requestScope();
       const initialScope = requestScope();
@@ -13609,6 +13609,533 @@
       };
     })()
   };
+  const _hoisted_1$6 = {
+    class: "chat-thread",
+    "aria-label": "AI对话"
+  };
+  const _hoisted_2$6 = {
+    key: 0,
+    class: "chat-welcome"
+  };
+  const _hoisted_3$6 = { class: "chat-welcome-icon" };
+  const _hoisted_4$6 = {
+    key: 0,
+    class: "chat-avatar"
+  };
+  const _hoisted_5$5 = { class: "chat-body" };
+  const _hoisted_6$5 = { class: "chat-bubble" };
+  const _hoisted_7$5 = {
+    key: 0,
+    class: "message-warning"
+  };
+  const _hoisted_8$4 = {
+    key: 1,
+    class: "citation-chips"
+  };
+  const _hoisted_9$3 = { key: 0 };
+  const _hoisted_10$3 = {
+    key: 2,
+    class: "message-warning"
+  };
+  const _hoisted_11$3 = {
+    key: 3,
+    class: "message-warning"
+  };
+  const _hoisted_12$2 = { class: "chat-timestamp" };
+  const _hoisted_13$1 = { key: 0 };
+  const _hoisted_14$1 = {
+    key: 1,
+    class: "chat-row is-assistant"
+  };
+  const _hoisted_15$1 = { class: "typing-bubble" };
+  const _hoisted_16 = { key: 0 };
+  const _hoisted_17 = { key: 1 };
+  const _hoisted_18 = { key: 2 };
+  const _hoisted_19 = {
+    key: 2,
+    class: "inline-error"
+  };
+  const robotImage = "./images/robot.webp";
+  const _sfc_main$6 = /* @__PURE__ */ defineComponent({
+    __name: "GuideConversation",
+    props: {
+      messages: {},
+      thinking: { type: Boolean },
+      reconnecting: { type: Boolean },
+      cancelRequested: { type: Boolean },
+      streamProgress: {},
+      error: {}
+    },
+    setup(__props) {
+      return (_ctx, _cache) => {
+        const _component_Icon = resolveComponent("Icon");
+        return openBlock(), createElementBlock("section", _hoisted_1$6, [
+          !__props.messages.length ? (openBlock(), createElementBlock("div", _hoisted_2$6, [
+            createBaseVNode("span", _hoisted_3$6, [
+              createVNode(_component_Icon, {
+                name: "sparkles",
+                size: 22
+              })
+            ]),
+            _cache[0] || (_cache[0] = createBaseVNode(
+              "h2",
+              null,
+              "你好，同学。",
+              -1
+              /* CACHED */
+            )),
+            _cache[1] || (_cache[1] = createBaseVNode(
+              "p",
+              null,
+              "告诉我预算或想买的东西。",
+              -1
+              /* CACHED */
+            ))
+          ])) : createCommentVNode("v-if", true),
+          (openBlock(true), createElementBlock(
+            Fragment,
+            null,
+            renderList(__props.messages, (message, index) => {
+              var _a;
+              return openBlock(), createElementBlock(
+                "div",
+                {
+                  key: index,
+                  class: normalizeClass(["chat-row", message.role === "user" ? "is-user" : "is-assistant"])
+                },
+                [
+                  message.role !== "user" ? (openBlock(), createElementBlock("span", _hoisted_4$6, [
+                    createBaseVNode("img", {
+                      src: robotImage,
+                      alt: "AI"
+                    })
+                  ])) : createCommentVNode("v-if", true),
+                  createBaseVNode("div", _hoisted_5$5, [
+                    createBaseVNode(
+                      "div",
+                      _hoisted_6$5,
+                      toDisplayString(message.content),
+                      1
+                      /* TEXT */
+                    ),
+                    message.warning ? (openBlock(), createElementBlock(
+                      "div",
+                      _hoisted_7$5,
+                      toDisplayString(message.warning),
+                      1
+                      /* TEXT */
+                    )) : createCommentVNode("v-if", true),
+                    ((_a = message.citations) == null ? void 0 : _a.length) ? (openBlock(), createElementBlock("div", _hoisted_8$4, [
+                      (openBlock(true), createElementBlock(
+                        Fragment,
+                        null,
+                        renderList(message.citations, (citation, ci) => {
+                          return openBlock(), createElementBlock("details", {
+                            key: citation.documentId || ci,
+                            class: "citation-chip"
+                          }, [
+                            createBaseVNode("summary", null, [
+                              createVNode(_component_Icon, {
+                                name: "book",
+                                size: 12
+                              }),
+                              createTextVNode(
+                                toDisplayString(citation.title || "参考资料"),
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            citation.snippet ? (openBlock(), createElementBlock(
+                              "p",
+                              _hoisted_9$3,
+                              toDisplayString(citation.snippet),
+                              1
+                              /* TEXT */
+                            )) : createCommentVNode("v-if", true)
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : createCommentVNode("v-if", true),
+                    message.role === "assistant" && message.citationStatus === "MISSING" ? (openBlock(), createElementBlock("div", _hoisted_10$3, " 历史消息没有可恢复的引用记录 ")) : createCommentVNode("v-if", true),
+                    message.role === "assistant" && message.citationStatus === "HIDDEN" ? (openBlock(), createElementBlock("div", _hoisted_11$3, " 当前无法核验这条历史引用，来源已隐藏 ")) : createCommentVNode("v-if", true),
+                    createBaseVNode("span", _hoisted_12$2, [
+                      createTextVNode(
+                        toDisplayString(message.time || "刚刚") + " ",
+                        1
+                        /* TEXT */
+                      ),
+                      message.demo ? (openBlock(), createElementBlock("span", _hoisted_13$1, "· 示例回答")) : createCommentVNode("v-if", true)
+                    ])
+                  ])
+                ],
+                2
+                /* CLASS */
+              );
+            }),
+            128
+            /* KEYED_FRAGMENT */
+          )),
+          __props.thinking ? (openBlock(), createElementBlock("div", _hoisted_14$1, [
+            createBaseVNode("span", { class: "chat-avatar" }, [
+              createBaseVNode("img", {
+                src: robotImage,
+                alt: "AI"
+              })
+            ]),
+            createBaseVNode("div", _hoisted_15$1, [
+              _cache[2] || (_cache[2] = createBaseVNode(
+                "i",
+                null,
+                null,
+                -1
+                /* CACHED */
+              )),
+              _cache[3] || (_cache[3] = createBaseVNode(
+                "i",
+                null,
+                null,
+                -1
+                /* CACHED */
+              )),
+              _cache[4] || (_cache[4] = createBaseVNode(
+                "i",
+                null,
+                null,
+                -1
+                /* CACHED */
+              )),
+              __props.reconnecting ? (openBlock(), createElementBlock("small", _hoisted_16, "连接已断开，正在恢复原会话…")) : __props.cancelRequested ? (openBlock(), createElementBlock("small", _hoisted_17, "正在停止本轮生成…")) : __props.streamProgress ? (openBlock(), createElementBlock(
+                "small",
+                _hoisted_18,
+                "已读取 " + toDisplayString(__props.streamProgress) + " 字节",
+                1
+                /* TEXT */
+              )) : createCommentVNode("v-if", true)
+            ])
+          ])) : createCommentVNode("v-if", true),
+          __props.error ? (openBlock(), createElementBlock("div", _hoisted_19, [
+            createVNode(_component_Icon, {
+              name: "alert",
+              size: 17
+            }),
+            createTextVNode(
+              toDisplayString(__props.error),
+              1
+              /* TEXT */
+            )
+          ])) : createCommentVNode("v-if", true)
+        ]);
+      };
+    }
+  });
+  const _hoisted_1$5 = { class: "ai-history-head" };
+  const _hoisted_2$5 = ["disabled"];
+  const _hoisted_3$5 = ["aria-expanded"];
+  const _hoisted_4$5 = {
+    key: 0,
+    class: "ai-history-list"
+  };
+  const _hoisted_5$4 = ["disabled", "onClick"];
+  const _hoisted_6$4 = { class: "ai-history-copy" };
+  const _hoisted_7$4 = { key: 0 };
+  const _hoisted_8$3 = ["disabled"];
+  const _sfc_main$5 = /* @__PURE__ */ defineComponent({
+    __name: "GuideHistory",
+    props: {
+      open: { type: Boolean },
+      conversations: {},
+      thinking: { type: Boolean },
+      openingConversation: { type: Boolean },
+      confirmingProposal: { type: Boolean },
+      hasMore: { type: Boolean },
+      loading: { type: Boolean },
+      formatTime: { type: Function }
+    },
+    emits: ["new", "toggle", "open", "more"],
+    setup(__props) {
+      return (_ctx, _cache) => {
+        const _component_Icon = resolveComponent("Icon");
+        return openBlock(), createElementBlock(
+          Fragment,
+          null,
+          [
+            createBaseVNode("div", _hoisted_1$5, [
+              createBaseVNode("button", {
+                class: "ai-new-chat",
+                disabled: __props.openingConversation || __props.confirmingProposal,
+                onClick: _cache[0] || (_cache[0] = ($event) => _ctx.$emit("new"))
+              }, [
+                createVNode(_component_Icon, {
+                  name: "plus",
+                  size: 15
+                }),
+                _cache[3] || (_cache[3] = createTextVNode(
+                  " 新对话 ",
+                  -1
+                  /* CACHED */
+                ))
+              ], 8, _hoisted_2$5),
+              createBaseVNode("button", {
+                "aria-expanded": __props.open,
+                onClick: _cache[1] || (_cache[1] = ($event) => _ctx.$emit("toggle"))
+              }, [
+                createVNode(_component_Icon, {
+                  name: "clock",
+                  size: 15
+                }),
+                _cache[4] || (_cache[4] = createTextVNode(
+                  " 历史会话 ",
+                  -1
+                  /* CACHED */
+                )),
+                createVNode(_component_Icon, {
+                  name: "chevronDown",
+                  size: 14
+                })
+              ], 8, _hoisted_3$5)
+            ]),
+            __props.open ? (openBlock(), createElementBlock("div", _hoisted_4$5, [
+              (openBlock(true), createElementBlock(
+                Fragment,
+                null,
+                renderList(__props.conversations, (conversation) => {
+                  return openBlock(), createElementBlock("button", {
+                    key: conversation.id,
+                    disabled: __props.thinking || __props.openingConversation,
+                    onClick: ($event) => _ctx.$emit("open", conversation)
+                  }, [
+                    createVNode(_component_Icon, {
+                      name: "order",
+                      size: 16
+                    }),
+                    createBaseVNode("span", _hoisted_6$4, [
+                      createBaseVNode(
+                        "strong",
+                        null,
+                        toDisplayString(conversation.summary || conversation.title || "对话"),
+                        1
+                        /* TEXT */
+                      ),
+                      createBaseVNode(
+                        "small",
+                        null,
+                        toDisplayString(__props.formatTime(conversation.lastActiveAt || conversation.createdAt)),
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    createVNode(_component_Icon, {
+                      name: "chevronRight",
+                      size: 14
+                    })
+                  ], 8, _hoisted_5$4);
+                }),
+                128
+                /* KEYED_FRAGMENT */
+              )),
+              !__props.conversations.length ? (openBlock(), createElementBlock("span", _hoisted_7$4, "暂无历史记录")) : createCommentVNode("v-if", true),
+              __props.hasMore ? (openBlock(), createElementBlock("button", {
+                key: 1,
+                disabled: __props.loading,
+                onClick: _cache[2] || (_cache[2] = ($event) => _ctx.$emit("more"))
+              }, "加载更多会话", 8, _hoisted_8$3)) : createCommentVNode("v-if", true)
+            ])) : createCommentVNode("v-if", true)
+          ],
+          64
+          /* STABLE_FRAGMENT */
+        );
+      };
+    }
+  });
+  const _hoisted_1$4 = { class: "recommendation-panel" };
+  const _hoisted_2$4 = { class: "recommendation-header" };
+  const _hoisted_3$4 = { class: "rec-cards" };
+  const _hoisted_4$4 = ["aria-label", "aria-pressed", "onClick"];
+  const _hoisted_5$3 = { class: "rec-photo" };
+  const _hoisted_6$3 = { class: "rec-card-content" };
+  const _hoisted_7$3 = { class: "rec-item-tag" };
+  const _hoisted_8$2 = ["disabled", "onClick"];
+  const _hoisted_9$2 = { class: "rec-price" };
+  const _hoisted_10$2 = { class: "pick-mini" };
+  const _hoisted_11$2 = {
+    key: 0,
+    class: "proposal-feedback",
+    role: "alert"
+  };
+  const _hoisted_12$1 = { class: "proposal-footer" };
+  const _hoisted_13 = { class: "proposal-total" };
+  const _hoisted_14 = { class: "proposal-actions" };
+  const _hoisted_15 = ["disabled"];
+  const _sfc_main$4 = /* @__PURE__ */ defineComponent({
+    __name: "GuideRecommendations",
+    props: {
+      items: {},
+      selectedIds: {},
+      total: {},
+      feedback: {},
+      preview: { type: Boolean },
+      thinking: { type: Boolean },
+      confirming: { type: Boolean },
+      proposalStatus: {}
+    },
+    emits: ["toggle", "detail", "reject", "confirm"],
+    setup(__props) {
+      return (_ctx, _cache) => {
+        const _component_Icon = resolveComponent("Icon");
+        return openBlock(), createElementBlock("section", _hoisted_1$4, [
+          createBaseVNode("div", _hoisted_2$4, [
+            createBaseVNode("div", null, [
+              createBaseVNode("h2", null, [
+                _cache[2] || (_cache[2] = createTextVNode(
+                  " 为你选了 ",
+                  -1
+                  /* CACHED */
+                )),
+                createBaseVNode(
+                  "em",
+                  null,
+                  toDisplayString(__props.items.length),
+                  1
+                  /* TEXT */
+                ),
+                _cache[3] || (_cache[3] = createTextVNode(
+                  " 件好物 ",
+                  -1
+                  /* CACHED */
+                ))
+              ])
+            ])
+          ]),
+          createBaseVNode("div", _hoisted_3$4, [
+            (openBlock(true), createElementBlock(
+              Fragment,
+              null,
+              renderList(__props.items, (item, index) => {
+                var _a;
+                return openBlock(), createElementBlock("article", {
+                  key: item.skuId,
+                  class: "rec-item"
+                }, [
+                  createBaseVNode("button", {
+                    class: normalizeClass(["rec-check", { checked: __props.selectedIds.includes(item.skuId) }]),
+                    "aria-label": "选择" + item.title,
+                    "aria-pressed": __props.selectedIds.includes(item.skuId),
+                    onClick: ($event) => _ctx.$emit("toggle", item.skuId)
+                  }, [
+                    createVNode(_component_Icon, {
+                      name: "check",
+                      size: 13
+                    })
+                  ], 10, _hoisted_4$4),
+                  createBaseVNode("div", _hoisted_5$3, [
+                    createVNode(unref(ProductImage), {
+                      src: item.imageUrl || ((_a = item.product) == null ? void 0 : _a.imageUrl),
+                      alt: item.title
+                    }, null, 8, ["src", "alt"])
+                  ]),
+                  createBaseVNode("div", _hoisted_6$3, [
+                    createBaseVNode(
+                      "div",
+                      _hoisted_7$3,
+                      toDisplayString(index === 0 ? "HOT PICK" : index === 1 ? "DAILY" : "GOOD VALUE"),
+                      1
+                      /* TEXT */
+                    ),
+                    createBaseVNode(
+                      "strong",
+                      null,
+                      toDisplayString(item.title),
+                      1
+                      /* TEXT */
+                    ),
+                    createBaseVNode(
+                      "small",
+                      null,
+                      toDisplayString(item.specKey),
+                      1
+                      /* TEXT */
+                    ),
+                    createBaseVNode("button", {
+                      class: "rec-detail-link",
+                      type: "button",
+                      disabled: !item.detailAvailable || !item.productId,
+                      onClick: ($event) => _ctx.$emit("detail", item)
+                    }, toDisplayString(item.detailAvailable ? "查看详情" : "详情暂不可用"), 9, _hoisted_8$2),
+                    createBaseVNode("div", _hoisted_9$2, [
+                      createBaseVNode(
+                        "span",
+                        null,
+                        toDisplayString(unref(money)(item.priceCent)),
+                        1
+                        /* TEXT */
+                      ),
+                      createBaseVNode("span", _hoisted_10$2, [
+                        createVNode(_component_Icon, {
+                          name: "plus",
+                          size: 15
+                        })
+                      ])
+                    ])
+                  ])
+                ]);
+              }),
+              128
+              /* KEYED_FRAGMENT */
+            ))
+          ]),
+          __props.feedback ? (openBlock(), createElementBlock(
+            "div",
+            _hoisted_11$2,
+            toDisplayString(__props.feedback),
+            1
+            /* TEXT */
+          )) : createCommentVNode("v-if", true),
+          createBaseVNode("div", _hoisted_12$1, [
+            createBaseVNode("div", _hoisted_13, [
+              createBaseVNode(
+                "span",
+                null,
+                "已选 " + toDisplayString(__props.selectedIds.length) + " 件",
+                1
+                /* TEXT */
+              ),
+              createBaseVNode(
+                "strong",
+                null,
+                toDisplayString(unref(money)(__props.total)),
+                1
+                /* TEXT */
+              )
+            ]),
+            createBaseVNode("div", _hoisted_14, [
+              !__props.preview && __props.proposalStatus === "PENDING" ? (openBlock(), createElementBlock("button", {
+                key: 0,
+                class: "ghost-decline",
+                onClick: _cache[0] || (_cache[0] = ($event) => _ctx.$emit("reject"))
+              }, " 放弃 ")) : createCommentVNode("v-if", true),
+              createBaseVNode("button", {
+                class: "confirm-button",
+                disabled: __props.preview || __props.thinking || !__props.selectedIds.length || !__props.preview && __props.proposalStatus !== "PENDING",
+                onClick: _cache[1] || (_cache[1] = ($event) => _ctx.$emit("confirm"))
+              }, [
+                createVNode(_component_Icon, {
+                  name: "check",
+                  size: 17
+                }),
+                createTextVNode(
+                  toDisplayString(__props.proposalStatus === "CONFIRMED" ? "已确认" : __props.confirming ? "确认中…" : "确认加购"),
+                  1
+                  /* TEXT */
+                )
+              ], 8, _hoisted_15)
+            ])
+          ])
+        ]);
+      };
+    }
+  });
   function citationsOf(answer) {
     return ((answer == null ? void 0 : answer.citations) ?? []).map((citation) => ({
       documentId: (citation == null ? void 0 : citation.documentId) || "",
@@ -13755,7 +14282,7 @@
   ];
   const Guide = {
     name: "Guide",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, GuideConversation: _sfc_main$6, GuideHistory: _sfc_main$5, GuideRecommendations: _sfc_main$4 },
     setup() {
       const conversationTransport = createGuideConversationTransport();
       const input = ref$e("");
@@ -14197,14 +14724,16 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, resolveComponent: _resolveComponent, createVNode: _createVNode2, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, resolveComponent: _resolveComponent, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, createElementBlock: _createElementBlock, createVNode: _createVNode2, toDisplayString: _toDisplayString, vModelText: _vModelText, withDirectives: _withDirectives, withModifiers: _withModifiers, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
+        const _component_GuideHistory = _resolveComponent("GuideHistory");
         const _component_Icon = _resolveComponent("Icon");
-        const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_GuideConversation = _resolveComponent("GuideConversation");
+        const _component_GuideRecommendations = _resolveComponent("GuideRecommendations");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "ai" }, {
           default: _withCtx(() => {
-            var _a, _b, _c;
+            var _a;
             return [
               _createElementVNode("section", { class: "ai-hero" }, [
                 _createElementVNode("div", { class: "ai-hero-text" }, [
@@ -14222,89 +14751,24 @@
                 _createElementVNode("span", { class: "orb-decoration orb-one" }, "✦"),
                 _createElementVNode("span", { class: "orb-decoration orb-two" }, "✧")
               ]),
-              !_ctx.preview ? (_openBlock(), _createElementBlock("div", {
+              !_ctx.preview ? (_openBlock(), _createBlock(_component_GuideHistory, {
                 key: 0,
-                class: "ai-history-head"
-              }, [
-                _createElementVNode("button", {
-                  class: "ai-new-chat",
-                  onClick: _ctx.newConversation,
-                  disabled: _ctx.openingConversation || _ctx.confirmingProposal
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "plus",
-                    size: 15
-                  }),
-                  _createTextVNode(" 新对话")
-                ], 8, ["onClick", "disabled"]),
-                _createElementVNode("button", {
-                  onClick: ($event) => {
-                    _ctx.historyOpen = !_ctx.historyOpen;
-                    _ctx.historyOpen && _ctx.loadHistory();
-                  }
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "clock",
-                    size: 15
-                  }),
-                  _createTextVNode(" 历史会话 "),
-                  _createVNode2(_component_Icon, {
-                    name: "chevronDown",
-                    size: 14
-                  })
-                ], 8, ["onClick"])
-              ])) : _createCommentVNode("v-if", true),
-              _ctx.historyOpen ? (_openBlock(), _createElementBlock("div", {
-                key: 1,
-                class: "ai-history-list"
-              }, [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.conversations, (c) => {
-                    return _openBlock(), _createElementBlock("button", {
-                      key: c.id,
-                      onClick: ($event) => _ctx.openConversation(c),
-                      disabled: _ctx.thinking || _ctx.openingConversation
-                    }, [
-                      _createVNode2(_component_Icon, {
-                        name: "order",
-                        size: 16
-                      }),
-                      _createTextVNode(),
-                      _createElementVNode("span", { class: "ai-history-copy" }, [
-                        _createElementVNode(
-                          "strong",
-                          null,
-                          _toDisplayString(c.summary || c.title || "对话"),
-                          1
-                          /* TEXT */
-                        ),
-                        _createElementVNode(
-                          "small",
-                          null,
-                          _toDisplayString(_ctx.formatHistoryTime(c.lastActiveAt || c.createdAt)),
-                          1
-                          /* TEXT */
-                        )
-                      ]),
-                      _createTextVNode(),
-                      _createVNode2(_component_Icon, {
-                        name: "chevronRight",
-                        size: 14
-                      })
-                    ], 8, ["onClick", "disabled"]);
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                )),
-                !_ctx.conversations.length ? (_openBlock(), _createElementBlock("span", { key: 0 }, "暂无历史记录")) : _createCommentVNode("v-if", true),
-                _ctx.historyHasMore ? (_openBlock(), _createElementBlock("button", {
-                  key: 1,
-                  onClick: ($event) => _ctx.loadHistory(false),
-                  disabled: _ctx.loadingHistory
-                }, "加载更多会话", 8, ["onClick", "disabled"])) : _createCommentVNode("v-if", true)
-              ])) : _createCommentVNode("v-if", true),
+                open: _ctx.historyOpen,
+                conversations: _ctx.conversations,
+                thinking: _ctx.thinking,
+                "opening-conversation": _ctx.openingConversation,
+                "confirming-proposal": _ctx.confirmingProposal,
+                "has-more": _ctx.historyHasMore,
+                loading: _ctx.loadingHistory,
+                "format-time": _ctx.formatHistoryTime,
+                onNew: _ctx.newConversation,
+                onToggle: ($event) => {
+                  _ctx.historyOpen = !_ctx.historyOpen;
+                  _ctx.historyOpen && _ctx.loadHistory();
+                },
+                onOpen: _ctx.openConversation,
+                onMore: ($event) => _ctx.loadHistory(false)
+              }, null, 8, ["open", "conversations", "thinking", "opening-conversation", "confirming-proposal", "has-more", "loading", "format-time", "onNew", "onToggle", "onOpen", "onMore"])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", {
                 class: "quick-prompts",
                 "aria-label": "快捷提问"
@@ -14333,308 +14797,29 @@
                   /* KEYED_FRAGMENT */
                 ))
               ]),
-              _createElementVNode("section", {
-                class: "chat-thread",
-                "aria-label": "AI对话"
-              }, [
-                !_ctx.messages.length ? (_openBlock(), _createElementBlock("div", {
-                  key: 0,
-                  class: "chat-welcome"
-                }, [
-                  _createElementVNode("span", { class: "chat-welcome-icon" }, [
-                    _createVNode2(_component_Icon, {
-                      name: "sparkles",
-                      size: 22
-                    })
-                  ]),
-                  _createElementVNode("h2", null, "你好，同学。"),
-                  _createElementVNode("p", null, "告诉我预算或想买的东西。")
-                ])) : _createCommentVNode("v-if", true),
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.messages, (message, index) => {
-                    var _a2;
-                    return _openBlock(), _createElementBlock(
-                      "div",
-                      {
-                        class: _normalizeClass(["chat-row", message.role === "user" ? "is-user" : "is-assistant"]),
-                        key: index
-                      },
-                      [
-                        message.role !== "user" ? (_openBlock(), _createElementBlock("span", {
-                          key: 0,
-                          class: "chat-avatar"
-                        }, [
-                          _createElementVNode("img", {
-                            src: "./images/robot.webp",
-                            alt: "AI"
-                          })
-                        ])) : _createCommentVNode("v-if", true),
-                        _createElementVNode("div", { class: "chat-body" }, [
-                          _createElementVNode(
-                            "div",
-                            { class: "chat-bubble" },
-                            _toDisplayString(message.content),
-                            1
-                            /* TEXT */
-                          ),
-                          message.warning ? (_openBlock(), _createElementBlock(
-                            "div",
-                            {
-                              key: 0,
-                              class: "message-warning"
-                            },
-                            _toDisplayString(message.warning),
-                            1
-                            /* TEXT */
-                          )) : _createCommentVNode("v-if", true),
-                          ((_a2 = message.citations) == null ? void 0 : _a2.length) ? (_openBlock(), _createElementBlock("div", {
-                            key: 1,
-                            class: "citation-chips"
-                          }, [
-                            (_openBlock(true), _createElementBlock(
-                              _Fragment,
-                              null,
-                              _renderList(message.citations, (c, ci) => {
-                                return _openBlock(), _createElementBlock("details", {
-                                  class: "citation-chip",
-                                  key: c.documentId || ci
-                                }, [
-                                  _createElementVNode("summary", null, [
-                                    _createVNode2(_component_Icon, {
-                                      name: "book",
-                                      size: 12
-                                    }),
-                                    _createTextVNode(
-                                      _toDisplayString(c.title || "参考资料"),
-                                      1
-                                      /* TEXT */
-                                    )
-                                  ]),
-                                  c.snippet ? (_openBlock(), _createElementBlock(
-                                    "p",
-                                    { key: 0 },
-                                    _toDisplayString(c.snippet),
-                                    1
-                                    /* TEXT */
-                                  )) : _createCommentVNode("v-if", true)
-                                ]);
-                              }),
-                              128
-                              /* KEYED_FRAGMENT */
-                            ))
-                          ])) : _createCommentVNode("v-if", true),
-                          message.role === "assistant" && message.citationStatus === "MISSING" ? (_openBlock(), _createElementBlock("div", {
-                            key: 2,
-                            class: "message-warning"
-                          }, "历史消息没有可恢复的引用记录")) : _createCommentVNode("v-if", true),
-                          message.role === "assistant" && message.citationStatus === "HIDDEN" ? (_openBlock(), _createElementBlock("div", {
-                            key: 3,
-                            class: "message-warning"
-                          }, "当前无法核验这条历史引用，来源已隐藏")) : _createCommentVNode("v-if", true),
-                          _createElementVNode("span", { class: "chat-timestamp" }, [
-                            _createTextVNode(
-                              _toDisplayString(message.time || "刚刚") + " ",
-                              1
-                              /* TEXT */
-                            ),
-                            message.demo ? (_openBlock(), _createElementBlock("span", { key: 0 }, "· 示例回答")) : _createCommentVNode("v-if", true)
-                          ])
-                        ])
-                      ],
-                      2
-                      /* CLASS */
-                    );
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                )),
-                _ctx.thinking ? (_openBlock(), _createElementBlock("div", {
-                  key: 1,
-                  class: "chat-row is-assistant"
-                }, [
-                  _createElementVNode("span", { class: "chat-avatar" }, [
-                    _createElementVNode("img", {
-                      src: "./images/robot.webp",
-                      alt: "AI"
-                    })
-                  ]),
-                  _createElementVNode("div", { class: "typing-bubble" }, [
-                    _createElementVNode("i"),
-                    _createElementVNode("i"),
-                    _createElementVNode("i"),
-                    _ctx.reconnecting ? (_openBlock(), _createElementBlock("small", { key: 0 }, "连接已断开，正在恢复原会话…")) : _ctx.cancelRequested ? (_openBlock(), _createElementBlock("small", { key: 1 }, "正在停止本轮生成…")) : _ctx.streamProgress ? (_openBlock(), _createElementBlock(
-                      "small",
-                      { key: 2 },
-                      "已读取 " + _toDisplayString(_ctx.streamProgress) + " 字节",
-                      1
-                      /* TEXT */
-                    )) : _createCommentVNode("v-if", true)
-                  ])
-                ])) : _createCommentVNode("v-if", true),
-                _ctx.error ? (_openBlock(), _createElementBlock("div", {
-                  key: 2,
-                  class: "inline-error"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "alert",
-                    size: 17
-                  }),
-                  _createTextVNode(
-                    _toDisplayString(_ctx.error),
-                    1
-                    /* TEXT */
-                  )
-                ])) : _createCommentVNode("v-if", true)
-              ]),
-              _ctx.showProposal ? (_openBlock(), _createElementBlock("section", {
-                key: 2,
-                class: "recommendation-panel"
-              }, [
-                _createElementVNode("div", { class: "recommendation-header" }, [
-                  _createElementVNode("div", null, [
-                    _createElementVNode("h2", null, [
-                      _createTextVNode("为你选了 "),
-                      _createElementVNode(
-                        "em",
-                        null,
-                        _toDisplayString(_ctx.items.length),
-                        1
-                        /* TEXT */
-                      ),
-                      _createTextVNode(" 件好物")
-                    ])
-                  ])
-                ]),
-                _createElementVNode("div", { class: "rec-cards" }, [
-                  (_openBlock(true), _createElementBlock(
-                    _Fragment,
-                    null,
-                    _renderList(_ctx.items, (item, index) => {
-                      var _a2;
-                      return _openBlock(), _createElementBlock("article", {
-                        class: "rec-item",
-                        key: item.skuId
-                      }, [
-                        _createElementVNode("button", {
-                          class: _normalizeClass(["rec-check", { checked: _ctx.selectedIds.includes(item.skuId) }]),
-                          onClick: ($event) => _ctx.toggle(item.skuId),
-                          "aria-label": "选择" + item.title
-                        }, [
-                          _createVNode2(_component_Icon, {
-                            name: "check",
-                            size: 13
-                          })
-                        ], 10, ["onClick", "aria-label"]),
-                        _createElementVNode("div", { class: "rec-photo" }, [
-                          _createVNode2(_component_ProductImage, {
-                            src: item.imageUrl || ((_a2 = item.product) == null ? void 0 : _a2.imageUrl),
-                            alt: item.title
-                          }, null, 8, ["src", "alt"])
-                        ]),
-                        _createElementVNode("div", { class: "rec-card-content" }, [
-                          _createElementVNode(
-                            "div",
-                            { class: "rec-item-tag" },
-                            _toDisplayString(index === 0 ? "HOT PICK" : index === 1 ? "DAILY" : "GOOD VALUE"),
-                            1
-                            /* TEXT */
-                          ),
-                          _createElementVNode(
-                            "strong",
-                            null,
-                            _toDisplayString(item.title),
-                            1
-                            /* TEXT */
-                          ),
-                          _createElementVNode(
-                            "small",
-                            null,
-                            _toDisplayString(item.specKey),
-                            1
-                            /* TEXT */
-                          ),
-                          _createElementVNode("button", {
-                            class: "rec-detail-link",
-                            type: "button",
-                            onClick: ($event) => _ctx.openDetail(item),
-                            disabled: !item.detailAvailable || !item.productId
-                          }, _toDisplayString(item.detailAvailable ? "查看详情" : "详情暂不可用"), 9, ["onClick", "disabled"]),
-                          _createElementVNode("div", { class: "rec-price" }, [
-                            _createElementVNode(
-                              "span",
-                              null,
-                              _toDisplayString(_ctx.money(item.priceCent)),
-                              1
-                              /* TEXT */
-                            ),
-                            _createElementVNode("span", { class: "pick-mini" }, [
-                              _createVNode2(_component_Icon, {
-                                name: "plus",
-                                size: 15
-                              })
-                            ])
-                          ])
-                        ])
-                      ]);
-                    }),
-                    128
-                    /* KEYED_FRAGMENT */
-                  ))
-                ]),
-                _ctx.proposalFeedback ? (_openBlock(), _createElementBlock(
-                  "div",
-                  {
-                    key: 0,
-                    class: "proposal-feedback",
-                    role: "alert"
-                  },
-                  _toDisplayString(_ctx.proposalFeedback),
-                  1
-                  /* TEXT */
-                )) : _createCommentVNode("v-if", true),
-                _createElementVNode("div", { class: "proposal-footer" }, [
-                  _createElementVNode("div", { class: "proposal-total" }, [
-                    _createElementVNode(
-                      "span",
-                      null,
-                      "已选 " + _toDisplayString(_ctx.selectedIds.length) + " 件",
-                      1
-                      /* TEXT */
-                    ),
-                    _createElementVNode(
-                      "strong",
-                      null,
-                      _toDisplayString(_ctx.money(_ctx.total)),
-                      1
-                      /* TEXT */
-                    )
-                  ]),
-                  _createElementVNode("div", { class: "proposal-actions" }, [
-                    !_ctx.preview && ((_a = _ctx.proposal) == null ? void 0 : _a.status) === "PENDING" ? (_openBlock(), _createElementBlock("button", {
-                      key: 0,
-                      class: "ghost-decline",
-                      onClick: _ctx.reject
-                    }, "放弃", 8, ["onClick"])) : _createCommentVNode("v-if", true),
-                    _createElementVNode("button", {
-                      class: "confirm-button",
-                      onClick: _ctx.confirm,
-                      disabled: _ctx.preview || _ctx.thinking || !_ctx.selectedIds.length || !_ctx.preview && ((_b = _ctx.proposal) == null ? void 0 : _b.status) !== "PENDING"
-                    }, [
-                      _createVNode2(_component_Icon, {
-                        name: "check",
-                        size: 17
-                      }),
-                      _createTextVNode(
-                        _toDisplayString(((_c = _ctx.proposal) == null ? void 0 : _c.status) === "CONFIRMED" ? "已确认" : _ctx.confirmingProposal ? "确认中…" : "确认加购"),
-                        1
-                        /* TEXT */
-                      )
-                    ], 8, ["onClick", "disabled"])
-                  ])
-                ])
-              ])) : _createCommentVNode("v-if", true),
+              _createVNode2(_component_GuideConversation, {
+                messages: _ctx.messages,
+                thinking: _ctx.thinking,
+                reconnecting: _ctx.reconnecting,
+                "cancel-requested": _ctx.cancelRequested,
+                "stream-progress": _ctx.streamProgress,
+                error: _ctx.error
+              }, null, 8, ["messages", "thinking", "reconnecting", "cancel-requested", "stream-progress", "error"]),
+              _ctx.showProposal ? (_openBlock(), _createBlock(_component_GuideRecommendations, {
+                key: 1,
+                items: _ctx.items,
+                "selected-ids": _ctx.selectedIds,
+                total: _ctx.total,
+                feedback: _ctx.proposalFeedback,
+                preview: _ctx.preview,
+                thinking: _ctx.thinking,
+                confirming: _ctx.confirmingProposal,
+                "proposal-status": (_a = _ctx.proposal) == null ? void 0 : _a.status,
+                onToggle: _ctx.toggle,
+                onDetail: _ctx.openDetail,
+                onReject: _ctx.reject,
+                onConfirm: _ctx.confirm
+              }, null, 8, ["items", "selected-ids", "total", "feedback", "preview", "thinking", "confirming", "proposal-status", "onToggle", "onDetail", "onReject", "onConfirm"])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", {
                 class: "chat-composer-placeholder",
                 "aria-hidden": "true"
@@ -17265,7 +17450,7 @@
   const { ref: ref$9, computed: computed$9, onMounted: onMounted$8, watch: watch$7 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
-    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$4 },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$7 },
     setup() {
       const scope = requestScope();
       const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
@@ -17634,7 +17819,7 @@
   const { ref: ref$8, computed: computed$8, onMounted: onMounted$7, onUnmounted: onUnmounted$5, watch: watch$6 } = Vue;
   const Shop = {
     name: "Shop",
-    components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$5, StatusPanel: _sfc_main$4 },
+    components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$8, StatusPanel: _sfc_main$7 },
     setup() {
       const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
       const id = computed$8(
@@ -18093,7 +18278,7 @@
   const { ref: ref$7, computed: computed$7, onMounted: onMounted$6 } = Vue;
   const Cart = {
     name: "Cart",
-    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$4 },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$7 },
     setup() {
       const scope = requestScope();
       const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7(""), confirmOpen = ref$7(false), confirmLoading = ref$7(false), confirmError = ref$7(""), confirmRetryable = ref$7(false), confirmItems = ref$7([]), confirmMerchant = ref$7({}), confirmTotal = ref$7(0);
@@ -18292,11 +18477,11 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withDirectives: _withDirectives, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withDirectives: _withDirectives, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
-        const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_StatusPanel = _resolveComponent("StatusPanel");
+        const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "cart" }, {
@@ -18317,21 +18502,19 @@
                 _createVNode2(_component_Icon, { name: "refresh" })
               ], 8, ["disabled", "onClick"])
             ]),
-            _ctx.loading ? (_openBlock(), _createElementBlock("div", {
+            _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
               key: 0,
-              role: "status",
-              class: "inline-loading"
-            }, "正在加载购物车…")) : _createCommentVNode("v-if", true),
-            _ctx.error ? (_openBlock(), _createElementBlock(
-              "div",
-              {
-                key: 1,
-                class: "inline-error"
-              },
-              _toDisplayString(_ctx.error),
-              1
-              /* TEXT */
-            )) : _createCommentVNode("v-if", true),
+              state: "loading",
+              message: "正在加载购物车…"
+            })) : _createCommentVNode("v-if", true),
+            _ctx.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 1,
+              state: "error",
+              message: _ctx.error,
+              "action-label": "重新加载",
+              busy: _ctx.loading,
+              onRetry: _ctx.load
+            }, null, 8, ["message", "busy", "onRetry"])) : _createCommentVNode("v-if", true),
             !_ctx.loading && !_ctx.items.length && !_ctx.error ? (_openBlock(), _createElementBlock("div", {
               key: 2,
               class: "mobile-empty"
@@ -18694,7 +18877,7 @@
   const { ref: ref$6, computed: computed$6, onMounted: onMounted$5, watch: watch$5 } = Vue;
   const Orders = {
     name: "Orders",
-    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$4, UiPagination: _sfc_main$5 },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$7, UiPagination: _sfc_main$8 },
     setup() {
       const scope = requestScope();
       const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6("");
@@ -19375,7 +19558,7 @@
   const { ref: ref$5, computed: computed$5, onMounted: onMounted$4, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
   const Account = {
     name: "Account",
-    components: { ConsumerShell, AuthDialog, UiPagination: _sfc_main$5 },
+    components: { ConsumerShell, AuthDialog, UiPagination: _sfc_main$8 },
     setup() {
       const scope = requestScope();
       const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
@@ -20112,10 +20295,10 @@
     components: {
       BackofficeShell,
       ProductImage,
-      UiPagination: _sfc_main$5,
+      UiPagination: _sfc_main$8,
       MerchantOrderTable: _sfc_main$2,
       MerchantInventoryTable: _sfc_main$1,
-      StatusPanel: _sfc_main$4
+      StatusPanel: _sfc_main$7
     },
     setup() {
       const scope = requestScope();
@@ -21764,7 +21947,7 @@
   const { ref: ref$3, computed: computed$3, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
   const Knowledge = {
     name: "Knowledge",
-    components: { BackofficeShell, UiPagination: _sfc_main$5 },
+    components: { BackofficeShell, UiPagination: _sfc_main$8 },
     setup() {
       const scope = requestScope();
       const docScope = requestScope();
@@ -22898,8 +23081,8 @@
     components: {
       BackofficeShell,
       ProductImage,
-      StatusPanel: _sfc_main$4,
-      UiPagination: _sfc_main$5,
+      StatusPanel: _sfc_main$7,
+      UiPagination: _sfc_main$8,
       PlatformApplicationReview: _sfc_main
     },
     setup() {

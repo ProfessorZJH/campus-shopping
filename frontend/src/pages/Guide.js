@@ -1,5 +1,7 @@
+import GuideConversation from '../components/GuideConversation.vue';
+import GuideHistory from '../components/GuideHistory.vue';
+import GuideRecommendations from '../components/GuideRecommendations.vue';
 import ConsumerShell from '../components/ConsumerShell.js';
-import ProductImage from '../components/ProductImage.js';
 import { api } from '../services/api.js';
 import { citationsOf } from '../services/ai-citations';
 import { DEMO_CHAT, DEMO_PRODUCTS } from '../services/demo.js';
@@ -14,7 +16,7 @@ const prompts = [
 ];
 export default {
   name: 'Guide',
-  components: { ConsumerShell, ProductImage },
+  components: { ConsumerShell, GuideConversation, GuideHistory, GuideRecommendations },
   setup() {
     const conversationTransport = createGuideConversationTransport();
     const input = ref('');
@@ -476,28 +478,10 @@ export default {
         <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
         <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
       </section>
-      <div v-if="!preview" class="ai-history-head"><button class="ai-new-chat" @click="newConversation" :disabled="openingConversation||confirmingProposal"><Icon name="plus" :size="15"/> 新对话</button><button @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="15"/> 历史会话 <Icon name="chevronDown" :size="14"/></button></div><div v-if="historyOpen" class="ai-history-list"><button v-for="c in conversations" :key="c.id" @click="openConversation(c)" :disabled="thinking||openingConversation"><Icon name="order" :size="16"/> <span class="ai-history-copy"><strong>{{c.summary||c.title||'对话'}}</strong><small>{{formatHistoryTime(c.lastActiveAt||c.createdAt)}}</small></span> <Icon name="chevronRight" :size="14"/></button><span v-if="!conversations.length">暂无历史记录</span><button v-if="historyHasMore" @click="loadHistory(false)" :disabled="loadingHistory">加载更多会话</button></div>
+      <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="confirmingProposal" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
-      <section class="chat-thread" aria-label="AI对话">
-        <div v-if="!messages.length" class="chat-welcome"><span class="chat-welcome-icon"><Icon name="sparkles" :size="22"/></span><h2>你好，同学。</h2><p>告诉我预算或想买的东西。</p></div>
-        <div class="chat-row" v-for="(message,index) in messages" :key="index" :class="message.role==='user'?'is-user':'is-assistant'">
-          <span v-if="message.role!=='user'" class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span>
-          <div class="chat-body"><div class="chat-bubble">{{message.content}}</div><div v-if="message.warning" class="message-warning">{{message.warning}}</div><div v-if="message.citations?.length" class="citation-chips"><details class="citation-chip" v-for="(c,ci) in message.citations" :key="c.documentId||ci"><summary><Icon name="book" :size="12"/>{{c.title||'参考资料'}}</summary><p v-if="c.snippet">{{c.snippet}}</p></details></div><div v-if="message.role==='assistant' && message.citationStatus==='MISSING'" class="message-warning">历史消息没有可恢复的引用记录</div><div v-if="message.role==='assistant' && message.citationStatus==='HIDDEN'" class="message-warning">当前无法核验这条历史引用，来源已隐藏</div><span class="chat-timestamp">{{message.time||'刚刚'}} <span v-if="message.demo">· 示例回答</span></span></div>
-        </div>
-        <div v-if="thinking" class="chat-row is-assistant"><span class="chat-avatar"><img src="./images/robot.webp" alt="AI"/></span><div class="typing-bubble"><i></i><i></i><i></i><small v-if="reconnecting">连接已断开，正在恢复原会话…</small><small v-else-if="cancelRequested">正在停止本轮生成…</small><small v-else-if="streamProgress">已读取 {{streamProgress}} 字节</small></div></div>
-        <div v-if="error" class="inline-error"><Icon name="alert" :size="17"/>{{error}}</div>
-      </section>
-      <section v-if="showProposal" class="recommendation-panel">
-        <div class="recommendation-header"><div><h2>为你选了 <em>{{items.length}}</em> 件好物</h2></div></div>
-        <div class="rec-cards">
-          <article class="rec-item" v-for="(item,index) in items" :key="item.skuId">
-            <button class="rec-check" :class="{checked:selectedIds.includes(item.skuId)}" @click="toggle(item.skuId)" :aria-label="'选择'+item.title"><Icon name="check" :size="13"/></button>
-            <div class="rec-photo"><ProductImage :src="item.imageUrl||item.product?.imageUrl" :alt="item.title"/></div>
-            <div class="rec-card-content"><div class="rec-item-tag">{{index===0?'HOT PICK':index===1?'DAILY':'GOOD VALUE'}}</div><strong>{{item.title}}</strong><small>{{item.specKey}}</small><button class="rec-detail-link" type="button" @click="openDetail(item)" :disabled="!item.detailAvailable||!item.productId">{{item.detailAvailable?'查看详情':'详情暂不可用'}}</button><div class="rec-price"><span>{{money(item.priceCent)}}</span><span class="pick-mini"><Icon name="plus" :size="15"/></span></div></div>
-          </article>
-        </div>
-        <div v-if="proposalFeedback" class="proposal-feedback" role="alert">{{proposalFeedback}}</div><div class="proposal-footer"><div class="proposal-total"><span>已选 {{selectedIds.length}} 件</span><strong>{{money(total)}}</strong></div><div class="proposal-actions"><button v-if="!preview&&proposal?.status==='PENDING'" class="ghost-decline" @click="reject">放弃</button><button class="confirm-button" @click="confirm" :disabled="preview||thinking||!selectedIds.length||(!preview&&proposal?.status!=='PENDING')"><Icon name="check" :size="17"/>{{proposal?.status==='CONFIRMED'?'已确认':confirmingProposal?'确认中…':'确认加购'}}</button></div></div>
-      </section>
+      <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :error="error"/>
+      <GuideRecommendations v-if="showProposal" :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm"/>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
       <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
     </ConsumerShell>`,

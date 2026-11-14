@@ -108,12 +108,17 @@ class StatusBackend(BackendContractDouble):
         self.fail_orders = 0
         self.fail_admin = 0
         self.fail_chat = 0
+        self.fail_cart = 0
         self.admin_calls = 0
         self.orders = [order()]
 
     def handle(self, route):
         path = urlparse(route.request.url).path.removeprefix('/api/v1')
         method = route.request.method
+        if method == 'GET' and path == '/cart' and self.fail_cart > 0:
+            self.fail_cart -= 1
+            route.fulfill(status=500, json=self.data(None, 'G0001', '购物车加载失败'))
+            return
         if method == 'GET' and path == '/orders/order-1' and self.fail_orders > 0:
             self.fail_orders -= 1
             route.fulfill(status=500, json=self.data(None, 'G0001', '订单加载失败'))
@@ -170,6 +175,19 @@ def main():
     with sync_playwright() as p:
         browser = p.chromium.launch(**launch)
         fixture = StatusBackend()
+
+        # 购物车加载失败时不能显示空购物车，恢复后可通过状态面板重试。
+        page = render(browser, fixture, '/cart')
+        expect(page.locator('.mobile-empty')).to_be_visible()
+        fixture.fail_cart = 1
+        page.get_by_role('button', name='刷新', exact=True).click()
+        failure = page.locator('.status-panel--error')
+        expect(failure).to_contain_text('购物车加载失败')
+        expect(page.locator('.mobile-empty')).to_have_count(0)
+        failure.get_by_role('button', name='重新加载').click()
+        expect(page.locator('.mobile-empty')).to_be_visible()
+        checks.append('购物车错误状态可重试，且不会误显示为空')
+        close_page(page)
 
         # 1. 订单加载中：公共加载状态可读，释放后进入详情。
         page = render(browser, fixture, '/orders/order-1', hold_order=True)
