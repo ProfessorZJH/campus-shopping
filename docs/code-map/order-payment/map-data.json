@@ -1,0 +1,419 @@
+{
+  "meta": {
+    "title": "校园智能导购 · 下单到模拟支付代码地图",
+    "h1": "下单到模拟支付 · 代码地图",
+    "subtitle": "当前源码 · 分支 <b>main</b> · HEAD <b>ea1bf0c</b> · 2026-11-12 · 灰色为已有代码",
+    "stats": [
+      {
+        "num": "2",
+        "lbl": "下单 / 支付事务"
+      },
+      {
+        "num": "15",
+        "lbl": "默认付款期限 / 分钟"
+      },
+      {
+        "num": "20",
+        "lbl": "单笔 SKU 上限"
+      }
+    ],
+    "project": "campus-shopping",
+    "docCap": "源码解读 · 当前实现",
+    "slug": "campus-shopping-order-payment-20261112",
+    "welcomeSub": "<b>一条真实代码链路</b>：确认 → 建单预占 → 模拟付款 → 自提任务",
+    "welcomeItems": [
+      {
+        "icon": "🧭",
+        "html": "点击顶部<b>跟着流程走</b>，10 站了解下单、模拟付款和超时处理。"
+      },
+      {
+        "icon": "🔗",
+        "html": "点工程树、图节点或说明卡，查看<b>三栏联动</b>；右侧还可打开项目源码。"
+      },
+      {
+        "icon": "🔍",
+        "html": "切换<b>全景 / 时序 / 流程</b>，在左侧搜索类名；本图标明了源码基线。<br>模板图例沿用示例：灰色表示已有代码，蓝色表示 MySQL；“1-3”不是本项目版本。"
+      }
+    ]
+  },
+  "tabs": [
+    "over",
+    "seq",
+    "flow"
+  ],
+  "over": "flowchart LR\nsubgraph FRONT[\"消费者界面 · Vue\"]\n CART[\"Cart.js<br/>确认与提交\"]\n PAGE[\"Orders.js<br/>订单详情 / 模拟支付\"]\nend\nsubgraph TRIGGER[\"入口 · Trigger\"]\n HTTP[\"OrderController<br/>订单 HTTP 入口\"]\n JOB[\"OrderExpiryJob<br/>扫描到期订单\"]\nend\nsubgraph CASE[\"编排 · Case\"]\n CHECK[\"CheckoutCaseImpl<br/>下单事务\"]\n LIFE[\"OrderLifecycleCaseImpl<br/>支付 / 取消 / 过期\"]\nend\nsubgraph DOMAIN[\"业务规则 · Domain\"]\n TRADE[\"OrderServiceImpl<br/>幂等闸门 / 订单\"]\n CAT[\"CatalogServiceImpl<br/>锁定可售报价\"]\n INV[\"InventoryServiceImpl<br/>预占与释放\"]\n AGG[\"OrderAggregate<br/>归属 / 状态 / 截止\"]\n PICK[\"FulfillmentServiceImpl<br/>自提任务\"]\nend\nsubgraph DATA[\"持久化与验证\"]\n REPO[\"OrderRepository<br/>订单持久化\"]\n DB[(\"MySQL<br/>itradingdao_mapper.xml\")]\n TEST[\"CommerceMySqlIntegrationTest<br/>既有并发与回滚用例\"]\nend\nCART --> HTTP\nPAGE --> HTTP\nHTTP --> CHECK\nHTTP --> LIFE\nJOB --> LIFE\nCHECK --> TRADE\nCHECK --> CAT\nCHECK --> INV\nLIFE --> TRADE\nLIFE --> AGG\nLIFE --> PICK\nLIFE -.取消 / 过期.-> INV\nTRADE --> REPO --> DB\nCAT --> DB\nINV --> DB\nPICK --> DB\nTEST -.覆盖用例.-> CHECK\nTEST -.覆盖用例.-> LIFE\n\nclassDef newc fill:#e6f6ec,stroke:#17a45f,stroke-width:2px,color:#0b5c3a\nclassDef oldc fill:#f1f3f6,stroke:#9aa3af,stroke-width:1.2px,stroke-dasharray:5 3\nclassDef extc fill:#eaf1fe,stroke:#3574f0\nclassDef warnc fill:#fff4e0,stroke:#e6a23c\nclassDef errc fill:#fdecec,stroke:#e5484d\n\nclass CART,PAGE,HTTP,CHECK,LIFE,TRADE,CAT,INV,AGG,PICK,REPO,TEST oldc\nclass JOB warnc\nclass DB extc\n",
+  "seq": "sequenceDiagram\nautonumber\nactor BUY as 买家\nparticipant CART as Cart.js\nparticipant HTTP as OrderController\nparticipant CHECK as CheckoutCaseImpl\nparticipant TRADE as OrderServiceImpl\nparticipant INV as InventoryServiceImpl\nparticipant DB as MySQL\nparticipant PAGE as Orders.js\nparticipant LIFE as OrderLifecycleCaseImpl\nparticipant AGG as OrderAggregate\nparticipant PICK as FulfillmentServiceImpl\nBUY->>CART: 确认商品和门店\nCART->>HTTP: POST /orders + Idempotency-Key\nHTTP->>CHECK: checkout(可信主体, 商户, 商品, 请求键)\nNote over CHECK,DB: 下单事务：校验账户并生成有序请求指纹\nCHECK->>TRADE: beginCheckout(买家, 键, 指纹)\nTRADE->>DB: 写入或锁定请求闸门\nalt 同键同内容已有订单\n CHECK-->>HTTP: 返回已有订单的当前视图\nelse 新请求\n Note over CHECK,DB: 锁购物车、商户、商品及 SKU；复核价格和版本\n CHECK->>INV: reserve(orderId, 有序 SKU)\n INV->>DB: 预占、余额与流水\n CHECK->>TRADE: create + finishCheckout\n TRADE->>DB: 保存订单、商品快照及请求结果\n Note over CHECK,DB: 消费购物车数量并记录 ORDER_CREATED；任一步失败回滚\n CHECK-->>HTTP: 返回待支付订单\nend\nHTTP-->>CART: 订单响应\nBUY->>PAGE: 点击模拟支付\nPAGE->>HTTP: POST /orders/{orderId}/pay\nHTTP->>LIFE: pay(可信买家, 订单号)\nNote over LIFE,DB: 支付是另一个本地事务\nLIFE->>TRADE: orderForUpdate(orderId)\nLIFE->>AGG: requireBuyer + pay(now)\nalt 首次支付且状态有效\n Note over LIFE,DB: 重新检查商户经营资格\n LIFE->>TRADE: recordPayment(order)\n TRADE->>DB: 写入模拟支付记录\n LIFE->>PICK: create(order, merchant, store, buyer)\n PICK->>DB: 创建待备货自提任务\n LIFE->>TRADE: save(order)\n Note over LIFE,DB: 保存订单状态并记录 PAYMENT_SUCCEEDED，失败整体回滚\nelse 已支付或已完成\n Note over LIFE,AGG: 返回原状态，不再重复记账或建任务\nelse 已过期或其他状态不允许\n Note over LIFE,AGG: 拒绝支付；到期任务之后单独释放预占\nend\nLIFE-->>HTTP: 返回订单视图\nHTTP-->>PAGE: 支付结果\n",
+  "flow": "flowchart TD\nSTART([\"Cart.js · 提交确认订单\"]) --> CHECK[\"CheckoutCaseImpl<br/>校验买家、参数及请求指纹\"]\nCHECK --> KEY{\"幂等闸门\"}\nKEY -->|已有订单且指纹一致| REPLAY[\"OrderServiceImpl<br/>返回已有订单当前视图\"]\nKEY -->|同键不同内容| CONFLICT[\"REQUEST_CONFLICT<br/>拒绝重复键\"]\nKEY -->|新请求| OFFER[\"CatalogServiceImpl<br/>锁定报价，核对商户、门店、价格和版本\"]\nOFFER -->|不匹配| PRICE[\"价格 / 版本变化或跨商户<br/>事务回滚\"]\nOFFER -->|校验通过| RESERVE[\"InventoryServiceImpl<br/>按 SKU 排序预占\"]\nRESERVE -->|库存不足| LOW[\"STOCK_NOT_ENOUGH<br/>事务回滚\"]\nRESERVE -->|成功| CREATE[\"创建订单和快照<br/>消费购物车数量，记录 ORDER_CREATED\"]\nCREATE --> PENDING[\"PENDING_PAYMENT<br/>默认 15 分钟付款期限\"]\nPENDING -->|买家付款| PAY[\"OrderLifecycleCaseImpl<br/>锁订单、校验本人\"]\nPAY --> STATE{\"OrderAggregate<br/>支付状态与截止时间\"}\nSTATE -->|已支付 / 已完成| SAME[\"返回现有状态<br/>不重复支付记录\"]\nSTATE -->|过期 / 状态不符| BAD[\"拒绝支付<br/>过期释放由定时任务处理\"]\nSTATE -->|待支付且未过期| ELIGIBLE{\"商户仍可经营?\"}\nELIGIBLE -->|否| FAIL[\"拒绝支付<br/>事务回滚\"]\nELIGIBLE -->|是| PAID[\"模拟记账 + 自提任务<br/>PAID + PAYMENT_SUCCEEDED\"]\nPENDING -->|买家取消| CANCEL[\"取消并释放预占\"]\nPENDING -->|到期扫描| EXPIRE[\"OrderExpiryJob<br/>逐单复验并释放预占\"]\nPAID --> LATER[\"后续自提核销才消耗预占<br/>并扣减实物库存\"]\n\nclassDef newc fill:#e6f6ec,stroke:#17a45f,stroke-width:2px,color:#0b5c3a\nclassDef oldc fill:#f1f3f6,stroke:#9aa3af,stroke-width:1.2px,stroke-dasharray:5 3\nclassDef extc fill:#eaf1fe,stroke:#3574f0\nclassDef warnc fill:#fff4e0,stroke:#e6a23c\nclassDef errc fill:#fdecec,stroke:#e5484d\n\nclass START,CHECK,REPLAY,OFFER,RESERVE,CREATE,PENDING,PAY,PAID,LATER oldc\nclass KEY,STATE,ELIGIBLE,CANCEL,EXPIRE warnc\nclass CONFLICT,PRICE,LOW,BAD,FAIL errc\nclass SAME oldc\n",
+  "tree": [
+    {
+      "t": "module",
+      "n": "frontend",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "src/pages",
+          "children": [
+            {
+              "t": "class",
+              "n": "Cart.js",
+              "b": "old",
+              "doc": "cart",
+              "kw": [
+                "Cart.js"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "Orders.js",
+              "b": "old",
+              "doc": "orders",
+              "kw": [
+                "Orders.js"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-trigger",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "trigger/http 和 job",
+          "children": [
+            {
+              "t": "class",
+              "n": "OrderController",
+              "b": "old",
+              "doc": "http",
+              "kw": [
+                "OrderController"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "OrderExpiryJob",
+              "b": "old",
+              "doc": "expiry",
+              "kw": [
+                "OrderExpiryJob"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-case",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "cases/trading/impl",
+          "children": [
+            {
+              "t": "class",
+              "n": "CheckoutCaseImpl",
+              "b": "old",
+              "doc": "checkout",
+              "kw": [
+                "CheckoutCaseImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "OrderLifecycleCaseImpl",
+              "b": "old",
+              "doc": "lifecycle",
+              "kw": [
+                "OrderLifecycleCaseImpl"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-domain",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "trading / catalog / inventory / fulfillment",
+          "children": [
+            {
+              "t": "class",
+              "n": "OrderServiceImpl",
+              "b": "old",
+              "doc": "trade",
+              "kw": [
+                "OrderServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "CatalogServiceImpl",
+              "b": "old",
+              "doc": "catalog",
+              "kw": [
+                "CatalogServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "InventoryServiceImpl",
+              "b": "old",
+              "doc": "inventory",
+              "kw": [
+                "InventoryServiceImpl"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "OrderAggregate",
+              "b": "old",
+              "doc": "aggregate",
+              "kw": [
+                "OrderAggregate"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "FulfillmentServiceImpl",
+              "b": "old",
+              "doc": "pickup",
+              "kw": [
+                "FulfillmentServiceImpl"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-infrastructure",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "adapter/repository",
+          "children": [
+            {
+              "t": "class",
+              "n": "OrderRepository",
+              "b": "old",
+              "doc": "repository",
+              "kw": [
+                "OrderRepository"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "t": "module",
+      "n": "campus-shopping-app",
+      "children": [
+        {
+          "t": "pkg",
+          "n": "MyBatis / 测试",
+          "children": [
+            {
+              "t": "class",
+              "n": "itradingdao_mapper.xml",
+              "b": "old",
+              "doc": "mapper",
+              "kw": [
+                "itradingdao_mapper.xml"
+              ]
+            },
+            {
+              "t": "class",
+              "n": "CommerceMySqlIntegrationTest",
+              "b": "old",
+              "doc": "tests",
+              "kw": [
+                "CommerceMySqlIntegrationTest"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "docs": [
+    {
+      "id": "cart",
+      "b": "复用",
+      "t": "Cart.js — 买家确认并提交",
+      "f": "frontend/src/pages/Cart.js",
+      "body": "<ul><li>确认页重新读取购物车与门店，展示当前数量、价格与可售情况。</li><li>提交 <code>merchantId</code>、SKU、数量、确认价格和报价版本；结果未知时保留同一请求体和幂等键。</li><li>页面校验改善体验，最终交易事实仍由服务端在事务中复验。</li></ul><p><a href=\"../../../frontend/src/pages/Cart.js\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../frontend/src/services/api.js\" target=\"_blank\" rel=\"noopener\">查看请求封装</a></p>"
+    },
+    {
+      "id": "orders",
+      "b": "复用",
+      "t": "Orders.js — 订单详情与模拟支付",
+      "f": "frontend/src/pages/Orders.js",
+      "body": "<ul><li>待支付订单展示“模拟支付”和“取消订单”；操作成功后重新加载订单详情。</li><li>付款请求是 <code>POST /api/v1/orders/{orderId}/pay</code>；当前链路不产生真实资金。</li><li>通用请求封装使用同源会话，并为写请求附带 CSRF 令牌。</li></ul><p><a href=\"../../../frontend/src/pages/Orders.js\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../frontend/src/services/api.js\" target=\"_blank\" rel=\"noopener\">查看请求封装</a></p>"
+    },
+    {
+      "id": "http",
+      "b": "复用",
+      "t": "OrderController — HTTP 边界",
+      "f": "campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/OrderController.java",
+      "body": "<ul><li><code>checkout</code> 转换 DTO，提取可信身份并调用结算用例；<code>pay</code> 与 <code>cancel</code> 调用生命周期用例。</li><li>控制器负责响应封装及捕获业务异常，跨领域事务和规则在 Case 与领域层。</li><li>虽然请求头声明可缺省，业务契约要求下单幂等键非空且最长 64 字符。</li></ul><p><a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/OrderController.java\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../docs/api/behavior-v1.1.md\" target=\"_blank\" rel=\"noopener\">查看行为契约</a></p>"
+    },
+    {
+      "id": "expiry",
+      "b": "复用",
+      "t": "OrderExpiryJob — 到期扫描",
+      "f": "campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/OrderExpiryJob.java",
+      "body": "<ul><li>默认每 15 秒扫描到期候选；配置允许关闭任务或调整扫描间隔。</li><li>扫描使用有界批次和游标，逐单调用 <code>expire</code>，由独立事务再次锁单并复验状态和截止时间。</li><li>到期后付款请求会被拒绝；库存释放发生在取消或到期用例，不是付款失败时同步释放。</li></ul><p><a href=\"../../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/OrderExpiryJob.java\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    },
+    {
+      "id": "checkout",
+      "b": "复用",
+      "t": "CheckoutCaseImpl — 订单创建事务",
+      "f": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java",
+      "body": "<ul><li>校验活跃账户、请求键与商品行；单笔最多 20 个不同 SKU，每行数量 1–99。</li><li>按 SKU 排序生成指纹并进入幂等闸门；既有订单重放返回当前视图。</li><li>依次锁购物车、商户、商品/SKU，再复核商户/门店、价格与版本并预占库存。</li><li>创建订单与商品、自提门店快照，消费购物车数量，完成请求记录并写创建事件；异常整体回滚。</li><li>默认付款期限为 15 分钟，配置值限制在 1–60 分钟。</li></ul><p><a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/CartServiceImpl.java\" target=\"_blank\" rel=\"noopener\">查看购物车消费</a> · <a href=\"../../../docs/specs/RELEASE-01.md\" target=\"_blank\" rel=\"noopener\">查看 R1 规则</a></p>"
+    },
+    {
+      "id": "lifecycle",
+      "b": "复用",
+      "t": "OrderLifecycleCaseImpl — 生命周期事务",
+      "f": "campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/OrderLifecycleCaseImpl.java",
+      "body": "<ul><li>付款先校验活跃账户，再锁订单并检查买家归属及订单状态、截止时间。</li><li>首次付款再复验商户经营资格，依次记模拟支付、创建自提任务、保存状态并写付款事件。</li><li>支付记录、任务、订单及事件属于同一 MySQL 事务，任一步失败回滚。</li><li>取消与到期是各自的事务：锁订单后变更状态，释放预占并记录事件。</li><li>支付不会出库；后续商户核销调用库存 <code>consume</code> 后订单完成。</li></ul><p><a href=\"../../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/OrderLifecycleCaseImpl.java\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../docs/architecture/decisions.md\" target=\"_blank\" rel=\"noopener\">查看 ADR-017</a></p>"
+    },
+    {
+      "id": "trade",
+      "b": "复用",
+      "t": "OrderServiceImpl — 交易领域服务",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/OrderServiceImpl.java",
+      "body": "<ul><li><code>beginCheckout</code> 使用买家 + 请求键进入持久化闸门，并比较请求指纹；不同指纹返回冲突。</li><li><code>create</code> 生成待支付订单；<code>finishCheckout</code> 将订单编号写回幂等请求。</li><li><code>orderForUpdate</code> 在已有事务中锁定订单；<code>recordPayment</code> 委托仓储记录模拟支付。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/service/impl/OrderServiceImpl.java\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    },
+    {
+      "id": "catalog",
+      "b": "复用",
+      "t": "CatalogServiceImpl — 事务内读取可售报价",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/service/impl/CatalogServiceImpl.java",
+      "body": "<ul><li><code>saleOffersForUpdate</code> 读取并锁定可售商品与 SKU 报价。</li><li>结算用例以数据库报价比对客户端确认的价格和版本，并确认归属同一商户与门店。</li><li>前端展示、AI 建议或缓存不是最终成交价格的事实来源。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/catalog/service/impl/CatalogServiceImpl.java\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    },
+    {
+      "id": "inventory",
+      "b": "复用",
+      "t": "InventoryServiceImpl — 库存预占与释放",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/service/impl/InventoryServiceImpl.java",
+      "body": "<ul><li>多 SKU 预占按 SKU 排序；库存余额、预占记录和流水参与外层同库事务。</li><li>可售数量为 <code>onHand - reserved</code>；余额聚合保证 <code>0 ≤ reserved ≤ onHand</code>。</li><li>取消或到期释放预占；实际核销时 <code>consume</code> 同时减少实物库存与预占。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/service/impl/InventoryServiceImpl.java\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/inventory/model/aggregate/StockBalanceAggregate.java\" target=\"_blank\" rel=\"noopener\">查看库存聚合</a></p>"
+    },
+    {
+      "id": "aggregate",
+      "b": "复用",
+      "t": "OrderAggregate — 订单规则与状态",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/aggregate/OrderAggregate.java",
+      "body": "<ul><li>订单金额依据下单快照中的整数分单价和数量计算，并校验数量、单价与 SKU 唯一性。</li><li><code>requireBuyer</code> 防止非买家操作；<code>pay</code> 只允许未过期的待支付订单进入 <code>PAID</code>。</li><li><code>PAID</code> 或 <code>COMPLETED</code> 的重复付款返回原状态；其他不合法状态被拒绝。</li><li>未付款订单可取消；到期用例将待支付订单转为 <code>CANCELED</code>。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/trading/model/aggregate/OrderAggregate.java\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    },
+    {
+      "id": "pickup",
+      "b": "复用",
+      "t": "FulfillmentServiceImpl — 创建自提任务",
+      "f": "campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/service/impl/FulfillmentServiceImpl.java",
+      "body": "<ul><li>首次模拟支付在同一事务中创建该订单的 <code>WAIT_PREP</code> 自提任务。</li><li>已有任务时复核商户、门店和买家归属，匹配则复用。</li><li>凭证由买家后续请求签发；支付动作本身只创建任务。</li></ul><p><a href=\"../../../campus-shopping-domain/src/main/java/cn/bugstack/ai/domain/fulfillment/service/impl/FulfillmentServiceImpl.java\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    },
+    {
+      "id": "repository",
+      "b": "复用",
+      "t": "OrderRepository — 订单仓储实现",
+      "f": "campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/OrderRepository.java",
+      "body": "<ul><li>通过 <code>ITradingDao</code> 实现请求闸门、订单及订单项、模拟支付记录的读写。</li><li>幂等请求读取与待变更订单读取可加行锁；完成请求时要求更新一条尚未完成的记录。</li><li>跨领域写事务由 Case 控制，仓储本身不替代业务规则。</li></ul><p><a href=\"../../../campus-shopping-infrastructure/src/main/java/cn/bugstack/ai/infrastructure/adapter/repository/OrderRepository.java\" target=\"_blank\" rel=\"noopener\">打开源码</a> · <a href=\"../../../campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml\" target=\"_blank\" rel=\"noopener\">查看 SQL 映射</a></p>"
+    },
+    {
+      "id": "mapper",
+      "b": "复用",
+      "t": "itradingdao_mapper.xml — MySQL 交易事实",
+      "f": "campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml",
+      "body": "<ul><li><code>trd_checkout_request</code> 保存请求指纹与订单关联，查询使用 <code>FOR UPDATE</code>。</li><li><code>trd_order</code>、<code>trd_order_item</code> 保存订单和下单快照；<code>trd_payment</code> 保存模拟付款记录。</li><li>库存预占、履约任务、订单事件也保存在同一个 MySQL，通过各自领域仓储参与用例事务。</li></ul><p><a href=\"../../../campus-shopping-app/src/main/resources/mybatis/mapper/itradingdao_mapper.xml\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    },
+    {
+      "id": "tests",
+      "b": "测试",
+      "t": "CommerceMySqlIntegrationTest — 已有验证入口",
+      "f": "campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java",
+      "body": "<ul><li>源码中包含 <code>lastStockOnlyOneConcurrentCheckoutSucceeds</code>、<code>concurrentRetryCreatesOneOrderAndOneReservation</code> 等并发用例。</li><li>还包含 <code>doublePayCreatesOnePaymentAndPickup</code>、付款与取消竞争、支付读模型失败回滚等用例。</li><li>这些是已有测试入口；生成本地图未运行真实 MySQL 集成测试，不能把源码走读当作业务验收。</li></ul><p><a href=\"../../../campus-shopping-app/src/test/java/cn/bugstack/ai/test/commerce/CommerceMySqlIntegrationTest.java\" target=\"_blank\" rel=\"noopener\">打开源码</a></p>"
+    }
+  ],
+  "tour": [
+    {
+      "tab": "over",
+      "tree": null,
+      "sl": "链路全景",
+      "title": "第 1 站 · 从购物车到自提任务",
+      "text": "这张图聚焦现有的下单与模拟支付链路：左侧找源码，中间看调用关系，右侧读规则。分支与日期写在标题下，地图是源码走读，不是实时交易验收。 模板图例中的“1-3 复用”为上游示例字样，灰色节点代表已有代码。 蓝色为 MySQL 依赖，并非支付网关。"
+    },
+    {
+      "tab": "over",
+      "tree": "Cart.js",
+      "sl": "确认订单",
+      "title": "第 2 站 · 买家确认",
+      "text": "<b>Cart.js</b> 重读购物车和门店，发送确认价格、版本与幂等键。网络结果未知时，相同内容继续使用原键，以便安全重试。"
+    },
+    {
+      "tab": "seq",
+      "tree": "OrderController",
+      "sl": "请求入口",
+      "title": "第 3 站 · HTTP 入口",
+      "text": "<b>OrderController</b> 从可信主体取得买家身份，转换请求并分别进入 checkout 或 pay 用例。通用前端请求封装携带同源会话和 CSRF。"
+    },
+    {
+      "tab": "over",
+      "tree": "CheckoutCaseImpl",
+      "sl": "下单事务",
+      "title": "第 4 站 · 建单先复验",
+      "text": "<b>CheckoutCaseImpl</b> 先处理请求幂等，再锁购物车、商户、商品和 SKU。价格、版本、商户与门店必须匹配，失败回滚。"
+    },
+    {
+      "tab": "flow",
+      "tree": "InventoryServiceImpl",
+      "sl": "库存预占",
+      "title": "第 5 站 · 保留可售库存",
+      "text": "<b>InventoryServiceImpl</b> 按 SKU 顺序预占，订单与库存变化同库提交。预占减少可售数量，尚未扣减实物库存。"
+    },
+    {
+      "tab": "seq",
+      "tree": "OrderLifecycleCaseImpl",
+      "sl": "模拟支付",
+      "title": "第 6 站 · 付款与自提任务",
+      "text": "付款是独立事务：锁订单、验证买家及期限，复验商户后记模拟支付、创建自提任务、保存状态和事件。任一环节失败会整体回滚。"
+    },
+    {
+      "tab": "flow",
+      "tree": "OrderAggregate",
+      "sl": "状态边界",
+      "title": "第 7 站 · 付款状态机",
+      "text": "<b>OrderAggregate</b> 只让未过期的待支付订单付款；已支付或已完成的重放直接返回原状态。取消、退款或过期状态不能再次付款。"
+    },
+    {
+      "tab": "over",
+      "tree": "OrderExpiryJob",
+      "sl": "超时释放",
+      "title": "第 8 站 · 取消与到期",
+      "text": "用户取消和定时到期分别锁单并释放预占。付款请求发现已过期时先拒绝，等待到期用例处理库存，不能把两者当成同一动作。"
+    },
+    {
+      "tab": "over",
+      "tree": "CommerceMySqlIntegrationTest",
+      "sl": "验证入口",
+      "title": "第 9 站 · 回到源码和测试",
+      "text": "继续点击右侧源码链接可查看并发、重试与回滚测试入口。本次仅生成地图并验证浏览器交互，没有运行真实 MySQL 业务验收。"
+    },
+    {
+      "tab": "over",
+      "tree": null,
+      "sl": "自由探索",
+      "title": "第 10 站 · 回到全景",
+      "text": "从全景图自由点击类、测试和源码链接，或切换时序与流程页复查边界。地图记录的是当前源码基线，真实交易验收需另外执行。"
+    }
+  ]
+}

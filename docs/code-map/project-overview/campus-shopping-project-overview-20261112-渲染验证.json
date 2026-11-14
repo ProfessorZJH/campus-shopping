@@ -1,0 +1,67 @@
+{
+  "success": true,
+  "input": "G:\\develop\\campus-shopping\\docs\\code-map\\project-overview\\campus-shopping-project-overview-20261112.html",
+  "tabs": [
+    "over",
+    "seq",
+    "flow"
+  ],
+  "viewport": {
+    "width": 1920,
+    "height": 1200
+  },
+  "checks": [
+    "mermaid-real-render",
+    "welcome-dismissed",
+    "panels-populated",
+    "tab-switching",
+    "three-panel-linkage",
+    "scroll-follow-redraw",
+    "doc-filter",
+    "tree-search",
+    "tour-walk",
+    "offline-and-no-errors",
+    "svg-export"
+  ],
+  "files": [
+    "campus-shopping-project-overview-20261112-联动预览.png",
+    "campus-shopping-project-overview-20261112-over.svg",
+    "campus-shopping-project-overview-20261112-seq.svg",
+    "campus-shopping-project-overview-20261112-flow.svg",
+    "campus-shopping-project-overview-20261112-全景.png"
+  ],
+  "svgSizes": [
+    {
+      "tab": "over",
+      "w": 1062,
+      "h": 1043
+    },
+    {
+      "tab": "seq",
+      "w": 0,
+      "h": 0
+    },
+    {
+      "tab": "flow",
+      "w": 0,
+      "h": 0
+    }
+  ],
+  "counts": {
+    "tree": 44,
+    "docs": 26,
+    "rail": 10
+  },
+  "linkage": {
+    "node": true,
+    "wires": 2,
+    "doc": true
+  },
+  "scrollFollow": {
+    "docs": true,
+    "tree": true
+  },
+  "tourStops": 10,
+  "externalRequests": [],
+  "runtimeErrors": []
+}
