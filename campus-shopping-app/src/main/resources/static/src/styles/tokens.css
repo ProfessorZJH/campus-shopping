@@ -1,0 +1,43 @@
+:root {
+  font-family:
+    Inter, 'SF Pro Display', 'PingFang SC', 'Microsoft Yahei', 'Noto Sans CJK SC', system-ui,
+    sans-serif;
+  color: #182944;
+  background: #f4f9fb;
+  --ink: #182944;
+  --muted: #8c9aae;
+  --mint: #09bfae;
+  --mintdark: #009e99;
+  --sky: #2b86ff;
+  --border: #e9eff4;
+  --white: #fff;
+  --shadow: 0 10px 30px rgba(31, 66, 90, 0.045);
+  --color-text: var(--ink);
+  --color-text-muted: var(--muted);
+  --color-brand: var(--mint);
+  --color-brand-strong: var(--mintdark);
+  --color-accent: var(--sky);
+  --color-surface: var(--white);
+  --color-border: var(--border);
+  --color-control-border: #dde9ef;
+  --color-control-text: #658198;
+  --color-focus: #82dcd9;
+  --color-error: #bd5d47;
+  --color-error-strong: #a94a38;
+  --color-error-border: #ffe0d7;
+  --color-error-surface: #fff0ec;
+  --color-error-panel: #fff6f3;
+  --gradient-brand: linear-gradient(110deg, #11cfac, #00a8b4);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --radius-control: 9px;
+  --radius-input: 10px;
+  --radius-panel: 16px;
+  --radius-overlay: 17px;
+  --shadow-panel: var(--shadow);
+  font-synthesis: none;
+}

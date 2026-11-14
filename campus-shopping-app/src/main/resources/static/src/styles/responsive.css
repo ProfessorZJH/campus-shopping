@@ -1,0 +1,292 @@
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes typing {
+  to {
+    opacity: 0.25;
+    transform: translateY(-3px);
+  }
+}
+@media (min-width: 620px) {
+  .consumer-width {
+    border-left: 1px solid #eaf1f5;
+    border-right: 1px solid #eaf1f5;
+  }
+  .consumer-main {
+    padding-inline: 21px;
+  }
+  .mobile-tabbar-inner {
+    border-radius: 15px 15px 0 0;
+  }
+  .home-product-photo {
+    height: 191px;
+  }
+  .merchant-card {
+    flex-basis: 145px;
+  }
+}
+@media (max-width: 1250px) {
+  .inventory-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .summary-stockbar {
+    display: none;
+  }
+  .product-workspace {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+  .summary-piece {
+    padding: 12px;
+  }
+}
+@media (max-width: 1080px) {
+  .merchant-shell {
+    grid-template-columns: 67px minmax(0, 1fr);
+  }
+  .merchant-sidebar {
+    padding-inline: 9px;
+  }
+  .merchant-brand {
+    justify-content: center;
+    padding: 0;
+  }
+  .merchant-brand .brand-word,
+  .sidebar-caption,
+  .merchant-nav span:not(.nav-left-bar),
+  .merchant-sidebar-bottom {
+    display: none;
+  }
+  .merchant-nav {
+    margin-top: 38px;
+  }
+  .merchant-nav button {
+    justify-content: center;
+    padding: 0;
+  }
+  .merchant-nav button.active .nav-left-bar {
+    left: -9px;
+  }
+  .merchant-page-heading h1 {
+    font-size: 25px;
+  }
+  .product-workspace {
+    grid-template-columns: minmax(0, 1fr) 320px;
+  }
+}
+@media (max-width: 860px) {
+  .product-workspace {
+    grid-template-columns: 1fr;
+  }
+  .product-inspector {
+    position: static;
+    min-height: auto;
+  }
+  .product-list-panel {
+    min-height: 400px;
+  }
+  .merchant-main {
+    padding: 20px 14px 30px;
+  }
+  .inventory-summary {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .summary-piece {
+    gap: 7px;
+  }
+  .summary-piece .summary-icon {
+    width: 33px;
+    height: 33px;
+  }
+  .summary-piece div strong {
+    font-size: 20px;
+  }
+}
+@media (max-width: 560px) {
+  .merchant-shell {
+    grid-template-columns: 1fr;
+  }
+  .merchant-sidebar {
+    display: none;
+  }
+  .merchant-topbar {
+    height: 60px;
+    padding: 0 12px;
+  }
+  .merchant-topbar-tools {
+    gap: 6px;
+  }
+  .topbar-merchant-select {
+    max-width: 158px;
+    padding: 7px;
+  }
+  .topbar-merchant-select select {
+    max-width: 113px;
+  }
+  .admin-user {
+    display: none;
+  }
+  .merchant-main {
+    padding: 18px 9px;
+  }
+  .merchant-page-heading h1 {
+    font-size: 24px;
+  }
+  .inventory-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .summary-piece {
+    height: 75px;
+  }
+  .product-toolbar {
+    padding-inline: 9px;
+  }
+  .table-select {
+    max-width: 98px;
+  }
+  .product-tabs {
+    gap: 15px;
+    padding: 0 13px;
+  }
+  .toolbar-count {
+    display: none;
+  }
+  .merchant-page-heading {
+    align-items: center;
+  }
+  .head-actions .outline-button {
+    display: none;
+  }
+  .head-actions .teal-button {
+    padding: 0 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+.header-login {
+  background: #0bbba7;
+  color: #fff;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 740;
+}
+.account-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #e7f7f5;
+  color: #009d8e;
+  padding: 6px 9px;
+  border-radius: 13px;
+  font-size: 10px;
+}
+.merchant-login-action {
+  font-size: 11px;
+  color: #009e95;
+  text-decoration: underline;
+  margin-left: auto;
+}
+.login-dialog {
+  width: min(calc(100% - 32px), 370px);
+  padding: 25px 25px 21px;
+  background: white;
+  border-radius: 22px;
+  align-self: center;
+  box-shadow: 0 20px 70px #112b4b35;
+}
+.login-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 17px;
+}
+.auth-logo {
+  width: 43px;
+  height: 43px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: linear-gradient(145deg, #18d8b2, #03a5c4);
+}
+.login-dialog-heading button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  color: #8fa1b0;
+}
+.login-dialog h2 {
+  font-size: 23px;
+  font-weight: 860;
+  letter-spacing: -0.6px;
+}
+.login-dialog p {
+  font-size: 11px;
+  color: #98acbc;
+  letter-spacing: 2px;
+  margin: 4px 0 23px;
+}
+.login-dialog label {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 710;
+  color: #536a7f;
+  margin: 14px 0 8px;
+}
+.login-dialog input {
+  width: 100%;
+  height: 43px;
+  border-radius: var(--radius-input);
+  border: 1px solid #e0eaf0;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+.login-error {
+  font-size: 11px;
+  color: #ed6573;
+  margin-top: 11px;
+}
+.login-submit {
+  margin-top: 22px;
+  height: 43px;
+}
+.login-switch {
+  display: block;
+  margin: 16px auto 0;
+  color: #269d9a;
+  font-size: 11px;
+}
+
+@media (max-width: 500px) {
+  .rec-item {
+    flex: 0 0 calc((100% - 18px) / 3);
+  }
+  .rec-photo {
+    height: 108px;
+  }
+  .rec-card-content {
+    padding: 7px 6px 10px;
+  }
+  .rec-item-tag {
+    font-size: 7px;
+    letter-spacing: 0.3px;
+  }
+  .rec-item strong {
+    font-size: 11px;
+  }
+  .rec-item small {
+    font-size: 9px;
+  }
+}
+
+/* 第二批：消费者交易页与平台/商户操作页，共享第一批色板与密度。 */

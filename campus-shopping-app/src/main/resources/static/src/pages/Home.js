@@ -1,3 +1,5 @@
+import UiPagination from '../components/UiPagination.vue';
+import StatusPanel from '../components/StatusPanel.vue';
 import { requestScope } from '../services/request-scope.js';
 import { pathId, priceSku, positiveInt } from '../services/page-utils.js';
 import ConsumerShell from '../components/ConsumerShell.js';
@@ -28,7 +30,7 @@ const staticCategoryArt = {
 };
 export default {
   name: 'Home',
-  components: { ConsumerShell, ProductImage },
+  components: { ConsumerShell, ProductImage, UiPagination, StatusPanel },
   setup() {
     const scope = requestScope();
     const initialScope = requestScope();
@@ -297,16 +299,16 @@ export default {
     </section>
     <section class="reco-section">
       <div class="section-head reco-heading"><div class="section-title"><span class="flame-icon">✦</span><h2>为你推荐</h2></div><div class="sort-tabs"><button :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button><button :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">全局库存</button><button :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">全局价格</button></div></div>
-      <div v-if="store.loading" class="inline-loading"><div class="mini-spinner"></div>正在加载</div>
+      <StatusPanel v-if="store.loading" state="loading" message="正在加载"/>
       <div v-if="store.error" class="inline-error"><Icon name="alert" :size="18"/>{{store.error}} <a v-if="!preview" href="/?demo=1#/">查看设计预览</a></div>
-      <div v-if="!store.loading&&!shown.length&&!store.error" class="no-results"><Icon name="search" :size="22"/>暂无相关商品<button @click="resetFilters">查看全部</button></div>
+      <StatusPanel v-if="!store.loading&&!shown.length&&!store.error" state="empty" message="暂无相关商品" action-label="查看全部" @retry="resetFilters"/>
       <div class="home-product-grid">
         <article class="home-product" v-for="p in shown" :key="p.productId" @click="showDetail(p)">
           <div class="home-product-photo"><ProductImage :src="p.imageUrl" :alt="p.title"/><span v-if="p.tag" class="corner-tag">{{p.tag}}</span><span class="floating-pickup">可自提</span></div>
           <div class="home-product-info"><button class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button><div class="product-minor"><span>{{cardSku(p)?.specKey||'暂无规格'}}</span><span>库存 {{available(p)>0?'充足':'售罄'}}</span></div><div class="product-price-row"><span class="price-main">{{money(cardSku(p)?.priceCent)}} 起</span><button @click.stop="showDetail(p)" :aria-label="'查看'+p.title"><Icon name="plus" :size="20" /></button></div></div>
         </article>
       </div>
-      <div class="sdd-pager" v-if="!preview && pageInfo.total>0"><span>共 {{pageInfo.total}} 件</span><button :disabled="page<=1||store.loading" @click="page--;loadSearch()">上一页</button><span>{{page}}</span><button :disabled="!pageInfo.hasNext||store.loading" @click="page++;loadSearch()">下一页</button></div>
+      <UiPagination v-if="!preview && pageInfo.total>0" :page="page" :has-next="pageInfo.hasNext" :busy="store.loading" @previous="page--;loadSearch()" @next="page++;loadSearch()">共 {{pageInfo.total}} 件</UiPagination>
     </section>
     
     <div v-if="selected" v-modal="() => selected=null" class="ui-overlay" @click.self="selected=null"><div class="product-sheet" role="dialog" aria-modal="true" :aria-label="selected.title">

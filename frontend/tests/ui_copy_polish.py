@@ -6,6 +6,7 @@ import os
 import shutil
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
+from browser_transport import add_campus_styles
 from ui_rbac_regression import RoleBackend
 from ui_fix_regression import browser_page
 from ui_three_pages import UI
@@ -56,7 +57,7 @@ def main():
 
         page=browser.new_page(viewport={'width':1448,'height':900},locale='zh-CN')
         page.set_content('<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"></head><body><div id="app"></div></body></html>')
-        page.add_style_tag(path=str(UI/'src/styles/app.css'))
+        add_campus_styles(page, UI)
         page.evaluate("window.__CAMPUS_TEST_DEMO__=true;window.__CAMPUS_TEST_ROUTE__='/merchant/roles';")
         page.add_script_tag(path=str(UI/'ui.bundle.js'))
         expect(page.locator('.rbac-role')).to_have_count(3,timeout=15000)

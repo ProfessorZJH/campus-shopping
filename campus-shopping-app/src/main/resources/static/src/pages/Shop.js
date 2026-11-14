@@ -1,3 +1,5 @@
+import UiPagination from '../components/UiPagination.vue';
+import StatusPanel from '../components/StatusPanel.vue';
 import { safeDecodeId } from '../services/page-utils.js';
 import ConsumerShell from '../components/ConsumerShell.js';
 import ProductImage from '../components/ProductImage.js';
@@ -6,7 +8,7 @@ import { store, go, money, skuOf, preview } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
 export default {
   name: 'Shop',
-  components: { ConsumerShell, ProductImage },
+  components: { ConsumerShell, ProductImage, UiPagination, StatusPanel },
   setup() {
     const merchant = ref(null),
       products = ref([]),
@@ -58,7 +60,7 @@ export default {
     onMounted(load);
     onUnmounted(() => ++loadVersion);
     watch(page, load);
-    return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
+    return { merchant, products, error, loading, page, hasNext, go, money, skuOf, load };
   },
-  template: `<ConsumerShell active="home"><div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>商户</b><span></span></div><div v-if="error" class="inline-error">{{error}}</div><template v-if="merchant"><section class="shop-hero"><ProductImage v-if="merchant.imageUrl" class="shop-hero-image" :src="merchant.imageUrl" :alt="merchant.name+'门店图片'"/><span v-else class="merchant-logo"><Icon name="store" :size="28"/></span><div><h1>{{merchant.name}}</h1><p>{{merchant.storeName}} · {{merchant.location}}</p></div></section><section class="detail-card shop-intro"><h2>门店介绍</h2><p v-if="merchant.description">{{merchant.description}}</p><p v-else class="muted-short">未填写</p><h2>营业时间</h2><p v-if="merchant.businessHours">{{merchant.businessHours}} <small>（北京时间）</small></p><p v-else class="muted-short">未填写</p></section><div class="section-heading"><h2>在售商品</h2></div><div class="shop-product-grid"><button v-for="p in products" :key="p.productId" class="shop-product-card" @click="go('/product/'+encodeURIComponent(p.productId))"><ProductImage :src="p.imageUrl" :alt="p.title"/><strong>{{p.title}}</strong><span>{{money(skuOf(p).priceCent)}}</span></button></div><div v-if="!products.length&&!loading" class="mobile-empty">暂无在售商品</div><div class="shop-pagination"><button :disabled="page===1||loading" @click="page--">上一页</button><span>{{page}}</span><button :disabled="!hasNext||loading" @click="page++">下一页</button></div></template><div v-else-if="loading" class="mobile-empty">正在加载商户…</div></ConsumerShell>`,
+  template: `<ConsumerShell active="home"><div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>商户</b><span></span></div><StatusPanel v-if="error" state="error" :message="error" action-label="重新加载" :busy="loading" @retry="load"/><template v-if="merchant"><section class="shop-hero"><ProductImage v-if="merchant.imageUrl" class="shop-hero-image" :src="merchant.imageUrl" :alt="merchant.name+'门店图片'"/><span v-else class="merchant-logo"><Icon name="store" :size="28"/></span><div><h1>{{merchant.name}}</h1><p>{{merchant.storeName}} · {{merchant.location}}</p></div></section><section class="detail-card shop-intro"><h2>门店介绍</h2><p v-if="merchant.description">{{merchant.description}}</p><p v-else class="muted-short">未填写</p><h2>营业时间</h2><p v-if="merchant.businessHours">{{merchant.businessHours}} <small>（北京时间）</small></p><p v-else class="muted-short">未填写</p></section><div class="section-heading"><h2>在售商品</h2></div><StatusPanel v-if="loading" state="loading" message="正在加载商品…"/><div class="shop-product-grid"><button v-for="p in products" :key="p.productId" class="shop-product-card" @click="go('/product/'+encodeURIComponent(p.productId))"><ProductImage :src="p.imageUrl" :alt="p.title"/><strong>{{p.title}}</strong><span>{{money(skuOf(p).priceCent)}}</span></button></div><StatusPanel v-if="!products.length&&!loading&&!error" state="empty" message="暂无在售商品"/><UiPagination class="shop-pagination" :page="page" :has-next="hasNext" :busy="loading" @previous="page--" @next="page++"/></template><StatusPanel v-else-if="loading" state="loading" message="正在加载商户…"/></ConsumerShell>`,
 };
