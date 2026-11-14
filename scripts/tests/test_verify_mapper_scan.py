@@ -57,6 +57,30 @@ class MapperScanTest(unittest.TestCase):
         )
         self.assertTrue(findings[0]["narrowed"])
 
+    def test_leading_wildcard_in_literal_or_concat_is_detected(self):
+        for expression in (
+            "LIKE '%book%'",
+            "like CONCAT('%', #{q}, '%')",
+            "LIKE (concat(  '%book', #{q}))",
+            'LIKE CONCAT("%", #{q})',
+        ):
+            with self.subTest(expression=expression):
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM cat_product p WHERE p.title '
+                    + expression + '</select></mapper>'
+                )
+                self.assertEqual(len(findings), 1)
+                self.assertIn("LEADING_WILDCARD", findings[0]["patterns"])
+                self.assertFalse(findings[0]["narrowed"])
+
+        for expression in ("LIKE 'book%'", "LIKE CONCAT(#{q}, '%')", "LIKE CONCAT('book', #{q}, '%')"):
+            with self.subTest(expression=expression):
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM cat_product p WHERE p.title '
+                    + expression + '</select></mapper>'
+                )
+                self.assertEqual(findings, [])
+
     def test_unknown_and_cyclic_includes_fail_closed(self):
         examples = (
             '<mapper><select id="search"><include refid="missing"/></select></mapper>',

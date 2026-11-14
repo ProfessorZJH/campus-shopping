@@ -22,7 +22,7 @@ MAPPER_GLOB = 'campus-shopping-*/src/main/resources/mybatis/mapper/*.xml'
 # 全表扫描谓词：命中任意一条即视为不可索引匹配。
 SCAN_PATTERNS = [
     ('LOCATE_SUBSTRING', re.compile(r'\blocate\s*\(', re.IGNORECASE)),
-    ('LEADING_WILDCARD', re.compile(r"\blike\s+'%", re.IGNORECASE)),
+    ('LEADING_WILDCARD', re.compile(r'''\blike\b\s*\(?\s*(?:['"]%|concat\s*\(\s*['"]%)''', re.IGNORECASE)),
     ('FUNCTION_ON_COLUMN', re.compile(r'\blower\s*\(\s*(?:p|s|b|m|c|price_s|active_s)\.\w+\s*\)', re.IGNORECASE)),
 ]
 

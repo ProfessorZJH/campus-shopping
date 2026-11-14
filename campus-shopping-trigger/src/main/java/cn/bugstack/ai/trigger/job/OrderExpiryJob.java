@@ -31,9 +31,9 @@ public class OrderExpiryJob {
     public synchronized void closeExpired() {
         try {
             var oldest = trading.oldestExpired();
-            // 每 100 轮记录一次：本任务每 15 秒执行，逐轮 info 会在单实例产生约 5760 条/天，
-            // 与 DisplayCache、ProductVectorSyncJob 的采样口径保持一致。
-            if (scans.incrementAndGet() % 100 == 1) {
+            // 有逾期积压时逐轮记录，保证监控能及时发现持续增长；无积压时每 100 轮采样一次。
+            long scanNumber = scans.incrementAndGet();
+            if (oldest != null || scanNumber % 100 == 1) {
                 log.info(
                     "order_expiry_scan oldest_overdue_seconds={} failure_total={}",
                     oldest == null ? 0 : Math.max(0, java.time.Duration.between(oldest, java.time.Instant.now()).toSeconds()),
