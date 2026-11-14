@@ -6,11 +6,22 @@ import json
 from copy import deepcopy
 from playwright.sync_api import sync_playwright,expect
 from ui_three_pages import render,BackendContractDouble,ERRORS
+from urllib.parse import urlparse
 
 checks=[]
 def check(cond,msg):
  assert cond,msg
  checks.append(msg)
+
+class BackofficeBackend(BackendContractDouble):
+ def __init__(self):
+  super().__init__()
+  self.logged=True
+  self.bodies=[]
+ def handle(self,route):
+  if route.request.method=='POST':
+   self.bodies.append((urlparse(route.request.url).path,route.request.post_data_json))
+  return super().handle(route)
 
 with sync_playwright() as x:
  browser=x.chromium.launch(headless=True,executable_path=shutil.which('chromium'),args=['--no-sandbox'])
@@ -107,6 +118,42 @@ with sync_playwright() as x:
  check(True,'旧订单无图使用占位图，不回查商户修改后的商品主图')
  close_page(p)
  check(not history.unhandled,'旧订单页面未调用未实现的契约替身接口')
+ # Extracted back-office views must still update parent state and submit the same scoped actions.
+ back=BackofficeBackend()
+ back.orders=[
+  {'orderId':'order-one','merchantId':'m1','status':'PAID','totalCent':1200,'createdAt':'2026-11-01T08:00:00Z',
+   'pickup':{'status':'WAIT_PREP'},'items':[{'skuId':'sku0','title':'测试商品一','specKey':'标准','quantity':1}]},
+  {'orderId':'order-two','merchantId':'m1','status':'PAID','totalCent':2000,'createdAt':'2026-11-02T08:00:00Z',
+   'pickup':{'status':'WAIT_PREP'},'items':[{'skuId':'sku1','title':'测试商品二','specKey':'标准','quantity':1}]},
+ ]
+ p=render(browser,'/merchant/orders',False,(1448,980),back)
+ expect(p.locator('.ops-table tbody tr')).to_have_count(2)
+ p.locator('.ops-table tbody tr').nth(1).get_by_role('button').click()
+ expect(p.locator('.order-inspector')).to_contain_text('order-two')
+ p.get_by_role('button',name='开始备货').click()
+ expect(p.get_by_role('button',name='备货完成')).to_be_visible()
+ check(any(w['path']=='/merchants/m1/orders/order-two/prepare' and w['csrf'] for w in back.writes),'订单选择与备货操作保留商户作用域')
+ close_page(p)
+ p=render(browser,'/merchant/inventory',False,(1448,980),back)
+ expect(p.locator('.ops-table tbody tr')).to_have_count(4)
+ p.locator('.ops-table tbody tr').first.get_by_role('button',name='补货').click()
+ expect(p.locator('#merchantops-field-1')).to_have_value('sku0')
+ p.locator('#merchantops-field-2').fill('3')
+ p.get_by_role('button',name='确认补货').click()
+ expect(p.locator('.toast')).to_contain_text('操作成功')
+ check(any(w['path']=='/merchants/m1/stocks/sku0/replenish' and w['hasIdempotency'] for w in back.writes)
+       and any(path.endswith('/stocks/sku0/replenish') and body['quantity']==3 for path,body in back.bodies),
+       '库存行选择与补货保留数量和幂等键')
+ close_page(p)
+ p=render(browser,'/admin/applications',False,(1448,980),back)
+ expect(p.locator('.ops-sideform')).to_contain_text(back.applications[0]['merchantName'])
+ expect(p.get_by_role('button',name='驳回')).to_be_disabled()
+ p.locator('#platform-field-1').fill('资料需要补充')
+ p.get_by_role('button',name='驳回').click()
+ expect(p.locator('.ops-sideform')).to_contain_text('已驳回')
+ check(any(path.endswith('/admin/merchant-applications/a1/review') and body=={'approved':False,'reason':'资料需要补充'} for path,body in back.bodies),
+       '平台审核意见与拒绝操作从视图正确传回页面')
+ close_page(p)
  check(not f.unhandled,'没有调用未实现的契约替身接口')
  check(not ERRORS,'没有 Chromium 未捕获异常')
  close_browser(browser)
