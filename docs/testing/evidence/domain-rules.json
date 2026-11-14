@@ -1,7 +1,7 @@
 {
-  "timestamp": "2026-11-04T05:42:17.248972+00:00",
+  "timestamp": "2026-11-09T21:36:57.540043+00:00",
   "javaTarget": 17,
-  "productionSourcesCompiled": 33,
+  "productionSourcesCompiled": 35,
   "passedChecks": 56,
   "checks": [
     "商品具有有效规格才能上架",

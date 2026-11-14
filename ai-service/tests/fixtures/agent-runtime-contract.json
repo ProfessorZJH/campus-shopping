@@ -1,0 +1,36 @@
+﻿{
+  "protocolVersion": "1.0",
+  "tool": {
+    "name": "search_products",
+    "readOnly": true,
+    "input": {
+      "query": "茶",
+      "limit": 5,
+      "merchantId": null
+    },
+    "requiredResultKeys": ["tool", "version", "readOnly", "candidates"],
+    "result": {
+      "tool": "search_products",
+      "version": "1.0",
+      "readOnly": true,
+      "candidates": []
+    }
+  },
+  "statuses": ["TOOL_CALLS", "FINAL", "FAILED"],
+  "errors": [
+    "AUTH_INVALID",
+    "PROTOCOL_UNSUPPORTED",
+    "REQUEST_CONFLICT",
+    "CONTINUATION_NOT_FOUND",
+    "CONTINUATION_CONFLICT",
+    "INVALID_TOOL_CALL",
+    "INVALID_TOOL_ARGUMENTS",
+    "TOOL_CALL_LIMIT",
+    "ROUND_TRIP_LIMIT",
+    "UPSTREAM_429",
+    "UPSTREAM_5XX",
+    "UPSTREAM_TIMEOUT",
+    "UPSTREAM_CONNECTION",
+    "AI_UNAVAILABLE"
+  ]
+}

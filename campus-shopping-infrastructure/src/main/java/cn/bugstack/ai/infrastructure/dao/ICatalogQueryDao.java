@@ -16,7 +16,9 @@ public interface ICatalogQueryDao {
         @Param("publicOnly") boolean publicOnly,
         @Param("offset") int offset,
         @Param("limit") int limit,
-        @Param("sort") String sort
+        @Param("sort") String sort,
+        @Param("minPriceCent") Long minPriceCent,
+        @Param("maxPriceCent") Long maxPriceCent
     );
     List<ProductPO> recall(@Param("terms") List<String> terms, @Param("limit") int limit);
     List<ProductPO> publicByIds(@Param("ids") List<String> ids);
@@ -34,6 +36,8 @@ public interface ICatalogQueryDao {
         @Param("merchantId") String merchantId,
         @Param("query") String query,
         @Param("category") String category,
-        @Param("publicOnly") boolean publicOnly
+        @Param("publicOnly") boolean publicOnly,
+        @Param("minPriceCent") Long minPriceCent,
+        @Param("maxPriceCent") Long maxPriceCent
     );
 }

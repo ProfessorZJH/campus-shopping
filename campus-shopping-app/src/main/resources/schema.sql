@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS mer_merchant (
 
 CREATE TABLE IF NOT EXISTS mer_store (
  id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, name VARCHAR(100) NOT NULL, location VARCHAR(200) NOT NULL,
+ description VARCHAR(2000) NOT NULL DEFAULT '', business_hours VARCHAR(200) NOT NULL DEFAULT '', image_url VARCHAR(255) NOT NULL DEFAULT '',
  UNIQUE KEY uk_store_merchant(merchant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -52,7 +53,7 @@ CREATE TABLE IF NOT EXISTS cat_category (
 CREATE TABLE IF NOT EXISTS cat_product (
  id VARCHAR(36) PRIMARY KEY, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL,
  description TEXT NOT NULL, image_url VARCHAR(255) NOT NULL, category_code VARCHAR(32) NOT NULL, status VARCHAR(20) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_product_merchant(merchant_id,status), KEY ix_product_category(category_code,status)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_product_merchant(merchant_id,status), KEY ix_product_merchant_newest(merchant_id,status,created_at DESC,id), KEY ix_product_public_newest(status,created_at DESC,id,merchant_id), KEY ix_product_category(category_code,status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_product_image (
@@ -63,9 +64,10 @@ CREATE TABLE IF NOT EXISTS cat_product_image (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_product_image_upload (
- object_key VARCHAR(512) NOT NULL, merchant_id VARCHAR(36) NOT NULL, product_id VARCHAR(36),
+ object_key VARCHAR(512) NOT NULL, merchant_id VARCHAR(36) NOT NULL, usage_type VARCHAR(16) NOT NULL DEFAULT 'PRODUCT', product_id VARCHAR(36),
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), PRIMARY KEY (object_key,merchant_id),
- KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id)
+ KEY ix_product_image_upload_merchant(merchant_id,product_id), KEY ix_product_image_upload_product(product_id),
+ CONSTRAINT ck_product_image_upload_usage CHECK (usage_type IN ('PRODUCT','STORE'))
  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS cat_sku (
@@ -76,7 +78,7 @@ CREATE TABLE IF NOT EXISTS cat_sku (
 
 CREATE TABLE IF NOT EXISTS inv_stock_balance (
  merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL, sku_id VARCHAR(36) NOT NULL, on_hand BIGINT NOT NULL DEFAULT 0,
- reserved BIGINT NOT NULL DEFAULT 0, version BIGINT NOT NULL DEFAULT 0, PRIMARY KEY(store_id,sku_id), KEY ix_stock_merchant(merchant_id), KEY ix_stock_sku(sku_id),
+ reserved BIGINT NOT NULL DEFAULT 0, version BIGINT NOT NULL DEFAULT 0, PRIMARY KEY(store_id,sku_id), UNIQUE KEY uk_stock_sku(sku_id), KEY ix_stock_merchant(merchant_id), KEY ix_stock_sku(sku_id), KEY ix_stock_merchant_sku(merchant_id,sku_id),
  CONSTRAINT ck_stock_balance CHECK (on_hand >= reserved AND reserved >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -102,8 +104,25 @@ CREATE TABLE IF NOT EXISTS trd_checkout_request (
 
 CREATE TABLE IF NOT EXISTS trd_order (
  id VARCHAR(36) PRIMARY KEY, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
+ pickup_store_name VARCHAR(100) NOT NULL DEFAULT '', pickup_location VARCHAR(200) NOT NULL DEFAULT '',
  total_cent BIGINT NOT NULL, status VARCHAR(24) NOT NULL, deadline DATETIME(3) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_merchant(merchant_id,status), KEY ix_order_expiry(status,deadline), CONSTRAINT ck_order_total CHECK(total_cent>0)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_buyer_page(buyer_id,status,created_at DESC,id), KEY ix_order_merchant(merchant_id,status), KEY ix_order_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_order_expiry(status,deadline), KEY ix_order_created(created_at,id), CONSTRAINT ck_order_total CHECK(total_cent>0)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS trd_order_event (
+ id VARCHAR(36) PRIMARY KEY,
+ event_seq BIGINT NOT NULL AUTO_INCREMENT,
+ order_id VARCHAR(36) NOT NULL,
+ after_sale_id VARCHAR(36) NULL,
+ event_type VARCHAR(32) NOT NULL,
+ event_time DATETIME(3) NOT NULL,
+ actor_id VARCHAR(36) NULL,
+ actor_role VARCHAR(24) NULL,
+ reason VARCHAR(500) NOT NULL DEFAULT '',
+ dedupe_key VARCHAR(80) NOT NULL,
+ UNIQUE KEY uk_order_event_dedupe(order_id,dedupe_key),
+ UNIQUE KEY uk_order_event_seq(event_seq),
+ KEY ix_order_event_time(order_id,event_time,event_seq)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_order_item (
@@ -118,7 +137,7 @@ CREATE TABLE IF NOT EXISTS trd_payment (
 
 CREATE TABLE IF NOT EXISTS trd_after_sale (
  id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL,
- status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id)
+ status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id), KEY ix_after_sale_merchant_page(merchant_id,status,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_refund (
@@ -135,14 +154,14 @@ CREATE TABLE IF NOT EXISTS ful_pickup_verification (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_base (
- id VARCHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL, merchant_id VARCHAR(36), visibility VARCHAR(32) NOT NULL, created_by VARCHAR(36) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+ id VARCHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL, merchant_id VARCHAR(36), visibility VARCHAR(32) NOT NULL, created_by VARCHAR(36) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_knowledge_base_created(created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_quota (id VARCHAR(16) PRIMARY KEY, used_count INT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 INSERT IGNORE INTO ai_knowledge_quota(id,used_count) SELECT 'global',COUNT(*) FROM ai_knowledge_base;
 
 CREATE TABLE IF NOT EXISTS ai_document_root (
- id VARCHAR(36) PRIMARY KEY, base_id VARCHAR(36) NOT NULL, active_document_id VARCHAR(36), version_counter INT NOT NULL DEFAULT 0
+ id VARCHAR(36) PRIMARY KEY, base_id VARCHAR(36) NOT NULL, active_document_id VARCHAR(36), version_counter INT NOT NULL DEFAULT 0, KEY ix_document_root_active(active_document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_usage (
@@ -157,18 +176,37 @@ CREATE TABLE IF NOT EXISTS ai_document (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_conversation (
- processing_owner VARCHAR(64) NULL, processing_until DATETIME(3) NULL, id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, turn_token VARCHAR(36) NULL, turn_expires_at DATETIME(3) NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at)
+ processing_owner VARCHAR(64) NULL, processing_until DATETIME(3) NULL, id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, title VARCHAR(100) NOT NULL, summary VARCHAR(200) NOT NULL DEFAULT '', turn_token VARCHAR(36) NULL, turn_expires_at DATETIME(3) NULL, turn_status VARCHAR(24) NOT NULL DEFAULT 'IDLE', turn_cancel_requested_at DATETIME(3) NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), last_active_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_conversation_owner(user_id,created_at), KEY ix_conversation_activity(user_id,last_active_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_message (
  seq_no BIGINT NOT NULL AUTO_INCREMENT UNIQUE,
- id VARCHAR(36) PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, role VARCHAR(16) NOT NULL, content TEXT NOT NULL, access_fingerprint CHAR(64),
+ id VARCHAR(36) PRIMARY KEY, conversation_id VARCHAR(36) NOT NULL, role VARCHAR(16) NOT NULL, content TEXT NOT NULL, access_fingerprint CHAR(64), citation_recorded TINYINT(1) NOT NULL DEFAULT 0,
  created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_message_conversation(conversation_id,created_at), KEY ix_message_sequence(conversation_id,seq_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ai_message_citation (
+ message_id VARCHAR(36) NOT NULL, ordinal INT NOT NULL, document_id VARCHAR(36) NOT NULL, root_id VARCHAR(36) NOT NULL, document_version INT NOT NULL,
+ chunk_id VARCHAR(100) NOT NULL, title VARCHAR(120) NOT NULL, snippet VARCHAR(500) NOT NULL DEFAULT '', PRIMARY KEY(message_id,ordinal), KEY ix_message_citation_document(document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_proposal (
  id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, conversation_id VARCHAR(36) NOT NULL, status VARCHAR(16) NOT NULL,
  items_json TEXT NOT NULL, selection_hash CHAR(64), expires_at DATETIME(3) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_proposal_conversation(user_id,conversation_id,created_at DESC,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ai_run (
+ id VARCHAR(36) PRIMARY KEY, user_id VARCHAR(36) NOT NULL, idempotency_key VARCHAR(100) NOT NULL, capability_token_hash CHAR(64) NOT NULL,
+ conversation_id VARCHAR(36) NOT NULL, turn_token VARCHAR(36) NOT NULL, scope_json JSON NOT NULL, tools_json JSON NOT NULL,
+ status VARCHAR(24) NOT NULL, version BIGINT NOT NULL DEFAULT 0, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY uk_ai_run_user_idempotency(user_id,idempotency_key), KEY ix_ai_run_conversation(conversation_id,user_id,created_at DESC,id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS ai_run_invocation (
+ id VARCHAR(36) PRIMARY KEY, run_id VARCHAR(36) NOT NULL, invocation_key VARCHAR(100) NOT NULL, tool_name VARCHAR(64) NOT NULL,
+ input_fingerprint CHAR(64) NOT NULL, status VARCHAR(24) NOT NULL, input_json JSON NOT NULL, output_json JSON NULL, error_code VARCHAR(64) NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), completed_at DATETIME(3) NULL,
+ UNIQUE KEY uk_ai_run_invocation(run_id,invocation_key), KEY ix_ai_run_invocation_status(run_id,status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS sys_schema_version (
@@ -201,6 +239,21 @@ CREATE TABLE IF NOT EXISTS sys_schema_migration (
  version VARCHAR(32) PRIMARY KEY, checksum CHAR(64) NOT NULL,
  installed_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS sys_schema_migration_drift (
+ id BIGINT NOT NULL AUTO_INCREMENT,
+ database_name VARCHAR(64) NOT NULL,
+ event_type VARCHAR(32) NOT NULL,
+ release_name VARCHAR(128) NULL,
+ target_fingerprint CHAR(64) NULL,
+ actual_fingerprint CHAR(64) NULL,
+ operator_name VARCHAR(128) NULL,
+ reason VARCHAR(1000) NULL,
+ detail TEXT NOT NULL,
+ detected_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ PRIMARY KEY (id),
+ KEY ix_schema_drift_database(database_name,detected_at),
+ KEY ix_schema_drift_type(event_type,detected_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_01','7fe7d76b5e4f579b07167a3216af93dbc006216f7ab9a56ff95c3a807e2e95a7' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261028_02','271f49d26dd7a5538f32851d6cbe5ccb2a9592be6722da2190b0a329940a39cd' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261029_01','efdc1a9b032afcea14d4e0ee0198011beb2d9088850da21b5a5ead10881040ef' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
@@ -210,3 +263,14 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_02','07a96a
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261031_03','90dba4d1952d3a1b4fafb34aa23f67f0fa0b6adf629e0365ddf66e528555143d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261102_01','c76f2b0577963d2687e8fb9fcc85f7a51796f0b0fe26bbffccf2d20613f7e02d' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261104_01','1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_01','f3dc21f54f23e3f142cf2ec5d82a8c2a7fec36abe219a16936a3cea985b290cb' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261105_02','4c4802ee8e2e31262def368c0536b2f227923d1bb219d4280babe64878e86c48' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_01','fcc1851f8933857c4531d126ba46d4a49754310693c006589f3b9363f033e977' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_02','338723eaf6a7f12ce1ecd11aca2cba58d7c0c01d2050d8f75999502694076c5a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261106_03','044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_01','d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_02','ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_03','464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_04','49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_05','2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261109_01','6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

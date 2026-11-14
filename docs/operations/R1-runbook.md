@@ -49,8 +49,13 @@ cd ai-service
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install --require-hashes -r requirements.lock
+# 新部署或发现旧索引库时，先在停服窗口执行一次显式结构迁移；服务启动不会改写旧 SQLite。
+$aiDbPath = if ($env:AI_DB_PATH) { $env:AI_DB_PATH } else { './var/knowledge.sqlite3' }
+python -m app.sqlite_migration $aiDbPath
 python -m uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8100
 ```
+
+Java 网关会在旧 Python 对新字段返回 HTTP 422 时重试兼容载荷，因此可先部署 Java；迁移窗口结束后仍应优先升级 Python，并观察 `/ready` 和索引重建结果。兼容载荷不携带文档版本和 SKU 结构化属性，不能替代 Python 升级。
 
 首次没有业务商品是正常的：注册经营者→提交入驻→平台审核→商户建商品/补货/上架；生产界面没有自动塞入假的成交数据。完整HTTP脚本可准备一组明确标记的验收数据。
 

@@ -14,6 +14,7 @@ import cn.bugstack.ai.domain.merchant.service.IMerchantService;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.*;
 import cn.bugstack.ai.domain.trading.service.ICartService;
+import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -33,6 +34,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
     private final ICatalogService catalog;
     private final IInventoryService inventory;
     private final IOrderService trading;
+    private final IOrderEventService events;
     private final ICartService cart;
     private final IOrderQueryCase query;
     private final Clock clock;
@@ -46,6 +48,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
         ICatalogService catalog,
         IInventoryService inventory,
         IOrderService trading,
+        IOrderEventService events,
         ICartService cart,
         IOrderQueryCase query,
         Clock clock
@@ -55,6 +58,7 @@ public class CheckoutCaseImpl implements ICheckoutCase {
         this.catalog = catalog;
         this.inventory = inventory;
         this.trading = trading;
+        this.events = events;
         this.cart = cart;
         this.query = query;
         this.clock = clock;
@@ -111,11 +115,14 @@ public class CheckoutCaseImpl implements ICheckoutCase {
             buyer,
             merchant,
             m.storeId(),
+            m.storeName(),
+            m.location(),
             snapshots,
             clock.instant().plus(Duration.ofMinutes(Math.max(1, Math.min(paymentMinutes, 60))))
         );
         cart.consumeCart(buyer, snapshots);
         trading.finishCheckout(buyer, key, orderId);
+        events.record(orderId, null, "ORDER_CREATED", buyer, "BUYER", "");
         return query.view(order);
     }
 }

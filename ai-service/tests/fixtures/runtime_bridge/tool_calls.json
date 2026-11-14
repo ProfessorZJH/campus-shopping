@@ -1,0 +1,23 @@
+{
+  "protocolVersion": "1.0",
+  "runId": "run-redacted-001",
+  "requestId": "request-redacted-start",
+  "status": "TOOL_CALLS",
+  "continuationId": "continuation-redacted-001",
+  "toolCalls": [
+    {
+      "callId": "call-redacted-001",
+      "name": "search_products",
+      "arguments": {
+        "query": "sugar-free drinks",
+        "limit": 10,
+        "merchantId": null
+      }
+    }
+  ],
+  "answer": null,
+  "evidenceStatus": "STUB",
+  "usage": {"total_tokens": 3},
+  "durationMs": 12,
+  "errorCode": null
+}

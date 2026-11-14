@@ -7,9 +7,18 @@ import java.util.*;
 
 /** 对外接口契约，由 Trigger 的 CatalogController 实现。 */
 public interface ICatalogApi {
-    /** 公开商品搜索与分页。 */
-    Response<List<ProductResponseDTO>> products(String merchantId, String q, String category, int page, int size);
-    Response<PageResponseDTO<ProductResponseDTO>> productPage(String merchantId, String q, String category, int page, int size, String sort);
+    /** 公开商品搜索与分页；价格范围以整数分表达，端点包含在内。 */
+    Response<List<ProductResponseDTO>> products(String merchantId, String q, String category, Long minPriceCent, Long maxPriceCent, int page, int size);
+    Response<PageResponseDTO<ProductResponseDTO>> productPage(
+        String merchantId,
+        String q,
+        String category,
+        Long minPriceCent,
+        Long maxPriceCent,
+        int page,
+        int size,
+        String sort
+    );
     /** 查看可售商品与实时库存快照。 */
     Response<ProductResponseDTO> detail(String productId);
     /** 商品类目列表。 */

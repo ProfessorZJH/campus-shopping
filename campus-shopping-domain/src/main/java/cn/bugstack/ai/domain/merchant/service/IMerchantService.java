@@ -15,4 +15,7 @@ public interface IMerchantService {
     List<MerchantVO> list(int page, int size, boolean activeOnly, String q);
     boolean changeStatus(String merchantId, boolean active);
     void updateProfile(String id, String name, String storeName, String location);
+    void updateProfile(String id, String name, String storeName, String location, String description, String businessHours, String imageUrl);
+    /** 按门店用途上传图片并登记本商户归属。 */
+    String storeImage(String merchantId, byte[] bytes);
 }

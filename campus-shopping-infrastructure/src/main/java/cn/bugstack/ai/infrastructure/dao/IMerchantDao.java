@@ -18,5 +18,12 @@ public interface IMerchantDao {
     long count(@Param("activeOnly") boolean activeOnly, @Param("q") String q);
     int setStatus(@Param("id") String id, @Param("status") String status);
     int updateProfile(@Param("id") String id, @Param("name") String name);
-    int updateStore(@Param("id") String id, @Param("storeName") String storeName, @Param("location") String location);
+    int updateStore(
+        @Param("id") String id,
+        @Param("storeName") String storeName,
+        @Param("location") String location,
+        @Param("description") String description,
+        @Param("businessHours") String businessHours,
+        @Param("imageUrl") String imageUrl
+    );
 }

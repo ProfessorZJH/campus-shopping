@@ -20,5 +20,13 @@
   {"question":"这个便宜点","history":["预算20元要两支签字笔"],"budgetCent":2000,"quantity":2,"clarify":false},
   {"question":"这个上限10元","history":["预算20元要两支签字笔"],"budgetCent":1000,"quantity":2,"clarify":false},
   {"question":"换一款","history":["预算20元要两支签字笔"],"budgetCent":2000,"quantity":2,"clarify":false},
-  {"question":"买本书","history":["预算20元要两支签字笔"],"budgetCent":null,"quantity":null,"clarify":false}
+  {"question":"买本书","history":["预算20元要两支签字笔"],"budgetCent":null,"quantity":null,"clarify":false},
+  {"question":"20到30元买水","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"买两三瓶水","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"买二三十瓶水","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"买十二三瓶水","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"预算二三十元","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"预算十二三元","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"买二十三瓶水","history":[],"budgetCent":null,"quantity":23,"clarify":false},
+  {"question":"预算二十三元","history":[],"budgetCent":2300,"quantity":null,"clarify":false}
 ]

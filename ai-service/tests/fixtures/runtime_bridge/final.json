@@ -1,0 +1,13 @@
+{
+  "protocolVersion": "1.0",
+  "runId": "run-redacted-001",
+  "requestId": "request-redacted-continue",
+  "status": "FINAL",
+  "continuationId": "continuation-redacted-001",
+  "toolCalls": [],
+  "answer": "I found one matching product.",
+  "evidenceStatus": "STUB",
+  "usage": {"total_tokens": 8},
+  "durationMs": 21,
+  "errorCode": null
+}

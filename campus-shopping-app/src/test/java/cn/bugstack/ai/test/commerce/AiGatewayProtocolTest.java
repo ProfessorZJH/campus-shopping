@@ -2,6 +2,7 @@ package cn.bugstack.ai.test.commerce;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.infrastructure.gateway.AiGatewayService;
 import cn.bugstack.ai.infrastructure.gateway.dto.AiGatewayDTO;
 import cn.bugstack.ai.types.exception.AppException;
@@ -9,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -108,6 +110,63 @@ class AiGatewayProtocolTest {
             var client = gateway(server);
             assertEquals("AI0001", assertThrows(AppException.class, () -> client.recall(null)).getCode());
             assertEquals("AI0001", assertThrows(AppException.class, () -> client.query(null)).getCode());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void queryStreamConsumesProgressAndOnlyReturnsCompletedJson() throws Exception {
+        var progress = new AtomicLong();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/query/stream", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            assertEquals("text/event-stream", exchange.getRequestHeaders().getFirst("Accept"));
+            String body =
+                "event: started\n\n" +
+                "event: progress\n" +
+                "data: {\"bytes\":17}\n\n" +
+                "event: completed\n" +
+                "data: {\"answer\":\"ok\",\"mode\":\"LOCAL_FALLBACK\",\"retrievalMode\":\"NONE\",\"rewrittenQuery\":\"q\",\"warning\":null,\"citations\":[],\"recommendations\":[],\"latencyMs\":3}\n\n";
+            byte[] response = body.getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            AiGatewayDTO.Answer answer = gateway(server).queryStream(
+                new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
+                progress::set
+            );
+            assertEquals("ok", answer.answer());
+            assertEquals(17, progress.get());
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void queryStreamClosesTheResponseWhenProgressRequestsCancellation() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/query/stream", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = ("event: progress\n" + "data: {\"bytes\":1}\n\n").getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            assertThrows(AiTurnCancelledException.class, () ->
+                gateway(server).queryStream(
+                    new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
+                    bytes -> {
+                        throw new AiTurnCancelledException();
+                    }
+                )
+            );
         } finally {
             server.stop(0);
         }

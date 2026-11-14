@@ -7,8 +7,17 @@ SELECT * FROM cat_sku WHERE product_id IN <foreach collection="productIds" item=
 <select id="scanIdsAfter" resultType="java.lang.String">
 SELECT id FROM cat_product WHERE id &gt; #{after} ORDER BY id LIMIT #{limit}
 </select>
-<select id="search" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
-SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
+<sql id="publicPriceMatch">
+<if test="minPriceCent != null or maxPriceCent != null">
+AND EXISTS (SELECT 1 FROM cat_sku price_s WHERE price_s.product_id=p.id
+  <if test="publicOnly">AND price_s.status='ACTIVE'</if>
+  <if test="minPriceCent != null">AND price_s.price_cent &gt;= #{minPriceCent}</if>
+  <if test="maxPriceCent != null">AND price_s.price_cent &lt;= #{maxPriceCent}</if>
+)
+</if>
+</sql>
+<!-- 公开商品搜索的公共过滤条件：search 与 count 必须共用同一片段，否则列表与总数会分叉。 -->
+<sql id="publicSearchFilter">
 <if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
 <if test="merchantId!=null and merchantId!=''">AND p.merchant_id=#{merchantId}</if>
 <if test="query!=null and query!=''">AND (
@@ -19,10 +28,19 @@ SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=
       AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<include refid="publicPriceMatch"/>
+</sql>
+<select id="search" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
+<include refid="publicSearchFilter"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
-   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
-   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') ASC,p.id</when>
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
+     <if test="minPriceCent != null">AND s.price_cent &gt;= #{minPriceCent}</if>
+     <if test="maxPriceCent != null">AND s.price_cent &lt;= #{maxPriceCent}</if>) IS NULL,
+   (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE'
+     <if test="minPriceCent != null">AND s.price_cent &gt;= #{minPriceCent}</if>
+     <if test="maxPriceCent != null">AND s.price_cent &lt;= #{maxPriceCent}</if>) ASC,p.id</when>
  <when test="sort == 'STOCK_DESC'">ORDER BY
    (SELECT COALESCE(SUM(GREATEST(COALESCE(b.on_hand,0)-COALESCE(b.reserved,0),0)),0)
     FROM cat_sku s LEFT JOIN inv_stock_balance b ON b.store_id=s.store_id AND b.sku_id=s.id
@@ -61,16 +79,7 @@ AND EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE
     </select>
 <select id="count" resultType="long">
 SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHERE 1=1
-<if test="publicOnly">AND p.status='PUBLISHED' AND m.status='ACTIVE'</if>
-<if test="merchantId!=null and merchantId!=''">AND p.merchant_id=#{merchantId}</if>
-<if test="query!=null and query!=''">AND (
-  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
-  OR LOCATE(LOWER(#{query}),LOWER(m.name)) &gt; 0
-  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id
-      <if test="publicOnly">AND s.status='ACTIVE'</if>
-      AND (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
-)</if>
-<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
+<include refid="publicSearchFilter"/>
     </select>
 <sql id="managedStatus">
 <choose>
@@ -81,8 +90,8 @@ SELECT COUNT(*) FROM cat_product p JOIN mer_merchant m ON p.merchant_id=m.id WHE
  <otherwise><if test="status!=null and status!=''">AND p.status=#{status}</if></otherwise>
 </choose>
 </sql>
-<select id="searchManaged" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
-SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
+<!-- 商户工作台搜索的公共过滤条件：searchManaged 与 countManaged 必须共用同一片段，且与公开搜索分开（无商户表连接）。 -->
+<sql id="managedSearchFilter">
 <if test="query!=null and query!=''">AND (
   LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
   OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND
@@ -90,6 +99,10 @@ SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
 )</if>
 <if test="category!=null and category!=''">AND p.category_code=#{category}</if>
 <include refid="managedStatus"/>
+</sql>
+<select id="searchManaged" resultType="cn.bugstack.ai.infrastructure.dao.po.ProductPO">
+SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
+<include refid="managedSearchFilter"/>
 <choose>
  <when test="sort == 'PRICE_ASC'">ORDER BY
    (SELECT MIN(s.price_cent) FROM cat_sku s WHERE s.product_id=p.id AND s.status='ACTIVE') IS NULL,
@@ -103,12 +116,6 @@ SELECT p.* FROM cat_product p WHERE p.merchant_id=#{merchantId}
     </select>
 <select id="countManaged" resultType="long">
 SELECT COUNT(*) FROM cat_product p WHERE p.merchant_id=#{merchantId}
-<if test="query!=null and query!=''">AND (
-  LOCATE(LOWER(#{query}),LOWER(p.title)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(p.description)) &gt; 0
-  OR EXISTS (SELECT 1 FROM cat_sku s WHERE s.product_id=p.id AND
-    (LOCATE(LOWER(#{query}),LOWER(s.id)) &gt; 0 OR LOCATE(LOWER(#{query}),LOWER(s.spec_key)) &gt; 0))
-)</if>
-<if test="category!=null and category!=''">AND p.category_code=#{category}</if>
-<include refid="managedStatus"/>
+<include refid="managedSearchFilter"/>
     </select>
 </mapper>

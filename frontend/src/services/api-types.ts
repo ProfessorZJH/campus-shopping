@@ -25,6 +25,17 @@ export interface Citation {
   snippet: string;
 }
 
+export type CitationStatus = 'AVAILABLE' | 'NONE' | 'MISSING' | 'HIDDEN';
+
+export interface MessageResponse {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  createdAt: string;
+  citations: Citation[];
+  citationStatus: CitationStatus;
+}
+
 export interface ProposalItem {
   skuId: string;
   merchantId: string;

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "kind": "REAL_LLM_EVALUATION_SUMMARY",
+  "date": "2026-11-10",
+  "dataset": {
+    "id": "campus-shopping-v1",
+    "version": "1.0-draft",
+    "split": "smoke",
+    "status": "DRAFT"
+  },
+  "profile": "real-llm",
+  "experiments": ["R-RULE", "R-LLM"],
+  "execution": {
+    "providerRequests": 36,
+    "rows": 48,
+    "statusCounts": {
+      "EXECUTED": 12,
+      "DEGRADED": 36
+    },
+    "llm": {
+      "source": ["REAL"],
+      "attempts": 36,
+      "success": 0,
+      "failure": 36,
+      "operations": {
+        "completions": 36
+      }
+    },
+    "humanReview": "PENDING",
+    "observedFailureTypes": ["ReadTimeout", "JSONDecodeError", "ConnectError"]
+  },
+  "interpretation": "真实 LLM 路径已实际执行并保留逐例失败/降级结果；本记录不能宣称供应商可用、Tool Calling 通过或回答质量通过。",
+  "safety": {
+    "credentialsIncluded": false,
+    "promptOrResponse正文Included": false,
+    "productionWritePerformed": false
+  }
+}

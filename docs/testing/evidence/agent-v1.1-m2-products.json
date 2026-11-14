@@ -1,0 +1,40 @@
+{
+  "startedAt": "2026-11-09T16:03:07.171676+00:00",
+  "scope": "Real remote models and real local Uvicorn TCP; synthetic public fixtures",
+  "llmModel": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "versions": {
+    "fastapi": "0.111.0",
+    "uvicorn": "0.30.0",
+    "httpx": "0.27.0",
+    "pydantic": "2.8.2",
+    "pymilvus": "2.5.18"
+  },
+  "javaMySqlTested": false,
+  "businessCartTransactionsTested": false,
+  "productionProductCollectionModified": false,
+  "checks": [
+    {
+      "name": "milvus_product_acceptance",
+      "status": "BLOCKED",
+      "errorType": "MilvusException",
+      "reason": "Configuration or connection prerequisite not satisfied; see diagnostics"
+    },
+    {
+      "name": "milvus_tls_19530",
+      "status": "PASS",
+      "tlsVersion": "TLSv1.3"
+    },
+    {
+      "name": "milvus_tls_443",
+      "status": "BLOCKED",
+      "latencyMs": 5055,
+      "errorType": "TimeoutError"
+    }
+  ],
+  "finishedAt": "2026-11-09T16:03:28.006830+00:00",
+  "summary": {
+    "BLOCKED": 2,
+    "PASS": 1
+  }
+}

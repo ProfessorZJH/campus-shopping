@@ -1,0 +1,32 @@
+{
+  "actualCode" : "M0004",
+  "after" : {
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "cart" : [ ],
+    "stock" : [ {
+      "sku_id" : "16851df0-ec7d-4e72-af16-2fcd5401c10a",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ]
+  },
+  "llm" : "STUB_OR_NOT_USED",
+  "before" : {
+    "proposals" : [ {
+      "status" : "PENDING",
+      "selection_hash" : null
+    } ],
+    "cart" : [ ],
+    "stock" : [ {
+      "sku_id" : "16851df0-ec7d-4e72-af16-2fcd5401c10a",
+      "on_hand" : 5,
+      "reserved" : 0
+    } ]
+  },
+  "scenario" : "SUSPEND",
+  "javaMysql" : "REAL",
+  "assertions" : "PASSED",
+  "caseId" : "safe-suspend"
+}

@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-08
+skip_specs: true
+goal: 将 ShoppingAiCaseImpl 的候选召回/约束过滤与证据引用组装提取为可测试的窄职责组件，保留 Case 对话编排边界。

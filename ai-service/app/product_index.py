@@ -16,8 +16,18 @@ class ProductIndex:
 
     def _connect(self):
         if self._client is None:
-            from pymilvus import MilvusClient  # imported only for Milvus deployments
-            self._client=MilvusClient(uri=self.settings.milvus_uri,token=self.settings.milvus_token,timeout=10)
+            transport = getattr(self.settings, 'milvus_transport', 'auto')
+            use_rest = transport == 'rest' or (transport == 'auto' and self.settings.milvus_uri.startswith('https://'))
+            if use_rest:
+                from .milvus_rest import MilvusRestClient
+                self._client = MilvusRestClient(
+                    uri=self.settings.milvus_uri,
+                    token=self.settings.milvus_token,
+                    timeout=10,
+                )
+            else:
+                from pymilvus import MilvusClient  # imported only for Milvus deployments
+                self._client=MilvusClient(uri=self.settings.milvus_uri,token=self.settings.milvus_token,timeout=10)
         return self._client
 
     def _collection(self,dimension: int):
@@ -68,7 +78,8 @@ class ProductIndex:
         hits=client.search(collection_name=collection,data=[vector],filter='model == '+json.dumps(self.provider.model_tag),
                            limit=limit,output_fields=[],consistency_level='Strong')
         ids=[str(hit['id']) for hit in hits[0] if hit.get('id')]
-        return {'productIds':list(dict.fromkeys(ids))[:limit],'mode':'MILVUS'}
+        ids=list(dict.fromkeys(ids))[:limit]
+        return {'productIds':ids,'productRanks':{value:index+1 for index,value in enumerate(ids)},'mode':'MILVUS'}
 
     def delete(self,product_ids: list[str]) -> dict:
         """删除 Java 从实时目录中确认不再公开的 ID，不接受客户端商品事实。"""

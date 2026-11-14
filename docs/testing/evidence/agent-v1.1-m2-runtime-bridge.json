@@ -1,0 +1,18 @@
+{
+  "status": "NOT_RUN",
+  "evidenceStatus": "NOT_RUN",
+  "reason": "AI_SERVICE_KEY is not configured",
+  "checks": [
+    "loopback URL validation",
+    "capability SHA-256 digest header contract",
+    "HMAC request signature helper",
+    "shared Java/Python search_products fixture and fail-closed schema validator"
+  ],
+  "scope": "protocol_probe_only",
+  "realAgentIntegration": "NOT_RUN",
+  "businessWrites": false,
+  "redactionChecked": true,
+  "startedAt": "2026-11-09T19:19:17.313035+00:00",
+  "finishedAt": "2026-11-09T19:19:17.313035+00:00",
+  "javaRuntimeEntry": "NOT_RUN"
+}

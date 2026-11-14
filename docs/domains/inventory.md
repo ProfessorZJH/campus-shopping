@@ -102,6 +102,8 @@ Domain 仅定义 `IStockRepository` 和业务服务接口；Infrastructure 在 `
 
 ## 8. 验收测试
 
+商户只读库存页支持 `availableBelow` 低可售阈值查询，按 `onHand-reserved` 计算且包含阈值边界；库存流水页支持按 SKU 或业务单据键 `q` 定位，分页列表与 COUNT 使用相同商户范围和稳定排序。查询不会提供任意覆盖库存的入口。
+
 1. 可售 1 件时 2 个并发下单请求，最终最多 1 个预占成功；余额与记录一致。
 2. 订单包含 3 个 SKU，最后一个不足，前两个预占回滚。
 3. 同 `orderId+skuId` 重试不会重复增加 reserved；不同数量产生冲突。

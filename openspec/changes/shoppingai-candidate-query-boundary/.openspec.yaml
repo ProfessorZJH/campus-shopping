@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-08
+goal: 收窄 CandidateResolver 的 Catalog 依赖，避免 AI 候选链路持有商品写入和宽查询能力。
+skip_specs: true

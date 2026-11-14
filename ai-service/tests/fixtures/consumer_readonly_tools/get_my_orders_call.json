@@ -1,0 +1,10 @@
+{
+  "tool": "get_my_orders",
+  "version": "1.0",
+  "readOnly": true,
+  "arguments": {
+    "state": "PAID",
+    "page": 1,
+    "size": 10
+  }
+}

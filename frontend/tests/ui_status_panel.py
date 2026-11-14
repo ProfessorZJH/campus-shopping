@@ -21,21 +21,37 @@ ERRORS = []
 FETCH_DOUBLE = """({ holdOrder, holdChat }) => {
   window.__pendingOrders = [];
   window.__pendingChats = [];
+  window.__streamResponse = (payload) => {
+    const answer = payload.data || {};
+    const conversationId = answer.conversationId || 'conv-contract';
+    if (payload.code && payload.code !== '0000') {
+      const failed = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:payload.code};
+      const stream = 'event: failed\\ndata: ' + JSON.stringify(failed) + '\\n\\n';
+      return new Response(stream, {status:200, headers:{'Content-Type':'text/event-stream'}});
+    }
+    const started = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:null};
+    const completed = {conversationId, mode:'FULL_RESPONSE', data:answer, errorCode:null};
+    const stream = 'event: started\\ndata: ' + JSON.stringify(started) + '\\n\\n'
+      + 'event: completed\\ndata: ' + JSON.stringify(completed) + '\\n\\n';
+    return new Response(stream, {status:200, headers:{'Content-Type':'text/event-stream'}});
+  };
   window.fetch = async (url, options = {}) => {
     const address = String(url);
     const method = options.method || 'GET';
+    const isStream = address.includes('/ai/chat/stream');
     if (holdOrder && method === 'GET' && /\\/orders\\/order-1$/.test(address)) {
       return new Promise((resolve) => window.__pendingOrders.push({ url: address, resolve }));
     }
     if (holdChat && address.includes('/ai/chat')) {
-      return new Promise((resolve) => window.__pendingChats.push({ url: address, resolve }));
+      return new Promise((resolve) => window.__pendingChats.push({ url: address, resolve, isStream }));
     }
     const reply = await window.__contractApi({
-      url: address,
+      url: isStream ? address.replace('/ai/chat/stream', '/ai/chat') : address,
       method,
       headers: options.headers || {},
       body: options.body,
     });
+    if (isStream) return window.__streamResponse(JSON.parse(reply.body));
     return new Response(reply.body, {
       status: reply.status,
       headers: { 'Content-Type': 'application/json' },
@@ -44,7 +60,7 @@ FETCH_DOUBLE = """({ holdOrder, holdChat }) => {
   window.__releaseOrder = (payload) => {
     const [entry] = window.__pendingOrders.splice(0, 1);
     if (!entry) throw new Error('没有挂起的订单请求');
-    entry.resolve(new Response(JSON.stringify(payload), {
+    entry.resolve(entry.isStream ? window.__streamResponse(payload) : new Response(JSON.stringify(payload), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     }));
@@ -52,7 +68,7 @@ FETCH_DOUBLE = """({ holdOrder, holdChat }) => {
   window.__releaseChat = (payload) => {
     const [entry] = window.__pendingChats.splice(0, 1);
     if (!entry) throw new Error('没有挂起的导购请求');
-    entry.resolve(new Response(JSON.stringify(payload), {
+    entry.resolve(entry.isStream ? window.__streamResponse(payload) : new Response(JSON.stringify(payload), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     }));
@@ -226,7 +242,8 @@ def main():
         page = render(browser, fixture, '/ai', hold_chat=True)
         page.get_by_label('输入问题').fill('导购提交中')
         page.get_by_label('发送问题').click()
-        expect(page.get_by_label('发送问题')).to_be_disabled()
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_visible()
+        expect(page.get_by_role('button', name='停止生成', exact=True)).to_be_disabled()
         expect(page.get_by_label('输入问题')).to_be_disabled()
         page.evaluate(
             """window.__releaseChat({code:'0000',info:'成功',data:{
@@ -247,7 +264,7 @@ def main():
         fixture.fail_chat = 1
         page.get_by_label('输入问题').fill('导购失败重试')
         page.get_by_label('发送问题').click()
-        expect(page.locator('.inline-error')).to_contain_text('导购服务暂不可用')
+        expect(page.locator('.inline-error')).to_contain_text('智能服务暂不可用')
         expect(page.get_by_label('输入问题')).to_have_value('导购失败重试')
         expect(page.get_by_label('发送问题')).to_be_enabled()
         page.get_by_label('输入问题').press('Enter')

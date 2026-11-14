@@ -21,6 +21,7 @@ public class OrderExpiryJob {
 
     private String cursor = "";
     private final java.util.concurrent.atomic.AtomicLong failures = new java.util.concurrent.atomic.AtomicLong();
+    private final java.util.concurrent.atomic.AtomicLong scans = new java.util.concurrent.atomic.AtomicLong();
 
     public long failures() {
         return failures.get();
@@ -30,11 +31,15 @@ public class OrderExpiryJob {
     public synchronized void closeExpired() {
         try {
             var oldest = trading.oldestExpired();
-            log.info(
-                "order_expiry_scan oldest_overdue_seconds={} failure_total={}",
-                oldest == null ? 0 : Math.max(0, java.time.Duration.between(oldest, java.time.Instant.now()).toSeconds()),
-                failures.get()
-            );
+            // 有逾期积压时逐轮记录，保证监控能及时发现持续增长；无积压时每 100 轮采样一次。
+            long scanNumber = scans.incrementAndGet();
+            if (oldest != null || scanNumber % 100 == 1) {
+                log.info(
+                    "order_expiry_scan oldest_overdue_seconds={} failure_total={}",
+                    oldest == null ? 0 : Math.max(0, java.time.Duration.between(oldest, java.time.Instant.now()).toSeconds()),
+                    failures.get()
+                );
+            }
             // 每轮最多2000笔；游标跨轮保留，失败旧单不会长期占据第一页。重启可安全重扫。
             for (int batch = 0; batch < 20; batch++) {
                 var ids = trading.expiredAfter(cursor, 100);

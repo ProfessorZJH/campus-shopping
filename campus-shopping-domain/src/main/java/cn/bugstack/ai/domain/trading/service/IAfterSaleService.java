@@ -12,6 +12,6 @@ public interface IAfterSaleService {
     AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason);
     void requirePickupAllowed(String order);
     boolean rejectAfterSale(String order, String reason);
-    void appeal(OrderAggregate order, String buyer);
+    AfterSaleVO appeal(OrderAggregate order, String buyer);
     void approveAfterSale(String order, String reason);
 }

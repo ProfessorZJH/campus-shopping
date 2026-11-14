@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: '17'
@@ -60,6 +60,9 @@ jobs:
           python scripts/verify-api-schemas.py
           python scripts/verify-java-readability.py
           python scripts/verify-release.py
+          python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions
+          python scripts/verify-mapper-scan.py
+          python scripts/verify-fix-regressions.py
       - name: Python and Java deterministic regressions
         run: |
           (cd ai-service && python -m pytest -q)
@@ -85,7 +88,7 @@ jobs:
         run: |
           test -f pom.xml || { echo 'Project source missing. Import v1.2.3 first.'; exit 1; }
           test -f scripts/smoke-full.py
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: '17'
@@ -103,7 +106,7 @@ jobs:
       - name: Install test dependencies
         run: |
           python -m pip install --require-hashes -r ai-service/requirements-dev.lock
-          python -m playwright install --with-deps chromium
+          bash scripts/install-playwright-ci.sh
           npm ci --prefix frontend --no-audit --no-fund
       - name: Formatting / generated UI / schema drift checks
         run: |
@@ -117,6 +120,8 @@ jobs:
       - name: API / SDD / source safety checks
         run: |
           python scripts/verify-java-readability.py
+          python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions
+          python scripts/verify-mapper-scan.py
           python scripts/verify-api-contract.py
           python scripts/verify-api-schemas.py
           python scripts/verify-fix-regressions.py
@@ -149,8 +154,29 @@ jobs:
             sleep 2
           done
           test "$READY" = 1 || { echo 'MySQL IT did not become ready'; exit 1; }
-          docker exec -e MYSQL_PWD="$ROOT_PASSWORD" campus-mysql-it mysql -uroot \
-            -e "GRANT ALL ON campus_shopping_migration_it.* TO 'campus_it'@'%'; GRANT ALL ON campus_shopping_image_upgrade_it.* TO 'campus_it'@'%'; GRANT PROCESS ON *.* TO 'campus_it'@'%'"
+          DATABASES=(
+            campus_shopping_it
+            campus_shopping_migration_it
+            campus_shopping_image_upgrade_it
+            campus_shopping_schema_replay_it
+            campus_shopping_baseline_v1_2_3_import
+            campus_shopping_baseline_pre_redis_7bd21e2
+            campus_shopping_baseline_pre_multiimage_ab31f89
+            campus_shopping_empty_it
+            campus_shopping_target_history_repair_it
+            campus_shopping_drift_it
+            campus_shopping_baseline_history_repair_it
+            campus_shopping_missing_cart_it
+            campus_shopping_missing_pickup_it
+            campus_shopping_accept_it
+            campus_shopping_dirty_it
+            campus_shopping_http_it
+          )
+          GRANTS="GRANT PROCESS ON *.* TO 'campus_it'@'%';"
+          for database in "${DATABASES[@]}"; do
+            GRANTS+=" GRANT ALL ON ${database}.* TO 'campus_it'@'%';"
+          done
+          docker exec -e MYSQL_PWD="$ROOT_PASSWORD" campus-mysql-it mysql -uroot -e "$GRANTS"
       - name: Real fresh / upgrade / replay / checksum migration checks
         run: python scripts/verify-migrations.py
       - name: Start isolated Redis for shared-session and resource tests
@@ -178,6 +204,7 @@ jobs:
           export EVALUATION_INPUT_PATH="${{ github.workspace }}/var/evaluation/java-input.json"
           export EVALUATION_OUTPUT_PATH="${{ github.workspace }}/var/evaluation/java-results.json"
           export EVALUATION_SAFETY_OUTPUT="${{ github.workspace }}/var/evaluation/safety"
+          export AGENT_RUNTIME_PROCESS_TEST=true
           bash ./mvnw -B -ntp clean verify
           python scripts/generate-release-manifest.py --require-full-tests
       - name: Real Chromium QINIU CSP contract
@@ -258,6 +285,8 @@ jobs:
           python scripts/smoke-redis-shared.py --output docs/testing/evidence/redis-shared-http.json
       - name: Real Spring frontend browser E2E
         run: python frontend/tests/live_ui.py
+      - name: Real M2 fulfillment browser E2E
+        run: python frontend/tests/live_m2_fulfillment.py --base-url http://127.0.0.1:8091
       - name: Record this build and its acceptance evidence
         run: |
           python scripts/generate-release-manifest.py --require-full-tests \
@@ -265,7 +294,8 @@ jobs:
             --evidence python=docs/testing/evidence/ai-unit-tests.xml \
             --evidence http=docs/testing/evidence/full-http.json \
             --evidence redis=docs/testing/evidence/redis-shared-http.json \
-            --evidence browser=docs/testing/evidence/frontend-live/results.json
+            --evidence browser=docs/testing/evidence/frontend-live/results.json \
+            --evidence browserM2=docs/testing/evidence/frontend-live-m2/results.json
       - name: Upload reports and failure diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -314,7 +344,7 @@ jobs:
       - name: Install browser contract dependencies
         run: |
           python -m pip install --require-hashes -r ai-service/requirements-dev.lock
-          python -m playwright install --with-deps chromium
+          bash scripts/install-playwright-ci.sh
           npm ci --prefix frontend --no-audit --no-fund
           python scripts/build-ui-bundle.py --check
       - name: Legacy browser contract
@@ -325,7 +355,7 @@ jobs:
         shell: bash
         run: |
           status=0
-          for script in ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py ui_r1_correctness.py ui_product_images.py ui_remediation.py ui_review_regression.py ui_guide_conversation.py ui_refund_recovery.py ui_status_panel.py ui_shell_bundle.py; do
+          for script in ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py ui_r1_correctness.py ui_product_images.py ui_remediation.py ui_review_regression.py ui_guide_conversation.py ui_refund_recovery.py ui_status_panel.py ui_shell_bundle.py ui_after_sale_history.py ui_checkout_confirmation.py ui_order_snapshot.py ui_price_filter.py ui_product_detail.py ui_storefront.py; do
             python "frontend/tests/$script" || status=1
           done
           exit "$status"

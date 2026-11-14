@@ -25,16 +25,18 @@ public final class PickupAggregate {
         expiresAt = original.expiresAt();
     }
 
-    public void prepare() {
-        if (status == PickupStatusEnumVO.READY || status == PickupStatusEnumVO.PREPARING) return;
+    public boolean prepare() {
+        if (status == PickupStatusEnumVO.READY || status == PickupStatusEnumVO.PREPARING) return false;
         require(status == PickupStatusEnumVO.WAIT_PREP, ResponseCode.PICKUP_STATE_INVALID);
         status = PickupStatusEnumVO.PREPARING;
+        return true;
     }
 
-    public void ready() {
-        if (status == PickupStatusEnumVO.READY) return;
+    public boolean ready() {
+        if (status == PickupStatusEnumVO.READY) return false;
         require(status == PickupStatusEnumVO.WAIT_PREP || status == PickupStatusEnumVO.PREPARING, ResponseCode.PICKUP_STATE_INVALID);
         status = PickupStatusEnumVO.READY;
+        return true;
     }
 
     public void issue(String token, Instant expiresAt) {

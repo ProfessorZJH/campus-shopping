@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-08
+goal: 降低检索存储、聊天生成和向量嵌入之间的静态耦合，同时保持 FastAPI/SSE 和供应商请求语义不变。
+skip_specs: true

@@ -1,14 +1,22 @@
 # R1 开发与验收状态
 
-## 2026-11-05 产品化整体规划（待实施）
+## 2026-11-08 产品化与结构重构完成状态
 
-用户已确认覆盖消费者、AI 导购、商户、平台和知识库的整体路线。保留 Vue 3 + Vite，逐步迁移 `.vue` 并试点 TypeScript；复用已完成的商品多图和可选七牛存储。整体方案按 M0～M6 分阶段推进，每阶段可以拆成多个独立 PR。
+截至 2026 年 11 月 8 日，`main` / `origin/main` `f1ba856` 已包含 `productize-campus-shopping-experience` 的 M0～M6 实现，OpenSpec 46 项任务全部完成。全链路产品化的实现与证据见[沉淀版架构路线](architecture/PRODUCTIZATION-REFACTOR-BASELINE-20261108.md)和[最终状态报告](testing/PRODUCTIZATION-FINAL-STATUS-20261107.md)。
+
+本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。随后约定的结构重构也已在独立分支 `codex/shoppingai-structure-refactor` 完成，整体进度为 **100%**；实施、验证和边界说明见[结构重构分支记录](testing/STRUCTURAL-REFACTOR-20261108.md)。完成范围包括 ShoppingAI 候选/证据职责、Catalog 快照与候选查询、后台 Shell 元数据、Guide transport、Python Provider 和检索融合。
+
+结构重构已通过 PR #63 合入 `main`，合并提交为 `89e2981`。对应的[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #325 已通过；真实外部供应商 smoke、生产部署和性能仍属于完成后的独立验收范围，不改变本次结构重构完成结论。
+
+AnswerFlow 规则树、Agent v1.1 和 Trading/Repository P2 是完成后的独立演进边界：前者在出现稳定的第二回答分支时再扩展，Agent 等待独立产品决策，Trading/Repository 仅在出现可量化的 SQL、并发或审计收益时继续优化。
+
+PR #63 的远端验收已完成并通过；命令、版本、环境和结果见[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)，原始日志由 GitHub Actions run #325 保留。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
+
+原始规划资料仍保留在以下 OpenSpec 文件中：
 
 - [整体方案、范围和交付阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)
 - [技术设计、审查条目追踪、数据兼容与依赖](../openspec/changes/productize-campus-shopping-experience/design.md)
 - [可执行任务与逐项验收条件](../openspec/changes/productize-campus-shopping-experience/tasks.md)
-
-当前只完成规划落盘，业务任务保持待实施；该计划不覆盖下方历史结果，也不将 SSE、历史事件等新能力标为已交付。正式域名 HTTPS 和真实模型效果保持独立验收范围。
 
 ## R1 历史交付记录（2026-10-31）
 

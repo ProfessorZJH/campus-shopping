@@ -52,7 +52,7 @@ class QiniuImageContractTest {
     @Test
     void jpegIsReencodedPngThenUploadedAndRegistered() throws Exception {
         when(gateway.upload(any(byte[].class), anyString())).thenAnswer(invocation -> invocation.getArgument(1));
-        when(dao.registerProductImageUpload(anyString(), eq("m"))).thenReturn(1);
+        when(dao.registerProductImageUpload(anyString(), eq("m"), eq("PRODUCT"))).thenReturn(1);
         var png = ArgumentCaptor.forClass(byte[].class);
         var key = ArgumentCaptor.forClass(String.class);
 
@@ -67,7 +67,7 @@ class QiniuImageContractTest {
         assertNotNull(ImageIO.read(new java.io.ByteArrayInputStream(bytes)));
         InOrder order = inOrder(gateway, dao);
         order.verify(gateway).upload(any(byte[].class), eq(key.getValue()));
-        order.verify(dao).registerProductImageUpload(key.getValue(), "m");
+        order.verify(dao).registerProductImageUpload(key.getValue(), "m", "PRODUCT");
         try (var files = Files.list(uploadDir)) {
             assertEquals(0, files.count());
         }
@@ -78,7 +78,7 @@ class QiniuImageContractTest {
         when(gateway.upload(any(byte[].class), anyString())).thenThrow(new AppException(ResponseCode.UN_ERROR));
 
         assertEquals(ResponseCode.UN_ERROR.getCode(), assertThrows(AppException.class, () -> repository.storeImage(jpeg(), "m")).getCode());
-        verify(dao, never()).registerProductImageUpload(anyString(), anyString());
+        verify(dao, never()).registerProductImageUpload(anyString(), anyString(), anyString());
         try (var files = Files.list(uploadDir)) {
             assertEquals(0, files.count());
         }
@@ -87,12 +87,12 @@ class QiniuImageContractTest {
     @Test
     void registrationFailureReturnsNoUrl() throws Exception {
         when(gateway.upload(any(byte[].class), anyString())).thenAnswer(invocation -> invocation.getArgument(1));
-        when(dao.registerProductImageUpload(anyString(), eq("m"))).thenReturn(0);
+        when(dao.registerProductImageUpload(anyString(), eq("m"), eq("PRODUCT"))).thenReturn(0);
 
         assertThrows(IllegalStateException.class, () -> repository.storeImage(jpeg(), "m"));
 
         verify(gateway).upload(any(byte[].class), anyString());
-        verify(dao).registerProductImageUpload(anyString(), eq("m"));
+        verify(dao).registerProductImageUpload(anyString(), eq("m"), eq("PRODUCT"));
         try (var files = Files.list(uploadDir)) {
             assertEquals(0, files.count());
         }
@@ -150,7 +150,7 @@ class QiniuImageContractTest {
     @Test
     void byteLimitIsExactAndCheckedBeforeUpload() throws Exception {
         when(gateway.upload(any(byte[].class), anyString())).thenAnswer(invocation -> invocation.getArgument(1));
-        when(dao.registerProductImageUpload(anyString(), eq("m"))).thenReturn(1);
+        when(dao.registerProductImageUpload(anyString(), eq("m"), eq("PRODUCT"))).thenReturn(1);
         byte[] png = padded(png(), 2_000_000);
         byte[] jpeg = padded(jpeg(), 2_000_000);
 

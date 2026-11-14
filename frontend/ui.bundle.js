@@ -1651,7 +1651,7 @@
     return r ? r["__v_isRef"] === true : false;
   }
   // @__NO_SIDE_EFFECTS__
-  function ref$i(value) {
+  function ref$j(value) {
     return createRef(value, false);
   }
   // @__NO_SIDE_EFFECTS__
@@ -1805,7 +1805,7 @@
     } else if (isObject(source) && arguments.length > 1) {
       return propertyToRef(source, key, defaultValue);
     } else {
-      return /* @__PURE__ */ ref$i(source);
+      return /* @__PURE__ */ ref$j(source);
     }
   }
   function propertyToRef(source, key, defaultValue) {
@@ -1853,7 +1853,7 @@
     }
   }
   // @__NO_SIDE_EFFECTS__
-  function computed$h(getterOrOptions, debugOptions, isSSR = false) {
+  function computed$i(getterOrOptions, debugOptions, isSSR = false) {
     let getter;
     let setter;
     if (isFunction(getterOrOptions)) {
@@ -4424,9 +4424,9 @@
             }) : null;
           });
         }
-        const loaded = /* @__PURE__ */ ref$i(false);
-        const error = /* @__PURE__ */ ref$i();
-        const delayed = /* @__PURE__ */ ref$i(!!delay);
+        const loaded = /* @__PURE__ */ ref$j(false);
+        const error = /* @__PURE__ */ ref$j();
+        const delayed = /* @__PURE__ */ ref$j(!!delay);
         let timeoutTimer;
         let delayTimer;
         onScopeDispose(() => {
@@ -5292,7 +5292,7 @@
         const opt = computedOptions[key];
         const get = isFunction(opt) ? opt.bind(publicThis, publicThis) : isFunction(opt.get) ? opt.get.bind(publicThis, publicThis) : NOOP;
         const set = !isFunction(opt) && isFunction(opt.set) ? opt.set.bind(publicThis) : NOOP;
-        const c = computed$g({
+        const c = computed$h({
           get,
           set
         });
@@ -9265,8 +9265,8 @@
   function isClassComponent(value) {
     return isFunction(value) && "__vccOpts" in value;
   }
-  const computed$g = (getterOrOptions, debugOptions) => {
-    const c = /* @__PURE__ */ computed$h(getterOrOptions, debugOptions, isInSSRComponentSetup);
+  const computed$h = (getterOrOptions, debugOptions) => {
+    const c = /* @__PURE__ */ computed$i(getterOrOptions, debugOptions, isInSSRComponentSetup);
     return c;
   };
   function h(type, propsOrChildren, children) {
@@ -11303,7 +11303,7 @@
     cloneVNode,
     compatUtils,
     compile,
-    computed: computed$g,
+    computed: computed$h,
     createApp,
     createBlock,
     createCommentVNode,
@@ -11387,7 +11387,7 @@
     queuePostFlushCb,
     reactive: reactive$1,
     readonly,
-    ref: ref$i,
+    ref: ref$j,
     registerRuntimeCompiler,
     render,
     renderList,
@@ -11501,6 +11501,103 @@
       clearTimeout(timer);
       (_c = options.signal) == null ? void 0 : _c.removeEventListener("abort", abort);
     }
+  }
+  async function stream(path, { body, signal, onEvent, retry = true } = {}) {
+    const stamp = generation;
+    const token = csrf || await getCsrf();
+    requireIdentity(stamp);
+    const headers = {
+      Accept: "text/event-stream",
+      "Content-Type": "application/json",
+      [token.headerName]: token.token
+    };
+    let response;
+    try {
+      response = await fetch(PREFIX + path, {
+        method: "POST",
+        headers,
+        body: body === void 0 ? void 0 : JSON.stringify(body),
+        signal,
+        credentials: "same-origin",
+        cache: "no-store"
+      });
+    } catch (err) {
+      if (err.name === "AbortError") throw err;
+      throw fail("服务连接失败，请确认 Java 后端已启动", "NETWORK", 0);
+    }
+    if (response.status === 403 && retry) {
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+      }
+      if ((payload == null ? void 0 : payload.code) === "A0005") {
+        csrf = null;
+        await getCsrf();
+        requireIdentity(stamp);
+        return stream(path, { body, signal, onEvent, retry: false });
+      }
+    }
+    if (!response.ok) {
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+      }
+      if (response.status === 401 || (payload == null ? void 0 : payload.code) === "A0004") unauthorized();
+      throw fail((payload == null ? void 0 : payload.info) || "请求失败", (payload == null ? void 0 : payload.code) || "HTTP", response.status);
+    }
+    if (!response.body) throw fail("服务器没有返回流式响应", "RESPONSE", response.status);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer2 = "";
+    let eventName = "";
+    let data = [];
+    const dispatch = async () => {
+      if (!eventName && !data.length) return;
+      const raw = data.join("\n");
+      const name = eventName || "message";
+      eventName = "";
+      data = [];
+      if (!raw) return;
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        throw fail("服务器响应格式异常", "RESPONSE", response.status);
+      }
+      requireIdentity(stamp);
+      if (onEvent) await onEvent(name, payload);
+    };
+    const consume = async (line) => {
+      if (line.length > 65536) throw fail("流式响应超过大小限制", "RESPONSE", response.status);
+      if (!line) return dispatch();
+      if (line.startsWith("event:")) eventName = line.slice(6).trim();
+      else if (line.startsWith("data:")) {
+        data.push(line.slice(5).trim());
+        if (data.join("\n").length > 1e6)
+          throw fail("流式响应超过大小限制", "RESPONSE", response.status);
+      }
+    };
+    while (true) {
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        if ((err == null ? void 0 : err.name) === "AbortError") throw err;
+        throw fail("流式连接中断，请稍后重试", "NETWORK", 0);
+      }
+      buffer2 += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+      let end;
+      while ((end = buffer2.indexOf("\n")) >= 0) {
+        const line = buffer2.slice(0, end).replace(/\r$/, "");
+        buffer2 = buffer2.slice(end + 1);
+        await consume(line);
+      }
+      if (chunk.done) break;
+    }
+    if (buffer2) await consume(buffer2.replace(/\r$/, ""));
+    await dispatch();
   }
   async function request(path, { method = "GET", body, signal, key, retry = true } = {}) {
     const stamp = generation;
@@ -12164,6 +12261,22 @@
     COMPLETED: "已核销"
   });
   const membershipStatusLabel = statusLabel({ ACTIVE: "有效成员", REVOKED: "已撤销" });
+  const orderEventLabel = statusLabel({
+    ORDER_CREATED: "已下单",
+    PAYMENT_SUCCEEDED: "已付款",
+    PREPARING: "商户备货中",
+    READY: "备货完成，待自提",
+    PICKED_UP: "已核销",
+    CANCELED: "已取消",
+    EXPIRED: "已过期",
+    REFUND_REQUESTED: "申请退款",
+    MERCHANT_REJECTED: "商户驳回退款",
+    MERCHANT_APPROVED: "商户同意退款",
+    REFUND_DISPUTED: "申请平台介入",
+    PLATFORM_APPROVED: "平台裁决同意退款",
+    PLATFORM_REJECTED: "平台裁决驳回退款",
+    REFUND_COMPLETED: "模拟退款完成"
+  });
   const invitationStatusLabel = statusLabel({
     PENDING: "待接受",
     ACCEPTED: "已接受",
@@ -12247,17 +12360,17 @@
   function positiveInt(v, max = 99) {
     return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
-  const { ref: ref$h } = Vue;
+  const { ref: ref$i } = Vue;
   const AuthDialog = {
     name: "AuthDialog",
     emits: ["close", "success"],
     setup(props, { emit: emit2 }) {
-      const mode = ref$h("login");
-      const username = ref$h("");
-      const password = ref$h("");
-      const displayName = ref$h("");
-      const busy = ref$h(false);
-      const error = ref$h("");
+      const mode = ref$i("login");
+      const username = ref$i("");
+      const password = ref$i("");
+      const displayName = ref$i("");
+      const busy = ref$i(false);
+      const error = ref$i("");
       async function submit() {
         if (busy.value) return;
         error.value = "";
@@ -12421,13 +12534,13 @@
       };
     })()
   };
-  const { ref: ref$g } = Vue;
+  const { ref: ref$h } = Vue;
   const ConsumerShell = {
     name: "ConsumerShell",
     components: { AuthDialog },
     props: { active: { type: String, default: "home" } },
     setup() {
-      const loginOpen = ref$g(false);
+      const loginOpen = ref$h(false);
       async function logout() {
         try {
           await api("/auth/logout", { method: "POST" });
@@ -12559,7 +12672,7 @@
       };
     })()
   };
-  const { computed: computed$f, ref: ref$f, watch: watch$d } = Vue;
+  const { computed: computed$g, ref: ref$g, watch: watch$d } = Vue;
   const ProductImage = {
     name: "ProductImage",
     props: {
@@ -12568,14 +12681,14 @@
       loading: { type: String, default: "lazy" }
     },
     setup(props) {
-      const broken = ref$f(false);
+      const broken = ref$g(false);
       watch$d(
         () => props.src,
         () => {
           broken.value = false;
         }
       );
-      const url = computed$f(
+      const url = computed$g(
         () => {
           var _a;
           return !broken.value && ((_a = props.src) == null ? void 0 : _a.trim()) ? props.src : "./images/product-placeholder.svg";
@@ -12598,13 +12711,14 @@
       };
     })()
   };
-  const { ref: ref$e, computed: computed$e, onMounted: onMounted$c } = Vue;
+  const { ref: ref$f, computed: computed$f, onMounted: onMounted$c } = Vue;
   const staticCategoryArt = {
     food: "./images/category-snacks.webp",
     drink: "./images/category-drinks.webp",
     fruit: "./images/category-fruit.webp",
     stationery: "./images/category-stationery.webp",
-    daily: "./images/category-daily.webp"
+    daily: "./images/category-daily.webp",
+    digital: "./images/category-digital.webp"
   };
   const Home = {
     name: "Home",
@@ -12613,18 +12727,23 @@
       const scope = requestScope();
       const initialScope = requestScope();
       const keywords = ["泡面", "牛奶", "水果", "文具", "纸巾", "零食"];
-      const search = ref$e("");
-      const category = ref$e("");
-      const merchant = ref$e("");
-      const sort = ref$e("popular");
-      const page = ref$e(1);
-      const selected = ref$e(null);
-      const chosenSku = ref$e("");
-      const count = ref$e(1);
-      const saving = ref$e(false);
-      const categories = computed$e(() => store.categories.filter((c) => c.active).slice(0, 5));
-      const shops = computed$e(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
-      const shown = computed$e(() => {
+      const search = ref$f("");
+      const category = ref$f("");
+      const merchant = ref$f("");
+      const sort = ref$f("popular");
+      const page = ref$f(1);
+      const priceMin = ref$f("");
+      const priceMax = ref$f("");
+      const appliedMin = ref$f(null);
+      const appliedMax = ref$f(null);
+      const priceError = ref$f("");
+      const selected = ref$f(null);
+      const chosenSku = ref$f("");
+      const count = ref$f(1);
+      const saving = ref$f(false);
+      const categories = computed$f(() => store.categories.filter((c) => c.active).slice(0, 5));
+      const shops = computed$f(() => store.merchants.filter((m) => m.status === "ACTIVE").slice(0, 3));
+      const shown = computed$f(() => {
         let arr = store.products.filter((p2) => p2.status === "PUBLISHED");
         if (preview) {
           const q = search.value.trim().toLowerCase();
@@ -12632,6 +12751,12 @@
         }
         if (category.value) arr = arr.filter((p2) => p2.categoryCode === category.value);
         if (merchant.value) arr = arr.filter((p2) => p2.merchantId === merchant.value);
+        if (preview && (appliedMin.value != null || appliedMax.value != null))
+          arr = arr.filter(
+            (p2) => (p2.skus || []).some(
+              (s) => s.status === "ACTIVE" && (appliedMin.value == null || Number(s.priceCent) >= appliedMin.value) && (appliedMax.value == null || Number(s.priceCent) <= appliedMax.value)
+            )
+          );
         if (preview && sort.value === "price")
           arr = [...arr].sort(
             (a, b) => Number(priceSku(a).priceCent) - Number(priceSku(b).priceCent)
@@ -12641,8 +12766,9 @@
         return arr;
       });
       onMounted$c(() => loadPublic({ signal: initialScope.begin().signal }));
-      const pageInfo = computed$e(() => store.publicPage);
-      const chosen = computed$e(
+      const pageInfo = computed$f(() => store.publicPage);
+      const priceActive = computed$f(() => appliedMin.value != null || appliedMax.value != null);
+      const chosen = computed$f(
         () => {
           var _a, _b;
           return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosenSku.value)) || skuOf(selected.value);
@@ -12662,6 +12788,8 @@
           q: search.value,
           category: category.value,
           merchantId: merchant.value,
+          minPriceCent: appliedMin.value,
+          maxPriceCent: appliedMax.value,
           page: page.value,
           size: 20,
           sort: sort.value === "price" ? "PRICE_ASC" : sort.value === "stock" ? "STOCK_DESC" : "NEWEST"
@@ -12694,13 +12822,69 @@
         page.value = 1;
         loadSearch();
       }
+      function cardSku(p2) {
+        const active = ((p2 == null ? void 0 : p2.skus) || []).filter((s) => s.status === "ACTIVE");
+        const matched = active.filter(
+          (s) => (appliedMin.value == null || Number(s.priceCent) >= appliedMin.value) && (appliedMax.value == null || Number(s.priceCent) <= appliedMax.value)
+        );
+        return (matched.length ? matched : active).sort(
+          (a, b) => Number(a.priceCent) - Number(b.priceCent)
+        )[0] || priceSku(p2);
+      }
+      function yuanToCent(raw) {
+        const text = String(raw ?? "").trim();
+        if (!text) return null;
+        if (!/^\d+(\.\d{1,2})?$/.test(text)) return NaN;
+        const [whole, fraction = ""] = text.split(".");
+        if (whole.length > 9) return NaN;
+        return Number(whole) * 100 + Number((fraction + "00").slice(0, 2));
+      }
+      function applyPrice() {
+        const min = yuanToCent(priceMin.value);
+        const max = yuanToCent(priceMax.value);
+        if (Number.isNaN(min) || Number.isNaN(max)) {
+          priceError.value = "价格条件无效：请填写非负金额，最多两位小数";
+          return;
+        }
+        if (min != null && max != null && min > max) {
+          priceError.value = "价格条件无效：最低价不能高于最高价";
+          return;
+        }
+        priceError.value = "";
+        appliedMin.value = min;
+        appliedMax.value = max;
+        page.value = 1;
+        loadSearch();
+      }
+      function clearPrice() {
+        priceMin.value = "";
+        priceMax.value = "";
+        appliedMin.value = null;
+        appliedMax.value = null;
+        priceError.value = "";
+        page.value = 1;
+        loadSearch();
+      }
+      function resetFilters() {
+        search.value = "";
+        category.value = "";
+        merchant.value = "";
+        sort.value = "popular";
+        priceMin.value = "";
+        priceMax.value = "";
+        appliedMin.value = null;
+        appliedMax.value = null;
+        priceError.value = "";
+        page.value = 1;
+        loadSearch();
+      }
       function showDetail(p2) {
         var _a, _b;
         selected.value = p2;
         chosenSku.value = ((_b = (_a = p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available) > 0)) == null ? void 0 : _b.skuId) || "";
         count.value = 1;
       }
-      const canAdd = computed$e(
+      const canAdd = computed$f(
         () => {
           var _a;
           return ((_a = chosen.value) == null ? void 0 : _a.status) === "ACTIVE" && positiveInt(count.value, 99) && Number(count.value) <= Number(chosen.value.available);
@@ -12747,6 +12931,10 @@
         merchant,
         sort,
         page,
+        priceMin,
+        priceMax,
+        priceActive,
+        priceError,
         pageInfo,
         categories,
         shops,
@@ -12757,18 +12945,22 @@
         count,
         saving,
         canAdd,
+        cardSku,
         productCategory,
         currentShop,
         staticCategoryArt,
         loadSearch,
         setCategory,
         applyKeyword,
+        applyPrice,
+        clearPrice,
+        resetFilters,
         showDetail,
         addCart
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createCommentVNode: _createCommentVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, vModelText: _vModelText, withKeys: _withKeys, createElementVNode: _createElementVNode, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -12814,7 +13006,59 @@
                   128
                   /* KEYED_FRAGMENT */
                 ))
-              ])
+              ]),
+              _createElementVNode("div", {
+                class: "price-filter",
+                "aria-label": "价格筛选"
+              }, [
+                _createElementVNode("span", { class: "price-filter-label" }, "价格（元）"),
+                _withDirectives(_createElementVNode("input", {
+                  "onUpdate:modelValue": ($event) => _ctx.priceMin = $event,
+                  inputmode: "decimal",
+                  placeholder: "最低",
+                  "aria-label": "最低价（元）",
+                  onKeydown: _withKeys(_ctx.applyPrice, ["enter"])
+                }, null, 40, ["onUpdate:modelValue", "onKeydown"]), [
+                  [_vModelText, _ctx.priceMin]
+                ]),
+                _createElementVNode("span", null, "—"),
+                _withDirectives(_createElementVNode("input", {
+                  "onUpdate:modelValue": ($event) => _ctx.priceMax = $event,
+                  inputmode: "decimal",
+                  placeholder: "最高",
+                  "aria-label": "最高价（元）",
+                  onKeydown: _withKeys(_ctx.applyPrice, ["enter"])
+                }, null, 40, ["onUpdate:modelValue", "onKeydown"]), [
+                  [_vModelText, _ctx.priceMax]
+                ]),
+                _createElementVNode("button", {
+                  class: "outline-button",
+                  onClick: _ctx.applyPrice
+                }, "应用", 8, ["onClick"]),
+                _ctx.priceActive ? (_openBlock(), _createElementBlock("button", {
+                  key: 0,
+                  onClick: _ctx.clearPrice
+                }, "清除价格", 8, ["onClick"])) : _createCommentVNode("v-if", true),
+                _createElementVNode("button", {
+                  class: "price-filter-reset",
+                  onClick: _ctx.resetFilters
+                }, "重置筛选", 8, ["onClick"])
+              ]),
+              _ctx.priceError ? (_openBlock(), _createElementBlock("div", {
+                key: 0,
+                class: "inline-error price-filter-error",
+                role: "alert"
+              }, [
+                _createVNode2(_component_Icon, {
+                  name: "alert",
+                  size: 16
+                }),
+                _createTextVNode(
+                  _toDisplayString(_ctx.priceError),
+                  1
+                  /* TEXT */
+                )
+              ])) : _createCommentVNode("v-if", true)
             ]),
             _createElementVNode("button", {
               class: "hero-shopping",
@@ -12909,9 +13153,9 @@
                           class: _normalizeClass(["merchant-logo", "store-" + idx])
                         },
                         [
-                          m.image ? (_openBlock(), _createElementBlock("img", {
+                          m.imageUrl ? (_openBlock(), _createElementBlock("img", {
                             key: 0,
-                            src: m.image,
+                            src: m.imageUrl,
                             alt: m.name
                           }, null, 8, ["src", "alt"])) : (_openBlock(), _createBlock(_component_Icon, {
                             key: 1,
@@ -13037,21 +13281,14 @@
                   size: 22
                 }),
                 _createTextVNode("暂无相关商品"),
-                _createElementVNode("button", {
-                  onClick: ($event) => {
-                    _ctx.search = "";
-                    _ctx.category = "";
-                    _ctx.merchant = "";
-                    _ctx.page = 1;
-                    _ctx.loadSearch();
-                  }
-                }, "查看全部", 8, ["onClick"])
+                _createElementVNode("button", { onClick: _ctx.resetFilters }, "查看全部", 8, ["onClick"])
               ])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", { class: "home-product-grid" }, [
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
                   null,
                   _renderList(_ctx.shown, (p2) => {
+                    var _a, _b;
                     return _openBlock(), _createElementBlock("article", {
                       class: "home-product",
                       key: p2.productId,
@@ -13083,7 +13320,7 @@
                           _createElementVNode(
                             "span",
                             null,
-                            _toDisplayString(_ctx.priceSku(p2).specKey),
+                            _toDisplayString(((_a = _ctx.cardSku(p2)) == null ? void 0 : _a.specKey) || "暂无规格"),
                             1
                             /* TEXT */
                           ),
@@ -13099,7 +13336,7 @@
                           _createElementVNode(
                             "span",
                             { class: "price-main" },
-                            _toDisplayString(_ctx.money(_ctx.priceSku(p2).priceCent)) + " 起",
+                            _toDisplayString(_ctx.money((_b = _ctx.cardSku(p2)) == null ? void 0 : _b.priceCent)) + " 起",
                             1
                             /* TEXT */
                           ),
@@ -13300,7 +13537,137 @@
       snippet: (citation == null ? void 0 : citation.snippet) || ""
     }));
   }
-  const { ref: ref$d, computed: computed$d, onMounted: onMounted$b, onUnmounted: onUnmounted$8, watch: watch$c } = Vue;
+  const conversationPath = (id, suffix) => "/ai/conversations/" + encodeURIComponent(id) + suffix;
+  const wait = (milliseconds) => new Promise((resolve2) => setTimeout(resolve2, milliseconds));
+  function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
+    if (!expectedQuestion) return true;
+    const lastQuestion = messageHistory.length - 2;
+    const tailQuestion = messageHistory[lastQuestion];
+    const tailAnswer = messageHistory[messageHistory.length - 1];
+    let knownLastIndex = -1;
+    if (knownLastMessage) {
+      for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
+        const message = messageHistory[index];
+        if (message.role === knownLastMessage.role && message.content === knownLastMessage.content) {
+          knownLastIndex = index;
+          break;
+        }
+      }
+    }
+    return lastQuestion >= 0 && (tailQuestion == null ? void 0 : tailQuestion.role) === "user" && tailQuestion.content === expectedQuestion && (tailAnswer == null ? void 0 : tailAnswer.role) === "assistant" && (knownLastIndex < 0 || knownLastIndex < lastQuestion);
+  }
+  function failedEventError(payload) {
+    var _a;
+    const code = (payload == null ? void 0 : payload.errorCode) || ((_a = payload == null ? void 0 : payload.data) == null ? void 0 : _a.errorCode) || "AI0001";
+    return Object.assign(new Error("智能服务暂不可用，请稍后重试"), { code });
+  }
+  function disconnectedError() {
+    return Object.assign(new Error("流式连接中断，请稍后重试"), { code: "NETWORK" });
+  }
+  function createGuideConversationTransport({
+    request: request2 = api,
+    streamRequest = stream,
+    sleep = wait
+  } = {}) {
+    async function loadHistory(page, size = 20) {
+      return request2("/ai/conversations" + query({ page, size }));
+    }
+    async function loadSnapshot(id, { expectedQuestion = null, knownLastMessage = null } = {}) {
+      const [history, proposals] = await Promise.all([
+        request2(conversationPath(id, "/messages")),
+        request2(conversationPath(id, "/proposals"))
+      ]);
+      const messageHistory = history || [];
+      if (!hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage)) return false;
+      return {
+        id,
+        messages: messageHistory,
+        proposal: (proposals || []).find((item) => item.status === "PENDING") || null
+      };
+    }
+    async function recoverAfterDisconnect({
+      id,
+      isCurrent = () => true,
+      expectedQuestion = null,
+      knownLastMessage = null,
+      onCancelRequested
+    }) {
+      if (!id) return false;
+      if (!isCurrent()) return true;
+      for (let attempt = 0; attempt < 60; attempt += 1) {
+        if (!isCurrent()) return true;
+        let status;
+        try {
+          status = await request2(conversationPath(id, "/turn/status"), { timeoutMs: 5e3 });
+        } catch (error) {
+          if (!["NETWORK", "TIMEOUT"].includes(error == null ? void 0 : error.code)) return false;
+          await sleep(500);
+          continue;
+        }
+        if ((status == null ? void 0 : status.status) === "CANCEL_REQUESTED") {
+          onCancelRequested == null ? void 0 : onCancelRequested();
+          await sleep(500);
+          continue;
+        }
+        if ((status == null ? void 0 : status.status) === "IDLE") {
+          try {
+            return await loadSnapshot(id, { expectedQuestion, knownLastMessage });
+          } catch (error) {
+            if (!["NETWORK", "TIMEOUT"].includes(error == null ? void 0 : error.code)) return false;
+            await sleep(500);
+            continue;
+          }
+        }
+        await sleep(500);
+      }
+      return true;
+    }
+    async function cancelTurn(id) {
+      return request2(conversationPath(id, "/turn/cancel"), { method: "POST" });
+    }
+    async function streamTurn({
+      question,
+      conversationId = null,
+      signal,
+      isCurrent = () => true,
+      onConversationId,
+      onProgress,
+      onCompleted,
+      onCancelled
+    }) {
+      let activeConversationId = conversationId || null;
+      let completed = false;
+      let cancelled = false;
+      await streamRequest("/ai/chat/stream", {
+        signal,
+        body: { question, conversationId: conversationId || null },
+        onEvent: async (event, payload) => {
+          var _a, _b;
+          if (!isCurrent()) return;
+          const id = (payload == null ? void 0 : payload.conversationId) || ((_a = payload == null ? void 0 : payload.data) == null ? void 0 : _a.conversationId);
+          if (id) {
+            activeConversationId = id;
+            onConversationId == null ? void 0 : onConversationId(id);
+          }
+          if (event === "progress") {
+            onProgress == null ? void 0 : onProgress(Number(((_b = payload == null ? void 0 : payload.data) == null ? void 0 : _b.bytes) || (payload == null ? void 0 : payload.bytes) || 0));
+          } else if (event === "completed") {
+            completed = true;
+            await (onCompleted == null ? void 0 : onCompleted(payload == null ? void 0 : payload.data));
+          } else if (event === "cancelled") {
+            cancelled = true;
+            onCancelled == null ? void 0 : onCancelled();
+          } else if (event === "failed") {
+            throw failedEventError(payload);
+          }
+        }
+      });
+      if (!completed && !cancelled) throw disconnectedError();
+      return { conversationId: activeConversationId, completed, cancelled };
+    }
+    return { loadHistory, loadSnapshot, recoverAfterDisconnect, cancelTurn, streamTurn };
+  }
+  const { ref: ref$e, computed: computed$e, onMounted: onMounted$b, onUnmounted: onUnmounted$8, watch: watch$c } = Vue;
   const prompts = [
     { label: "30元内夜宵", icon: "clock", query: "30元以内，推荐几样适合复习时吃的夜宵" },
     { label: "高蛋白零食", icon: "sparkles", query: "想买点高蛋白的零食，有什么推荐？" },
@@ -13311,47 +13678,62 @@
     name: "Guide",
     components: { ConsumerShell, ProductImage },
     setup() {
-      const input = ref$d("");
-      const thinking = ref$d(false);
-      const selectedIds = ref$d([]);
-      const messages = ref$d([]);
-      const proposal = ref$d(null);
-      const mode = ref$d("");
-      const error = ref$d("");
-      const historyOpen = ref$d(false);
-      const conversations = ref$d([]);
-      const historyPage = ref$d(1);
-      const historyHasMore = ref$d(false);
-      const loadingHistory = ref$d(false);
-      const openingConversation = ref$d(false);
-      const confirmingProposal = ref$d(false);
-      let conversationEpoch = 0, historyEpoch = 0;
-      const examples = computed$d(() => DEMO_PRODUCTS.slice(0, 3));
-      const items2 = computed$d(
+      const conversationTransport = createGuideConversationTransport();
+      const input = ref$e("");
+      const thinking = ref$e(false);
+      const selectedIds = ref$e([]);
+      const messages = ref$e([]);
+      const proposal = ref$e(null);
+      const mode = ref$e("");
+      const error = ref$e("");
+      const historyOpen = ref$e(false);
+      const conversations = ref$e([]);
+      const historyPage = ref$e(1);
+      const historyHasMore = ref$e(false);
+      const loadingHistory = ref$e(false);
+      const openingConversation = ref$e(false);
+      const confirmingProposal = ref$e(false);
+      const proposalFeedback = ref$e("");
+      const streamProgress = ref$e(0);
+      const reconnecting = ref$e(false);
+      const cancelRequested = ref$e(false);
+      let conversationEpoch = 0, historyEpoch = 0, activeStreamController = null;
+      const examples = computed$e(() => DEMO_PRODUCTS.slice(0, 3));
+      const items2 = computed$e(
         () => {
           var _a;
           return preview ? examples.value.map((p2) => ({
             skuId: skuOf(p2).skuId,
+            productId: p2.productId,
             product: p2,
             title: p2.title,
             specKey: skuOf(p2).specKey,
             priceCent: skuOf(p2).priceCent,
             quantity: 1,
-            merchantId: p2.merchantId
-          })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({
-            ...i,
-            product: store.products.find((p2) => p2.skus.some((s) => s.skuId === i.skuId))
-          }));
+            merchantId: p2.merchantId,
+            detailAvailable: true
+          })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({ ...i }));
         }
       );
-      const total = computed$d(
+      const total = computed$e(
         () => items2.value.filter((i) => selectedIds.value.includes(i.skuId)).reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity || 1), 0)
       );
-      const showProposal = computed$d(() => {
+      const showProposal = computed$e(() => {
         var _a, _b;
         return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
       });
       const formatTime = () => (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+      const formatHistoryTime = (value) => {
+        if (!value) return "暂无时间";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? "暂无时间" : date.toLocaleString("zh-CN", {
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        });
+      };
       watch$c(
         () => {
           var _a;
@@ -13359,6 +13741,7 @@
         },
         (now, was) => {
           if (preview || now === was) return;
+          stopActiveStream();
           ++conversationEpoch;
           ++historyEpoch;
           store.conversationId = "";
@@ -13368,6 +13751,7 @@
           historyHasMore.value = false;
           proposal.value = null;
           selectedIds.value = [];
+          proposalFeedback.value = "";
           mode.value = "";
           error.value = "";
           input.value = "";
@@ -13386,6 +13770,86 @@
           selectedIds.value = examples.value.map((p2) => skuOf(p2).skuId);
         }
       });
+      function stopActiveStream() {
+        activeStreamController == null ? void 0 : activeStreamController.abort();
+        activeStreamController = null;
+      }
+      function applyChatAnswer(answer, stamp) {
+        var _a;
+        if (stamp !== conversationEpoch || !answer) return;
+        store.conversationId = answer.conversationId || store.conversationId;
+        mode.value = answer.mode || "";
+        messages.value.push({
+          role: "assistant",
+          content: answer.answer || "暂时没有找到合适答案",
+          warning: answer.warning,
+          citations: citationsOf(answer),
+          time: formatTime()
+        });
+        proposal.value = answer.proposal || null;
+        selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+        proposalFeedback.value = "";
+      }
+      async function loadConversationSnapshot(id, stamp, expectedQuestion = null, knownLastMessage = null) {
+        const snapshot = await conversationTransport.loadSnapshot(id, {
+          expectedQuestion,
+          knownLastMessage
+        });
+        if (stamp !== conversationEpoch) return false;
+        if (!snapshot) return false;
+        applyConversationSnapshot(snapshot, id, stamp);
+        return true;
+      }
+      function applyConversationSnapshot(snapshot, id, stamp) {
+        var _a;
+        if (stamp !== conversationEpoch || !snapshot) return false;
+        const messageHistory = snapshot.messages;
+        store.conversationId = id;
+        messages.value = messageHistory.map((m) => ({
+          role: m.role,
+          content: m.content,
+          citations: citationsOf(m),
+          citationStatus: m.citationStatus || "MISSING",
+          time: "历史消息"
+        }));
+        proposal.value = snapshot.proposal;
+        selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+        return true;
+      }
+      async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
+        var _a;
+        if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
+        reconnecting.value = true;
+        try {
+          const recovered = await conversationTransport.recoverAfterDisconnect({
+            id,
+            isCurrent: () => {
+              var _a2;
+              return stamp === conversationEpoch && actor === ((_a2 = store.user) == null ? void 0 : _a2.userId);
+            },
+            expectedQuestion,
+            knownLastMessage,
+            onCancelRequested: () => {
+              cancelRequested.value = true;
+            }
+          });
+          if (recovered && recovered !== true) applyConversationSnapshot(recovered, id, stamp);
+          return recovered;
+        } finally {
+          reconnecting.value = false;
+        }
+      }
+      async function cancelTurn() {
+        const id = store.conversationId;
+        if (preview || !thinking.value || !id || cancelRequested.value) return;
+        cancelRequested.value = true;
+        try {
+          await conversationTransport.cancelTurn(id);
+        } catch (err) {
+          cancelRequested.value = false;
+          notify((err == null ? void 0 : err.message) || "取消请求未完成，请稍后重试");
+        }
+      }
       async function ask(question = input.value) {
         var _a;
         const text = String(question || "").trim();
@@ -13395,8 +13859,10 @@
           return;
         }
         const stamp = ++conversationEpoch;
+        const knownLastMessage = messages.value[messages.value.length - 1] || null;
         input.value = "";
         error.value = "";
+        proposalFeedback.value = "";
         messages.value.push({ role: "user", content: text, time: formatTime() });
         if (preview) {
           messages.value.push({
@@ -13409,30 +13875,59 @@
           return;
         }
         thinking.value = true;
+        streamProgress.value = 0;
+        reconnecting.value = false;
+        cancelRequested.value = false;
+        activeStreamController = new AbortController();
+        const controller = activeStreamController;
+        const actor = (_a = store.user) == null ? void 0 : _a.userId;
+        let streamConversationId = store.conversationId || null;
+        let completed = false;
+        let cancelled = false;
         try {
-          const answer = await api("/ai/chat", {
-            method: "POST",
-            body: { question: text, conversationId: store.conversationId || null }
+          const result = await conversationTransport.streamTurn({
+            question: text,
+            conversationId: store.conversationId || null,
+            signal: controller.signal,
+            isCurrent: () => stamp === conversationEpoch,
+            onConversationId: (id) => {
+              streamConversationId = id;
+              store.conversationId = id;
+            },
+            onProgress: (bytes) => {
+              streamProgress.value = bytes;
+            },
+            onCompleted: (answer) => {
+              completed = true;
+              applyChatAnswer(answer, stamp);
+            },
+            onCancelled: () => {
+              cancelled = true;
+              cancelRequested.value = true;
+            }
           });
-          if (stamp !== conversationEpoch) return;
-          store.conversationId = answer.conversationId || store.conversationId;
-          mode.value = answer.mode || "";
-          messages.value.push({
-            role: "assistant",
-            content: answer.answer || "暂时没有找到合适答案",
-            warning: answer.warning,
-            citations: citationsOf(answer),
-            time: formatTime()
-          });
-          proposal.value = answer.proposal || null;
-          selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          completed = result.completed;
+          cancelled = result.cancelled;
         } catch (err) {
-          if (stamp === conversationEpoch) {
+          if ((err == null ? void 0 : err.name) === "AbortError" && (cancelRequested.value || stamp !== conversationEpoch))
+            return;
+          if ((err == null ? void 0 : err.code) === "NETWORK" && streamConversationId) {
+            const recovered = await recoverAfterDisconnect(
+              stamp,
+              actor,
+              streamConversationId,
+              text,
+              knownLastMessage
+            );
+            if (recovered) return;
+          }
+          if (stamp === conversationEpoch && !cancelled) {
             error.value = err.status === 401 ? "请先登录账号再使用 AI 导购" : err.message;
             messages.value.pop();
             input.value = text;
           }
         } finally {
+          if (activeStreamController === controller) activeStreamController = null;
           if (stamp === conversationEpoch) thinking.value = false;
         }
       }
@@ -13443,7 +13938,7 @@
         const page = reset ? 1 : historyPage.value + 1;
         loadingHistory.value = true;
         try {
-          const result = await api("/ai/conversations" + query({ page, size: 20 })) || [];
+          const result = await conversationTransport.loadHistory(page, 20) || [];
           if (stamp === historyEpoch) {
             conversations.value = reset ? result : [...new Map([...conversations.value, ...result].map((c) => [c.id, c])).values()];
             historyPage.value = page;
@@ -13456,25 +13951,12 @@
         }
       }
       async function openConversation(c) {
-        var _a;
         if (preview || thinking.value || !(c == null ? void 0 : c.id)) return;
         const stamp = ++conversationEpoch;
         openingConversation.value = true;
         try {
-          const id = encodeURIComponent(c.id);
-          const [history, proposals] = await Promise.all([
-            api("/ai/conversations/" + id + "/messages"),
-            api("/ai/conversations/" + id + "/proposals")
-          ]);
-          if (stamp !== conversationEpoch) return;
-          store.conversationId = c.id;
-          messages.value = (history || []).map((m) => ({
-            role: m.role,
-            content: m.content,
-            time: "历史消息"
-          }));
-          proposal.value = (proposals || []).find((p2) => p2.status === "PENDING") || null;
-          selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+          await loadConversationSnapshot(c.id, stamp);
+          proposalFeedback.value = "";
           historyOpen.value = false;
         } catch (e) {
           if (stamp === conversationEpoch) notify(e.message);
@@ -13484,11 +13966,13 @@
       }
       function newConversation() {
         if (confirmingProposal.value) return;
+        stopActiveStream();
         ++conversationEpoch;
         store.conversationId = "";
         messages.value = [];
         proposal.value = null;
         selectedIds.value = [];
+        proposalFeedback.value = "";
         mode.value = "";
         error.value = "";
         input.value = "";
@@ -13497,6 +13981,7 @@
         historyOpen.value = false;
       }
       onUnmounted$8(() => {
+        stopActiveStream();
         ++conversationEpoch;
         ++historyEpoch;
       });
@@ -13505,51 +13990,92 @@
           selectedIds.value = selectedIds.value.filter((x) => x !== id);
         else selectedIds.value = [...selectedIds.value, id];
       }
+      function openDetail(item) {
+        if (preview) {
+          if (item == null ? void 0 : item.productId) go("/product/" + encodeURIComponent(item.productId));
+          return;
+        }
+        if (!(item == null ? void 0 : item.detailAvailable) || !(item == null ? void 0 : item.productId)) {
+          notify("该商品详情暂不可用，请重新咨询");
+          return;
+        }
+        go("/product/" + encodeURIComponent(item.productId));
+      }
+      function proposalFailureMessage(err) {
+        const messages2 = {
+          AI0002: "这份推荐已过期，请重新咨询后再选择商品。",
+          C0001: "其中商品已下架或暂不可售，请重新咨询后选择。",
+          C0002: "商品价格或版本已变化，请重新查看推荐后确认。",
+          I0001: "其中商品库存不足，请调整选择或重新咨询。",
+          G0002: "这份推荐状态已变化，请重新打开会话后再试。",
+          G0003: "这份推荐已经用另一组选择确认，不能更换选择重复加购。",
+          NETWORK: "确认请求未完成，请稍后用相同选择重试。",
+          TIMEOUT: "确认结果暂时未知，请稍后用相同选择重试。"
+        };
+        return messages2[err == null ? void 0 : err.code] || (err == null ? void 0 : err.message) || "确认加购失败，请保留选择后重试。";
+      }
+      function currentProposal(stamp, actor, proposalId) {
+        var _a, _b;
+        return stamp === conversationEpoch && actor === ((_a = store.user) == null ? void 0 : _a.userId) && ((_b = proposal.value) == null ? void 0 : _b.id) === proposalId;
+      }
+      function currentRequest(stamp, actor) {
+        var _a;
+        return stamp === conversationEpoch && actor === ((_a = store.user) == null ? void 0 : _a.userId);
+      }
       async function confirm() {
-        var _a, _b, _c, _d, _e;
+        var _a, _b;
         if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
-        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId;
+        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id, chosen = [...selectedIds.value];
         if (!selectedIds.value.length) {
           notify("至少选择一件商品");
           return;
         }
+        proposalFeedback.value = "";
         thinking.value = true;
         confirmingProposal.value = true;
         try {
-          const updated = await api(
-            "/ai/proposals/" + encodeURIComponent(proposal.value.id) + "/confirm",
-            { method: "POST", body: { selectedSkuIds: selectedIds.value } }
-          );
-          if (stamp === conversationEpoch && actor === ((_c = store.user) == null ? void 0 : _c.userId)) {
+          const updated = await api("/ai/proposals/" + encodeURIComponent(proposalId) + "/confirm", {
+            method: "POST",
+            body: { selectedSkuIds: chosen }
+          });
+          if (currentProposal(stamp, actor, proposalId)) {
             proposal.value = updated;
+            selectedIds.value = chosen;
             notify("已确认提案，购物车已更新");
           }
         } catch (err) {
-          if (stamp === conversationEpoch && actor === ((_d = store.user) == null ? void 0 : _d.userId)) notify(err.message);
+          if (currentProposal(stamp, actor, proposalId)) {
+            proposalFeedback.value = proposalFailureMessage(err);
+            notify(proposalFeedback.value);
+          }
         } finally {
-          if (stamp === conversationEpoch && actor === ((_e = store.user) == null ? void 0 : _e.userId)) {
+          if (currentProposal(stamp, actor, proposalId)) {
             thinking.value = false;
             confirmingProposal.value = false;
           }
         }
       }
       async function reject() {
-        var _a, _b, _c, _d, _e;
+        var _a, _b;
         if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
-        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId;
+        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id;
+        proposalFeedback.value = "";
         thinking.value = true;
         try {
-          await api("/ai/proposals/" + encodeURIComponent(proposal.value.id) + "/reject", {
+          await api("/ai/proposals/" + encodeURIComponent(proposalId) + "/reject", {
             method: "POST"
           });
-          if (stamp === conversationEpoch && actor === ((_c = store.user) == null ? void 0 : _c.userId)) {
+          if (currentProposal(stamp, actor, proposalId)) {
             proposal.value = null;
             notify("已放弃提案");
           }
         } catch (err) {
-          if (stamp === conversationEpoch && actor === ((_d = store.user) == null ? void 0 : _d.userId)) notify(err.message);
+          if (currentProposal(stamp, actor, proposalId)) {
+            proposalFeedback.value = (err == null ? void 0 : err.message) || "放弃提案失败，请稍后重试。";
+            notify(proposalFeedback.value);
+          }
         } finally {
-          if (stamp === conversationEpoch && actor === ((_e = store.user) == null ? void 0 : _e.userId)) thinking.value = false;
+          if (currentRequest(stamp, actor)) thinking.value = false;
         }
       }
       return {
@@ -13571,14 +14097,21 @@
         mode,
         ask,
         toggle,
+        openDetail,
         confirm,
         reject,
         historyOpen,
         conversations,
+        formatHistoryTime,
         historyHasMore,
         loadingHistory,
         openingConversation,
         confirmingProposal,
+        proposalFeedback,
+        streamProgress,
+        reconnecting,
+        cancelRequested,
+        cancelTurn,
         loadHistory,
         openConversation,
         newConversation
@@ -13659,11 +14192,24 @@
                         name: "order",
                         size: 16
                       }),
-                      _createTextVNode(
-                        " " + _toDisplayString(c.title || "对话") + " ",
-                        1
-                        /* TEXT */
-                      ),
+                      _createTextVNode(),
+                      _createElementVNode("span", { class: "ai-history-copy" }, [
+                        _createElementVNode(
+                          "strong",
+                          null,
+                          _toDisplayString(c.summary || c.title || "对话"),
+                          1
+                          /* TEXT */
+                        ),
+                        _createElementVNode(
+                          "small",
+                          null,
+                          _toDisplayString(_ctx.formatHistoryTime(c.lastActiveAt || c.createdAt)),
+                          1
+                          /* TEXT */
+                        )
+                      ]),
+                      _createTextVNode(),
                       _createVNode2(_component_Icon, {
                         name: "chevronRight",
                         size: 14
@@ -13800,6 +14346,14 @@
                               /* KEYED_FRAGMENT */
                             ))
                           ])) : _createCommentVNode("v-if", true),
+                          message.role === "assistant" && message.citationStatus === "MISSING" ? (_openBlock(), _createElementBlock("div", {
+                            key: 2,
+                            class: "message-warning"
+                          }, "历史消息没有可恢复的引用记录")) : _createCommentVNode("v-if", true),
+                          message.role === "assistant" && message.citationStatus === "HIDDEN" ? (_openBlock(), _createElementBlock("div", {
+                            key: 3,
+                            class: "message-warning"
+                          }, "当前无法核验这条历史引用，来源已隐藏")) : _createCommentVNode("v-if", true),
                           _createElementVNode("span", { class: "chat-timestamp" }, [
                             _createTextVNode(
                               _toDisplayString(message.time || "刚刚") + " ",
@@ -13830,7 +14384,14 @@
                   _createElementVNode("div", { class: "typing-bubble" }, [
                     _createElementVNode("i"),
                     _createElementVNode("i"),
-                    _createElementVNode("i")
+                    _createElementVNode("i"),
+                    _ctx.reconnecting ? (_openBlock(), _createElementBlock("small", { key: 0 }, "连接已断开，正在恢复原会话…")) : _ctx.cancelRequested ? (_openBlock(), _createElementBlock("small", { key: 1 }, "正在停止本轮生成…")) : _ctx.streamProgress ? (_openBlock(), _createElementBlock(
+                      "small",
+                      { key: 2 },
+                      "已读取 " + _toDisplayString(_ctx.streamProgress) + " 字节",
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
                   ])
                 ])) : _createCommentVNode("v-if", true),
                 _ctx.error ? (_openBlock(), _createElementBlock("div", {
@@ -13915,6 +14476,12 @@
                             1
                             /* TEXT */
                           ),
+                          _createElementVNode("button", {
+                            class: "rec-detail-link",
+                            type: "button",
+                            onClick: ($event) => _ctx.openDetail(item),
+                            disabled: !item.detailAvailable || !item.productId
+                          }, _toDisplayString(item.detailAvailable ? "查看详情" : "详情暂不可用"), 9, ["onClick", "disabled"]),
                           _createElementVNode("div", { class: "rec-price" }, [
                             _createElementVNode(
                               "span",
@@ -13937,6 +14504,17 @@
                     /* KEYED_FRAGMENT */
                   ))
                 ]),
+                _ctx.proposalFeedback ? (_openBlock(), _createElementBlock(
+                  "div",
+                  {
+                    key: 0,
+                    class: "proposal-feedback",
+                    role: "alert"
+                  },
+                  _toDisplayString(_ctx.proposalFeedback),
+                  1
+                  /* TEXT */
+                )) : _createCommentVNode("v-if", true),
                 _createElementVNode("div", { class: "proposal-footer" }, [
                   _createElementVNode("div", { class: "proposal-total" }, [
                     _createElementVNode(
@@ -13970,7 +14548,7 @@
                         size: 17
                       }),
                       _createTextVNode(
-                        _toDisplayString(((_c = _ctx.proposal) == null ? void 0 : _c.status) === "CONFIRMED" ? "已确认" : "确认加购"),
+                        _toDisplayString(((_c = _ctx.proposal) == null ? void 0 : _c.status) === "CONFIRMED" ? "已确认" : _ctx.confirmingProposal ? "确认中…" : "确认加购"),
                         1
                         /* TEXT */
                       )
@@ -13995,16 +14573,23 @@
                 }, null, 8, ["onUpdate:modelValue", "disabled"]), [
                   [_vModelText, _ctx.input]
                 ]),
-                _createElementVNode("button", {
+                _ctx.thinking ? (_openBlock(), _createElementBlock("button", {
+                  key: 0,
+                  type: "button",
+                  class: "stream-cancel",
+                  onClick: _ctx.cancelTurn,
+                  disabled: _ctx.cancelRequested || !_ctx.store.conversationId
+                }, _toDisplayString(_ctx.cancelRequested ? "停止中…" : "停止生成"), 9, ["onClick", "disabled"])) : (_openBlock(), _createElementBlock("button", {
+                  key: 1,
                   type: "submit",
-                  disabled: _ctx.thinking || _ctx.openingConversation || !_ctx.input.trim(),
+                  disabled: _ctx.openingConversation || !_ctx.input.trim(),
                   "aria-label": "发送问题"
                 }, [
                   _createVNode2(_component_Icon, {
                     name: "send",
                     size: 20
                   })
-                ], 8, ["disabled"])
+                ], 8, ["disabled"]))
               ], 40, ["onSubmit"])
             ];
           }),
@@ -14020,7 +14605,7 @@
     if (typeof value !== "string" || value !== value.trim()) return "";
     return LOCAL_UPLOAD.test(value) || QINIU_UPLOAD.test(value) ? value : "";
   }
-  const { ref: ref$c, computed: computed$c, onBeforeUnmount: onBeforeUnmount$1, watch: watch$b } = Vue;
+  const { ref: ref$d, computed: computed$d, onBeforeUnmount: onBeforeUnmount$1, watch: watch$b } = Vue;
   const VALID_TYPES$1 = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES$1 = 2e6;
   const ProductImageField = {
@@ -14035,7 +14620,7 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit: emit2 }) {
-      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), localUrl = ref$c("");
+      const busy = ref$d(false), error = ref$d(""), notice = ref$d(""), localUrl = ref$d("");
       const scope = requestScope();
       let alive = true, epoch = 0;
       watch$b(
@@ -14068,7 +14653,7 @@
           if (!busy.value) release();
         }
       );
-      const displayed = computed$c(() => localUrl.value || props.modelValue || "");
+      const displayed = computed$d(() => localUrl.value || props.modelValue || "");
       function clear() {
         if (props.disabled || busy.value) return;
         release();
@@ -14216,7 +14801,7 @@
       };
     })()
   };
-  const { ref: ref$b, computed: computed$b, watch: watch$a, onBeforeUnmount } = Vue;
+  const { ref: ref$c, computed: computed$c, watch: watch$a, onBeforeUnmount } = Vue;
   const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES = 2e6;
   const MAX_IMAGES = 8;
@@ -14237,8 +14822,8 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit: emit2 }) {
-      const busy = ref$b(false), error = ref$b(""), notice = ref$b(""), demoValues = ref$b(null), failures = ref$b([]), blocked = ref$b(Boolean(props.invalid));
-      const values = computed$b(
+      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), demoValues = ref$c(null), failures = ref$c([]), blocked = ref$c(Boolean(props.invalid));
+      const values = computed$c(
         () => props.demo && demoValues.value ? demoValues.value : props.modelValue || []
       );
       const scope = requestScope(), localUrls = /* @__PURE__ */ new Set();
@@ -14579,8 +15164,7 @@
       };
     })()
   };
-  const { ref: ref$a, computed: computed$a, watch: watch$9, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
-  const MENU = [
+  const merchantNav = [
     ["home", "工作台", "/merchant"],
     ["package", "商品管理", "/merchant/products"],
     ["box", "库存管理", "/merchant/inventory"],
@@ -14590,11 +15174,294 @@
     ["users", "店员管理", "/merchant/team"],
     ["shield", "角色权限", "/merchant/roles"],
     ["book", "知识库", "/merchant/knowledge"],
+    ["search", "RAG 调试", "/merchant/knowledge/debug"],
     ["settings", "门店设置", "/merchant/settings"]
   ];
+  const adminNav = [
+    ["home", "平台总览", "/admin"],
+    ["store", "商户审核", "/admin/applications"],
+    ["users", "商户监管", "/admin/merchants"],
+    ["package", "商品监管", "/admin/products"],
+    ["order", "订单监管", "/admin/orders"],
+    ["shield", "争议处理", "/admin/disputes"],
+    ["book", "知识库", "/admin/knowledge"],
+    ["search", "RAG 调试", "/admin/knowledge/debug"],
+    ["grid", "分类管理", "/admin/categories"]
+  ];
+  const merchantPermissions = Object.freeze({
+    "/merchant": "order.read",
+    "/merchant/products": "product.read",
+    "/merchant/inventory": "stock.read",
+    "/merchant/orders": "order.read",
+    "/merchant/pickup": "pickup.verify",
+    "/merchant/aftersales": "aftersale.read",
+    "/merchant/team": "team.manage",
+    "/merchant/roles": "role.manage",
+    "/merchant/knowledge": "knowledge.read",
+    "/merchant/knowledge/debug": "knowledge.read",
+    "/merchant/settings": "store.manage"
+  });
+  const backofficeRoutes = Object.freeze([
+    ...merchantNav.map(([, , path]) => path),
+    ...adminNav.map(([, , path]) => path)
+  ]);
+  const { ref: ref$b, computed: computed$b, watch: watch$9, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
+  const BackofficeShell = {
+    name: "BackofficeShell",
+    props: { role: { type: String, default: "merchant" }, title: String },
+    components: { AuthDialog },
+    setup() {
+      const loginOpen = ref$b(false), mobileNav = ref$b(null);
+      const visibleMerchantNav = computed$b(
+        () => merchantNav.filter(([, , path]) => hasPermission(merchantPermissions[path]))
+      );
+      const alignMobileNav = () => {
+        var _a;
+        const nav = mobileNav.value;
+        if (nav == null ? void 0 : nav.clientWidth)
+          (_a = nav.querySelector("button.active")) == null ? void 0 : _a.scrollIntoView({ inline: "center", block: "nearest" });
+      };
+      watch$9(
+        [() => store.route, () => visibleMerchantNav.value.map((item) => item[2]).join("|")],
+        async () => {
+          await nextTick$1();
+          alignMobileNav();
+        },
+        { immediate: true, flush: "post" }
+      );
+      onMounted$a(() => window.addEventListener("resize", alignMobileNav));
+      onUnmounted$7(() => window.removeEventListener("resize", alignMobileNav));
+      async function switchShop(e) {
+        if (preview) {
+          notify("演示模式不能切换真实商户");
+          return;
+        }
+        switchMerchantContext(e.target.value);
+      }
+      return {
+        store,
+        go,
+        preview,
+        loginOpen,
+        mobileNav,
+        merchantNav,
+        visibleMerchantNav,
+        adminNav,
+        switchShop
+      };
+    },
+    render: (() => {
+      const { createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
+      return function render2(_ctx, _cache) {
+        const _component_Icon = _resolveComponent("Icon");
+        const _component_AuthDialog = _resolveComponent("AuthDialog");
+        return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
+          _createElementVNode("aside", { class: "merchant-sidebar" }, [
+            _createElementVNode("button", {
+              class: "merchant-brand",
+              onClick: ($event) => _ctx.go("/")
+            }, [
+              _createElementVNode("span", { class: "brand-pin" }, [
+                _createElementVNode("span")
+              ]),
+              _createElementVNode("span", { class: "brand-word" }, [
+                _createTextVNode("青柠校园 "),
+                _createElementVNode(
+                  "span",
+                  { class: "brand-suffix" },
+                  "/ " + _toDisplayString(_ctx.role === "admin" ? "平台端" : "商户端"),
+                  1
+                  /* TEXT */
+                )
+              ])
+            ], 8, ["onClick"]),
+            _createElementVNode("nav", { class: "merchant-nav" }, [
+              (_openBlock(true), _createElementBlock(
+                _Fragment,
+                null,
+                _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
+                  return _openBlock(), _createElementBlock("button", {
+                    key: path,
+                    class: _normalizeClass({ active: _ctx.store.route === path }),
+                    onClick: ($event) => _ctx.go(path)
+                  }, [
+                    _createVNode2(_component_Icon, {
+                      name: ico,
+                      size: 19
+                    }, null, 8, ["name"]),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      _toDisplayString(label),
+                      1
+                      /* TEXT */
+                    ),
+                    _ctx.store.route === path ? (_openBlock(), _createElementBlock("span", {
+                      key: 0,
+                      class: "nav-left-bar"
+                    })) : _createCommentVNode("v-if", true)
+                  ], 10, ["onClick"]);
+                }),
+                128
+                /* KEYED_FRAGMENT */
+              ))
+            ]),
+            _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
+              _createElementVNode("button", {
+                class: "sidebar-back",
+                onClick: ($event) => _ctx.go("/")
+              }, [
+                _createVNode2(_component_Icon, {
+                  name: "arrowLeft",
+                  size: 16
+                }),
+                _createTextVNode(" 返回购物端")
+              ], 8, ["onClick"])
+            ])
+          ]),
+          _createElementVNode("div", { class: "merchant-content-shell" }, [
+            _createElementVNode("header", { class: "merchant-topbar" }, [
+              _createElementVNode("div", { class: "topbar-crumb" }, [
+                _createTextVNode(
+                  _toDisplayString(_ctx.role === "admin" ? "平台运营" : "店铺运营") + " ",
+                  1
+                  /* TEXT */
+                ),
+                _createVNode2(_component_Icon, {
+                  name: "chevronRight",
+                  size: 14
+                }),
+                _createElementVNode(
+                  "strong",
+                  null,
+                  _toDisplayString(_ctx.title),
+                  1
+                  /* TEXT */
+                )
+              ]),
+              _createElementVNode("div", { class: "merchant-topbar-tools" }, [
+                _ctx.preview ? (_openBlock(), _createElementBlock("span", {
+                  key: 0,
+                  class: "admin-preview-tag"
+                }, "设计预览")) : _createCommentVNode("v-if", true),
+                _ctx.role === "merchant" ? (_openBlock(), _createElementBlock("label", {
+                  key: 1,
+                  class: "topbar-merchant-select"
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "store",
+                    size: 16
+                  }),
+                  _createElementVNode("select", {
+                    value: _ctx.store.merchantId,
+                    onChange: _ctx.switchShop,
+                    disabled: _ctx.preview
+                  }, [
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.store.merchants, (m) => {
+                        return _openBlock(), _createElementBlock("option", {
+                          key: m.merchantId,
+                          value: m.merchantId
+                        }, _toDisplayString(m.name), 9, ["value"]);
+                      }),
+                      128
+                      /* KEYED_FRAGMENT */
+                    ))
+                  ], 40, ["value", "onChange", "disabled"])
+                ])) : _createCommentVNode("v-if", true),
+                _createElementVNode("button", {
+                  class: "topbar-avatar",
+                  onClick: ($event) => _ctx.loginOpen = true
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "user",
+                    size: 18
+                  })
+                ], 8, ["onClick"])
+              ])
+            ]),
+            _createElementVNode(
+              "nav",
+              {
+                ref: "mobileNav",
+                class: "merchant-mobile-nav",
+                "aria-label": "工作台导航"
+              },
+              [
+                (_openBlock(true), _createElementBlock(
+                  _Fragment,
+                  null,
+                  _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
+                    return _openBlock(), _createElementBlock("button", {
+                      key: path,
+                      class: _normalizeClass({ active: _ctx.store.route === path }),
+                      onClick: ($event) => _ctx.go(path)
+                    }, [
+                      _createVNode2(_component_Icon, {
+                        name: ico,
+                        size: 16
+                      }, null, 8, ["name"]),
+                      _createTextVNode(
+                        _toDisplayString(label),
+                        1
+                        /* TEXT */
+                      )
+                    ], 10, ["onClick"]);
+                  }),
+                  128
+                  /* KEYED_FRAGMENT */
+                ))
+              ],
+              512
+              /* NEED_PATCH */
+            ),
+            _createElementVNode("main", { class: "merchant-main" }, [
+              _createElementVNode("div", { class: "merchant-page-heading" }, [
+                _createElementVNode("div", null, [
+                  _createElementVNode(
+                    "h1",
+                    null,
+                    _toDisplayString(_ctx.title),
+                    1
+                    /* TEXT */
+                  )
+                ]),
+                _renderSlot(_ctx.$slots, "actions")
+              ]),
+              _ctx.store.error ? (_openBlock(), _createElementBlock(
+                "div",
+                {
+                  key: 0,
+                  class: "inline-error merchant-error"
+                },
+                _toDisplayString(_ctx.store.error),
+                1
+                /* TEXT */
+              )) : _createCommentVNode("v-if", true),
+              _renderSlot(_ctx.$slots, "default")
+            ])
+          ]),
+          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+            key: 0,
+            onClose: ($event) => _ctx.loginOpen = false,
+            onSuccess: ($event) => _ctx.role === "merchant" ? _ctx.loadMerchant() : null
+          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
+        ]);
+      };
+    })()
+  };
+  const { ref: ref$a, computed: computed$a, watch: watch$8, nextTick, onMounted: onMounted$9, onUnmounted: onUnmounted$6 } = Vue;
   const Merchant = {
     name: "Merchant",
-    components: { AuthDialog, ProductImage, ProductImageField, ProductImageListField },
+    components: {
+      BackofficeShell,
+      AuthDialog,
+      ProductImage,
+      ProductImageField,
+      ProductImageListField
+    },
     setup() {
       const scope = requestScope();
       const search = ref$a("");
@@ -14635,36 +15502,6 @@
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {}
       );
       const owned = computed$a(() => hasPermission("product.write"));
-      const required = {
-        "/merchant": "order.read",
-        "/merchant/products": "product.read",
-        "/merchant/inventory": "stock.read",
-        "/merchant/orders": "order.read",
-        "/merchant/pickup": "pickup.verify",
-        "/merchant/aftersales": "aftersale.read",
-        "/merchant/team": "team.manage",
-        "/merchant/roles": "role.manage",
-        "/merchant/knowledge": "knowledge.read",
-        "/merchant/settings": "store.manage"
-      };
-      const visibleMenu = computed$a(() => MENU.filter(([, , path]) => hasPermission(required[path])));
-      const mobileNav = ref$a(null);
-      const alignMobileNav = () => {
-        var _a;
-        const nav = mobileNav.value;
-        if (nav == null ? void 0 : nav.clientWidth)
-          (_a = nav.querySelector("button.active")) == null ? void 0 : _a.scrollIntoView({ inline: "center", block: "nearest" });
-      };
-      watch$9(
-        [() => store.route, () => visibleMenu.value.map((item) => item[2]).join("|")],
-        async () => {
-          await nextTick$1();
-          alignMobileNav();
-        },
-        { immediate: true, flush: "post" }
-      );
-      onMounted$a(() => window.addEventListener("resize", alignMobileNav));
-      onUnmounted$7(() => window.removeEventListener("resize", alignMobileNav));
       const canReplenish = computed$a(() => hasPermission("stock.replenish"));
       const canRead = computed$a(() => hasPermission("product.read"));
       const items2 = computed$a(() => store.products.filter((p2) => p2.merchantId === store.merchantId));
@@ -14727,7 +15564,7 @@
         selectedSkuId.value = skuOf(p2).skuId || "";
         drawerTab.value = "stock";
       };
-      watch$9(
+      watch$8(
         selected,
         (p2, previous) => {
           var _a;
@@ -14762,10 +15599,10 @@
           sort: sort.value
         });
       }
-      onMounted$a(refreshPage);
-      onUnmounted$7(() => clearTimeout(searchDelay));
+      onMounted$9(refreshPage);
+      onUnmounted$6(() => clearTimeout(searchDelay));
       let resettingPage = false;
-      watch$9(
+      watch$8(
         [page, search, category, status, sort],
         (next, previous) => {
           if (resettingPage) return;
@@ -15043,7 +15880,6 @@
         selectedId.value = "";
       }
       return {
-        mobileNav,
         priceSku,
         sort,
         canRead,
@@ -15066,7 +15902,6 @@
         invalidateMerchantSearch,
         owned,
         merchant,
-        visibleMenu,
         search,
         category,
         status,
@@ -15109,203 +15944,44 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, toDisplayString: _toDisplayString, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, normalizeStyle: _normalizeStyle, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, createBlock: _createBlock, resolveDirective: _resolveDirective } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, normalizeStyle: _normalizeStyle, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, renderList: _renderList, Fragment: _Fragment, vModelSelect: _vModelSelect, withModifiers: _withModifiers, resolveDirective: _resolveDirective, createBlock: _createBlock, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
-        var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ProductImageListField = _resolveComponent("ProductImageListField");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
+        const _component_BackofficeShell = _resolveComponent("BackofficeShell");
         const _directive_modal = _resolveDirective("modal");
-        return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
-          _createElementVNode("aside", { class: "merchant-sidebar" }, [
-            _createElementVNode("button", {
-              class: "merchant-brand",
-              onClick: ($event) => _ctx.go("/")
-            }, [
-              _createElementVNode("span", { class: "brand-pin" }, [
-                _createElementVNode("span")
-              ]),
-              _createElementVNode("span", { class: "brand-word" }, [
-                _createTextVNode("青柠校园"),
-                _createElementVNode("span", { class: "brand-suffix" }, " / 商户端")
-              ])
-            ], 8, ["onClick"]),
-            _createElementVNode("nav", { class: "merchant-nav" }, [
-              (_openBlock(true), _createElementBlock(
-                _Fragment,
-                null,
-                _renderList(_ctx.visibleMenu, ([icon, label, path]) => {
-                  return _openBlock(), _createElementBlock("button", {
-                    key: path,
-                    class: _normalizeClass({ active: _ctx.store.route === path }),
-                    onClick: ($event) => _ctx.go(path)
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: icon,
-                      size: 19
-                    }, null, 8, ["name"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(label),
-                      1
-                      /* TEXT */
-                    ),
-                    _ctx.store.route === path ? (_openBlock(), _createElementBlock("span", {
-                      key: 0,
-                      class: "nav-left-bar"
-                    })) : _createCommentVNode("v-if", true)
-                  ], 10, ["onClick"]);
-                }),
-                128
-                /* KEYED_FRAGMENT */
-              ))
-            ]),
-            _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
+        return _openBlock(), _createBlock(_component_BackofficeShell, { title: "商品管理" }, {
+          actions: _withCtx(() => [
+            _createElementVNode("div", { class: "head-actions" }, [
               _createElementVNode("button", {
-                class: "sidebar-back",
-                onClick: ($event) => _ctx.go("/")
+                class: "outline-button small",
+                onClick: _ctx.loadMerchant,
+                disabled: _ctx.store.loading
               }, [
                 _createVNode2(_component_Icon, {
-                  name: "arrowLeft",
+                  name: "refresh",
                   size: 16
                 }),
-                _createTextVNode(" 返回购物端")
-              ], 8, ["onClick"])
+                _createTextVNode("刷新")
+              ], 8, ["onClick", "disabled"]),
+              _createElementVNode("button", {
+                class: "teal-button",
+                onClick: _ctx.openCreate,
+                disabled: !_ctx.owned
+              }, [
+                _createVNode2(_component_Icon, {
+                  name: "plus",
+                  size: 18
+                }),
+                _createTextVNode("新增商品")
+              ], 8, ["onClick", "disabled"])
             ])
           ]),
-          _createElementVNode("div", { class: "merchant-content-shell" }, [
-            _createElementVNode("header", { class: "merchant-topbar" }, [
-              _createElementVNode("div", { class: "topbar-crumb" }, [
-                _createTextVNode("运营中心 "),
-                _createVNode2(_component_Icon, {
-                  name: "chevronRight",
-                  size: 14
-                }),
-                _createTextVNode(),
-                _createElementVNode("strong", null, "商品管理")
-              ]),
-              _createElementVNode("div", { class: "merchant-topbar-tools" }, [
-                _ctx.preview ? (_openBlock(), _createElementBlock("div", {
-                  key: 0,
-                  class: "admin-preview-tag"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "circleHelp",
-                    size: 14
-                  }),
-                  _createTextVNode("演示数据")
-                ])) : _createCommentVNode("v-if", true),
-                _createElementVNode("div", { class: "topbar-merchant-select" }, [
-                  _createVNode2(_component_Icon, {
-                    name: "store",
-                    size: 16
-                  }),
-                  _createElementVNode("select", {
-                    value: _ctx.store.merchantId,
-                    onChange: _ctx.switchMerchant,
-                    disabled: _ctx.preview
-                  }, [
-                    (_openBlock(true), _createElementBlock(
-                      _Fragment,
-                      null,
-                      _renderList(_ctx.store.merchants, (m) => {
-                        return _openBlock(), _createElementBlock("option", {
-                          value: m.merchantId,
-                          key: m.merchantId
-                        }, _toDisplayString(m.name) + " · " + _toDisplayString(m.storeName), 9, ["value"]);
-                      }),
-                      128
-                      /* KEYED_FRAGMENT */
-                    ))
-                  ], 40, ["value", "onChange", "disabled"]),
-                  _createVNode2(_component_Icon, {
-                    name: "chevronDown",
-                    size: 13
-                  })
-                ]),
-                _createElementVNode(
-                  "span",
-                  { class: "admin-avatar" },
-                  _toDisplayString(((_b = (_a = _ctx.store.user) == null ? void 0 : _a.displayName) == null ? void 0 : _b.slice(0, 1)) || "店"),
-                  1
-                  /* TEXT */
-                ),
-                _createElementVNode(
-                  "span",
-                  { class: "admin-user" },
-                  _toDisplayString(((_c = _ctx.store.user) == null ? void 0 : _c.displayName) || "店铺账号"),
-                  1
-                  /* TEXT */
-                )
-              ])
-            ]),
-            _createElementVNode(
-              "nav",
-              {
-                ref: "mobileNav",
-                class: "merchant-mobile-nav",
-                "aria-label": "工作台导航"
-              },
-              [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.visibleMenu, ([icon, label, path]) => {
-                    return _openBlock(), _createElementBlock("button", {
-                      key: path,
-                      class: _normalizeClass({ active: _ctx.store.route === path }),
-                      onClick: ($event) => _ctx.go(path)
-                    }, [
-                      _createVNode2(_component_Icon, {
-                        name: icon,
-                        size: 16
-                      }, null, 8, ["name"]),
-                      _createTextVNode(
-                        _toDisplayString(label),
-                        1
-                        /* TEXT */
-                      )
-                    ], 10, ["onClick"]);
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                ))
-              ],
-              512
-              /* NEED_PATCH */
-            ),
-            _createElementVNode("main", { class: "merchant-main" }, [
-              _createElementVNode("div", { class: "merchant-page-heading" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode("h1", null, "商品管理")
-                ]),
-                _createElementVNode("div", { class: "head-actions" }, [
-                  _createElementVNode("button", {
-                    class: "outline-button small",
-                    onClick: _ctx.loadMerchant,
-                    disabled: _ctx.store.loading
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: "refresh",
-                      size: 16
-                    }),
-                    _createTextVNode("刷新")
-                  ], 8, ["onClick", "disabled"]),
-                  _createElementVNode("button", {
-                    class: "teal-button",
-                    onClick: _ctx.openCreate,
-                    disabled: !_ctx.owned
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: "plus",
-                      size: 18
-                    }),
-                    _createTextVNode("新增商品")
-                  ], 8, ["onClick", "disabled"])
-                ])
-              ]),
+          default: _withCtx(() => {
+            var _a, _b, _c, _d, _e, _f, _g, _h;
+            return [
               _ctx.store.error ? (_openBlock(), _createElementBlock("div", {
                 key: 0,
                 class: "inline-error merchant-error"
@@ -15742,7 +16418,7 @@
                         _createElementVNode(
                           "span",
                           { class: "inspector-id" },
-                          _toDisplayString((_d = _ctx.selected.productId) == null ? void 0 : _d.slice(-9)),
+                          _toDisplayString((_a = _ctx.selected.productId) == null ? void 0 : _a.slice(-9)),
                           1
                           /* TEXT */
                         )
@@ -15833,7 +16509,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_e = _ctx.stock) == null ? void 0 : _e.onHand) ?? "—"),
+                              _toDisplayString(((_b = _ctx.stock) == null ? void 0 : _b.onHand) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -15843,7 +16519,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_f = _ctx.stock) == null ? void 0 : _f.reserved) ?? "—"),
+                              _toDisplayString(((_c = _ctx.stock) == null ? void 0 : _c.reserved) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -15853,7 +16529,7 @@
                             _createElementVNode(
                               "strong",
                               { class: "mint-text" },
-                              _toDisplayString(((_g = _ctx.stock) == null ? void 0 : _g.available) ?? ((_h = _ctx.selectedSku) == null ? void 0 : _h.available) ?? "—"),
+                              _toDisplayString(((_d = _ctx.stock) == null ? void 0 : _d.available) ?? ((_e = _ctx.selectedSku) == null ? void 0 : _e.available) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -15935,7 +16611,7 @@
                         _createElementVNode("button", {
                           class: "teal-button inspector-submit",
                           onClick: _ctx.replenish,
-                          disabled: _ctx.preview || _ctx.saving || !_ctx.canReplenish || !((_i = _ctx.selectedSku) == null ? void 0 : _i.skuId)
+                          disabled: _ctx.preview || _ctx.saving || !_ctx.canReplenish || !((_f = _ctx.selectedSku) == null ? void 0 : _f.skuId)
                         }, "确认补货", 8, ["onClick", "disabled"])
                       ])) : _ctx.drawerTab === "info" ? (_openBlock(), _createElementBlock("div", {
                         key: 1,
@@ -16120,293 +16796,346 @@
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              ))
-            ])
-          ]),
-          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
-            key: 0,
-            onClose: ($event) => _ctx.loginOpen = false,
-            onSuccess: _ctx.loadMerchant
-          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true),
-          _ctx.modal ? _withDirectives((_openBlock(), _createElementBlock("div", {
-            key: 1,
-            class: "ui-overlay",
-            onClick: _withModifiers(($event) => _ctx.modal = "", ["self"])
-          }, [
-            _ctx.modal === "create" ? (_openBlock(), _createElementBlock("form", {
-              key: 0,
-              class: "merchant-modal",
-              onSubmit: _withModifiers(_ctx.create, ["prevent"])
-            }, [
-              _createElementVNode("div", { class: "merchant-modal-header" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode("h2", null, "新增商品")
-                ]),
-                _createElementVNode("button", {
-                  type: "button",
-                  onClick: ($event) => _ctx.modal = "",
-                  "aria-label": "关闭"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "x",
-                    size: 20
-                  })
-                ], 8, ["onClick"])
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-5"
-              }, "商品名称"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-5",
-                class: "admin-input",
-                maxlength: "100",
-                "onUpdate:modelValue": ($event) => _ctx.form.title = $event,
-                placeholder: "商品名称",
-                required: ""
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.form.title]
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-6"
-              }, "分类"),
-              _withDirectives(_createElementVNode("select", {
-                id: "merchant-field-6",
-                "onUpdate:modelValue": ($event) => _ctx.form.categoryCode = $event,
-                class: "admin-input"
+              )),
+              _ctx.modal ? _withDirectives((_openBlock(), _createElementBlock("div", {
+                key: 3,
+                class: "ui-overlay",
+                onClick: _withModifiers(($event) => _ctx.modal = "", ["self"])
               }, [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.store.categories.filter((c) => c.active), (c) => {
-                    return _openBlock(), _createElementBlock("option", {
-                      value: c.code
-                    }, _toDisplayString(c.name), 9, ["value"]);
-                  }),
-                  256
-                  /* UNKEYED_FRAGMENT */
-                ))
-              ], 8, ["onUpdate:modelValue"]), [
-                [_vModelSelect, _ctx.form.categoryCode]
-              ]),
-              _createElementVNode("label", { class: "field-label" }, "规格 / 售价（元）"),
-              (_openBlock(true), _createElementBlock(
-                _Fragment,
-                null,
-                _renderList(_ctx.form.skus, (item, index) => {
-                  return _openBlock(), _createElementBlock("div", {
-                    key: index,
-                    class: "sku-create-row"
-                  }, [
-                    _withDirectives(_createElementVNode("input", {
-                      class: "admin-input",
-                      maxlength: "100",
-                      "onUpdate:modelValue": ($event) => item.specKey = $event,
-                      required: "",
-                      placeholder: "例如 250ml"
-                    }, null, 8, ["onUpdate:modelValue"]), [
-                      [_vModelText, item.specKey]
-                    ]),
-                    _withDirectives(_createElementVNode("input", {
-                      class: "admin-input",
-                      "onUpdate:modelValue": ($event) => item.price = $event,
-                      inputmode: "decimal",
-                      placeholder: "0.00",
-                      required: ""
-                    }, null, 8, ["onUpdate:modelValue"]), [
-                      [_vModelText, item.price]
+                _ctx.modal === "create" ? (_openBlock(), _createElementBlock("form", {
+                  key: 0,
+                  class: "merchant-modal",
+                  onSubmit: _withModifiers(_ctx.create, ["prevent"])
+                }, [
+                  _createElementVNode("div", { class: "merchant-modal-header" }, [
+                    _createElementVNode("div", null, [
+                      _createElementVNode("h2", null, "新增商品")
                     ]),
                     _createElementVNode("button", {
                       type: "button",
-                      class: "outline-button small",
-                      disabled: _ctx.form.skus.length === 1,
-                      onClick: ($event) => _ctx.removeCreateSku(index),
-                      "aria-label": "移除规格" + (index + 1)
+                      onClick: ($event) => _ctx.modal = "",
+                      "aria-label": "关闭"
                     }, [
                       _createVNode2(_component_Icon, {
                         name: "x",
-                        size: 15
+                        size: 20
                       })
-                    ], 8, ["disabled", "onClick", "aria-label"])
-                  ]);
-                }),
-                128
-                /* KEYED_FRAGMENT */
-              )),
-              _createElementVNode("button", {
-                type: "button",
-                class: "outline-button small",
-                disabled: _ctx.form.skus.length >= 20,
-                onClick: _ctx.addCreateSku
-              }, [
-                _createVNode2(_component_Icon, {
-                  name: "plus",
-                  size: 15
-                }),
-                _createTextVNode("添加规格")
-              ], 8, ["disabled", "onClick"]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-7"
-              }, "描述"),
-              _withDirectives(_createElementVNode("textarea", {
-                id: "merchant-field-7",
-                class: "admin-input",
-                rows: "3",
-                "onUpdate:modelValue": ($event) => _ctx.form.description = $event,
-                placeholder: "选填"
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.form.description]
-              ]),
-              _createElementVNode("label", { class: "field-label" }, "商品主图"),
-              _createVNode2(_component_ProductImageListField, {
-                modelValue: _ctx.form.imageUrls,
-                "onUpdate:modelValue": ($event) => _ctx.form.imageUrls = $event,
-                "merchant-id": _ctx.store.merchantId,
-                invalid: _ctx.createImageInvalid,
-                demo: _ctx.preview,
-                disabled: _ctx.saving || !_ctx.owned,
-                onBusy: ($event) => _ctx.createImageUploading = $event,
-                onInvalid: ($event) => _ctx.createImageInvalid = $event
-              }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "invalid", "demo", "disabled", "onBusy", "onInvalid"]),
-              _createElementVNode("div", { class: "form-buttons" }, [
-                _createElementVNode("button", {
-                  type: "button",
-                  class: "outline-button",
-                  onClick: ($event) => _ctx.modal = ""
-                }, "取消", 8, ["onClick"]),
-                _createElementVNode("button", {
-                  type: "submit",
-                  class: "teal-button",
-                  disabled: _ctx.preview || _ctx.saving || _ctx.createImageUploading || _ctx.createImageInvalid || !_ctx.owned
-                }, "保存商品", 8, ["disabled"])
-              ])
-            ], 40, ["onSubmit"])) : _ctx.modal === "addSku" ? (_openBlock(), _createElementBlock("form", {
-              key: 1,
-              class: "merchant-modal narrow",
-              onSubmit: _withModifiers(_ctx.addSku, ["prevent"])
-            }, [
-              _createElementVNode("div", { class: "merchant-modal-header" }, [
-                _createElementVNode("h2", null, "新增规格"),
-                _createElementVNode("button", {
-                  type: "button",
-                  onClick: ($event) => _ctx.modal = "",
-                  "aria-label": "关闭"
+                    ], 8, ["onClick"])
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-5"
+                  }, "商品名称"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-5",
+                    class: "admin-input",
+                    maxlength: "100",
+                    "onUpdate:modelValue": ($event) => _ctx.form.title = $event,
+                    placeholder: "商品名称",
+                    required: ""
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.form.title]
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-6"
+                  }, "分类"),
+                  _withDirectives(_createElementVNode("select", {
+                    id: "merchant-field-6",
+                    "onUpdate:modelValue": ($event) => _ctx.form.categoryCode = $event,
+                    class: "admin-input"
+                  }, [
+                    (_openBlock(true), _createElementBlock(
+                      _Fragment,
+                      null,
+                      _renderList(_ctx.store.categories.filter((c) => c.active), (c) => {
+                        return _openBlock(), _createElementBlock("option", {
+                          value: c.code
+                        }, _toDisplayString(c.name), 9, ["value"]);
+                      }),
+                      256
+                      /* UNKEYED_FRAGMENT */
+                    ))
+                  ], 8, ["onUpdate:modelValue"]), [
+                    [_vModelSelect, _ctx.form.categoryCode]
+                  ]),
+                  _createElementVNode("label", { class: "field-label" }, "规格 / 售价（元）"),
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.form.skus, (item, index) => {
+                      return _openBlock(), _createElementBlock("div", {
+                        key: index,
+                        class: "sku-create-row"
+                      }, [
+                        _withDirectives(_createElementVNode("input", {
+                          class: "admin-input",
+                          maxlength: "100",
+                          "onUpdate:modelValue": ($event) => item.specKey = $event,
+                          required: "",
+                          placeholder: "例如 250ml"
+                        }, null, 8, ["onUpdate:modelValue"]), [
+                          [_vModelText, item.specKey]
+                        ]),
+                        _withDirectives(_createElementVNode("input", {
+                          class: "admin-input",
+                          "onUpdate:modelValue": ($event) => item.price = $event,
+                          inputmode: "decimal",
+                          placeholder: "0.00",
+                          required: ""
+                        }, null, 8, ["onUpdate:modelValue"]), [
+                          [_vModelText, item.price]
+                        ]),
+                        _createElementVNode("button", {
+                          type: "button",
+                          class: "outline-button small",
+                          disabled: _ctx.form.skus.length === 1,
+                          onClick: ($event) => _ctx.removeCreateSku(index),
+                          "aria-label": "移除规格" + (index + 1)
+                        }, [
+                          _createVNode2(_component_Icon, {
+                            name: "x",
+                            size: 15
+                          })
+                        ], 8, ["disabled", "onClick", "aria-label"])
+                      ]);
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  )),
+                  _createElementVNode("button", {
+                    type: "button",
+                    class: "outline-button small",
+                    disabled: _ctx.form.skus.length >= 20,
+                    onClick: _ctx.addCreateSku
+                  }, [
+                    _createVNode2(_component_Icon, {
+                      name: "plus",
+                      size: 15
+                    }),
+                    _createTextVNode("添加规格")
+                  ], 8, ["disabled", "onClick"]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-7"
+                  }, "描述"),
+                  _withDirectives(_createElementVNode("textarea", {
+                    id: "merchant-field-7",
+                    class: "admin-input",
+                    rows: "3",
+                    "onUpdate:modelValue": ($event) => _ctx.form.description = $event,
+                    placeholder: "选填"
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.form.description]
+                  ]),
+                  _createElementVNode("label", { class: "field-label" }, "商品主图"),
+                  _createVNode2(_component_ProductImageListField, {
+                    modelValue: _ctx.form.imageUrls,
+                    "onUpdate:modelValue": ($event) => _ctx.form.imageUrls = $event,
+                    "merchant-id": _ctx.store.merchantId,
+                    invalid: _ctx.createImageInvalid,
+                    demo: _ctx.preview,
+                    disabled: _ctx.saving || !_ctx.owned,
+                    onBusy: ($event) => _ctx.createImageUploading = $event,
+                    onInvalid: ($event) => _ctx.createImageInvalid = $event
+                  }, null, 8, ["modelValue", "onUpdate:modelValue", "merchant-id", "invalid", "demo", "disabled", "onBusy", "onInvalid"]),
+                  _createElementVNode("div", { class: "form-buttons" }, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.modal = ""
+                    }, "取消", 8, ["onClick"]),
+                    _createElementVNode("button", {
+                      type: "submit",
+                      class: "teal-button",
+                      disabled: _ctx.preview || _ctx.saving || _ctx.createImageUploading || _ctx.createImageInvalid || !_ctx.owned
+                    }, "保存商品", 8, ["disabled"])
+                  ])
+                ], 40, ["onSubmit"])) : _ctx.modal === "addSku" ? (_openBlock(), _createElementBlock("form", {
+                  key: 1,
+                  class: "merchant-modal narrow",
+                  onSubmit: _withModifiers(_ctx.addSku, ["prevent"])
                 }, [
-                  _createVNode2(_component_Icon, {
-                    name: "x",
-                    size: 18
-                  })
-                ], 8, ["onClick"])
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-8"
-              }, "规格名称"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-8",
-                class: "admin-input",
-                maxlength: "100",
-                "onUpdate:modelValue": ($event) => _ctx.skuForm.specKey = $event,
-                required: "",
-                placeholder: "例如：500ml"
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.skuForm.specKey]
-              ]),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-9"
-              }, "售价（元）"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-9",
-                class: "admin-input",
-                "onUpdate:modelValue": ($event) => _ctx.skuForm.price = $event,
-                inputmode: "decimal",
-                required: "",
-                placeholder: "0.00"
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.skuForm.price]
-              ]),
-              _createElementVNode("div", { class: "form-buttons" }, [
-                _createElementVNode("button", {
-                  type: "button",
-                  class: "outline-button",
-                  onClick: ($event) => _ctx.modal = ""
-                }, "取消", 8, ["onClick"]),
-                _createElementVNode("button", {
-                  type: "submit",
-                  class: "teal-button",
-                  disabled: _ctx.preview || _ctx.saving
-                }, "保存规格", 8, ["disabled"])
-              ])
-            ], 40, ["onSubmit"])) : _ctx.modal === "price" ? (_openBlock(), _createElementBlock("form", {
-              key: 2,
-              class: "merchant-modal narrow",
-              onSubmit: _withModifiers(_ctx.savePrice, ["prevent"])
-            }, [
-              _createElementVNode("div", { class: "merchant-modal-header" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode("h2", null, "修改售价")
-                ]),
-                _createElementVNode("button", {
-                  type: "button",
-                  onClick: ($event) => _ctx.modal = "",
-                  "aria-label": "关闭"
+                  _createElementVNode("div", { class: "merchant-modal-header" }, [
+                    _createElementVNode("h2", null, "新增规格"),
+                    _createElementVNode("button", {
+                      type: "button",
+                      onClick: ($event) => _ctx.modal = "",
+                      "aria-label": "关闭"
+                    }, [
+                      _createVNode2(_component_Icon, {
+                        name: "x",
+                        size: 18
+                      })
+                    ], 8, ["onClick"])
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-8"
+                  }, "规格名称"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-8",
+                    class: "admin-input",
+                    maxlength: "100",
+                    "onUpdate:modelValue": ($event) => _ctx.skuForm.specKey = $event,
+                    required: "",
+                    placeholder: "例如：500ml"
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.skuForm.specKey]
+                  ]),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-9"
+                  }, "售价（元）"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-9",
+                    class: "admin-input",
+                    "onUpdate:modelValue": ($event) => _ctx.skuForm.price = $event,
+                    inputmode: "decimal",
+                    required: "",
+                    placeholder: "0.00"
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.skuForm.price]
+                  ]),
+                  _createElementVNode("div", { class: "form-buttons" }, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.modal = ""
+                    }, "取消", 8, ["onClick"]),
+                    _createElementVNode("button", {
+                      type: "submit",
+                      class: "teal-button",
+                      disabled: _ctx.preview || _ctx.saving
+                    }, "保存规格", 8, ["disabled"])
+                  ])
+                ], 40, ["onSubmit"])) : _ctx.modal === "price" ? (_openBlock(), _createElementBlock("form", {
+                  key: 2,
+                  class: "merchant-modal narrow",
+                  onSubmit: _withModifiers(_ctx.savePrice, ["prevent"])
                 }, [
-                  _createVNode2(_component_Icon, {
-                    name: "x",
-                    size: 20
-                  })
-                ], 8, ["onClick"])
-              ]),
-              _createElementVNode(
-                "div",
-                { class: "field-muted" },
-                _toDisplayString((_j = _ctx.selected) == null ? void 0 : _j.title) + " · " + _toDisplayString((_k = _ctx.activePriceSku) == null ? void 0 : _k.specKey),
-                1
-                /* TEXT */
-              ),
-              _createElementVNode("label", {
-                class: "field-label",
-                for: "merchant-field-10"
-              }, "售价（元）"),
-              _withDirectives(_createElementVNode("input", {
-                id: "merchant-field-10",
-                class: "admin-input",
-                "onUpdate:modelValue": ($event) => _ctx.newPrice = $event,
-                inputmode: "decimal",
-                required: ""
-              }, null, 8, ["onUpdate:modelValue"]), [
-                [_vModelText, _ctx.newPrice]
-              ]),
-              _createElementVNode("div", { class: "form-buttons" }, [
-                _createElementVNode("button", {
-                  type: "button",
-                  class: "outline-button",
-                  onClick: ($event) => _ctx.modal = ""
-                }, "取消", 8, ["onClick"]),
-                _createElementVNode("button", {
-                  type: "submit",
-                  class: "teal-button",
-                  disabled: _ctx.preview || _ctx.saving
-                }, "保存售价", 8, ["disabled"])
-              ])
-            ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
-          ], 8, ["onClick"])), [
-            [_directive_modal, () => _ctx.modal = ""]
-          ]) : _createCommentVNode("v-if", true)
-        ]);
+                  _createElementVNode("div", { class: "merchant-modal-header" }, [
+                    _createElementVNode("div", null, [
+                      _createElementVNode("h2", null, "修改售价")
+                    ]),
+                    _createElementVNode("button", {
+                      type: "button",
+                      onClick: ($event) => _ctx.modal = "",
+                      "aria-label": "关闭"
+                    }, [
+                      _createVNode2(_component_Icon, {
+                        name: "x",
+                        size: 20
+                      })
+                    ], 8, ["onClick"])
+                  ]),
+                  _createElementVNode(
+                    "div",
+                    { class: "field-muted" },
+                    _toDisplayString((_g = _ctx.selected) == null ? void 0 : _g.title) + " · " + _toDisplayString((_h = _ctx.activePriceSku) == null ? void 0 : _h.specKey),
+                    1
+                    /* TEXT */
+                  ),
+                  _createElementVNode("label", {
+                    class: "field-label",
+                    for: "merchant-field-10"
+                  }, "售价（元）"),
+                  _withDirectives(_createElementVNode("input", {
+                    id: "merchant-field-10",
+                    class: "admin-input",
+                    "onUpdate:modelValue": ($event) => _ctx.newPrice = $event,
+                    inputmode: "decimal",
+                    required: ""
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelText, _ctx.newPrice]
+                  ]),
+                  _createElementVNode("div", { class: "form-buttons" }, [
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.modal = ""
+                    }, "取消", 8, ["onClick"]),
+                    _createElementVNode("button", {
+                      type: "submit",
+                      class: "teal-button",
+                      disabled: _ctx.preview || _ctx.saving
+                    }, "保存售价", 8, ["disabled"])
+                  ])
+                ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
+              ], 8, ["onClick"])), [
+                [_directive_modal, () => _ctx.modal = ""]
+              ]) : _createCommentVNode("v-if", true),
+              _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
+                key: 4,
+                onClose: ($event) => _ctx.loginOpen = false,
+                onSuccess: _ctx.loadMerchant
+              }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
+            ];
+          }),
+          _: 1
+          /* STABLE */
+        });
       };
     })()
   };
-  const { ref: ref$9, computed: computed$9, onMounted: onMounted$9, watch: watch$8 } = Vue;
+  const _hoisted_1 = ["role", "aria-live"];
+  const _hoisted_2 = {
+    key: 0,
+    class: "mini-spinner",
+    "aria-hidden": "true"
+  };
+  const _hoisted_3 = { class: "status-panel-copy" };
+  const _hoisted_4 = ["disabled"];
+  const _sfc_main = /* @__PURE__ */ defineComponent({
+    __name: "StatusPanel",
+    props: {
+      state: {},
+      message: { default: "" },
+      actionLabel: { default: "" },
+      busy: { type: Boolean, default: false }
+    },
+    emits: ["retry"],
+    setup(__props, { emit: __emit }) {
+      const emit2 = __emit;
+      return (_ctx, _cache) => {
+        return openBlock(), createElementBlock("section", {
+          class: normalizeClass(["status-panel surface-card", `status-panel--${__props.state}`]),
+          role: __props.state === "error" ? "alert" : "status",
+          "aria-live": __props.state === "error" ? "assertive" : "polite"
+        }, [
+          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2)) : (openBlock(), createBlock(unref(Icon), {
+            key: 1,
+            name: __props.state === "error" ? "alert" : "order",
+            size: 26,
+            "aria-hidden": "true"
+          }, null, 8, ["name"])),
+          createBaseVNode("div", _hoisted_3, [
+            createBaseVNode(
+              "strong",
+              null,
+              toDisplayString(__props.state === "loading" ? __props.message || "正在加载…" : __props.message),
+              1
+              /* TEXT */
+            )
+          ]),
+          __props.actionLabel && __props.state !== "loading" ? (openBlock(), createElementBlock("button", {
+            key: 2,
+            type: "button",
+            class: "outline-button",
+            disabled: __props.busy,
+            onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
+          }, toDisplayString(__props.actionLabel), 9, _hoisted_4)) : createCommentVNode("v-if", true)
+        ], 10, _hoisted_1);
+      };
+    }
+  });
+  const { ref: ref$9, computed: computed$9, onMounted: onMounted$8, watch: watch$7 } = Vue;
   const ProductDetail = {
     name: "ProductDetail",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), error = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
+      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
       const id = computed$9(() => safeDecodeId(store.route.split("/")[2] || ""));
       const sku2 = computed$9(
         () => {
@@ -16426,28 +17155,42 @@
           return ((_b = (_a = product.value) == null ? void 0 : _a.images) == null ? void 0 : _b.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
         }
       );
+      const errorText = computed$9(() => {
+        if (errorCode.value === "C0001") return "该商品已下架或暂不可售";
+        if (errorCode.value === "G0001") return "商品不存在或已删除";
+        if (!errorCode.value || ["NETWORK", "TIMEOUT", "RESPONSE"].includes(errorCode.value))
+          return "商品加载失败，请检查网络后重试";
+        return error.value || "商品加载失败，请重试";
+      });
       async function load() {
         const request2 = scope.begin();
         const target = id.value;
         product.value = null;
         error.value = "";
-        if (preview) {
-          product.value = store.products.find((p2) => p2.productId === target) || null;
-        } else {
-          try {
+        errorCode.value = "";
+        loading.value = true;
+        try {
+          if (preview) {
+            product.value = store.products.find((p2) => p2.productId === target) || null;
+          } else {
             if (!target) throw Error("无效商品地址");
             const p2 = await api("/products/" + pathId(target), { signal: request2.signal });
             if (request2.current()) product.value = p2;
-          } catch (e) {
-            if (request2.current()) error.value = e.message;
           }
+        } catch (e) {
+          if (request2.current()) {
+            error.value = e.message;
+            errorCode.value = e.code || "";
+          }
+        } finally {
+          if (request2.current()) loading.value = false;
         }
         if (!request2.current()) return;
         chosen.value = skuOf(product.value).skuId || "";
         imageIndex.value = 0;
         count.value = 1;
       }
-      onMounted$9(load);
+      onMounted$8(load);
       async function add() {
         var _a;
         if (preview || busy.value || !((_a = sku2.value) == null ? void 0 : _a.skuId)) return;
@@ -16486,13 +17229,16 @@
         chosen,
         count,
         busy,
+        loading,
         error,
+        errorText,
         preview,
         store,
         go,
         money,
         merchant,
         add,
+        load,
         pathId,
         imageIndex,
         touchStart,
@@ -16501,9 +17247,10 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
+        const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ProductImage = _resolveComponent("ProductImage");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
@@ -16523,18 +17270,20 @@
                 _createVNode2(_component_Icon, { name: "cart" })
               ], 8, ["onClick"])
             ]),
-            _ctx.error ? (_openBlock(), _createElementBlock(
-              "div",
-              {
-                key: 0,
-                class: "inline-error"
-              },
-              _toDisplayString(_ctx.error),
-              1
-              /* TEXT */
-            )) : _ctx.product ? (_openBlock(), _createElementBlock(
+            _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 0,
+              state: "loading",
+              message: "正在加载商品…"
+            })) : _ctx.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 1,
+              state: "error",
+              message: _ctx.errorText,
+              "action-label": "重新加载",
+              busy: _ctx.loading,
+              onRetry: _ctx.load
+            }, null, 8, ["message", "busy", "onRetry"])) : _ctx.product ? (_openBlock(), _createElementBlock(
               _Fragment,
-              { key: 1 },
+              { key: 2 },
               [
                 _createElementVNode("div", {
                   class: "detail-art",
@@ -16651,12 +17400,25 @@
                           key: s.skuId,
                           class: _normalizeClass({ active: _ctx.sku.skuId === s.skuId }),
                           "aria-pressed": _ctx.sku.skuId === s.skuId,
-                          disabled: _ctx.busy || s.status !== "ACTIVE" || !s.available,
+                          disabled: _ctx.busy || s.status !== "ACTIVE" || Number(s.available) <= 0,
                           onClick: ($event) => {
                             _ctx.chosen = s.skuId;
                             _ctx.count = 1;
                           }
-                        }, _toDisplayString(s.specKey), 11, ["aria-pressed", "disabled", "onClick"]);
+                        }, [
+                          _createTextVNode(
+                            _toDisplayString(s.specKey),
+                            1
+                            /* TEXT */
+                          ),
+                          s.status !== "ACTIVE" ? (_openBlock(), _createElementBlock("small", {
+                            key: 0,
+                            class: "sku-state"
+                          }, "已下架")) : Number(s.available) <= 0 ? (_openBlock(), _createElementBlock("small", {
+                            key: 1,
+                            class: "sku-state"
+                          }, "无货")) : _createCommentVNode("v-if", true)
+                        ], 10, ["aria-pressed", "disabled", "onClick"]);
                       }),
                       128
                       /* KEYED_FRAGMENT */
@@ -16717,17 +17479,18 @@
                   ], 8, ["onClick"]),
                   _createElementVNode("button", {
                     class: "teal-button",
-                    disabled: _ctx.preview || _ctx.busy || !_ctx.sku.available || _ctx.product.status !== "PUBLISHED",
+                    disabled: _ctx.preview || _ctx.busy || _ctx.sku.status !== "ACTIVE" || Number(_ctx.sku.available || 0) <= 0 || _ctx.product.status !== "PUBLISHED",
                     onClick: _ctx.add
                   }, _toDisplayString(_ctx.busy ? "加入中…" : "加入购物车"), 9, ["disabled", "onClick"])
                 ])
               ],
               64
               /* STABLE_FRAGMENT */
-            )) : (_openBlock(), _createElementBlock("div", {
-              key: 2,
-              class: "mobile-empty"
-            }, "正在加载商品…"))
+            )) : (_openBlock(), _createBlock(_component_StatusPanel, {
+              key: 3,
+              state: "empty",
+              message: "未找到商品"
+            }))
           ]),
           _: 1
           /* STABLE */
@@ -16735,7 +17498,7 @@
       };
     })()
   };
-  const { ref: ref$8, computed: computed$8, onMounted: onMounted$8, onUnmounted: onUnmounted$6, watch: watch$7 } = Vue;
+  const { ref: ref$8, computed: computed$8, onMounted: onMounted$7, onUnmounted: onUnmounted$5, watch: watch$6 } = Vue;
   const Shop = {
     name: "Shop",
     components: { ConsumerShell, ProductImage },
@@ -16778,13 +17541,13 @@
           if (valid()) loading.value = false;
         }
       }
-      onMounted$8(load);
-      onUnmounted$6(() => ++loadVersion);
-      watch$7(page, load);
+      onMounted$7(load);
+      onUnmounted$5(() => ++loadVersion);
+      watch$6(page, load);
       return { merchant, products, error, loading, page, hasNext, go, money, skuOf };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createBlock: _createBlock, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -16816,12 +17579,20 @@
               { key: 1 },
               [
                 _createElementVNode("section", { class: "shop-hero" }, [
-                  _createElementVNode("span", { class: "merchant-logo" }, [
+                  _ctx.merchant.imageUrl ? (_openBlock(), _createBlock(_component_ProductImage, {
+                    key: 0,
+                    class: "shop-hero-image",
+                    src: _ctx.merchant.imageUrl,
+                    alt: _ctx.merchant.name + "门店图片"
+                  }, null, 8, ["src", "alt"])) : (_openBlock(), _createElementBlock("span", {
+                    key: 1,
+                    class: "merchant-logo"
+                  }, [
                     _createVNode2(_component_Icon, {
                       name: "store",
                       size: 28
                     })
-                  ]),
+                  ])),
                   _createElementVNode("div", null, [
                     _createElementVNode(
                       "h1",
@@ -16838,6 +17609,31 @@
                       /* TEXT */
                     )
                   ])
+                ]),
+                _createElementVNode("section", { class: "detail-card shop-intro" }, [
+                  _createElementVNode("h2", null, "门店介绍"),
+                  _ctx.merchant.description ? (_openBlock(), _createElementBlock(
+                    "p",
+                    { key: 0 },
+                    _toDisplayString(_ctx.merchant.description),
+                    1
+                    /* TEXT */
+                  )) : (_openBlock(), _createElementBlock("p", {
+                    key: 1,
+                    class: "muted-short"
+                  }, "未填写")),
+                  _createElementVNode("h2", null, "营业时间"),
+                  _ctx.merchant.businessHours ? (_openBlock(), _createElementBlock("p", { key: 2 }, [
+                    _createTextVNode(
+                      _toDisplayString(_ctx.merchant.businessHours) + " ",
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("small", null, "（北京时间）")
+                  ])) : (_openBlock(), _createElementBlock("p", {
+                    key: 3,
+                    class: "muted-short"
+                  }, "未填写"))
                 ]),
                 _createElementVNode("div", { class: "section-heading" }, [
                   _createElementVNode("h2", null, "在售商品")
@@ -17163,13 +17959,14 @@
       permissions: ["product.read", "product.write", "stock.read"]
     }
   ];
-  const { ref: ref$7, computed: computed$7, onMounted: onMounted$7 } = Vue;
+  const { ref: ref$7, computed: computed$7, onMounted: onMounted$6 } = Vue;
   const Cart = {
     name: "Cart",
-    components: { ConsumerShell, ProductImage },
+    components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
     setup() {
       const scope = requestScope();
-      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7("");
+      const items2 = ref$7([]), merchantId = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7(""), confirmOpen = ref$7(false), confirmLoading = ref$7(false), confirmError = ref$7(""), confirmRetryable = ref$7(false), confirmItems = ref$7([]), confirmMerchant = ref$7({}), confirmTotal = ref$7(0);
+      let confirmVersion = 0;
       const groups = computed$7(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
@@ -17214,7 +18011,7 @@
         if (!items2.value.some((i) => i.merchantId === merchantId.value))
           merchantId.value = ((_a = items2.value[0]) == null ? void 0 : _a.merchantId) || "";
       }
-      onMounted$7(load);
+      onMounted$6(load);
       async function quantity(i, d) {
         if (preview || busy.value || loading.value) return;
         const current = scope.capture();
@@ -17234,7 +18031,7 @@
           if (current()) busy.value = false;
         }
       }
-      async function checkout() {
+      function checkout() {
         if (preview || busy.value || loading.value || !selected.value.length) return;
         if (selected.value.length > 20) {
           notify("每笔订单最多支持20个SKU行，请减少商品规格后结算");
@@ -17244,9 +18041,61 @@
           notify("请先调整失效或库存不足的商品");
           return;
         }
+        confirmOpen.value = true;
+        loadConfirmation();
+      }
+      async function loadConfirmation() {
+        const stamp = ++confirmVersion, merchant = merchantId.value;
+        confirmLoading.value = true;
+        confirmError.value = "";
+        confirmRetryable.value = false;
+        confirmItems.value = [];
+        confirmTotal.value = 0;
+        try {
+          const [cart, shop] = await Promise.all([
+            api("/cart"),
+            api("/merchants/public/" + pathId(merchant))
+          ]);
+          if (stamp !== confirmVersion) return;
+          const rows = (cart || []).filter((i) => i.merchantId === merchant);
+          confirmMerchant.value = shop || {};
+          confirmItems.value = rows;
+          confirmTotal.value = rows.reduce(
+            (sum, i) => sum + Number(i.priceCent) * Number(i.quantity),
+            0
+          );
+          if (!rows.length) confirmError.value = "购物车中已没有该商户的商品，请返回调整";
+          else if (rows.some((i) => !i.sellable || i.available < i.quantity))
+            confirmError.value = "部分商品库存不足或已失效，请返回调整后重新确认";
+        } catch (e) {
+          if (stamp === confirmVersion) confirmError.value = e.message;
+        } finally {
+          if (stamp === confirmVersion) confirmLoading.value = false;
+        }
+      }
+      function closeConfirm() {
+        if (busy.value) return;
+        ++confirmVersion;
+        confirmOpen.value = false;
+        confirmLoading.value = false;
+        confirmError.value = "";
+        confirmRetryable.value = false;
+        confirmItems.value = [];
+        confirmMerchant.value = {};
+        confirmTotal.value = 0;
+      }
+      async function confirmCheckout() {
+        if (preview || busy.value || confirmLoading.value || confirmError.value) return;
+        if (!confirmItems.value.length || confirmItems.value.length > 20) return;
+        if (confirmItems.value.some(
+          (i) => !i.sellable || !positiveInt(i.quantity, 99) || i.quantity > i.available
+        )) {
+          confirmError.value = "部分商品库存不足或已失效，请刷新确认信息";
+          return;
+        }
         const body = {
           merchantId: merchantId.value,
-          items: selected.value.map((i) => ({
+          items: confirmItems.value.map((i) => ({
             skuId: i.skuId,
             quantity: Number(i.quantity),
             expectedPriceCent: Number(i.priceCent),
@@ -17260,15 +18109,23 @@
         }
         const current = scope.capture();
         busy.value = true;
+        confirmRetryable.value = false;
         try {
           const created = await api("/orders", { method: "POST", body, key: orderKey.value });
           if (!current()) return;
           orderKey.value = "";
           fingerprint.value = "";
+          confirmRetryable.value = false;
+          confirmOpen.value = false;
           notify("订单已创建");
           go("/orders/" + pathId(created.orderId));
         } catch (e) {
-          if (current()) notify(e.message);
+          if (current()) {
+            const indeterminate = ["NETWORK", "TIMEOUT", "RESPONSE"].includes(e.code) || Number(e.status) >= 500;
+            confirmRetryable.value = indeterminate;
+            confirmError.value = indeterminate ? "" : e.message;
+            if (indeterminate) notify("提交结果未知，可直接重试；同一内容不会重复下单");
+          }
         } finally {
           if (current()) busy.value = false;
         }
@@ -17288,16 +18145,29 @@
         merchantName,
         quantity,
         remove: (i) => quantity(i, -Number(i.quantity)),
+        orderKey,
+        confirmOpen,
+        confirmLoading,
+        confirmRetryable,
+        confirmError,
+        confirmItems,
+        confirmMerchant,
+        confirmTotal,
+        loadConfirmation,
+        closeConfirm,
+        confirmCheckout,
         checkout,
         load
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, createTextVNode: _createTextVNode, createBlock: _createBlock, withModifiers: _withModifiers, resolveDirective: _resolveDirective, withDirectives: _withDirectives, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
+        const _component_StatusPanel = _resolveComponent("StatusPanel");
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
+        const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "cart" }, {
           default: _withCtx(() => [
             _createElementVNode("div", { class: "mobile-page-top" }, [
@@ -17532,7 +18402,157 @@
                 disabled: _ctx.preview || _ctx.busy || _ctx.loading || !_ctx.selected.length,
                 onClick: _ctx.checkout
               }, _toDisplayString(_ctx.busy ? "提交中" : "提交订单"), 9, ["disabled", "onClick"])
-            ])) : _createCommentVNode("v-if", true)
+            ])) : _createCommentVNode("v-if", true),
+            _ctx.confirmOpen ? _withDirectives((_openBlock(), _createElementBlock("div", {
+              key: 6,
+              class: "ui-overlay",
+              onClick: _withModifiers(_ctx.closeConfirm, ["self"])
+            }, [
+              _createElementVNode("section", {
+                class: "product-sheet checkout-confirm",
+                role: "dialog",
+                "aria-modal": "true",
+                "aria-label": "确认订单"
+              }, [
+                _createElementVNode("button", {
+                  class: "sheet-close",
+                  onClick: _ctx.closeConfirm,
+                  "aria-label": "关闭"
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "x",
+                    size: 19
+                  })
+                ], 8, ["onClick"]),
+                _createElementVNode("h3", null, "确认订单"),
+                _createElementVNode("p", { class: "checkout-note" }, "模拟支付：提交后生成待付款订单，不会发生真实扣款。"),
+                _ctx.confirmLoading ? (_openBlock(), _createBlock(_component_StatusPanel, {
+                  key: 0,
+                  state: "loading",
+                  message: "正在核对最新购物车与门店信息…"
+                })) : _ctx.confirmError && !_ctx.confirmItems.length ? (_openBlock(), _createElementBlock(
+                  _Fragment,
+                  { key: 1 },
+                  [
+                    _createVNode2(_component_StatusPanel, {
+                      state: "error",
+                      message: _ctx.confirmError,
+                      "action-label": "重新加载",
+                      busy: _ctx.confirmLoading,
+                      onRetry: _ctx.loadConfirmation
+                    }, null, 8, ["message", "busy", "onRetry"]),
+                    _createElementVNode("button", {
+                      class: "outline-button checkout-back",
+                      onClick: _ctx.closeConfirm
+                    }, "返回调整", 8, ["onClick"])
+                  ],
+                  64
+                  /* STABLE_FRAGMENT */
+                )) : (_openBlock(), _createElementBlock(
+                  _Fragment,
+                  { key: 2 },
+                  [
+                    _createElementVNode("section", { class: "checkout-shop" }, [
+                      _createElementVNode(
+                        "strong",
+                        null,
+                        _toDisplayString(_ctx.confirmMerchant.name || "校内商户"),
+                        1
+                        /* TEXT */
+                      ),
+                      _createElementVNode(
+                        "span",
+                        null,
+                        _toDisplayString(_ctx.confirmMerchant.storeName || "门店") + " · " + _toDisplayString(_ctx.confirmMerchant.location || "地点未填写"),
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _createElementVNode("div", { class: "checkout-lines" }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.confirmItems, (i) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            key: i.skuId,
+                            class: "checkout-line"
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(i.title),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(i.specKey) + " × " + _toDisplayString(i.quantity) + " · " + _toDisplayString(_ctx.money(i.priceCent)) + "/件",
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.money(Number(i.priceCent) * Number(i.quantity))),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ]),
+                    _createElementVNode("div", { class: "checkout-total" }, [
+                      _createElementVNode("span", null, "应付合计"),
+                      _createElementVNode(
+                        "b",
+                        null,
+                        _toDisplayString(_ctx.money(_ctx.confirmTotal)),
+                        1
+                        /* TEXT */
+                      )
+                    ]),
+                    _ctx.confirmRetryable ? (_openBlock(), _createElementBlock("div", {
+                      key: 0,
+                      class: "mobile-hint",
+                      role: "status"
+                    }, "提交结果未知，可直接重试；同一内容不会重复下单。")) : _createCommentVNode("v-if", true),
+                    _ctx.confirmError ? (_openBlock(), _createElementBlock("div", {
+                      key: 1,
+                      class: "inline-error",
+                      role: "alert"
+                    }, [
+                      _createTextVNode(
+                        _toDisplayString(_ctx.confirmError) + " ",
+                        1
+                        /* TEXT */
+                      ),
+                      _createElementVNode("button", { onClick: _ctx.loadConfirmation }, "刷新确认信息", 8, ["onClick"])
+                    ])) : _createCommentVNode("v-if", true),
+                    _createElementVNode("div", { class: "checkout-actions" }, [
+                      _createElementVNode("button", {
+                        class: "outline-button",
+                        onClick: _ctx.closeConfirm,
+                        disabled: _ctx.busy
+                      }, "返回调整", 8, ["onClick", "disabled"]),
+                      _createElementVNode("button", {
+                        class: "teal-button",
+                        disabled: _ctx.busy || _ctx.confirmLoading || !!_ctx.confirmError,
+                        onClick: _ctx.confirmCheckout
+                      }, _toDisplayString(_ctx.busy ? "提交中…" : "确认下单（模拟支付）"), 9, ["disabled", "onClick"])
+                    ])
+                  ],
+                  64
+                  /* STABLE_FRAGMENT */
+                ))
+              ])
+            ], 8, ["onClick"])), [
+              [_directive_modal, _ctx.closeConfirm]
+            ]) : _createCommentVNode("v-if", true)
           ]),
           _: 1
           /* STABLE */
@@ -17540,58 +18560,7 @@
       };
     })()
   };
-  const _hoisted_1 = ["role", "aria-live"];
-  const _hoisted_2 = {
-    key: 0,
-    class: "mini-spinner",
-    "aria-hidden": "true"
-  };
-  const _hoisted_3 = { class: "status-panel-copy" };
-  const _hoisted_4 = ["disabled"];
-  const _sfc_main = /* @__PURE__ */ defineComponent({
-    __name: "StatusPanel",
-    props: {
-      state: {},
-      message: { default: "" },
-      actionLabel: { default: "" },
-      busy: { type: Boolean, default: false }
-    },
-    emits: ["retry"],
-    setup(__props, { emit: __emit }) {
-      const emit2 = __emit;
-      return (_ctx, _cache) => {
-        return openBlock(), createElementBlock("section", {
-          class: normalizeClass(["status-panel surface-card", `status-panel--${__props.state}`]),
-          role: __props.state === "error" ? "alert" : "status",
-          "aria-live": __props.state === "error" ? "assertive" : "polite"
-        }, [
-          __props.state === "loading" ? (openBlock(), createElementBlock("span", _hoisted_2)) : (openBlock(), createBlock(unref(Icon), {
-            key: 1,
-            name: __props.state === "error" ? "alert" : "order",
-            size: 26,
-            "aria-hidden": "true"
-          }, null, 8, ["name"])),
-          createBaseVNode("div", _hoisted_3, [
-            createBaseVNode(
-              "strong",
-              null,
-              toDisplayString(__props.state === "loading" ? __props.message || "正在加载…" : __props.message),
-              1
-              /* TEXT */
-            )
-          ]),
-          __props.actionLabel && __props.state !== "loading" ? (openBlock(), createElementBlock("button", {
-            key: 2,
-            type: "button",
-            class: "outline-button",
-            disabled: __props.busy,
-            onClick: _cache[0] || (_cache[0] = ($event) => emit2("retry"))
-          }, toDisplayString(__props.actionLabel), 9, _hoisted_4)) : createCommentVNode("v-if", true)
-        ], 10, _hoisted_1);
-      };
-    }
-  });
-  const { ref: ref$6, computed: computed$6, onMounted: onMounted$6, watch: watch$6 } = Vue;
+  const { ref: ref$6, computed: computed$6, onMounted: onMounted$5, watch: watch$5 } = Vue;
   const Orders = {
     name: "Orders",
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main },
@@ -17603,6 +18572,12 @@
       );
       const filtered = computed$6(
         () => orders.value.filter((o) => tab.value === "ALL" || o.status === tab.value)
+      );
+      const refundPending = computed$6(
+        () => {
+          var _a;
+          return !!((_a = detail.value) == null ? void 0 : _a.afterSale) && ["REQUESTED", "DISPUTED", "APPROVED"].includes(detail.value.afterSale.status);
+        }
       );
       const merchantName = (id2, record) => {
         var _a;
@@ -17646,8 +18621,8 @@
           if (request2.current()) loading.value = false;
         }
       }
-      onMounted$6(load);
-      watch$6([page, tab], () => {
+      onMounted$5(load);
+      watch$5([page, tab], () => {
         if (!id.value) load();
       });
       async function action(endpoint, method = "POST", body) {
@@ -17726,6 +18701,8 @@
         submitRefund,
         statusClass,
         allowToken,
+        refundPending,
+        eventLabel: orderEventLabel,
         load
       };
     },
@@ -17738,7 +18715,7 @@
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "orders" }, {
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e;
+            var _a, _b, _c, _d, _e, _f;
             return [
               _createElementVNode("div", { class: "mobile-page-top" }, [
                 _createElementVNode("button", {
@@ -17804,7 +18781,7 @@
                     _Fragment,
                     null,
                     _renderList(_ctx.filtered, (o) => {
-                      var _a2, _b2, _c2, _d2, _e2, _f, _g;
+                      var _a2, _b2, _c2, _d2, _e2, _f2, _g;
                       return _openBlock(), _createElementBlock("button", {
                         class: "consumer-order-card",
                         key: o.orderId,
@@ -17843,7 +18820,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_f = (_e2 = o.items) == null ? void 0 : _e2[0]) == null ? void 0 : _f.title) || "校园订单"),
+                              _toDisplayString(((_f2 = (_e2 = o.items) == null ? void 0 : _e2[0]) == null ? void 0 : _f2.title) || "校园订单"),
                               1
                               /* TEXT */
                             ),
@@ -17971,16 +18948,26 @@
                         name: "pin",
                         size: 19
                       }),
-                      _createElementVNode(
+                      _ctx.detail.pickupStoreName || _ctx.detail.pickupLocation ? (_openBlock(), _createElementBlock(
                         "span",
-                        null,
-                        _toDisplayString(((_b = _ctx.store.merchants.find((m) => m.merchantId === _ctx.detail.merchantId)) == null ? void 0 : _b.location) || "校内自提门店"),
+                        { key: 0 },
+                        _toDisplayString(_ctx.detail.pickupStoreName || "自提门店") + " · " + _toDisplayString(_ctx.detail.pickupLocation || "地点未记录"),
                         1
                         /* TEXT */
-                      )
-                    ])
+                      )) : (_openBlock(), _createElementBlock("span", { key: 1 }, "历史自提地点未记录"))
+                    ]),
+                    !_ctx.detail.pickupStoreName && !_ctx.detail.pickupLocation ? (_openBlock(), _createElementBlock(
+                      "small",
+                      {
+                        key: 0,
+                        class: "muted-short"
+                      },
+                      "当前门店：" + _toDisplayString(((_b = _ctx.store.merchants.find((m) => m.merchantId === _ctx.detail.merchantId)) == null ? void 0 : _b.location) || "未提供") + "（仅供参考，非下单时快照）",
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
                   ]),
-                  _ctx.detail.status === "PAID" ? (_openBlock(), _createElementBlock("section", {
+                  _ctx.detail.status === "PAID" && !_ctx.refundPending ? (_openBlock(), _createElementBlock("section", {
                     key: 0,
                     class: "detail-card token-card"
                   }, [
@@ -18028,6 +19015,13 @@
                       disabled: _ctx.preview || _ctx.busy || _ctx.loading || !!_ctx.error || !_ctx.allowToken,
                       onClick: ($event) => _ctx.action("/pickup-token")
                     }, _toDisplayString(_ctx.token ? "重新签发自提凭证" : "领取自提凭证"), 9, ["disabled", "onClick"])
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.detail.status === "PAID" && _ctx.refundPending ? (_openBlock(), _createElementBlock("section", {
+                    key: 1,
+                    class: "detail-card token-card"
+                  }, [
+                    _createElementVNode("h2", null, "退款处理中"),
+                    _createElementVNode("p", { class: "muted-short" }, "自提凭证暂停使用，请以退款进度为准。")
                   ])) : _createCommentVNode("v-if", true),
                   _createElementVNode("section", { class: "detail-card" }, [
                     _createElementVNode("h2", { class: "card-title-inline" }, [
@@ -18135,8 +19129,58 @@
                       )
                     ])) : _createCommentVNode("v-if", true)
                   ]),
+                  _createElementVNode("section", { class: "detail-card order-timeline" }, [
+                    _createElementVNode("h2", { class: "card-title-inline" }, "订单进度"),
+                    ((_e = _ctx.detail.events) == null ? void 0 : _e.length) ? (_openBlock(), _createElementBlock("ol", { key: 0 }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.detail.events, (e, i) => {
+                          return _openBlock(), _createElementBlock("li", {
+                            key: e.eventId || i
+                          }, [
+                            _createElementVNode("span", { class: "timeline-dot" }),
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(_ctx.eventLabel(e.type)),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("small", null, [
+                                _createTextVNode(
+                                  _toDisplayString(_ctx.dateTime(e.occurredAt)),
+                                  1
+                                  /* TEXT */
+                                ),
+                                e.reason ? (_openBlock(), _createElementBlock(
+                                  _Fragment,
+                                  { key: 0 },
+                                  [
+                                    _createTextVNode(
+                                      " · " + _toDisplayString(e.reason),
+                                      1
+                                      /* TEXT */
+                                    )
+                                  ],
+                                  64
+                                  /* STABLE_FRAGMENT */
+                                )) : _createCommentVNode("v-if", true)
+                              ])
+                            ])
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : (_openBlock(), _createElementBlock("p", {
+                      key: 1,
+                      class: "muted-short"
+                    }, "历史进度未记录"))
+                  ]),
                   !_ctx.preview ? (_openBlock(), _createElementBlock("section", {
-                    key: 1,
+                    key: 2,
                     class: "order-actions"
                   }, [
                     _ctx.detail.status === "PENDING_PAYMENT" ? (_openBlock(), _createElementBlock("button", {
@@ -18157,7 +19201,7 @@
                       disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
                       onClick: ($event) => _ctx.refundOpen = !_ctx.refundOpen
                     }, "申请退款", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
-                    _ctx.detail.status === "PAID" && ((_e = _ctx.detail.afterSale) == null ? void 0 : _e.status) === "REJECTED" ? (_openBlock(), _createElementBlock("button", {
+                    _ctx.detail.status === "PAID" && ((_f = _ctx.detail.afterSale) == null ? void 0 : _f.status) === "REJECTED" ? (_openBlock(), _createElementBlock("button", {
                       key: 3,
                       class: "outline-button",
                       disabled: _ctx.busy || _ctx.loading || !!_ctx.error,
@@ -18165,7 +19209,7 @@
                     }, "申请平台介入", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                   ])) : _createCommentVNode("v-if", true),
                   _ctx.refundOpen && !_ctx.preview ? (_openBlock(), _createElementBlock("form", {
-                    key: 2,
+                    key: 3,
                     class: "detail-card",
                     onSubmit: _withModifiers(_ctx.submitRefund, ["prevent"])
                   }, [
@@ -18205,7 +19249,7 @@
       };
     })()
   };
-  const { ref: ref$5, computed: computed$5, onMounted: onMounted$5, onUnmounted: onUnmounted$5, watch: watch$5 } = Vue;
+  const { ref: ref$5, computed: computed$5, onMounted: onMounted$4, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
   const Account = {
     name: "Account",
     components: { ConsumerShell, AuthDialog },
@@ -18263,10 +19307,10 @@
           if (stamp === loadEpoch) loading.value = false;
         }
       }
-      onMounted$5(load);
-      watch$5(page, load);
-      watch$5(invitePage, load);
-      onUnmounted$5(() => ++loadEpoch);
+      onMounted$4(load);
+      watch$4(page, load);
+      watch$4(invitePage, load);
+      onUnmounted$4(() => ++loadEpoch);
       async function submit() {
         if (preview || busy.value) return;
         const f = { ...form.value }, current = scope.capture();
@@ -18711,288 +19755,7 @@
       };
     })()
   };
-  const { ref: ref$4, computed: computed$4, watch: watch$4, nextTick, onMounted: onMounted$4, onUnmounted: onUnmounted$4 } = Vue;
-  const merchantNav = [
-    ["home", "工作台", "/merchant"],
-    ["package", "商品管理", "/merchant/products"],
-    ["box", "库存管理", "/merchant/inventory"],
-    ["order", "订单管理", "/merchant/orders"],
-    ["scan", "自提核销", "/merchant/pickup"],
-    ["clipboard", "售后处理", "/merchant/aftersales"],
-    ["users", "店员管理", "/merchant/team"],
-    ["shield", "角色权限", "/merchant/roles"],
-    ["book", "知识库", "/merchant/knowledge"],
-    ["settings", "门店设置", "/merchant/settings"]
-  ];
-  const adminNav = [
-    ["home", "平台总览", "/admin"],
-    ["store", "商户审核", "/admin/applications"],
-    ["users", "商户监管", "/admin/merchants"],
-    ["package", "商品监管", "/admin/products"],
-    ["order", "订单监管", "/admin/orders"],
-    ["shield", "争议处理", "/admin/disputes"],
-    ["book", "知识库", "/admin/knowledge"],
-    ["grid", "分类管理", "/admin/categories"]
-  ];
-  const BackofficeShell = {
-    name: "BackofficeShell",
-    props: { role: { type: String, default: "merchant" }, title: String },
-    components: { AuthDialog },
-    setup() {
-      const loginOpen = ref$4(false), mobileNav = ref$4(null);
-      const required = {
-        "/merchant": "order.read",
-        "/merchant/products": "product.read",
-        "/merchant/inventory": "stock.read",
-        "/merchant/orders": "order.read",
-        "/merchant/pickup": "pickup.verify",
-        "/merchant/aftersales": "aftersale.read",
-        "/merchant/team": "team.manage",
-        "/merchant/roles": "role.manage",
-        "/merchant/knowledge": "knowledge.read",
-        "/merchant/settings": "store.manage"
-      };
-      const visibleMerchantNav = computed$4(
-        () => merchantNav.filter(([, , path]) => hasPermission(required[path]))
-      );
-      const alignMobileNav = () => {
-        var _a;
-        const nav = mobileNav.value;
-        if (nav == null ? void 0 : nav.clientWidth)
-          (_a = nav.querySelector("button.active")) == null ? void 0 : _a.scrollIntoView({ inline: "center", block: "nearest" });
-      };
-      watch$4(
-        [() => store.route, () => visibleMerchantNav.value.map((item) => item[2]).join("|")],
-        async () => {
-          await nextTick();
-          alignMobileNav();
-        },
-        { immediate: true, flush: "post" }
-      );
-      onMounted$4(() => window.addEventListener("resize", alignMobileNav));
-      onUnmounted$4(() => window.removeEventListener("resize", alignMobileNav));
-      async function switchShop(e) {
-        if (preview) {
-          notify("演示模式不能切换真实商户");
-          return;
-        }
-        switchMerchantContext(e.target.value);
-      }
-      return {
-        store,
-        go,
-        preview,
-        loginOpen,
-        mobileNav,
-        merchantNav,
-        visibleMerchantNav,
-        adminNav,
-        switchShop
-      };
-    },
-    render: (() => {
-      const { createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
-      return function render2(_ctx, _cache) {
-        const _component_Icon = _resolveComponent("Icon");
-        const _component_AuthDialog = _resolveComponent("AuthDialog");
-        return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
-          _createElementVNode("aside", { class: "merchant-sidebar" }, [
-            _createElementVNode("button", {
-              class: "merchant-brand",
-              onClick: ($event) => _ctx.go("/")
-            }, [
-              _createElementVNode("span", { class: "brand-pin" }, [
-                _createElementVNode("span")
-              ]),
-              _createElementVNode("span", { class: "brand-word" }, [
-                _createTextVNode("青柠校园 "),
-                _createElementVNode(
-                  "span",
-                  { class: "brand-suffix" },
-                  "/ " + _toDisplayString(_ctx.role === "admin" ? "平台端" : "商户端"),
-                  1
-                  /* TEXT */
-                )
-              ])
-            ], 8, ["onClick"]),
-            _createElementVNode("nav", { class: "merchant-nav" }, [
-              (_openBlock(true), _createElementBlock(
-                _Fragment,
-                null,
-                _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
-                  return _openBlock(), _createElementBlock("button", {
-                    key: path,
-                    class: _normalizeClass({ active: _ctx.store.route === path }),
-                    onClick: ($event) => _ctx.go(path)
-                  }, [
-                    _createVNode2(_component_Icon, {
-                      name: ico,
-                      size: 19
-                    }, null, 8, ["name"]),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(label),
-                      1
-                      /* TEXT */
-                    ),
-                    _ctx.store.route === path ? (_openBlock(), _createElementBlock("span", {
-                      key: 0,
-                      class: "nav-left-bar"
-                    })) : _createCommentVNode("v-if", true)
-                  ], 10, ["onClick"]);
-                }),
-                128
-                /* KEYED_FRAGMENT */
-              ))
-            ]),
-            _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
-              _createElementVNode("button", {
-                class: "sidebar-back",
-                onClick: ($event) => _ctx.go("/")
-              }, [
-                _createVNode2(_component_Icon, {
-                  name: "arrowLeft",
-                  size: 16
-                }),
-                _createTextVNode(" 返回购物端")
-              ], 8, ["onClick"])
-            ])
-          ]),
-          _createElementVNode("div", { class: "merchant-content-shell" }, [
-            _createElementVNode("header", { class: "merchant-topbar" }, [
-              _createElementVNode("div", { class: "topbar-crumb" }, [
-                _createTextVNode(
-                  _toDisplayString(_ctx.role === "admin" ? "平台运营" : "店铺运营") + " ",
-                  1
-                  /* TEXT */
-                ),
-                _createVNode2(_component_Icon, {
-                  name: "chevronRight",
-                  size: 14
-                }),
-                _createElementVNode(
-                  "strong",
-                  null,
-                  _toDisplayString(_ctx.title),
-                  1
-                  /* TEXT */
-                )
-              ]),
-              _createElementVNode("div", { class: "merchant-topbar-tools" }, [
-                _ctx.preview ? (_openBlock(), _createElementBlock("span", {
-                  key: 0,
-                  class: "admin-preview-tag"
-                }, "设计预览")) : _createCommentVNode("v-if", true),
-                _ctx.role === "merchant" ? (_openBlock(), _createElementBlock("label", {
-                  key: 1,
-                  class: "topbar-merchant-select"
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "store",
-                    size: 16
-                  }),
-                  _createElementVNode("select", {
-                    value: _ctx.store.merchantId,
-                    onChange: _ctx.switchShop,
-                    disabled: _ctx.preview || _ctx.store.loading
-                  }, [
-                    (_openBlock(true), _createElementBlock(
-                      _Fragment,
-                      null,
-                      _renderList(_ctx.store.merchants, (m) => {
-                        return _openBlock(), _createElementBlock("option", {
-                          key: m.merchantId,
-                          value: m.merchantId
-                        }, _toDisplayString(m.name), 9, ["value"]);
-                      }),
-                      128
-                      /* KEYED_FRAGMENT */
-                    ))
-                  ], 40, ["value", "onChange", "disabled"])
-                ])) : _createCommentVNode("v-if", true),
-                _createElementVNode("button", {
-                  class: "topbar-avatar",
-                  onClick: ($event) => _ctx.loginOpen = true
-                }, [
-                  _createVNode2(_component_Icon, {
-                    name: "user",
-                    size: 18
-                  })
-                ], 8, ["onClick"])
-              ])
-            ]),
-            _createElementVNode(
-              "nav",
-              {
-                ref: "mobileNav",
-                class: "merchant-mobile-nav",
-                "aria-label": "工作台导航"
-              },
-              [
-                (_openBlock(true), _createElementBlock(
-                  _Fragment,
-                  null,
-                  _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
-                    return _openBlock(), _createElementBlock("button", {
-                      key: path,
-                      class: _normalizeClass({ active: _ctx.store.route === path }),
-                      onClick: ($event) => _ctx.go(path)
-                    }, [
-                      _createVNode2(_component_Icon, {
-                        name: ico,
-                        size: 16
-                      }, null, 8, ["name"]),
-                      _createTextVNode(
-                        _toDisplayString(label),
-                        1
-                        /* TEXT */
-                      )
-                    ], 10, ["onClick"]);
-                  }),
-                  128
-                  /* KEYED_FRAGMENT */
-                ))
-              ],
-              512
-              /* NEED_PATCH */
-            ),
-            _createElementVNode("main", { class: "merchant-main" }, [
-              _createElementVNode("div", { class: "merchant-page-heading" }, [
-                _createElementVNode("div", null, [
-                  _createElementVNode(
-                    "h1",
-                    null,
-                    _toDisplayString(_ctx.title),
-                    1
-                    /* TEXT */
-                  )
-                ]),
-                _renderSlot(_ctx.$slots, "actions")
-              ]),
-              _ctx.store.error ? (_openBlock(), _createElementBlock(
-                "div",
-                {
-                  key: 0,
-                  class: "inline-error merchant-error"
-                },
-                _toDisplayString(_ctx.store.error),
-                1
-                /* TEXT */
-              )) : _createCommentVNode("v-if", true),
-              _renderSlot(_ctx.$slots, "default")
-            ])
-          ]),
-          _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
-            key: 0,
-            onClose: ($event) => _ctx.loginOpen = false,
-            onSuccess: ($event) => _ctx.role === "merchant" ? _ctx.loadMerchant() : null
-          }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
-        ]);
-      };
-    })()
-  };
-  const { ref: ref$3, computed: computed$3, onMounted: onMounted$3, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
+  const { ref: ref$4, computed: computed$4, onMounted: onMounted$3, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
   const names = {
     "/merchant": "经营概览",
     "/merchant/inventory": "库存管理",
@@ -19007,17 +19770,31 @@
     components: { BackofficeShell, ProductImage },
     setup() {
       const scope = requestScope();
-      const route = computed$3(() => store.route);
-      const title = computed$3(() => names[route.value] || "经营概览");
-      const filter = ref$3("");
-      const q = ref$3("");
-      const stats = ref$3(null), orders = ref$3([]), afterSales = ref$3([]), members = ref$3([]), moves = ref$3([]), stockRows = ref$3([]), error = ref$3(""), loading = ref$3(false), busy = ref$3(false), picked = ref$3(null), token = ref$3(""), decision = ref$3(""), reason = ref$3("");
-      const page = ref$3(1), pageInfo = ref$3({ total: 0, hasNext: false }), amount = ref$3(1), sku2 = ref$3(""), inviteUser = ref$3(""), profile = ref$3({ name: "", storeName: "", location: "" });
-      const replenishKey = ref$3(""), replenishFingerprint = ref$3("");
-      const merchant = computed$3(
+      const route = computed$4(() => store.route);
+      const title = computed$4(() => names[route.value] || "经营概览");
+      const filter = ref$4("");
+      const pickupState = ref$4(route.value === "/merchant/pickup" ? "READY" : "");
+      const q = ref$4("");
+      const statsPeriod = ref$4(7);
+      const stats = ref$4(null), orders = ref$4([]), afterSales = ref$4([]), members = ref$4([]), moves = ref$4([]), stockRows = ref$4([]), error = ref$4(""), loading = ref$4(false), busy = ref$4(false), picked = ref$4(null), token = ref$4(""), decision = ref$4(""), reason = ref$4(""), historyEvents = ref$4([]), historyLoading = ref$4(false), historyError = ref$4("");
+      const availableBelow = ref$4(null);
+      const movementQ = ref$4("");
+      const movementPage = ref$4(1);
+      const movementPageInfo = ref$4({ total: 0, hasNext: false });
+      let historyVersion = 0;
+      const page = ref$4(1), pageInfo = ref$4({ total: 0, hasNext: false }), amount = ref$4(1), sku2 = ref$4(""), inviteUser = ref$4(""), profile = ref$4({
+        name: "",
+        storeName: "",
+        location: "",
+        description: "",
+        businessHours: "",
+        imageUrl: ""
+      });
+      const replenishKey = ref$4(""), replenishFingerprint = ref$4("");
+      const merchant = computed$4(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || {}
       );
-      const skuRows = computed$3(
+      const skuRows = computed$4(
         () => !preview && route.value === "/merchant/inventory" ? stockRows.value.map((s) => ({
           product: { title: s.productTitle || s.skuId, imageUrl: s.imageUrl || "" },
           sku: { skuId: s.skuId, specKey: s.specKey || "规格" },
@@ -19030,23 +19807,23 @@
           }))
         )
       );
-      const visibleOrders = computed$3(
+      const visibleOrders = computed$4(
         () => !preview ? orders.value : orders.value.filter(
           (o) => {
-            var _a, _b;
-            return (!filter.value || o.status === filter.value) && (!q.value || ((_a = o.orderId) == null ? void 0 : _a.toLowerCase().includes(q.value.toLowerCase())) || ((_b = o.items) == null ? void 0 : _b.some((i) => {
+            var _a, _b, _c;
+            return (!filter.value || o.status === filter.value) && (!pickupState.value || ((_a = o.pickup) == null ? void 0 : _a.status) === pickupState.value) && (!q.value || ((_b = o.orderId) == null ? void 0 : _b.toLowerCase().includes(q.value.toLowerCase())) || ((_c = o.items) == null ? void 0 : _c.some((i) => {
               var _a2;
               return (_a2 = i.title) == null ? void 0 : _a2.includes(q.value);
             })));
           }
         )
       );
-      const selectedOrder = computed$3(
+      const selectedOrder = computed$4(
         () => orders.value.find((o) => o.orderId === picked.value) || visibleOrders.value[0] || null
       );
-      const canOwner = computed$3(() => isOwner());
-      const can = computed$3(() => (code) => hasPermission(code));
-      const roles = ref$3([]);
+      const canOwner = computed$4(() => isOwner());
+      const can = computed$4(() => (code) => hasPermission(code));
+      const roles = ref$4([]);
       const routePermission = {
         "/merchant": "order.read",
         "/merchant/inventory": "stock.read",
@@ -19056,15 +19833,15 @@
         "/merchant/team": "team.manage",
         "/merchant/settings": "store.manage"
       };
-      const restricted = computed$3(
+      const restricted = computed$4(
         () => !preview && !hasPermission(routePermission[route.value] || "order.read")
       );
-      const canAct = computed$3(
+      const canAct = computed$4(
         () => !preview && !busy.value && !loading.value && !error.value && !!store.merchantId && !restricted.value
       );
       let loadVersion = 0;
       async function load() {
-        var _a;
+        var _a, _b;
         const request2 = scope.begin();
         const read = (path) => api(path, { signal: request2.signal });
         const stamp = ++loadVersion;
@@ -19102,7 +19879,7 @@
         try {
           if (section === "/merchant") {
             const [s, o] = await Promise.all([
-              hasPermission("dashboard.read") ? read(base + "/statistics") : Promise.resolve(null),
+              hasPermission("dashboard.read") ? read(base + "/statistics/operations" + query({ periodDays: statsPeriod.value })) : Promise.resolve(null),
               read(base + "/orders/page" + query({ page: 1, size: 5 }))
             ]);
             if (!current()) return;
@@ -19112,9 +19889,19 @@
           }
           if (section === "/merchant/orders" || section === "/merchant/pickup") {
             const result = await read(
-              base + "/orders/page" + query({ page: page.value, size: 10, state: filter.value, q: q.value })
+              base + "/orders/page" + query({
+                page: page.value,
+                size: 10,
+                state: filter.value,
+                pickupState: pickupState.value,
+                q: q.value
+              })
             );
             if (!current()) return;
+            if (((_b = result.items) == null ? void 0 : _b.length) === 0 && page.value > 1 && result.total > 0) {
+              page.value = Math.max(1, Math.ceil(result.total / 10));
+              return;
+            }
             orders.value = result.items || [];
             pageInfo.value = result;
           }
@@ -19128,12 +19915,22 @@
           }
           if (section === "/merchant/inventory") {
             const [stockResult, movements] = await Promise.all([
-              read(base + "/stocks/page" + query({ page: page.value, size: 10, q: q.value })),
-              read(base + "/stock-movements/page" + query({ page: 1, size: 8 }))
+              read(
+                base + "/stocks/page" + query({
+                  page: page.value,
+                  size: 10,
+                  q: q.value,
+                  availableBelow: availableBelow.value
+                })
+              ),
+              read(
+                base + "/stock-movements/page" + query({ page: movementPage.value, size: 8, q: movementQ.value })
+              )
             ]);
             if (!current()) return;
             stockRows.value = stockResult.items || [];
             moves.value = movements.items || [];
+            movementPageInfo.value = movements;
             pageInfo.value = stockResult;
           }
           if (section === "/merchant/team") {
@@ -19146,7 +19943,10 @@
             profile.value = {
               name: merchant.value.name || "",
               storeName: merchant.value.storeName || "",
-              location: merchant.value.location || ""
+              location: merchant.value.location || "",
+              description: merchant.value.description || "",
+              businessHours: merchant.value.businessHours || "",
+              imageUrl: merchant.value.imageUrl || ""
             };
         } catch (e) {
           if (current()) error.value = e.message;
@@ -19162,7 +19962,7 @@
       let searchDelay;
       let resettingPage = false;
       watch$3(
-        [page, q, filter],
+        [page, q, filter, pickupState, availableBelow, movementQ, statsPeriod],
         (next, previous) => {
           if (resettingPage) return;
           clearTimeout(searchDelay);
@@ -19172,12 +19972,16 @@
           if (changed) {
             resettingPage = true;
             page.value = 1;
+            if (next[4] !== previous[4] || next[5] !== previous[5]) movementPage.value = 1;
             resettingPage = false;
           }
           searchDelay = setTimeout(load, next[1] !== previous[1] ? 280 : 0);
         },
         { flush: "sync" }
       );
+      watch$3(movementPage, () => {
+        if (route.value === "/merchant/inventory") load();
+      });
       async function perform(url, body, method = "POST", key) {
         if (!canAct.value) return;
         const current = scope.capture();
@@ -19198,6 +20002,19 @@
       }
       function midPath() {
         return "/merchants/" + pathId(store.merchantId);
+      }
+      function orderReminder(o) {
+        var _a, _b;
+        const now = Date.now();
+        const deadline = (o == null ? void 0 : o.deadline) ? Date.parse(o.deadline) : NaN;
+        if ((o == null ? void 0 : o.status) === "PENDING_PAYMENT" && Number.isFinite(deadline)) {
+          if (deadline <= now) return "付款已超时";
+          if (deadline - now <= 15 * 60 * 1e3) return "付款即将超时";
+        }
+        const pickupExpires = ((_a = o == null ? void 0 : o.pickup) == null ? void 0 : _a.expiresAt) ? Date.parse(o.pickup.expiresAt) : NaN;
+        if (((_b = o == null ? void 0 : o.pickup) == null ? void 0 : _b.status) === "READY" && Number.isFinite(pickupExpires) && pickupExpires <= now)
+          return "自提凭证已过期";
+        return "";
       }
       async function prepare(o, ready) {
         await perform(midPath() + "/orders/" + pathId(o.orderId) + (ready ? "/ready" : "/prepare"));
@@ -19268,12 +20085,73 @@
           const index = store.merchants.findIndex((m) => m.merchantId === saved.merchantId);
           if (index >= 0) store.merchants[index] = saved;
           if (store.workspace) store.workspace.merchants = store.merchants;
-          profile.value = { name: saved.name, storeName: saved.storeName, location: saved.location };
+          profile.value = {
+            name: saved.name,
+            storeName: saved.storeName,
+            location: saved.location,
+            description: saved.description || "",
+            businessHours: saved.businessHours || "",
+            imageUrl: saved.imageUrl || ""
+          };
           notify("门店资料已保存");
         } catch (e) {
           if (current()) notify(e.message);
         } finally {
           if (current()) busy.value = false;
+        }
+      }
+      async function uploadStoreImage(event) {
+        var _a;
+        if (!canOwner.value || !canAct.value || busy.value) return;
+        const input = event.target;
+        const file = (_a = input.files) == null ? void 0 : _a[0];
+        input.value = "";
+        if (!file) return;
+        if (!file.type.startsWith("image/") || file.size > 2e6) {
+          notify("请选择 2MB 以内的图片");
+          return;
+        }
+        const current = scope.capture();
+        busy.value = true;
+        try {
+          const base64 = await new Promise((resolve2, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve2(String(reader.result || "").split(",")[1] || "");
+            reader.onerror = () => reject(new Error("图片读取失败"));
+            reader.readAsDataURL(file);
+          });
+          if (!current()) return;
+          const uploaded = await api(midPath() + "/store/images", {
+            method: "POST",
+            body: { filename: file.name, contentType: file.type, base64 }
+          });
+          if (!current()) return;
+          profile.value.imageUrl = uploaded.url;
+          notify("门店图片已上传，保存设置后生效");
+        } catch (e) {
+          if (current()) notify(e.message);
+        } finally {
+          if (current()) busy.value = false;
+        }
+      }
+      async function openAfterSaleDecision(orderId) {
+        const version2 = ++historyVersion;
+        decision.value = orderId;
+        reason.value = "";
+        historyEvents.value = [];
+        historyError.value = "";
+        if (preview) return;
+        historyLoading.value = true;
+        try {
+          const events = await api(midPath() + "/orders/" + pathId(orderId) + "/after-sale-history");
+          if (version2 !== historyVersion || decision.value !== orderId) return;
+          historyEvents.value = (events || []).filter(
+            (e) => e.type.startsWith("REFUND_") || e.type.startsWith("MERCHANT_") || e.type.startsWith("PLATFORM_")
+          );
+        } catch (e) {
+          if (version2 === historyVersion) historyError.value = e.message;
+        } finally {
+          if (version2 === historyVersion) historyLoading.value = false;
         }
       }
       async function decisionAction(s, approved) {
@@ -19294,8 +20172,8 @@
         }))
           reason.value = "";
       }
-      const topOrders = computed$3(() => orders.value.slice(0, 5));
-      const merchantName = computed$3(() => merchant.value.name || "校内商户");
+      const topOrders = computed$4(() => orders.value.slice(0, 5));
+      const merchantName = computed$4(() => merchant.value.name || "校内商户");
       return {
         store,
         go,
@@ -19303,15 +20181,21 @@
         route,
         title,
         filter,
+        pickupState,
         q,
         page,
         pageInfo,
+        statsPeriod,
         stats,
         orders,
         afterSales,
         members,
         moves,
         stockRows,
+        availableBelow,
+        movementQ,
+        movementPage,
+        movementPageInfo,
         error,
         busy,
         loading,
@@ -19321,6 +20205,11 @@
         token,
         decision,
         reason,
+        historyEvents,
+        historyLoading,
+        historyError,
+        orderEventLabel,
+        openAfterSaleDecision,
         amount,
         sku: sku2,
         skuRows,
@@ -19342,6 +20231,7 @@
         membershipStatusLabel,
         orderStatusLabel,
         pickupStatusLabel,
+        orderReminder,
         dateTime,
         coverSku,
         load,
@@ -19351,11 +20241,12 @@
         invite,
         revoke,
         saveProfile,
+        uploadStoreImage,
         decisionAction
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx, createBlock: _createBlock } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_ProductImage = _resolveComponent("ProductImage");
@@ -19377,7 +20268,7 @@
             ], 8, ["onClick"])
           ]),
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e;
+            var _a, _b, _c, _d, _e, _f, _g, _h;
             return [
               _ctx.loading ? (_openBlock(), _createElementBlock("div", {
                 key: 0,
@@ -19408,6 +20299,30 @@
                 _Fragment,
                 { key: 3 },
                 [
+                  _createElementVNode("div", { class: "ops-card stats-toolbar" }, [
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "统计期间：近 " + _toDisplayString(_ctx.statsPeriod) + " 天",
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.statsPeriod === 7 }),
+                      onClick: ($event) => _ctx.statsPeriod = 7
+                    }, "7 天", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.statsPeriod === 30 }),
+                      onClick: ($event) => _ctx.statsPeriod = 30
+                    }, "30 天", 10, ["onClick"]),
+                    _ctx.stats ? (_openBlock(), _createElementBlock(
+                      "small",
+                      { key: 0 },
+                      _toDisplayString(_ctx.stats.periodStart) + " 至 " + _toDisplayString(_ctx.stats.periodEnd) + " · " + _toDisplayString(_ctx.stats.timezone) + " · 截至 " + _toDisplayString(_ctx.stats.asOf),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
+                  ]),
                   _ctx.stats ? (_openBlock(), _createElementBlock("div", {
                     key: 0,
                     class: "ops-kpis"
@@ -19423,21 +20338,21 @@
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "待处理"),
+                      _createElementVNode("span", null, "成功支付"),
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.stats.pendingCount || 0),
+                        _toDisplayString(_ctx.stats.paidOrders || 0),
                         1
                         /* TEXT */
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "已完成"),
+                      _createElementVNode("span", null, "整单退款"),
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.stats.completedCount || 0),
+                        _toDisplayString(_ctx.stats.refundedOrders || 0),
                         1
                         /* TEXT */
                       )
@@ -19451,6 +20366,153 @@
                         1
                         /* TEXT */
                       )
+                    ]),
+                    _createElementVNode("div", null, [
+                      _createElementVNode("span", null, "退款率"),
+                      _createElementVNode(
+                        "strong",
+                        null,
+                        _toDisplayString(_ctx.stats.refundRate == null ? "—" : (_ctx.stats.refundRate * 100).toFixed(1) + "%"),
+                        1
+                        /* TEXT */
+                      )
+                    ])
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.stats ? (_openBlock(), _createElementBlock("div", {
+                    key: 1,
+                    class: "ops-grid"
+                  }, [
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "订单趋势"),
+                        _createElementVNode("span", null, "新增订单")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.trend, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.day
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(item.day),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("small", null, "按创建日")
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(item.orderCount),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      )),
+                      !((_a = _ctx.stats.trend) == null ? void 0 : _a.length) ? (_openBlock(), _createElementBlock("div", {
+                        key: 0,
+                        class: "admin-empty"
+                      }, "期间暂无订单")) : _createCommentVNode("v-if", true)
+                    ]),
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "商品表现"),
+                        _createElementVNode("span", null, "已完成商品")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.products, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.productId
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(item.title || item.productId),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(item.productId),
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(item.quantity),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      )),
+                      !((_b = _ctx.stats.products) == null ? void 0 : _b.length) ? (_openBlock(), _createElementBlock("div", {
+                        key: 0,
+                        class: "admin-empty"
+                      }, "期间暂无已完成商品")) : _createCommentVNode("v-if", true)
+                    ]),
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "状态分布"),
+                        _createElementVNode("span", null, "查询时事实")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.statuses, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.status
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(_ctx.orderStatusLabel(item.status)),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(item.orderCount) + " 单",
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.money(item.amountCent)),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      )),
+                      !((_c = _ctx.stats.statuses) == null ? void 0 : _c.length) ? (_openBlock(), _createElementBlock("div", {
+                        key: 0,
+                        class: "admin-empty"
+                      }, "期间暂无订单")) : _createCommentVNode("v-if", true)
                     ])
                   ])) : _createCommentVNode("v-if", true),
                   _createElementVNode("div", { class: "ops-grid" }, [
@@ -19589,6 +20651,32 @@
                     }, null, 8, ["onUpdate:modelValue"]), [
                       [_vModelText, _ctx.q]
                     ])
+                  ]),
+                  _createElementVNode("div", { class: "filter-pills secondary-pills" }, [
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.availableBelow === null }),
+                      onClick: ($event) => _ctx.availableBelow = null
+                    }, "全部库存", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.availableBelow !== null }),
+                      onClick: ($event) => _ctx.availableBelow = 10
+                    }, "低可售 ≤ " + _toDisplayString(_ctx.availableBelow === null ? 10 : _ctx.availableBelow), 11, ["onClick"]),
+                    _ctx.availableBelow !== null ? _withDirectives((_openBlock(), _createElementBlock("input", {
+                      key: 0,
+                      class: "admin-input compact-select",
+                      type: "number",
+                      min: "0",
+                      max: "1000000",
+                      "onUpdate:modelValue": ($event) => _ctx.availableBelow = $event,
+                      "aria-label": "低可售阈值"
+                    }, null, 8, ["onUpdate:modelValue"])), [
+                      [
+                        _vModelText,
+                        _ctx.availableBelow,
+                        void 0,
+                        { number: true }
+                      ]
+                    ]) : _createCommentVNode("v-if", true)
                   ]),
                   _createElementVNode("div", { class: "ops-table-wrap" }, [
                     _createElementVNode("table", { class: "ops-table" }, [
@@ -19749,12 +20837,31 @@
                     /* STABLE_FRAGMENT */
                   )) : _createCommentVNode("v-if", true),
                   _createElementVNode("div", { class: "ops-card-header compact" }, [
-                    _createElementVNode("h3", null, "库存流水")
+                    _createElementVNode("h3", null, "库存流水"),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      _toDisplayString(_ctx.movementPageInfo.total || 0) + " 条",
+                      1
+                      /* TEXT */
+                    )
+                  ]),
+                  _createElementVNode("label", { class: "ops-search" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "search",
+                      size: 17
+                    }),
+                    _withDirectives(_createElementVNode("input", {
+                      "onUpdate:modelValue": ($event) => _ctx.movementQ = $event,
+                      placeholder: "单据号 / SKU"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.movementQ]
+                    ])
                   ]),
                   (_openBlock(true), _createElementBlock(
                     _Fragment,
                     null,
-                    _renderList(_ctx.moves.slice(0, 8), (m) => {
+                    _renderList(_ctx.moves, (m) => {
                       return _openBlock(), _createElementBlock("div", {
                         class: "ops-list-line",
                         key: m.id
@@ -19776,7 +20883,7 @@
                           _createElementVNode(
                             "small",
                             null,
-                            _toDisplayString(_ctx.dateTime(m.createdAt)),
+                            _toDisplayString(_ctx.dateTime(m.createdAt)) + " · 单据 " + _toDisplayString(m.bizKey),
                             1
                             /* TEXT */
                           )
@@ -19792,34 +20899,83 @@
                     }),
                     128
                     /* KEYED_FRAGMENT */
-                  ))
+                  )),
+                  !_ctx.moves.length ? (_openBlock(), _createElementBlock("div", {
+                    key: 1,
+                    class: "admin-empty"
+                  }, "暂无匹配流水")) : _createCommentVNode("v-if", true),
+                  _ctx.movementPageInfo.total > 0 ? (_openBlock(), _createElementBlock("div", {
+                    key: 2,
+                    class: "sdd-pager"
+                  }, [
+                    _createElementVNode("button", {
+                      disabled: _ctx.movementPage <= 1,
+                      onClick: ($event) => _ctx.movementPage--
+                    }, "上一页", 8, ["disabled", "onClick"]),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      _toDisplayString(_ctx.movementPage),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("button", {
+                      disabled: !_ctx.movementPageInfo.hasNext,
+                      onClick: ($event) => _ctx.movementPage++
+                    }, "下一页", 8, ["disabled", "onClick"])
+                  ])) : _createCommentVNode("v-if", true)
                 ])
               ])) : _ctx.route === "/merchant/orders" || _ctx.route === "/merchant/pickup" ? (_openBlock(), _createElementBlock("div", {
                 key: 5,
                 class: "ops-card"
               }, [
                 _createElementVNode("div", { class: "ops-card-header" }, [
-                  _createElementVNode(
-                    "h2",
-                    null,
-                    _toDisplayString(_ctx.route === "/merchant/pickup" ? "交付核销" : "订单列表"),
-                    1
-                    /* TEXT */
-                  ),
+                  _createElementVNode("div", null, [
+                    _createElementVNode(
+                      "h2",
+                      null,
+                      _toDisplayString(_ctx.route === "/merchant/pickup" ? "交付核销" : "订单列表"),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("small", null, "待办筛选由服务端按履约任务状态计算")
+                  ]),
                   _createElementVNode("div", { class: "filter-pills" }, [
                     _createElementVNode("button", {
-                      class: _normalizeClass({ active: _ctx.filter === "" }),
-                      onClick: ($event) => _ctx.filter = ""
+                      class: _normalizeClass({ active: _ctx.pickupState === "" }),
+                      onClick: ($event) => _ctx.pickupState = ""
                     }, "全部", 10, ["onClick"]),
                     _createElementVNode("button", {
-                      class: _normalizeClass({ active: _ctx.filter === "PAID" }),
-                      onClick: ($event) => _ctx.filter = "PAID"
-                    }, "已支付", 10, ["onClick"]),
+                      class: _normalizeClass({ active: _ctx.pickupState === "WAIT_PREP" }),
+                      onClick: ($event) => _ctx.pickupState = "WAIT_PREP"
+                    }, "待备货", 10, ["onClick"]),
                     _createElementVNode("button", {
-                      class: _normalizeClass({ active: _ctx.filter === "COMPLETED" }),
-                      onClick: ($event) => _ctx.filter = "COMPLETED"
-                    }, "已完成", 10, ["onClick"])
+                      class: _normalizeClass({ active: _ctx.pickupState === "PREPARING" }),
+                      onClick: ($event) => _ctx.pickupState = "PREPARING"
+                    }, "备货中", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.pickupState === "READY" }),
+                      onClick: ($event) => _ctx.pickupState = "READY"
+                    }, "待核销", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.pickupState === "COMPLETED" }),
+                      onClick: ($event) => _ctx.pickupState = "COMPLETED"
+                    }, "已核销", 10, ["onClick"])
                   ])
+                ]),
+                _createElementVNode("div", { class: "filter-pills secondary-pills" }, [
+                  _createElementVNode("button", {
+                    class: _normalizeClass({ active: _ctx.filter === "" }),
+                    onClick: ($event) => _ctx.filter = ""
+                  }, "所有订单状态", 10, ["onClick"]),
+                  _createElementVNode("button", {
+                    class: _normalizeClass({ active: _ctx.filter === "PAID" }),
+                    onClick: ($event) => _ctx.filter = "PAID"
+                  }, "已支付", 10, ["onClick"]),
+                  _createElementVNode("button", {
+                    class: _normalizeClass({ active: _ctx.filter === "COMPLETED" }),
+                    onClick: ($event) => _ctx.filter = "COMPLETED"
+                  }, "已完成", 10, ["onClick"])
                 ]),
                 _createElementVNode("label", { class: "ops-search" }, [
                   _createVNode2(_component_Icon, {
@@ -19893,7 +21049,24 @@
                                   _toDisplayString(_ctx.orderStatusLabel(o.status)),
                                   3
                                   /* TEXT, CLASS */
-                                )
+                                ),
+                                o.pickup ? (_openBlock(), _createElementBlock(
+                                  "small",
+                                  { key: 0 },
+                                  _toDisplayString(_ctx.pickupStatusLabel(o.pickup.status)),
+                                  1
+                                  /* TEXT */
+                                )) : _createCommentVNode("v-if", true),
+                                _ctx.orderReminder(o) ? (_openBlock(), _createElementBlock(
+                                  "small",
+                                  {
+                                    key: 1,
+                                    class: "red-text"
+                                  },
+                                  _toDisplayString(_ctx.orderReminder(o)),
+                                  1
+                                  /* TEXT */
+                                )) : _createCommentVNode("v-if", true)
                               ]),
                               _createElementVNode("td", null, [
                                 _createVNode2(_component_Icon, {
@@ -19911,7 +21084,7 @@
                     !_ctx.visibleOrders.length ? (_openBlock(), _createElementBlock("div", {
                       key: 0,
                       class: "admin-empty"
-                    }, "暂无订单")) : _createCommentVNode("v-if", true)
+                    }, "暂无符合条件的订单")) : _createCommentVNode("v-if", true)
                   ]),
                   _ctx.selectedOrder ? (_openBlock(), _createElementBlock("aside", {
                     key: 0,
@@ -19943,11 +21116,21 @@
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.pickupStatusLabel((_a = _ctx.selectedOrder.pickup) == null ? void 0 : _a.status)),
+                        _toDisplayString(_ctx.pickupStatusLabel((_d = _ctx.selectedOrder.pickup) == null ? void 0 : _d.status)),
                         1
                         /* TEXT */
                       )
                     ]),
+                    _ctx.orderReminder(_ctx.selectedOrder) ? (_openBlock(), _createElementBlock(
+                      "div",
+                      {
+                        key: 0,
+                        class: "inline-error"
+                      },
+                      _toDisplayString(_ctx.orderReminder(_ctx.selectedOrder)),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true),
                     _createElementVNode("div", { class: "inspector-row" }, [
                       _createElementVNode("span", null, "金额"),
                       _createElementVNode(
@@ -19991,21 +21174,21 @@
                       /* KEYED_FRAGMENT */
                     )),
                     _createElementVNode("div", { class: "form-buttons" }, [
-                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_b = _ctx.selectedOrder.pickup) == null ? void 0 : _b.status) === "WAIT_PREP" ? (_openBlock(), _createElementBlock("button", {
+                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_e = _ctx.selectedOrder.pickup) == null ? void 0 : _e.status) === "WAIT_PREP" ? (_openBlock(), _createElementBlock("button", {
                         key: 0,
                         class: "outline-button",
                         disabled: !_ctx.canAct,
                         onClick: ($event) => _ctx.prepare(_ctx.selectedOrder, false)
                       }, "开始备货", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true),
-                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_c = _ctx.selectedOrder.pickup) == null ? void 0 : _c.status) === "PREPARING" ? (_openBlock(), _createElementBlock("button", {
+                      _ctx.can("order.prepare") && _ctx.selectedOrder.status === "PAID" && ((_f = _ctx.selectedOrder.pickup) == null ? void 0 : _f.status) === "PREPARING" ? (_openBlock(), _createElementBlock("button", {
                         key: 1,
                         class: "teal-button",
                         disabled: !_ctx.canAct,
                         onClick: ($event) => _ctx.prepare(_ctx.selectedOrder, true)
                       }, "备货完成", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                     ]),
-                    _ctx.can("pickup.verify") && _ctx.selectedOrder.status === "PAID" && ((_d = _ctx.selectedOrder.pickup) == null ? void 0 : _d.status) === "READY" ? (_openBlock(), _createElementBlock("form", {
-                      key: 0,
+                    _ctx.can("pickup.verify") && _ctx.selectedOrder.status === "PAID" && ((_g = _ctx.selectedOrder.pickup) == null ? void 0 : _g.status) === "READY" ? (_openBlock(), _createElementBlock("form", {
+                      key: 1,
                       class: "verify-form",
                       onSubmit: _withModifiers(($event) => _ctx.verify(_ctx.selectedOrder), ["prevent"])
                     }, [
@@ -20079,14 +21262,11 @@
                         1
                         /* TEXT */
                       ),
-                      _ctx.can("aftersale.review") && s.status === "REQUESTED" ? (_openBlock(), _createElementBlock("button", {
+                      _ctx.can("aftersale.read") ? (_openBlock(), _createElementBlock("button", {
                         key: 0,
                         class: "outline-button small",
-                        onClick: ($event) => {
-                          _ctx.decision = s.orderId;
-                          _ctx.reason = "";
-                        }
-                      }, "审核", 8, ["onClick"])) : _createCommentVNode("v-if", true)
+                        onClick: ($event) => _ctx.openAfterSaleDecision(s.orderId)
+                      }, _toDisplayString(s.status === "REQUESTED" ? "审核" : "查看历程"), 9, ["onClick"])) : _createCommentVNode("v-if", true)
                     ]);
                   }),
                   128
@@ -20096,42 +21276,102 @@
                   key: 0,
                   class: "admin-empty"
                 }, "暂无售后")) : _createCommentVNode("v-if", true),
-                _ctx.decision && _ctx.can("aftersale.review") && ((_e = _ctx.afterSales.find((s) => s.orderId === _ctx.decision)) == null ? void 0 : _e.status) === "REQUESTED" ? (_openBlock(), _createElementBlock("form", {
+                _ctx.decision && _ctx.can("aftersale.read") && _ctx.afterSales.find((s) => s.orderId === _ctx.decision) ? (_openBlock(), _createElementBlock("section", {
                   key: 1,
-                  class: "review-inline",
-                  onSubmit: _withModifiers(($event) => _ctx.decisionAction(_ctx.afterSales.find((s) => s.orderId === _ctx.decision), true), ["prevent"])
+                  class: "review-inline"
                 }, [
                   _createElementVNode(
                     "h3",
                     null,
-                    "售后审核 · " + _toDisplayString(_ctx.decision),
+                    "售后处理 · " + _toDisplayString(_ctx.decision),
                     1
                     /* TEXT */
                   ),
-                  _withDirectives(_createElementVNode("textarea", {
-                    class: "admin-input",
-                    rows: "3",
-                    "onUpdate:modelValue": ($event) => _ctx.reason = $event,
-                    maxlength: "500",
-                    required: "",
-                    placeholder: "审核说明（必填）"
-                  }, null, 8, ["onUpdate:modelValue"]), [
-                    [_vModelText, _ctx.reason]
+                  _createElementVNode("div", { class: "review-history" }, [
+                    _createElementVNode("strong", null, "处理历程"),
+                    _ctx.historyEvents.length ? (_openBlock(), _createElementBlock("ol", { key: 0 }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.historyEvents, (e, i) => {
+                          return _openBlock(), _createElementBlock("li", {
+                            key: e.eventId || i
+                          }, [
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.orderEventLabel(e.type)),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("small", null, [
+                              _createTextVNode(
+                                _toDisplayString(_ctx.dateTime(e.occurredAt)),
+                                1
+                                /* TEXT */
+                              ),
+                              e.reason ? (_openBlock(), _createElementBlock(
+                                _Fragment,
+                                { key: 0 },
+                                [
+                                  _createTextVNode(
+                                    " · " + _toDisplayString(e.reason),
+                                    1
+                                    /* TEXT */
+                                  )
+                                ],
+                                64
+                                /* STABLE_FRAGMENT */
+                              )) : _createCommentVNode("v-if", true)
+                            ])
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : _ctx.historyLoading ? (_openBlock(), _createElementBlock("p", {
+                      key: 1,
+                      class: "muted-short"
+                    }, "正在加载处理历程…")) : (_openBlock(), _createElementBlock(
+                      "p",
+                      {
+                        key: 2,
+                        class: "muted-short"
+                      },
+                      _toDisplayString(_ctx.historyError || "历史记录不完整，仅显示当前状态"),
+                      1
+                      /* TEXT */
+                    ))
                   ]),
-                  _createElementVNode("div", { class: "form-buttons" }, [
-                    _createElementVNode("button", {
-                      type: "button",
-                      class: "outline-button",
-                      disabled: !_ctx.canAct || !_ctx.reason.trim(),
-                      onClick: ($event) => _ctx.decisionAction(_ctx.afterSales.find((s) => s.orderId === _ctx.decision), false)
-                    }, "驳回", 8, ["disabled", "onClick"]),
-                    _createElementVNode("button", {
-                      type: "submit",
-                      class: "teal-button",
-                      disabled: !_ctx.canAct || !_ctx.reason.trim()
-                    }, "同意退款", 8, ["disabled"])
-                  ])
-                ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
+                  ((_h = _ctx.afterSales.find((s) => s.orderId === _ctx.decision)) == null ? void 0 : _h.status) === "REQUESTED" ? (_openBlock(), _createElementBlock("form", {
+                    key: 0,
+                    onSubmit: _withModifiers(($event) => _ctx.decisionAction(_ctx.afterSales.find((s) => s.orderId === _ctx.decision), true), ["prevent"])
+                  }, [
+                    _withDirectives(_createElementVNode("textarea", {
+                      class: "admin-input",
+                      rows: "3",
+                      "onUpdate:modelValue": ($event) => _ctx.reason = $event,
+                      maxlength: "500",
+                      required: "",
+                      placeholder: "审核说明（必填）"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.reason]
+                    ]),
+                    _createElementVNode("div", { class: "form-buttons" }, [
+                      _createElementVNode("button", {
+                        type: "button",
+                        class: "outline-button",
+                        disabled: !_ctx.canAct || !_ctx.reason.trim(),
+                        onClick: ($event) => _ctx.decisionAction(_ctx.afterSales.find((s) => s.orderId === _ctx.decision), false)
+                      }, "驳回", 8, ["disabled", "onClick"]),
+                      _createElementVNode("button", {
+                        type: "submit",
+                        class: "teal-button",
+                        disabled: !_ctx.canAct || !_ctx.reason.trim()
+                      }, "同意退款", 8, ["disabled"])
+                    ])
+                  ], 40, ["onSubmit"])) : _createCommentVNode("v-if", true)
+                ])) : _createCommentVNode("v-if", true)
               ])) : _ctx.route === "/merchant/team" ? (_openBlock(), _createElementBlock("div", {
                 key: 7,
                 class: "ops-grid"
@@ -20278,9 +21518,52 @@
                       [_vModelText, _ctx.profile.location]
                     ])
                   ]),
+                  _createElementVNode("label", null, [
+                    _createTextVNode("门店介绍"),
+                    _withDirectives(_createElementVNode("textarea", {
+                      class: "admin-input",
+                      "onUpdate:modelValue": ($event) => _ctx.profile.description = $event,
+                      maxlength: "2000",
+                      rows: "4",
+                      placeholder: "未填写"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.profile.description]
+                    ])
+                  ]),
+                  _createElementVNode("label", null, [
+                    _createTextVNode("营业时间"),
+                    _withDirectives(_createElementVNode("input", {
+                      class: "admin-input",
+                      "onUpdate:modelValue": ($event) => _ctx.profile.businessHours = $event,
+                      maxlength: "200",
+                      placeholder: "如：周一至周五 08:00-20:00（北京时间）"
+                    }, null, 8, ["onUpdate:modelValue"]), [
+                      [_vModelText, _ctx.profile.businessHours]
+                    ])
+                  ]),
+                  _createElementVNode("div", { class: "store-image-field" }, [
+                    _createElementVNode("span", null, "门店图片"),
+                    _createVNode2(_component_ProductImage, {
+                      src: _ctx.profile.imageUrl,
+                      alt: "门店图片"
+                    }, null, 8, ["src"]),
+                    _createElementVNode("input", {
+                      type: "file",
+                      accept: "image/png,image/jpeg,image/webp",
+                      onChange: _ctx.uploadStoreImage,
+                      disabled: !_ctx.canAct || !_ctx.canOwner || _ctx.busy
+                    }, null, 40, ["onChange", "disabled"]),
+                    _createElementVNode("small", null, "只接受本商户上传的门店图片，未上传时显示未填写"),
+                    _ctx.profile.imageUrl ? (_openBlock(), _createElementBlock("button", {
+                      key: 0,
+                      type: "button",
+                      class: "outline-button",
+                      onClick: ($event) => _ctx.profile.imageUrl = ""
+                    }, "移除图片", 8, ["onClick"])) : _createCommentVNode("v-if", true)
+                  ]),
                   _createElementVNode("button", {
                     class: "teal-button",
-                    disabled: !_ctx.canAct || !_ctx.canOwner,
+                    disabled: !_ctx.canAct || !_ctx.canOwner || _ctx.busy,
                     type: "submit"
                   }, "保存设置", 8, ["disabled"])
                 ], 40, ["onSubmit"])
@@ -20320,7 +21603,7 @@
       };
     })()
   };
-  const { ref: ref$2, computed: computed$2, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
+  const { ref: ref$3, computed: computed$3, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
   const Knowledge = {
     name: "Knowledge",
     components: { BackofficeShell },
@@ -20328,11 +21611,11 @@
       const scope = requestScope();
       const docScope = requestScope();
       const contentScope = requestScope();
-      const role = computed$2(() => store.route.startsWith("/admin") ? "admin" : "merchant");
-      const bases = ref$2([]), docs = ref$2([]), active = ref$2(""), selected = ref$2(null), text = ref$2("");
-      const error = ref$2(""), busy = ref$2(false), newBase = ref$2(false), uploading = ref$2(false), baseName = ref$2(""), visibility = ref$2("PUBLIC"), title = ref$2(""), file = ref$2(null);
-      const docPage = ref$2(1), docInfo = ref$2({ total: 0, hasNext: false });
-      const versionRoot = ref$2(null), versionBase = ref$2(""), fileVersion = ref$2(0);
+      const role = computed$3(() => store.route.startsWith("/admin") ? "admin" : "merchant");
+      const bases = ref$3([]), docs = ref$3([]), active = ref$3(""), selected = ref$3(null), text = ref$3("");
+      const error = ref$3(""), busy = ref$3(false), newBase = ref$3(false), uploading = ref$3(false), baseName = ref$3(""), visibility = ref$3("PUBLIC"), title = ref$3(""), file = ref$3(null);
+      const docPage = ref$3(1), docInfo = ref$3({ total: 0, hasNext: false });
+      const versionRoot = ref$3(null), versionBase = ref$3(""), fileVersion = ref$3(0);
       function clearUpload() {
         versionRoot.value = null;
         versionBase.value = "";
@@ -20342,15 +21625,15 @@
         ++fileVersion.value;
       }
       watch$2(active, clearUpload);
-      const current = computed$2(() => bases.value.find((b) => b.id === active.value));
+      const current = computed$3(() => bases.value.find((b) => b.id === active.value));
       let baseEpoch2 = 0, docEpoch = 0, readEpoch = 0;
-      const canRead = computed$2(
+      const canRead = computed$3(
         () => {
           var _a;
           return preview || (role.value === "admin" ? ((_a = store.workspace) == null ? void 0 : _a.platformAdmin) === true : hasPermission("knowledge.read"));
         }
       );
-      const canManage = computed$2(
+      const canManage = computed$3(
         () => {
           var _a;
           return preview || (role.value === "admin" ? ((_a = store.workspace) == null ? void 0 : _a.platformAdmin) === true : hasPermission("knowledge.manage"));
@@ -21086,6 +22369,201 @@
       };
     })()
   };
+  const { ref: ref$2, computed: computed$2 } = Vue;
+  const KnowledgeDebug = {
+    name: "KnowledgeDebug",
+    components: { BackofficeShell },
+    setup() {
+      const question = ref$2(""), preview2 = ref$2(false), busy = ref$2(false), error = ref$2(""), result = ref$2(null);
+      const role = computed$2(() => location.hash.startsWith("#/admin") ? "admin" : "merchant");
+      async function run() {
+        const q = question.value.trim();
+        if (!q || q.length > 1e3 || busy.value) return;
+        busy.value = true;
+        error.value = "";
+        try {
+          result.value = await api("/ai/debug/retrieval", {
+            method: "POST",
+            body: { question: q, answerPreview: preview2.value }
+          });
+        } catch (e) {
+          error.value = e.message;
+        } finally {
+          busy.value = false;
+        }
+      }
+      return { question, preview: preview2, busy, error, result, role, run };
+    },
+    render: (() => {
+      const { createElementVNode: _createElementVNode, vModelText: _vModelText, withDirectives: _withDirectives, vModelCheckbox: _vModelCheckbox, createTextVNode: _createTextVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, renderList: _renderList, Fragment: _Fragment, resolveComponent: _resolveComponent, withCtx: _withCtx, createBlock: _createBlock } = Vue;
+      return function render2(_ctx, _cache) {
+        const _component_BackofficeShell = _resolveComponent("BackofficeShell");
+        return _openBlock(), _createBlock(_component_BackofficeShell, {
+          role: _ctx.role,
+          title: "RAG 检索调试"
+        }, {
+          default: _withCtx(() => {
+            var _a;
+            return [
+              _createElementVNode("section", { class: "knowledge-debug-page" }, [
+                _createElementVNode("p", { class: "muted" }, "仅返回当前账号可读文档；回答预览和分数用于调试，不代表交易事实或答案正确性。"),
+                _withDirectives(_createElementVNode("textarea", {
+                  "onUpdate:modelValue": ($event) => _ctx.question = $event,
+                  maxlength: "1000",
+                  rows: "4",
+                  placeholder: "输入要调试的知识问题"
+                }, null, 8, ["onUpdate:modelValue"]), [
+                  [_vModelText, _ctx.question]
+                ]),
+                _createElementVNode("label", { class: "check-line" }, [
+                  _withDirectives(_createElementVNode("input", {
+                    type: "checkbox",
+                    "onUpdate:modelValue": ($event) => _ctx.preview = $event
+                  }, null, 8, ["onUpdate:modelValue"]), [
+                    [_vModelCheckbox, _ctx.preview]
+                  ]),
+                  _createTextVNode(" 请求回答预览（会显示实际模式）")
+                ]),
+                _createElementVNode("button", {
+                  class: "teal-button",
+                  disabled: _ctx.busy || !_ctx.question.trim(),
+                  onClick: _ctx.run
+                }, _toDisplayString(_ctx.busy ? "检索中…" : "开始检索"), 9, ["disabled", "onClick"]),
+                _ctx.error ? (_openBlock(), _createElementBlock(
+                  "p",
+                  {
+                    key: 0,
+                    class: "inline-error"
+                  },
+                  _toDisplayString(_ctx.error),
+                  1
+                  /* TEXT */
+                )) : _createCommentVNode("v-if", true),
+                _ctx.result ? (_openBlock(), _createElementBlock("div", {
+                  key: 1,
+                  class: "knowledge-debug-result"
+                }, [
+                  _createElementVNode("div", { class: "stat-row" }, [
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "查询：" + _toDisplayString(_ctx.result.query),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "检索模式：" + _toDisplayString(_ctx.result.retrievalMode || "未知"),
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "回答模式：" + _toDisplayString(_ctx.result.answerMode || "未知"),
+                      1
+                      /* TEXT */
+                    )
+                  ]),
+                  _ctx.result.warning ? (_openBlock(), _createElementBlock(
+                    "p",
+                    {
+                      key: 0,
+                      class: "muted"
+                    },
+                    _toDisplayString(_ctx.result.warning),
+                    1
+                    /* TEXT */
+                  )) : _createCommentVNode("v-if", true),
+                  _ctx.result.answerPreview ? (_openBlock(), _createElementBlock(
+                    "blockquote",
+                    { key: 1 },
+                    _toDisplayString(_ctx.result.answerPreview),
+                    1
+                    /* TEXT */
+                  )) : _createCommentVNode("v-if", true),
+                  ((_a = _ctx.result.hits) == null ? void 0 : _a.length) ? (_openBlock(), _createElementBlock("table", { key: 2 }, [
+                    _createElementVNode("thead", null, [
+                      _createElementVNode("tr", null, [
+                        _createElementVNode("th", null, "排名"),
+                        _createElementVNode("th", null, "文档/版本"),
+                        _createElementVNode("th", null, "片段"),
+                        _createElementVNode("th", null, "分数"),
+                        _createElementVNode("th", null, "类型")
+                      ])
+                    ]),
+                    _createElementVNode("tbody", null, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.result.hits, (hit) => {
+                          return _openBlock(), _createElementBlock("tr", {
+                            key: hit.documentId + "-" + hit.rank
+                          }, [
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.rank),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("td", null, [
+                              _createTextVNode(
+                                _toDisplayString(hit.title),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("br"),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(hit.documentId) + " · v" + _toDisplayString(hit.version),
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.snippet),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.score),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode(
+                              "td",
+                              null,
+                              _toDisplayString(hit.scoreType),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])
+                  ])) : (_openBlock(), _createElementBlock("p", {
+                    key: 3,
+                    class: "muted"
+                  }, "没有返回可展示的授权命中。"))
+                ])) : _createCommentVNode("v-if", true)
+              ])
+            ];
+          }),
+          _: 1
+          /* STABLE */
+        }, 8, ["role"]);
+      };
+    })()
+  };
   const { ref: ref$1, computed: computed$1, onMounted: onMounted$1, onUnmounted: onUnmounted$1, watch: watch$1 } = Vue;
   const titles = {
     "/admin": "平台总览",
@@ -21103,7 +22581,8 @@
       const scope = requestScope();
       const route = computed$1(() => store.route), title = computed$1(() => titles[route.value] || "平台总览");
       const stats = ref$1(null), applications = ref$1([]), merchants = ref$1([]), products = ref$1([]), orders = ref$1([]), aftersales = ref$1([]), categories = ref$1([]);
-      const selectedId = ref$1(""), search = ref$1(""), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      const selectedId = ref$1(""), search = ref$1(""), statsPeriod = ref$1(7), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      let disputeVersion = 0;
       const pickedApplication = computed$1(
         () => applications.value.find((a) => a.applicationId === selectedId.value) || applications.value[0] || null
       );
@@ -21152,7 +22631,7 @@
           if (!allowed.value) return;
           if (current === "/admin") {
             const [s, m, o] = await Promise.all([
-              read("/admin/statistics"),
+              read("/admin/statistics/operations" + query({ periodDays: statsPeriod.value })),
               read("/admin/merchants/page" + query({ page: 1, size: 6 })),
               read("/admin/orders/page" + query({ page: 1, size: 6 }))
             ]);
@@ -21220,7 +22699,7 @@
       let searchDelay;
       let resettingPage = false;
       watch$1(
-        [page, search, state],
+        [page, search, state, statsPeriod],
         (next, previous) => {
           if (resettingPage) return;
           clearTimeout(searchDelay);
@@ -21288,6 +22767,26 @@
         if (!window.confirm("确定强制下架商品“" + p2.title + "”？")) return;
         perform("/admin/products/" + pathId(p2.productId) + "/unpublish");
       }
+      async function openDispute(afterSale) {
+        const version2 = ++disputeVersion;
+        selectedId.value = afterSale.id;
+        reason.value = "";
+        historyEvents.value = [];
+        historyError.value = "";
+        if (preview) return;
+        historyLoading.value = true;
+        try {
+          const detail = await api("/orders/" + pathId(afterSale.orderId));
+          if (version2 !== disputeVersion || selectedId.value !== afterSale.id) return;
+          historyEvents.value = (detail.events || []).filter(
+            (e) => e.type.startsWith("REFUND_") || e.type.startsWith("MERCHANT_") || e.type.startsWith("PLATFORM_")
+          );
+        } catch (e) {
+          if (version2 === disputeVersion) historyError.value = e.message;
+        } finally {
+          if (version2 === disputeVersion) historyLoading.value = false;
+        }
+      }
       function decideRefund(a, approved) {
         var _a;
         if (((_a = aftersales.value.find((row) => row.id === (a == null ? void 0 : a.id))) == null ? void 0 : _a.status) !== "DISPUTED") {
@@ -21332,10 +22831,16 @@
         categories,
         selectedId,
         search,
+        statsPeriod,
         state,
         page,
         pageInfo,
         reason,
+        historyEvents,
+        historyLoading,
+        historyError,
+        orderEventLabel,
+        openDispute,
         category,
         busy,
         loading,
@@ -21364,7 +22869,7 @@
       };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, normalizeClass: _normalizeClass, withCtx: _withCtx } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, createElementVNode: _createElementVNode, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, renderList: _renderList, Fragment: _Fragment, vModelText: _vModelText, withDirectives: _withDirectives, vModelSelect: _vModelSelect, withModifiers: _withModifiers, withCtx: _withCtx } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
         const _component_StatusPanel = _resolveComponent("StatusPanel");
@@ -21413,12 +22918,43 @@
                 _Fragment,
                 { key: 3 },
                 [
+                  _createElementVNode("div", { class: "ops-card stats-toolbar" }, [
+                    _createElementVNode(
+                      "span",
+                      null,
+                      "统计期间：近 " + _toDisplayString(_ctx.statsPeriod) + " 天",
+                      1
+                      /* TEXT */
+                    ),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.statsPeriod === 7 }),
+                      onClick: ($event) => _ctx.statsPeriod = 7
+                    }, "7 天", 10, ["onClick"]),
+                    _createElementVNode("button", {
+                      class: _normalizeClass({ active: _ctx.statsPeriod === 30 }),
+                      onClick: ($event) => _ctx.statsPeriod = 30
+                    }, "30 天", 10, ["onClick"]),
+                    _ctx.stats ? (_openBlock(), _createElementBlock(
+                      "small",
+                      { key: 0 },
+                      _toDisplayString(_ctx.stats.periodStart) + " 至 " + _toDisplayString(_ctx.stats.periodEnd) + " · " + _toDisplayString(_ctx.stats.timezone) + " · 截至 " + _toDisplayString(_ctx.stats.asOf),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true),
+                    ((_a = _ctx.stats) == null ? void 0 : _a.metricNote) ? (_openBlock(), _createElementBlock(
+                      "small",
+                      { key: 1 },
+                      _toDisplayString(_ctx.stats.metricNote),
+                      1
+                      /* TEXT */
+                    )) : _createCommentVNode("v-if", true)
+                  ]),
                   _ctx.stats ? (_openBlock(), _createElementBlock("div", {
                     key: 0,
                     class: "ops-kpis"
                   }, [
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "全部订单"),
+                      _createElementVNode("span", null, "订单总数"),
                       _createElementVNode(
                         "strong",
                         null,
@@ -21428,27 +22964,27 @@
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "待付款"),
+                      _createElementVNode("span", null, "成功支付"),
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.stats.pendingCount || 0),
+                        _toDisplayString(_ctx.stats.paidOrders || 0),
                         1
                         /* TEXT */
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "已完成"),
+                      _createElementVNode("span", null, "整单退款"),
                       _createElementVNode(
                         "strong",
                         null,
-                        _toDisplayString(_ctx.stats.completedCount || 0),
+                        _toDisplayString(_ctx.stats.refundedOrders || 0),
                         1
                         /* TEXT */
                       )
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", null, "模拟交易金额"),
+                      _createElementVNode("span", null, "完成金额"),
                       _createElementVNode(
                         "strong",
                         null,
@@ -21456,6 +22992,140 @@
                         1
                         /* TEXT */
                       )
+                    ]),
+                    _createElementVNode("div", null, [
+                      _createElementVNode("span", null, "退款率"),
+                      _createElementVNode(
+                        "strong",
+                        null,
+                        _toDisplayString(_ctx.stats.refundRate == null ? "—" : (_ctx.stats.refundRate * 100).toFixed(1) + "%"),
+                        1
+                        /* TEXT */
+                      )
+                    ])
+                  ])) : _createCommentVNode("v-if", true),
+                  _ctx.stats ? (_openBlock(), _createElementBlock("div", {
+                    key: 1,
+                    class: "ops-grid"
+                  }, [
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "订单趋势"),
+                        _createElementVNode("span", null, "新增订单")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.trend, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.day
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(item.day),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode("small", null, "按创建日")
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(item.orderCount),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ]),
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "商品表现"),
+                        _createElementVNode("span", null, "已完成商品")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.products, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.productId
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(item.title || item.productId),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(item.productId),
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(item.quantity),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ]),
+                    _createElementVNode("section", { class: "ops-card" }, [
+                      _createElementVNode("div", { class: "ops-card-header" }, [
+                        _createElementVNode("h2", null, "状态分布")
+                      ]),
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.stats.statuses, (item) => {
+                          return _openBlock(), _createElementBlock("div", {
+                            class: "ops-list-line",
+                            key: item.status
+                          }, [
+                            _createElementVNode("div", null, [
+                              _createElementVNode(
+                                "strong",
+                                null,
+                                _toDisplayString(_ctx.orderStatusLabel(item.status)),
+                                1
+                                /* TEXT */
+                              ),
+                              _createElementVNode(
+                                "small",
+                                null,
+                                _toDisplayString(item.orderCount) + " 单",
+                                1
+                                /* TEXT */
+                              )
+                            ]),
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.money(item.amountCent)),
+                              1
+                              /* TEXT */
+                            )
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
                     ])
                   ])) : _createCommentVNode("v-if", true),
                   _createElementVNode("div", { class: "ops-grid" }, [
@@ -22129,6 +23799,24 @@
                     /* TEXT */
                   )
                 ]),
+                _createElementVNode("div", { class: "ops-toolbar" }, [
+                  _withDirectives(_createElementVNode("select", {
+                    class: "admin-input compact-select",
+                    "onUpdate:modelValue": ($event) => _ctx.state = $event,
+                    onChange: ($event) => {
+                      _ctx.page = 1;
+                      _ctx.load();
+                    }
+                  }, [
+                    _createElementVNode("option", { value: "" }, "全部状态"),
+                    _createElementVNode("option", { value: "REQUESTED" }, "待商户审核"),
+                    _createElementVNode("option", { value: "DISPUTED" }, "待平台裁决"),
+                    _createElementVNode("option", { value: "REFUNDED" }, "已退款"),
+                    _createElementVNode("option", { value: "REJECTED" }, "已驳回")
+                  ], 40, ["onUpdate:modelValue", "onChange"]), [
+                    [_vModelSelect, _ctx.state]
+                  ])
+                ]),
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
                   null,
@@ -22163,14 +23851,10 @@
                         1
                         /* TEXT */
                       ),
-                      a.status === "DISPUTED" ? (_openBlock(), _createElementBlock("button", {
-                        key: 0,
+                      _createElementVNode("button", {
                         class: "outline-button small",
-                        onClick: ($event) => {
-                          _ctx.selectedId = a.id;
-                          _ctx.reason = "";
-                        }
-                      }, "查看处理", 8, ["onClick"])) : _createCommentVNode("v-if", true)
+                        onClick: ($event) => _ctx.openDispute(a)
+                      }, _toDisplayString(a.status === "DISPUTED" ? "查看处理" : "查看历程"), 9, ["onClick"])
                     ]);
                   }),
                   128
@@ -22180,43 +23864,107 @@
                   key: 0,
                   class: "admin-empty"
                 }, "暂无争议")) : _createCommentVNode("v-if", true),
-                _ctx.selectedId && ((_a = _ctx.aftersales.find((a) => a.id === _ctx.selectedId)) == null ? void 0 : _a.status) === "DISPUTED" ? (_openBlock(), _createElementBlock("div", {
+                _ctx.selectedId && _ctx.aftersales.find((a) => a.id === _ctx.selectedId) ? (_openBlock(), _createElementBlock("div", {
                   key: 1,
                   class: "review-inline"
                 }, [
                   _createElementVNode(
                     "h3",
                     null,
-                    "裁决 · " + _toDisplayString(_ctx.aftersales.find((a) => a.id === _ctx.selectedId).orderId),
+                    _toDisplayString(_ctx.aftersales.find((a) => a.id === _ctx.selectedId).status === "DISPUTED" ? "裁决" : "处理历程") + " · " + _toDisplayString(_ctx.aftersales.find((a) => a.id === _ctx.selectedId).orderId),
                     1
                     /* TEXT */
                   ),
-                  _createElementVNode("label", {
-                    class: "field-label",
-                    for: "platform-field-2"
-                  }, "裁决说明"),
-                  _withDirectives(_createElementVNode("textarea", {
-                    id: "platform-field-2",
-                    class: "admin-input",
-                    "onUpdate:modelValue": ($event) => _ctx.reason = $event,
-                    rows: "3",
-                    maxlength: "500",
-                    placeholder: "审核说明（必填）"
-                  }, null, 8, ["onUpdate:modelValue"]), [
-                    [_vModelText, _ctx.reason]
+                  _createElementVNode("div", { class: "review-history" }, [
+                    _createElementVNode("strong", null, "处理历程"),
+                    _ctx.historyEvents.length ? (_openBlock(), _createElementBlock("ol", { key: 0 }, [
+                      (_openBlock(true), _createElementBlock(
+                        _Fragment,
+                        null,
+                        _renderList(_ctx.historyEvents, (e, i) => {
+                          return _openBlock(), _createElementBlock("li", {
+                            key: e.eventId || i
+                          }, [
+                            _createElementVNode(
+                              "b",
+                              null,
+                              _toDisplayString(_ctx.orderEventLabel(e.type)),
+                              1
+                              /* TEXT */
+                            ),
+                            _createElementVNode("small", null, [
+                              _createTextVNode(
+                                _toDisplayString(_ctx.dateTime(e.occurredAt)),
+                                1
+                                /* TEXT */
+                              ),
+                              e.reason ? (_openBlock(), _createElementBlock(
+                                _Fragment,
+                                { key: 0 },
+                                [
+                                  _createTextVNode(
+                                    " · " + _toDisplayString(e.reason),
+                                    1
+                                    /* TEXT */
+                                  )
+                                ],
+                                64
+                                /* STABLE_FRAGMENT */
+                              )) : _createCommentVNode("v-if", true)
+                            ])
+                          ]);
+                        }),
+                        128
+                        /* KEYED_FRAGMENT */
+                      ))
+                    ])) : _ctx.historyLoading ? (_openBlock(), _createElementBlock("p", {
+                      key: 1,
+                      class: "muted-short"
+                    }, "正在加载处理历程…")) : (_openBlock(), _createElementBlock(
+                      "p",
+                      {
+                        key: 2,
+                        class: "muted-short"
+                      },
+                      _toDisplayString(_ctx.historyError || "历史记录不完整，仅显示当前状态"),
+                      1
+                      /* TEXT */
+                    ))
                   ]),
-                  _createElementVNode("div", { class: "form-buttons" }, [
-                    _createElementVNode("button", {
-                      class: "outline-button",
-                      disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
-                      onClick: ($event) => _ctx.decideRefund(_ctx.aftersales.find((a) => a.id === _ctx.selectedId), false)
-                    }, "驳回", 8, ["disabled", "onClick"]),
-                    _createElementVNode("button", {
-                      class: "teal-button",
-                      disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
-                      onClick: ($event) => _ctx.decideRefund(_ctx.aftersales.find((a) => a.id === _ctx.selectedId), true)
-                    }, "批准退款", 8, ["disabled", "onClick"])
-                  ])
+                  _ctx.aftersales.find((a) => a.id === _ctx.selectedId).status === "DISPUTED" ? (_openBlock(), _createElementBlock(
+                    _Fragment,
+                    { key: 0 },
+                    [
+                      _createElementVNode("label", {
+                        class: "field-label",
+                        for: "platform-field-2"
+                      }, "裁决说明"),
+                      _withDirectives(_createElementVNode("textarea", {
+                        id: "platform-field-2",
+                        class: "admin-input",
+                        "onUpdate:modelValue": ($event) => _ctx.reason = $event,
+                        rows: "3",
+                        maxlength: "500",
+                        placeholder: "审核说明（必填）"
+                      }, null, 8, ["onUpdate:modelValue"]), [
+                        [_vModelText, _ctx.reason]
+                      ]),
+                      _createElementVNode("div", { class: "form-buttons" }, [
+                        _createElementVNode("button", {
+                          class: "outline-button",
+                          disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
+                          onClick: ($event) => _ctx.decideRefund(_ctx.aftersales.find((a) => a.id === _ctx.selectedId), false)
+                        }, "驳回", 8, ["disabled", "onClick"]),
+                        _createElementVNode("button", {
+                          class: "teal-button",
+                          disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy || !_ctx.reason.trim(),
+                          onClick: ($event) => _ctx.decideRefund(_ctx.aftersales.find((a) => a.id === _ctx.selectedId), true)
+                        }, "批准退款", 8, ["disabled", "onClick"])
+                      ])
+                    ],
+                    64
+                    /* STABLE_FRAGMENT */
+                  )) : _createCommentVNode("v-if", true)
                 ])) : _createCommentVNode("v-if", true)
               ])) : _ctx.route === "/admin/categories" ? (_openBlock(), _createElementBlock("div", {
                 key: 9,
@@ -22782,35 +24530,20 @@
       Account,
       MerchantOps,
       Knowledge,
+      KnowledgeDebug,
       Platform,
       RoleManager
     },
     setup() {
-      const current = computed$g(() => {
+      const current = computed$h(() => {
         const r = store.route;
         if (r === "/merchant/products") return "Merchant";
         if (r === "/merchant/roles") return "RoleManager";
         if (r === "/merchant/knowledge" || r === "/admin/knowledge") return "Knowledge";
-        if ([
-          "/merchant",
-          "/merchant/inventory",
-          "/merchant/orders",
-          "/merchant/pickup",
-          "/merchant/aftersales",
-          "/merchant/team",
-          "/merchant/settings"
-        ].includes(r))
-          return "MerchantOps";
-        if ([
-          "/admin",
-          "/admin/applications",
-          "/admin/merchants",
-          "/admin/products",
-          "/admin/orders",
-          "/admin/disputes",
-          "/admin/categories"
-        ].includes(r))
-          return "Platform";
+        if (r === "/merchant/knowledge/debug" || r === "/admin/knowledge/debug")
+          return "KnowledgeDebug";
+        if (backofficeRoutes.includes(r) && r.startsWith("/merchant")) return "MerchantOps";
+        if (backofficeRoutes.includes(r) && r.startsWith("/admin")) return "Platform";
         if (r.startsWith("/product/")) return "ProductDetail";
         if (r.startsWith("/shops/")) return "Shop";
         if (r === "/cart") return "Cart";
@@ -22819,9 +24552,16 @@
         if (r === "/ai") return "Guide";
         return r === "/" ? "Home" : "NotFound";
       });
-      const ready = /* @__PURE__ */ ref$i(false), contextError = /* @__PURE__ */ ref$i(""), authRequired = /* @__PURE__ */ ref$i(false), loginOpen = /* @__PURE__ */ ref$i(false);
-      const backoffice = computed$g(
-        () => ["Merchant", "MerchantOps", "Platform", "Knowledge", "RoleManager"].includes(current.value)
+      const ready = /* @__PURE__ */ ref$j(false), contextError = /* @__PURE__ */ ref$j(""), authRequired = /* @__PURE__ */ ref$j(false), loginOpen = /* @__PURE__ */ ref$j(false);
+      const backoffice = computed$h(
+        () => [
+          "Merchant",
+          "MerchantOps",
+          "Platform",
+          "Knowledge",
+          "KnowledgeDebug",
+          "RoleManager"
+        ].includes(current.value)
       );
       let version2 = 0, restoredIdentity = -1, sessionPending;
       async function refresh() {
@@ -22881,7 +24621,7 @@
         return _openBlock(), _createElementBlock(
           "div",
           {
-            class: _normalizeClass(["application", { "admin-mode": _ctx.current === "Merchant" || _ctx.current === "MerchantOps" || _ctx.current === "Platform" || _ctx.current === "Knowledge" || _ctx.current === "RoleManager" }])
+            class: _normalizeClass(["application", { "admin-mode": _ctx.current === "Merchant" || _ctx.current === "MerchantOps" || _ctx.current === "Platform" || _ctx.current === "Knowledge" || _ctx.current === "KnowledgeDebug" || _ctx.current === "RoleManager" }])
           },
           [
             !_ctx.ready ? (_openBlock(), _createElementBlock("div", {

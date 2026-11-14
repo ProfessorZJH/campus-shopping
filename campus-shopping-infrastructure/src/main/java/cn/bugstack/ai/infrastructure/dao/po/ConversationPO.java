@@ -15,4 +15,6 @@ public class ConversationPO {
     private String userId;
     private String title;
     private Instant createdAt;
+    private Instant lastActiveAt;
+    private String summary;
 }

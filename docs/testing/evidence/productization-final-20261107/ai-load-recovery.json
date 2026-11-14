@@ -1,0 +1,20 @@
+{
+  "status": "PASS",
+  "testType": "ISOLATED_HTTP_LOCAL_SQLITE_CHAR_RETRIEVAL",
+  "productionCapacity": "NOT_RUN",
+  "requests": 80,
+  "clients": 12,
+  "capacity": 2,
+  "accepted": 31,
+  "rejected": 49,
+  "durationSeconds": 0.34,
+  "acceptedP50Ms": 58.51,
+  "acceptedP95Ms": 83.72,
+  "execution": {
+    "capacity": 2,
+    "active": 0,
+    "queued": 0,
+    "rejected": 49
+  },
+  "persistedRetrievalAfterRestart": true
+}

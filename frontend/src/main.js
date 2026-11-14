@@ -13,9 +13,11 @@ import Orders from './pages/Orders.js';
 import Account from './pages/Account.js';
 import MerchantOps from './pages/MerchantOps.js';
 import Knowledge from './pages/Knowledge.js';
+import KnowledgeDebug from './pages/KnowledgeDebug.js';
 import Platform from './pages/Platform.js';
 import RoleManager from './pages/RoleManager.js';
 import AuthDialog from './components/AuthDialog.js';
+import { backofficeRoutes } from './services/backoffice-metadata.js';
 import {
   store,
   setRoute,
@@ -41,6 +43,7 @@ const App = {
     Account,
     MerchantOps,
     Knowledge,
+    KnowledgeDebug,
     Platform,
     RoleManager,
   },
@@ -50,30 +53,10 @@ const App = {
       if (r === '/merchant/products') return 'Merchant';
       if (r === '/merchant/roles') return 'RoleManager';
       if (r === '/merchant/knowledge' || r === '/admin/knowledge') return 'Knowledge';
-      if (
-        [
-          '/merchant',
-          '/merchant/inventory',
-          '/merchant/orders',
-          '/merchant/pickup',
-          '/merchant/aftersales',
-          '/merchant/team',
-          '/merchant/settings',
-        ].includes(r)
-      )
-        return 'MerchantOps';
-      if (
-        [
-          '/admin',
-          '/admin/applications',
-          '/admin/merchants',
-          '/admin/products',
-          '/admin/orders',
-          '/admin/disputes',
-          '/admin/categories',
-        ].includes(r)
-      )
-        return 'Platform';
+      if (r === '/merchant/knowledge/debug' || r === '/admin/knowledge/debug')
+        return 'KnowledgeDebug';
+      if (backofficeRoutes.includes(r) && r.startsWith('/merchant')) return 'MerchantOps';
+      if (backofficeRoutes.includes(r) && r.startsWith('/admin')) return 'Platform';
       if (r.startsWith('/product/')) return 'ProductDetail';
       if (r.startsWith('/shops/')) return 'Shop';
       if (r === '/cart') return 'Cart';
@@ -87,7 +70,14 @@ const App = {
       authRequired = ref(false),
       loginOpen = ref(false);
     const backoffice = computed(() =>
-      ['Merchant', 'MerchantOps', 'Platform', 'Knowledge', 'RoleManager'].includes(current.value),
+      [
+        'Merchant',
+        'MerchantOps',
+        'Platform',
+        'Knowledge',
+        'KnowledgeDebug',
+        'RoleManager',
+      ].includes(current.value),
     );
     let version = 0,
       restoredIdentity = -1,
@@ -143,7 +133,7 @@ const App = {
     watch([() => store.route, () => store.identityVersion], refresh);
     return { store, current, ready, contextError, authRequired, loginOpen, refresh };
   },
-  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="authRequired" class="mobile-empty"><h1>请先登录</h1><p>登录后继续访问当前后台页面</p><button class="teal-button" @click="loginOpen=true">登录</button></div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><AuthDialog v-if="loginOpen" @close="loginOpen=false"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
+  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='KnowledgeDebug'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="authRequired" class="mobile-empty"><h1>请先登录</h1><p>登录后继续访问当前后台页面</p><button class="teal-button" @click="loginOpen=true">登录</button></div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><AuthDialog v-if="loginOpen" @close="loginOpen=false"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
 };
 const app = createApp(App);
 app.component('Icon', Icon);

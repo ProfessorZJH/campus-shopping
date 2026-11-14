@@ -177,7 +177,7 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                     boundaryViolationDetails=boundary_details,
                     actualComponents=recorder.snapshot(), resources=resources, humanReview='PENDING',
                     actualModels=recorder.models, usage=dict(tokens='UNKNOWN', cost='UNKNOWN', providerSeedSupport='UNKNOWN'),
-                    status='FAILED' if boundary_violations or cleanup_failed or strict_failed else 'PASS' if release_strict and exit_code == 0 else 'PARTIAL', exitCode=exit_code,
+                    status='FAILED' if boundary_violations or cleanup_failed or strict_failed else 'PARTIAL', exitCode=exit_code,
                     releaseStrict=release_strict, cleanupSuccessful=not cleanup_failed,
                     configuration=dict(pythonHashSeed=os.environ.get('PYTHONHASHSEED', 'UNCONTROLLED'),
                                        rrfConstant=60, knowledgeSelectionDepth=6, skuPoolLimit=300,

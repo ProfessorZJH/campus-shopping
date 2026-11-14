@@ -1,0 +1,85 @@
+{
+  "startedAt": "2026-11-09T17:32:32.583226+00:00",
+  "finishedAt": "2026-11-09T17:34:07.981201+00:00",
+  "scope": "M1 task 4.2: real NVIDIA embeddings with isolated Milvus REST v2 product collection; synthetic public fixtures; no Java/MySQL transaction writes",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "milvusTransport": "HTTPS REST v2 through ProductIndex",
+  "collection": "campus_acceptance_4153dbc2571a86b2f2ea",
+  "productionProductCollectionModified": false,
+  "checks": [
+    {
+      "name": "milvus_real_authenticated_connection",
+      "status": "PASS",
+      "collection": "campus_acceptance_4153dbc2571a86b2f2ea",
+      "serverVersion": "rest-v2",
+      "encrypted": true
+    },
+    {
+      "name": "milvus_real_121_products_index",
+      "status": "PASS",
+      "latencyMs": 80454,
+      "indexed": 121,
+      "collection": "campus_acceptance_4153dbc2571a86b2f2ea",
+      "fixtureData": true
+    },
+    {
+      "name": "milvus_real_idempotent_sync",
+      "status": "PASS",
+      "latencyMs": 637,
+      "indexed": 0,
+      "unchanged": 2,
+      "mode": "MILVUS"
+    },
+    {
+      "name": "milvus_real_semantic_recall",
+      "status": "PASS",
+      "latencyMs": 3218,
+      "result": {
+        "productIds": [
+          "fixture-old-121",
+          "fixture-082",
+          "fixture-084",
+          "fixture-068",
+          "fixture-001"
+        ],
+        "productRanks": {
+          "fixture-old-121": 1,
+          "fixture-082": 2,
+          "fixture-084": 3,
+          "fixture-068": 4,
+          "fixture-001": 5
+        },
+        "mode": "MILVUS"
+      },
+      "boundary": "Milvus semantic recall over 121 fixtures; not MySQL newest-100 regression"
+    },
+    {
+      "name": "real_nvidia_milvus_http_xfyun_chain",
+      "status": "FAIL",
+      "latencyMs": 3962,
+      "errorType": "AcceptanceFailure",
+      "boundary": "Separate M1 4.4 end-to-end chain; retained as FAIL and does not invalidate the isolated M1 4.2 collection lifecycle."
+    },
+    {
+      "name": "milvus_real_incremental_update",
+      "status": "PASS",
+      "latencyMs": 4754,
+      "indexed": 1,
+      "unchanged": 0,
+      "mode": "MILVUS"
+    },
+    {
+      "name": "milvus_isolated_collection_cleanup",
+      "status": "PASS",
+      "latencyMs": 974,
+      "onlyThisRunCollectionDropped": "campus_acceptance_4153dbc2571a86b2f2ea"
+    }
+  ],
+  "summary": {
+    "FAIL": 1,
+    "PASS": 6
+  },
+  "task4_2": "PASS",
+  "task4_3": "NOT_RUN",
+  "task4_4": "FAIL"
+}

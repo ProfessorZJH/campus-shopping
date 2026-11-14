@@ -42,4 +42,12 @@ class PurchaseConstraintTest {
         assertFalse(safe.contains("已付款"));
         assertTrue(ShoppingAnswerPolicy.evidenceAnswer(List.of()).contains("未执行"));
     }
+
+    @Test
+    void semanticRankControlsFusionInsteadOfMapIterationOrder() {
+        var ranks = new HashMap<String, Integer>();
+        ranks.put("semantic-late", 2);
+        ranks.put("semantic-first", 1);
+        assertEquals(List.of("semantic-first", "semantic-late"), RecommendationPolicy.fuse(List.of(), ranks));
+    }
 }

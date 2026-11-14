@@ -14,4 +14,7 @@ public class MerchantProfileRequestDTO {
     private String name;
     private String storeName;
     private String location;
+    private String description;
+    private String businessHours;
+    private String imageUrl;
 }

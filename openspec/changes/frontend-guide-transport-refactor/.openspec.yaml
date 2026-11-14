@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-08
+goal: 收窄导购页面请求、SSE 流和断线恢复的传输边界，保持现有会话与身份代次语义不变。
+skip_specs: true
+

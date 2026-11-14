@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IOrderEventDao">
+    <insert id="insert">
+INSERT IGNORE INTO trd_order_event(id,order_id,after_sale_id,event_type,event_time,actor_id,actor_role,reason,dedupe_key)
+VALUES(#{p.id},#{p.orderId},#{p.afterSaleId},#{p.eventType},#{p.eventTime},#{p.actorId},#{p.actorRole},#{p.reason},#{p.dedupeKey})
+    </insert>
+    <select id="events" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderEventPO">
+SELECT id,order_id,after_sale_id,event_type,event_time,actor_id,actor_role,reason,dedupe_key FROM trd_order_event WHERE order_id=#{orderId} ORDER BY event_time,event_seq
+    </select>
+    <select id="eventsByOrders" resultType="cn.bugstack.ai.infrastructure.dao.po.OrderEventPO">
+SELECT id,order_id,after_sale_id,event_type,event_time,actor_id,actor_role,reason,dedupe_key FROM trd_order_event
+WHERE order_id IN <foreach collection="orderIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+ORDER BY order_id,event_time,event_seq
+    </select>
+</mapper>

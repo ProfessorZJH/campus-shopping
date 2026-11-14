@@ -55,10 +55,11 @@ public class InventoryController implements IInventoryApi {
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
         @RequestParam(defaultValue = "") String q,
+        @RequestParam(required = false) Integer availableBelow,
         Principal principal
     ) {
         return execute(() -> {
-            var stockPage = catalogQuery.stockPage(actor(principal), merchantId, page, size, q);
+            var stockPage = catalogQuery.stockPage(actor(principal), merchantId, page, size, q, availableBelow);
             var items = stockPage
                 .items()
                 .stream()
@@ -101,11 +102,12 @@ public class InventoryController implements IInventoryApi {
         @PathVariable("merchantId") String merchantId,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String q,
         Principal principal
     ) {
         return execute(() -> {
             return catalogQuery
-                .stockMovements(actor(principal), merchantId, page, size)
+                .stockMovements(actor(principal), merchantId, page, size, q)
                 .stream()
                 .map(m ->
                     StockMovementResponseDTO.builder()
@@ -127,12 +129,13 @@ public class InventoryController implements IInventoryApi {
         @PathVariable("merchantId") String merchantId,
         @RequestParam(defaultValue = "1") int page,
         @RequestParam(defaultValue = "20") int size,
+        @RequestParam(defaultValue = "") String q,
         Principal principal
     ) {
         return execute(() ->
             PageResponseDTO.of(
                 catalogQuery
-                    .stockMovements(actor(principal), merchantId, page, size)
+                    .stockMovements(actor(principal), merchantId, page, size, q)
                     .stream()
                     .map(m ->
                         StockMovementResponseDTO.builder()
@@ -147,7 +150,7 @@ public class InventoryController implements IInventoryApi {
                     .toList(),
                 page,
                 size,
-                catalogQuery.countStockMovements(actor(principal), merchantId)
+                catalogQuery.countStockMovements(actor(principal), merchantId, q)
             )
         );
     }

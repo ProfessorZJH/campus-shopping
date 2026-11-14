@@ -36,6 +36,10 @@ def settings_for(profile, db_path, collection):
         if active:
             for field, suffix in (('url', 'BASE_URL'), ('key', 'API_KEY'), ('model', 'MODEL')):
                 fields[prefix + '_' + field] = os.getenv(prefix.upper() + '_' + suffix, '').rstrip('/')
+    # Live LLM evaluations honor the application's configured read timeout;
+    # local/controlled and embedding-only profiles do not read this setting.
+    if profile in ('real-llm', 'live-full'):
+        fields['llm_timeout_seconds'] = int(os.getenv('LLM_TIMEOUT_SECONDS', '60'))
     if profile in ('real-milvus', 'live-full'):
         fields.update(milvus_uri=os.getenv('MILVUS_URI', ''), milvus_token=os.getenv('MILVUS_TOKEN', ''))
     return replace(base, **fields)
@@ -117,6 +121,15 @@ def transport_scope(settings, recorder, handler=None):
 
         def handle_request(self, request):
             component = next((p for url, p in origins.items() if str(request.url).startswith(url + '/')), None)
+            # Real Milvus REST traffic is wrapped by RecordedClient, which records
+            # the operation at the ProductIndex boundary.  The transport must
+            # still allow that one configured endpoint through the same explicit
+            # allowlist used for the model providers, without double-counting it.
+            milvus_origin = settings.milvus_uri.rstrip('/') if settings.milvus_uri else ''
+            if component is None and milvus_origin and str(request.url).startswith(milvus_origin + '/'):
+                if offline and source != 'STUB':
+                    raise httpx.TransportError('evaluation network blocked')
+                return self.inner.handle_request(request)
             if component is None or (offline and source != 'STUB'):
                 raise httpx.TransportError('evaluation network blocked')
             outcome = 'FAILED'

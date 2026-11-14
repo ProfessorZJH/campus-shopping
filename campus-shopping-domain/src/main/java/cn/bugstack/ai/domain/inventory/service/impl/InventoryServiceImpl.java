@@ -27,7 +27,8 @@ public class InventoryServiceImpl implements IInventoryService {
     @Transactional(propagation = Propagation.MANDATORY)
     public void initialize(String merchant, String store, String sku) {
         repository.initialize(merchant, store, sku);
-        require(merchant.equals(required(store, sku).merchantId()), ResponseCode.AUTH_FORBIDDEN);
+        StockVO existing = required(store, sku);
+        require(merchant.equals(existing.merchantId()) && store.equals(existing.storeId()), ResponseCode.AUTH_FORBIDDEN);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)
@@ -87,7 +88,8 @@ public class InventoryServiceImpl implements IInventoryService {
         List<ReservationVO> reservations = repository.reservations(order);
         require(!reservations.isEmpty(), ResponseCode.STOCK_STATE_INVALID);
         ReservationStatusEnumVO next = consumed ? ReservationStatusEnumVO.CONSUMED : ReservationStatusEnumVO.RELEASED;
-        for (ReservationVO r : reservations) {
+        // 当前预占查询已按 skuId 排序；此处再排序，防止仓储实现变更后打乱库存行锁序。
+        for (ReservationVO r : reservations.stream().sorted(Comparator.comparing(ReservationVO::skuId)).toList()) {
             if (next == r.state()) continue;
             require(r.state() == ReservationStatusEnumVO.RESERVED, ResponseCode.STOCK_STATE_INVALID);
             StockVO s = required(r.storeId(), r.skuId());
@@ -115,11 +117,22 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     public long countStocks(String merchant, String q) {
-        return queries.countStocks(merchant, optional(q, 100));
+        return countStocks(merchant, q, null);
+    }
+
+    public long countStocks(String merchant, String q, Integer availableBelow) {
+        require(availableBelow == null || (availableBelow >= 0 && availableBelow <= 1_000_000), ResponseCode.ILLEGAL_PARAMETER);
+        String normalized = optional(q, 100);
+        return availableBelow == null ? queries.countStocks(merchant, normalized) : queries.countStocks(merchant, normalized, availableBelow);
     }
 
     public long countMovements(String merchant) {
         return repository.countMovements(merchant);
+    }
+
+    public long countMovements(String merchant, String q) {
+        String normalized = optional(q, 100);
+        return normalized.isEmpty() ? repository.countMovements(merchant) : queries.countMovements(merchant, normalized);
     }
 
     public List<StockVO> stocks(List<String> ids) {
@@ -144,10 +157,25 @@ public class InventoryServiceImpl implements IInventoryService {
     }
 
     public List<StockVO> list(String merchant, int page, int size, String q) {
-        return queries.list(merchant, offset(page, size), size, optional(q, 100));
+        return list(merchant, page, size, q, null);
+    }
+
+    public List<StockVO> list(String merchant, int page, int size, String q, Integer availableBelow) {
+        require(availableBelow == null || (availableBelow >= 0 && availableBelow <= 1_000_000), ResponseCode.ILLEGAL_PARAMETER);
+        String normalized = optional(q, 100);
+        return availableBelow == null
+            ? queries.list(merchant, offset(page, size), size, normalized)
+            : queries.list(merchant, offset(page, size), size, normalized, availableBelow);
     }
 
     public List<StockMovementVO> movements(String merchant, int page, int size) {
-        return repository.movements(merchant, offset(page, size), size);
+        return movements(merchant, page, size, "");
+    }
+
+    public List<StockMovementVO> movements(String merchant, int page, int size, String q) {
+        String normalized = optional(q, 100);
+        return normalized.isEmpty()
+            ? repository.movements(merchant, offset(page, size), size)
+            : queries.movements(merchant, offset(page, size), size, normalized);
     }
 }

@@ -52,8 +52,27 @@ def render(browser,route='/',demo=True,size=(430,932),fixture=None,routes=None,b
         page.expose_binding('__contractApi',fixture_call(fixture))
         track_bindings(page)
         page.evaluate('''() => {
+          window.__asStreamResponse = (reply) => {
+            const payload = JSON.parse(reply.body);
+            const answer = payload.data || {};
+            const conversationId = answer.conversationId || 'conv-contract';
+            if (payload.code && payload.code !== '0000') {
+              const failed = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:payload.code};
+              const stream = 'event: failed\\ndata: ' + JSON.stringify(failed) + '\\n\\n';
+              return new Response(stream, {status:reply.status, headers:{'Content-Type':'text/event-stream'}});
+            }
+            const started = {conversationId, mode:'FULL_RESPONSE', data:null, errorCode:null};
+            const completed = {conversationId, mode:'FULL_RESPONSE', data:answer, errorCode:null};
+            const stream = 'event: started\\ndata: ' + JSON.stringify(started) + '\\n\\n'
+              + 'event: completed\\ndata: ' + JSON.stringify(completed) + '\\n\\n';
+            return new Response(stream, {status:reply.status, headers:{'Content-Type':'text/event-stream'}});
+          };
           window.fetch=async (url,options={})=>{
-            const reply=await window.__contractApi({url:String(url),method:options.method||'GET',headers:options.headers||{},body:options.body});
+            const address=String(url);
+            const isStream=address.includes('/ai/chat/stream');
+            const contractUrl=isStream ? address.replace('/ai/chat/stream','/ai/chat') : address;
+            const reply=await window.__contractApi({url:contractUrl,method:options.method||'GET',headers:options.headers||{},body:options.body});
+            if(isStream)return window.__asStreamResponse(reply);
             return new Response(reply.body,{status:reply.status,headers:{'Content-Type':'application/json'}});
           };
         }''')

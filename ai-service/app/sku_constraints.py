@@ -14,6 +14,14 @@ def values(spec):
     # 兼容单值和“颜色:黑色;包装:标准装”；描述/标题不是SKU规格证据。
     return {part.rsplit(':', 1)[-1] for part in re.split(r'[,，;；/|、]', normalize(spec)) if part}
 
+def offer_values(offer):
+    actual = values(offer.get('specKey', ''))
+    for key, value in (offer.get('attributes') or {}).items():
+        if value:
+            actual.add(normalize(str(value)))
+            actual.add(normalize(str(key) + ':' + str(value)))
+    return actual
+
 
 def dimension(value):
     if value.endswith('装'): return 'pack'
@@ -27,6 +35,8 @@ def dimension(value):
 
 NEGATIVE = r'不要推荐|不想要|不想选|不想买|不需要|不要选|不推荐|不接受|不喜欢|不要|不选|不买|不用|别推荐|别选|别买|排除|不考虑|不含|不是|拒绝|非'
 CUES = re.compile(r'(' + NEGATIVE + r'|只要|想要|规格为|规格是|要|选择|选|换成|改成|改为)')
+# 商户范围由服务端 merchant 白名单执行，不是SKU属性；不能因否定线索误判为未知规格。
+MERCHANT_SCOPE = re.compile(r'(?:商户|商家)')
 
 
 @dataclass(frozen=True)
@@ -40,7 +50,7 @@ class SpecConstraints:
         return bool(self.required or self.forbidden or self.ambiguous)
 
     def accepts(self, offer):
-        actual = values(offer['specKey'])
+        actual = offer_values(offer)
         return (not self.ambiguous and self.required <= actual and not self.forbidden & actual
                 and all(any(dimension(v) == dimension(term) for v in actual) for term in self.forbidden))
 
@@ -70,7 +80,12 @@ def extract(question, vocabulary, titles=()):
             cursor = attribute.end()
         remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
         product_name = any(remainder and remainder in normalize(title) for title in titles)
-        if remainder and not product_name and (match.group().startswith(('规格为', '规格是')) or (match.group().startswith(('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 8)):
+        # 否定线索直接复用 NEGATIVE 字典，新增线索不会只在部分调用点生效。
+        cue = CUES.match(match.group()).group()
+        explicit_attribute = cue in ('规格为', '规格是')
+        explicit_negative = re.fullmatch(NEGATIVE, cue) is not None
+        if remainder and not product_name and not MERCHANT_SCOPE.search(remainder) and (explicit_attribute or (
+                (explicit_negative or cue in ('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 12)):
             terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))
@@ -91,12 +106,13 @@ def extract(question, vocabulary, titles=()):
 
 
 def spec_constraints(question, history, offers, followup):
-    vocabulary = {v for offer in offers for v in values(offer['specKey']) if len(v) >= 2}
+    vocabulary = {v for offer in offers for v in offer_values(offer) if len(v) >= 2}
     titles = [offer['title'] for offer in offers]
     current = extract(question, vocabulary, titles)
     required, forbidden = set(current.required), set(current.forbidden)
     axes = {dimension(v) for v in required | forbidden}
     ambiguous = current.ambiguous
+    known_values = {value for offer in offers for value in offer_values(offer)}
     if followup.search(question):
         for previous in reversed([h['content'] for h in history if h['role'] == 'user']):
             inherited = extract(previous, vocabulary, titles)
@@ -107,4 +123,6 @@ def spec_constraints(question, history, offers, followup):
             if new_axes: ambiguous = ambiguous or inherited.ambiguous
             axes.update(new_axes)
             if not followup.search(previous): break
+    # 当前和继承的硬否定条件统一在合并后检查，不能因换选而丢失澄清状态。
+    ambiguous = ambiguous or bool(forbidden - known_values)
     return SpecConstraints(frozenset(required), frozenset(forbidden), ambiguous)

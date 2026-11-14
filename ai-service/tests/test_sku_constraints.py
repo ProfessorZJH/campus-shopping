@@ -5,7 +5,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.config import Settings
+from app.engine import FOLLOWUP
 from app.main import create_app
+from app.sku_constraints import NEGATIVE, spec_constraints
 
 
 @pytest.fixture
@@ -30,7 +32,7 @@ def ask(api, question, items=None, history=None, **kwargs):
 
 @pytest.mark.parametrize('question', [
     '考试签字笔要标准装，不要家庭装', '考试签字笔不要家庭装',
-    '不要推荐家庭装，考试签字笔选标准装', '考试签字笔不要家庭装和礼盒装，要标准装',
+    '不要推荐家庭装，考试签字笔选标准装',
     '家庭装不要，考试签字笔要标准装', '不要家庭装要标准装考试签字笔',
     '考试签字笔不喜欢家庭装', '考试签字笔不接受家庭装', '考试签字笔别买家庭装',
 ])
@@ -62,6 +64,20 @@ def test_conflicting_or_unverifiable_specs_clarify_without_substitution(api, que
     assert '规格' in data['answer'] and '明确' in data['answer']
 
 
+def test_unknown_negative_attribute_clarifies_even_with_known_positive_spec(api):
+    data = ask(api, '考试签字笔要标准装，不要家庭装和礼盒装')
+    assert not data['recommendations']
+    assert '规格' in data['answer'] and '明确' in data['answer']
+
+
+@pytest.mark.parametrize('cue', NEGATIVE.split('|'))
+def test_every_negative_cue_marks_an_unknown_attribute_for_clarification(cue):
+    # 否定线索必须与 NEGATIVE 字典同源，新增线索不能只在部分线索列表中生效。
+    specs = spec_constraints(cue + '含糖饮料', [], [dict(title='矿泉水', specKey='瓶装')], FOLLOWUP)
+    assert '含糖饮料' in specs.forbidden, cue
+    assert specs.ambiguous, cue
+
+
 def test_negative_spec_requires_spec_evidence_not_description(api):
     items = offers()
     items[1]['specKey'] = '默认'
@@ -81,10 +97,11 @@ def test_product_name_is_not_misparsed_as_unknown_color_spec(api):
     assert not ask(api, '考试签字笔规格为蓝色')['recommendations']
 
 
-def test_followup_inherits_specs_but_new_dimension_value_replaces_old(api):
+@pytest.mark.parametrize('cheaper', ['这个便宜点', '这个便宜一些', '这个更便宜'])
+def test_followup_inherits_specs_but_new_dimension_value_replaces_old(api, cheaper):
     history = [{'role': 'user', 'content': '考试签字笔要标准装，不要家庭装'},
                {'role': 'assistant', 'content': '家庭装更便宜'}]
-    assert [r['skuId'] for r in ask(api, '这个便宜点', history=history, retrievalQuery='家庭装')['recommendations']] == ['standard']
+    assert [r['skuId'] for r in ask(api, cheaper, history=history, retrievalQuery='家庭装')['recommendations']] == ['standard']
     assert [r['skuId'] for r in ask(api, '这个换成家庭装', history=history)['recommendations']] == ['family']
     assert {r['skuId'] for r in ask(api, '推荐考试签字笔', history=history)['recommendations']} == {'family', 'standard'}
 
@@ -165,7 +182,7 @@ def test_refund_knowledge_answer_survives_recalled_offers(api, monkeypatch, mode
                         recommendations=[] if model == 'empty' else [dict(skuId='family', reason='家庭装更适合')])
         monkeypatch.setattr(app.state.store.provider, 'complete', complete)
     response = client.post('/v1/query', json=dict(question='这款标准装签字笔怎么申请退款？', offers=offers(),
-                            allowedDocumentIds=['refund'], history=[]))
+                            allowedDocumentIds=['refund'], externalDocumentIds=['refund'], history=[]))
     assert response.status_code == 200
     data = response.json()
     assert data['recommendations'] == []

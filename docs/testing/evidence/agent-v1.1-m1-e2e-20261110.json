@@ -1,0 +1,95 @@
+{
+  "startedAt": "2026-11-09T21:48:53Z",
+  "status": "PASS",
+  "evidenceStatus": "REAL",
+  "chain": "REAL_JAVA_MYSQL_FACTS_TO_REAL_MILVUS_TO_REAL_UVICORN_TO_REAL_LLM",
+  "model": "spark-x2.6",
+  "embeddingModel": "nvidia/nemotron-3.5-embed-1b",
+  "protocol": "Uvicorn /v1/query + real Embedding + real LLM",
+  "businessWrites": false,
+  "productionProductCollectionModified": false,
+  "redactionChecked": true,
+  "costStatus": "NOT_PRICED",
+  "checks": [
+    {
+      "name": "java_mysql_current_fact",
+      "outcome": "PASS",
+      "productCount": 1,
+      "skuCount": 1,
+      "businessWrites": false
+    },
+    {
+      "name": "real_milvus_candidate",
+      "outcome": "PASS",
+      "collection": "campus_agent_products_8707af81d9b3a3de",
+      "candidateCount": 1,
+      "candidateProductIds": [
+        "dbd45535-b38b-492e-ab6e-6cdcaff48486"
+      ],
+      "productionProductCollectionModified": false
+    },
+    {
+      "name": "real_uvicorn_http_multiturn",
+      "outcome": "PASS",
+      "runtimeTurns": 2,
+      "mode": "LLM",
+      "recommendationCount": 1,
+      "followupMode": "LLM",
+      "latencyMs": [
+        30826,
+        32523
+      ],
+      "retryAttempts": [
+        1,
+        1
+      ],
+      "serviceAuthenticationRejected": true
+    },
+    {
+      "name": "real_uvicorn_knowledge_citation",
+      "outcome": "PASS",
+      "indexMode": "REMOTE_EMBEDDING",
+      "citationCount": 1,
+      "retrievalMode": "REMOTE_EMBEDDING",
+      "retryAttempts": 1
+    },
+    {
+      "name": "real_uvicorn_provider_failure",
+      "outcome": "DEGRADED",
+      "mode": "LOCAL_FALLBACK",
+      "warningPresent": true,
+      "businessWrites": false
+    },
+    {
+      "name": "real_milvus_cleanup",
+      "outcome": "PASS",
+      "collection": "campus_agent_products_8707af81d9b3a3de",
+      "collectionExistsAfterCleanup": false
+    }
+  ],
+  "toolCallingEvidence": {
+    "status": "REAL",
+    "toolCallCount": 2,
+    "samples": [
+      {
+        "name": "real_native_tool_call",
+        "toolCalls": 1,
+        "usage": {
+          "prompt_tokens": 664,
+          "completion_tokens": 381,
+          "total_tokens": 1045
+        }
+      },
+      {
+        "name": "real_streaming_tool_call",
+        "toolCalls": 1,
+        "usage": {
+          "prompt_tokens": 668,
+          "completion_tokens": 574,
+          "total_tokens": 1242
+        }
+      }
+    ]
+  },
+  "finishedAt": "2026-11-09T21:50:50Z"
+}

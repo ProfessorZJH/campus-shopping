@@ -1,0 +1,8 @@
+{
+  "startedAt": "2026-11-09T17:22:07.206162+00:00",
+  "status": "NOT_RUN",
+  "evidenceStatus": "NOT_RUN",
+  "reason": "GET /api/v1/products/page?q=&page=1&size=20 unavailable: URLError",
+  "agentGatewayInvoked": false,
+  "businessWrites": false
+}

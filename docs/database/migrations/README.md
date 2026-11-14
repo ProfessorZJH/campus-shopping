@@ -4,15 +4,26 @@
 
 仅适用于当前 R1 表结构；教学版须先按运行手册升级。新库直接使用最新 `schema.sql`，`CREATE TABLE IF NOT EXISTS` 不会升级已有表。
 
+升级入口现在先执行只读结构指纹准入：空的 R1 基线、已登记历史且匹配发布快照的库可以继续；残缺库、手工漂移库或历史不匹配的库在任何 DDL 前拒绝。可用 `docs/database/baselines/manifest.json` 对照真实发布快照，不能再用单张 `iam_user` 表判断可升级。
+
 1. 备份并在副本验证，核对 MySQL 版本至少为 8.0.16（本次实际使用 8.0.31）。
 2. 准备有 DDL 权限的升级账号，在当前终端设置 `DB_USERNAME` / `DB_PASSWORD`；凭据不放命令行、不提交 Git。
 3. 在目标库执行下面的前置检查，结果必须全为 0；异常记录应由业务负责人核对，不能自动删行或改金额。
-4. 在维护窗口运行下方显式迁移命令。CLI 按版本号顺序执行当前 `docs/database/migrations/` 中全部迁移：`V20261028_01`（订单图片）、`V20261028_02`（RBAC）、`V20261029_01`（完整性及索引）、`V20261030_01`（知识索引请求标识与会话租约）、`V20261031_01`（会话租约补充）、`V20261031_02`（知识租约与配额）、`V20261031_03`（AI 同步检查点）、`V20261102_01`（商品图片对象引用及历史主图回填）、`V20261104_01`（图片对象商户归属），成功后逐项登记 SHA-256。索引和图片对象表可能消耗额外空间并产生元数据锁等待。
+4. 在维护窗口运行下方显式迁移命令。CLI 按版本号顺序执行当前 `docs/database/migrations/` 中全部迁移：`V20261028_01`（订单图片）、`V20261028_02`（RBAC）、`V20261029_01`（完整性及索引）、`V20261030_01`（知识索引请求标识与会话租约）、`V20261031_01`（会话租约补充）、`V20261031_02`（知识租约与配额）、`V20261031_03`（AI 同步检查点）、`V20261102_01`（商品图片对象引用及历史主图回填）、`V20261104_01`（图片对象商户归属）、`V20261105_01`（库存唯一归属与分页索引）、`V20261105_02`（结构漂移审计），成功后逐项登记 SHA-256。索引和图片对象表可能消耗额外空间并产生元数据锁等待。
 ```powershell
 python -m pip install --require-hashes -r ai-service/requirements-dev.lock
 python scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campus_shopping
 python scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campus_shopping --check
 ```
+
+`--check` 同时核对迁移历史和目标结构指纹。确需人工接纳已核对的非标准库时，必须显式提供发布名或指纹、原因和责任人；准入会先写入 `sys_schema_migration_drift`，随后仍执行迁移后的指纹断言：
+
+```powershell
+python scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campus_shopping `
+  --accept-baseline <release-or-fingerprint> --reason "工单/评审编号及核对结论" --operator "责任人"
+```
+
+迁移完成后的结构漂移写入同一审计表，包含目标/实际指纹和差异摘要；脚本不会自动回滚 MySQL DDL，也不会删除已登记历史。漂移需由操作者修复或重新走有记录的人工准入。
 
 显式指定目标库，脚本不读取 `.env`。以前手工执行过这些幂等 SQL 的库也要运行此入口登记历史。CLI 使用 MySQL 命名锁防止并发升级；已登记脚本的校验和改变或数据库记录了更新版本时直接拒绝。新增迁移后运行 `python scripts/schema_contract.py` 更新构建清单，CI 使用 `--check` 拒绝漂移。
 
@@ -28,7 +39,7 @@ SELECT COUNT(*) AS invalid_payments FROM trd_payment WHERE amount_cent <= 0;
 SELECT COUNT(*) AS invalid_refunds FROM trd_refund WHERE amount_cent <= 0;
 ```
 
-迁移通过 `information_schema` 按名称检查后再执行 DDL，可在中断后重跑。**MySQL DDL 隐式提交，不是整批原子事务**；后续 CHECK 因脏数据失败时，前面增加的索引可能已经生效。客户端应在第一处错误终止，不能使用 `mysql --force`。不在应用启动时自动执行这些脚本。
+迁移通过 `information_schema` 校验已登记索引/约束的列定义后再执行 DDL，可在中断后重跑；同名但定义不同会直接失败。**MySQL DDL 隐式提交，不是整批原子事务**；后续 CHECK 因脏数据失败时，前面增加的索引可能已经生效。客户端应在第一处错误终止，不能使用 `mysql --force`。不在应用启动时自动执行这些脚本。
 
 本迁移不修改订单、库存、支付或退款业务行，也不执行跨域级联删除。`V20261102_01__product_images.sql` 创建 `cat_product_image` 并将已有非空 `/media/{uuid}.png` 主图幂等回填为 `sort_order=0` 的 LOCAL 对象引用；不会复制、重编码或删除文件，不改 `cat_product.image_url` 和订单图片快照。`V20261104_01__product_image_upload_ownership.sql` 再登记已有对象对应的商户归属，并创建后续上传对象的认领记录；不会改变历史图片 URL。其他迁移不回填历史业务数据。仅角色与角色权限使用已有的域内外键；订单、库存、支付、退款之间的归属和状态一致性继续由同库 Case 事务维护。现有数据库若已存在**同名但定义不同**的索引/约束，脚本不会替换；升级前后应核对 `SHOW CREATE TABLE`。
 新索引对应当前 Mapper 的实际访问方式：

@@ -60,18 +60,20 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void startPreparing(String order) {
+    public boolean startPreparing(String order) {
         PickupAggregate p = required(order);
-        p.prepare();
-        repository.save(p.view());
+        boolean changed = p.prepare();
+        if (changed) repository.save(p.view());
+        return changed;
     }
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
-    public void markReady(String order) {
+    public boolean markReady(String order) {
         PickupAggregate p = required(order);
-        p.ready();
-        repository.save(p.view());
+        boolean changed = p.ready();
+        if (changed) repository.save(p.view());
+        return changed;
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

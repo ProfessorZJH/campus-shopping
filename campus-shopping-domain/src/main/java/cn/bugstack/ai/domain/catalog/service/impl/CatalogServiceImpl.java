@@ -10,6 +10,7 @@ import cn.bugstack.ai.domain.catalog.model.aggregate.ProductAggregate;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
 import cn.bugstack.ai.domain.catalog.model.valobj.CategoryVO;
+import cn.bugstack.ai.domain.catalog.model.valobj.ProductCandidateSnapshot;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageRef;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductSortEnumVO;
@@ -19,6 +20,7 @@ import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.types.common.Checks;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import cn.bugstack.ai.types.exception.AppException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -63,6 +65,16 @@ public class CatalogServiceImpl implements ICatalogService {
             ResponseCode.ILLEGAL_PARAMETER
         );
         return ids.isEmpty() ? List.of() : queries.publicByIds(ids.stream().distinct().toList());
+    }
+
+    @Override
+    public List<ProductCandidateSnapshot> candidateRecall(List<String> terms, int limit) {
+        return recall(terms, limit).stream().map(ProductCandidateSnapshot::from).toList();
+    }
+
+    @Override
+    public List<ProductCandidateSnapshot> candidateRecallByIds(List<String> ids) {
+        return recallByIds(ids).stream().map(ProductCandidateSnapshot::from).toList();
     }
 
     public ProductAggregate create(String merchant, String store, ProductCreateCommandEntity c) {
@@ -190,7 +202,12 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public List<ProductAggregate> search(String merchant, String q, String category, boolean pub, int page, int size) {
-        return queries.search(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size);
+        return search(merchant, q, category, pub, page, size, null, null);
+    }
+
+    public List<ProductAggregate> search(String merchant, String q, String category, boolean pub, int page, int size, Long minPriceCent, Long maxPriceCent) {
+        checkedPriceRange(minPriceCent, maxPriceCent);
+        return queries.search(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size, minPriceCent, maxPriceCent);
     }
 
     public List<String> scanIdsAfter(String after, int limit) {
@@ -204,7 +221,32 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public List<ProductAggregate> searchSorted(String merchant, String q, String category, boolean pub, int page, int size, String sort) {
-        return queries.searchSorted(merchant, Checks.optional(q, 100), category, pub, Checks.offset(page, size), size, checkedSort(sort));
+        return searchSorted(merchant, q, category, pub, page, size, sort, null, null);
+    }
+
+    public List<ProductAggregate> searchSorted(
+        String merchant,
+        String q,
+        String category,
+        boolean pub,
+        int page,
+        int size,
+        String sort,
+        Long minPriceCent,
+        Long maxPriceCent
+    ) {
+        checkedPriceRange(minPriceCent, maxPriceCent);
+        return queries.searchSorted(
+            merchant,
+            Checks.optional(q, 100),
+            category,
+            pub,
+            Checks.offset(page, size),
+            size,
+            checkedSort(sort),
+            minPriceCent,
+            maxPriceCent
+        );
     }
 
     public List<ProductAggregate> searchManagedSorted(String merchant, String q, String cat, String status, int page, int size, String sort) {
@@ -212,7 +254,21 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     public long count(String merchant, String q, String category, boolean pub) {
-        return queries.count(merchant, Checks.optional(q, 100), category, pub);
+        return count(merchant, q, category, pub, null, null);
+    }
+
+    public long count(String merchant, String q, String category, boolean pub, Long minPriceCent, Long maxPriceCent) {
+        checkedPriceRange(minPriceCent, maxPriceCent);
+        return queries.count(merchant, Checks.optional(q, 100), category, pub, minPriceCent, maxPriceCent);
+    }
+
+    /** 价格筛选只接受整数分；区间端点包含在内，下限不得高于上限。 */
+    private void checkedPriceRange(Long minPriceCent, Long maxPriceCent) {
+        if (
+            (minPriceCent != null && minPriceCent < 0) ||
+            (maxPriceCent != null && maxPriceCent < 0) ||
+            (minPriceCent != null && maxPriceCent != null && minPriceCent > maxPriceCent)
+        ) throw new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode(), "价格条件无效：金额须为非负整数分，且最低价不高于最高价");
     }
 
     public List<ProductAggregate> searchManaged(String merchant, String q, String category, String status, int page, int size) {
@@ -240,6 +296,16 @@ public class CatalogServiceImpl implements ICatalogService {
     @Override
     public List<SkuOfferVO> offers(List<String> ids) {
         return loadOffers(ids, false, false);
+    }
+
+    /** 历史提案只需要恢复仍存在的 SKU 关联，不能因单个失效 SKU 让整批读取失败。 */
+    @Override
+    public List<SkuOfferVO> resolveOffers(List<String> ids) {
+        require(
+            ids != null && ids.size() <= 1000 && ids.stream().allMatch(id -> id != null && !id.isBlank() && id.length() <= 64),
+            ResponseCode.ILLEGAL_PARAMETER
+        );
+        return ids.isEmpty() ? List.of() : repository.offers(ids.stream().distinct().sorted().toList(), false);
     }
 
     @Override

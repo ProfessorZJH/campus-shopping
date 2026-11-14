@@ -1,0 +1,45 @@
+{
+  "assetHttpAndHashMatch": 6,
+  "viewports": [
+    {
+      "width": 1440,
+      "icons": 5,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 390,
+      "icons": 5,
+      "horizontalOverflow": false
+    },
+    {
+      "width": 320,
+      "icons": 5,
+      "horizontalOverflow": false
+    }
+  ],
+  "categoryImages": [
+    {
+      "alt": "日用百货",
+      "src": "./images/category-daily.webp"
+    },
+    {
+      "alt": "数码配件",
+      "src": "./images/category-digital.webp"
+    },
+    {
+      "alt": "食品饮料",
+      "src": "./images/category-snacks.webp"
+    },
+    {
+      "alt": "水果生鲜",
+      "src": "./images/category-fruit.webp"
+    },
+    {
+      "alt": "文具图书",
+      "src": "./images/category-stationery.webp"
+    }
+  ],
+  "categoryTogglePassed": true,
+  "pageErrors": [],
+  "scope": "Live current-branch Java preview with rebuilt UI and six new category assets. Main-based feature branch built separately."
+}

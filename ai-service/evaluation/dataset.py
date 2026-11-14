@@ -5,6 +5,7 @@ import hashlib
 import json
 import re
 from collections import Counter
+from datetime import datetime
 from pathlib import Path
 
 DATASETS = Path(__file__).parent / "datasets"
@@ -33,6 +34,32 @@ def write_json(path, value):
 def write_jsonl(path, values):
     Path(path).parent.mkdir(parents=True, exist_ok=True)
     Path(path).write_text("".join(json.dumps(v, ensure_ascii=False, sort_keys=True) + "\n" for v in values), encoding="utf-8", newline="\n")
+
+
+def _valid_reviewed_at(value):
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
+
+
+def human_review_metadata_errors(annotation):
+    """只核对评审记录结构，不能证明人类实际完成了复核。"""
+    errors = []
+    if annotation.get("reviewStatus") != "HUMAN_REVIEWED":
+        errors.append("NOT_HUMAN_REVIEWED")
+    if not isinstance(annotation.get("reviewer"), str) or not annotation["reviewer"].strip():
+        errors.append("MISSING_REVIEWER")
+    if not _valid_reviewed_at(annotation.get("reviewedAt")):
+        errors.append("INVALID_REVIEWED_AT")
+    if not isinstance(annotation.get("annotationSource"), str) or not annotation["annotationSource"].strip():
+        errors.append("MISSING_ANNOTATION_SOURCE")
+    if annotation.get("disputed") is not False:
+        errors.append("UNRESOLVED_DISPUTE")
+    return errors
 
 
 def unique(rows, key):
@@ -118,7 +145,7 @@ def validate(data, *, formal=False):
         require(ann["datasetVersion"] == manifest["version"] and ann["caseHash"] == digest(case)
                 and ann["qrelsHash"] == digest(qrels[cid]), "annotation snapshot mismatch")
         if ann["reviewStatus"] == "HUMAN_REVIEWED":
-            require(bool(ann.get("reviewer")) and bool(ann.get("reviewedAt")) and not ann.get("disputed"), "invalid human review")
+            require(not human_review_metadata_errors(ann), "invalid human review")
         if formal:
             require(ann["reviewStatus"] == "HUMAN_REVIEWED", "unreviewed gold: " + cid)
     # 仅跨split近似问题提示人工处理；精确问题上面已拒绝。

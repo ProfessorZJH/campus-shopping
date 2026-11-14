@@ -3,12 +3,15 @@ package cn.bugstack.ai.domain.shoppingai.service.impl;
 import static cn.bugstack.ai.types.common.Checks.*;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.repository.IConversationRepository;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.AiCitationVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnStatusVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationTurnVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ConversationVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.MessageVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -59,14 +62,49 @@ public class ConversationServiceImpl implements IConversationService {
     /** 必须与提案创建同事务提交；过期或被新请求替换的令牌不能写入消息。 */
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
     public void appendTurn(ConversationTurnVO turn, String question, String answer, String accessFingerprint) {
+        appendTurn(turn, question, answer, List.of(), accessFingerprint);
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    public void appendTurn(ConversationTurnVO turn, String question, String answer, List<AiCitationVO> citations, String accessFingerprint) {
+        List<AiCitationVO> safeCitations = citations == null ? List.of() : List.copyOf(citations);
+        require(safeCitations.stream().allMatch(AiCitationVO::hasDocumentSnapshot), ResponseCode.KNOWLEDGE_NOT_READY);
         require(repository.finishTurn(turn), ResponseCode.STATE_CONFLICT);
-        repository.append(new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "user", text(question, "问题", 2000), clock.instant(), null));
+        String safeQuestion = text(question, "问题", 2000);
+        Instant activeAt = clock.instant();
+        repository.append(new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "user", safeQuestion, activeAt, null));
         repository.append(
-            new MessageVO(UUID.randomUUID().toString(), turn.conversationId(), "assistant", text(answer, "回答", 10000), clock.instant(), accessFingerprint)
+            new MessageVO(
+                UUID.randomUUID().toString(),
+                turn.conversationId(),
+                "assistant",
+                text(answer, "回答", 10000),
+                activeAt,
+                accessFingerprint,
+                safeCitations,
+                true
+            )
         );
+        require(repository.updateActivity(turn.conversationId(), turn.userId(), activeAt, summary(safeQuestion)), ResponseCode.STATE_CONFLICT);
     }
 
     public void releaseTurn(ConversationTurnVO turn) {
         repository.releaseTurn(turn);
+    }
+
+    public ConversationTurnStatusVO turnStatus(String actor, String id) {
+        conversation(actor, id, "会话状态");
+        return repository.turnStatus(id, actor);
+    }
+
+    public ConversationTurnStatusVO requestTurnCancel(String actor, String id) {
+        conversation(actor, id, "取消会话轮次");
+        repository.requestTurnCancel(id, actor);
+        return repository.turnStatus(id, actor);
+    }
+
+    private String summary(String question) {
+        String normalized = question.replaceAll("\\s+", " ").trim();
+        return normalized.length() <= 200 ? normalized : normalized.substring(0, 199) + "…";
     }
 }

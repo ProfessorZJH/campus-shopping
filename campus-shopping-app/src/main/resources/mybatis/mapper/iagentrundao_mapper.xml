@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.bugstack.ai.infrastructure.dao.IAgentRunDao">
+    <select id="activeTurnExpiry" resultType="java.time.Instant">
+SELECT turn_expires_at
+FROM ai_conversation
+WHERE id=#{conversationId} AND user_id=#{actor} AND turn_token=#{turnToken}
+  AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
+    </select>
+
+    <select id="find" resultType="cn.bugstack.ai.infrastructure.dao.po.AgentRunPO">
+SELECT id,user_id,idempotency_key,capability_token_hash,conversation_id,turn_token,scope_json,tools_json,status,version,created_at,updated_at
+FROM ai_run WHERE id=#{id}
+    </select>
+
+    <select id="findByIdempotency" resultType="cn.bugstack.ai.infrastructure.dao.po.AgentRunPO">
+SELECT id,user_id,idempotency_key,capability_token_hash,conversation_id,turn_token,scope_json,tools_json,status,version,created_at,updated_at
+FROM ai_run WHERE user_id=#{userId} AND idempotency_key=#{idempotencyKey}
+    </select>
+
+    <insert id="insert">
+INSERT IGNORE INTO ai_run(id,user_id,idempotency_key,capability_token_hash,conversation_id,turn_token,scope_json,tools_json,status,version,created_at,updated_at)
+VALUES(#{p.id},#{p.userId},#{p.idempotencyKey},#{p.capabilityTokenHash},#{p.conversationId},#{p.turnToken},#{p.scopeJson},#{p.toolsJson},#{p.status},#{p.version},#{p.createdAt},#{p.updatedAt})
+    </insert>
+
+    <update id="update">
+UPDATE ai_run
+SET status=#{status},updated_at=#{updatedAt},version=#{version}
+WHERE id=#{id} AND version=#{expectedVersion}
+    </update>
+
+    <select id="invocation" resultType="cn.bugstack.ai.infrastructure.dao.po.AgentToolInvocationPO">
+SELECT id,run_id,invocation_key,tool_name,input_fingerprint,status,input_json,output_json,error_code,created_at,completed_at
+FROM ai_run_invocation WHERE run_id=#{runId} AND invocation_key=#{invocationKey}
+    </select>
+
+    <insert id="claimInvocation">
+INSERT IGNORE INTO ai_run_invocation(id,run_id,invocation_key,tool_name,input_fingerprint,status,input_json,created_at)
+VALUES(#{p.id},#{p.runId},#{p.invocationKey},#{p.toolName},#{p.inputFingerprint},#{p.status},#{p.inputJson},#{p.createdAt})
+    </insert>
+
+    <update id="completeInvocation">
+UPDATE ai_run_invocation
+SET status='COMPLETED',output_json=#{outputJson},error_code=NULL,completed_at=#{completedAt}
+WHERE run_id=#{runId} AND invocation_key=#{invocationKey} AND input_fingerprint=#{inputFingerprint} AND status='RUNNING'
+    </update>
+
+    <update id="failInvocation">
+UPDATE ai_run_invocation
+SET status='FAILED',error_code=#{errorCode},completed_at=#{completedAt}
+WHERE run_id=#{runId} AND invocation_key=#{invocationKey} AND input_fingerprint=#{inputFingerprint} AND status='RUNNING'
+    </update>
+</mapper>

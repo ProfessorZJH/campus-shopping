@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "schemaFingerprint": "6c77e8dc45f0c5c541f7bad79702e9c609ce8a13794f7b359178db1b806ed6e3",
   "migrations": [
     {
       "version": "V20261028_01",
@@ -45,6 +46,61 @@
       "version": "V20261104_01",
       "file": "V20261104_01__product_image_upload_ownership.sql",
       "sha256": "1f233c56f597b1cb094ae68da55a07fd49322fee939fe9e5a5d89b10e107f165"
+    },
+    {
+      "version": "V20261105_01",
+      "file": "V20261105_01__inventory_integrity_and_query_indexes.sql",
+      "sha256": "f3dc21f54f23e3f142cf2ec5d82a8c2a7fec36abe219a16936a3cea985b290cb"
+    },
+    {
+      "version": "V20261105_02",
+      "file": "V20261105_02__migration_drift_audit.sql",
+      "sha256": "4c4802ee8e2e31262def368c0536b2f227923d1bb219d4280babe64878e86c48"
+    },
+    {
+      "version": "V20261106_01",
+      "file": "V20261106_01__store_profile.sql",
+      "sha256": "fcc1851f8933857c4531d126ba46d4a49754310693c006589f3b9363f033e977"
+    },
+    {
+      "version": "V20261106_02",
+      "file": "V20261106_02__order_pickup_snapshot.sql",
+      "sha256": "338723eaf6a7f12ce1ecd11aca2cba58d7c0c01d2050d8f75999502694076c5a"
+    },
+    {
+      "version": "V20261106_03",
+      "file": "V20261106_03__order_events.sql",
+      "sha256": "044d59cfa7be4c91311469a4122b6c9e5e74d6ee41df6d55645381659ecc680e"
+    },
+    {
+      "version": "V20261107_01",
+      "file": "V20261107_01__conversation_activity.sql",
+      "sha256": "d7f090055c373713c8725305cb547467d4f15d05de994d7caf19ed1e227411cd"
+    },
+    {
+      "version": "V20261107_02",
+      "file": "V20261107_02__message_citations.sql",
+      "sha256": "ac00dcc87a5e17bb8fdbd3f5624094dec54e1c9e1bfc23f702868987fbe8e0e1"
+    },
+    {
+      "version": "V20261107_03",
+      "file": "V20261107_03__conversation_turn_runtime.sql",
+      "sha256": "464e87113c9805681fde52a3b7525b06aac9cafc8ee2650010e2b8da32227937"
+    },
+    {
+      "version": "V20261107_04",
+      "file": "V20261107_04__conversation_activity_default.sql",
+      "sha256": "49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe"
+    },
+    {
+      "version": "V20261107_05",
+      "file": "V20261107_05__order_created_at_reporting_index.sql",
+      "sha256": "2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813"
+    },
+    {
+      "version": "V20261109_01",
+      "file": "V20261109_01__agent_run_gateway.sql",
+      "sha256": "6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac"
     }
   ]
 }

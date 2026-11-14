@@ -51,6 +51,11 @@ public class ProductImageRepository implements IProductImageRepository {
 
     @Override
     public String storeImage(byte[] data, String merchantId) {
+        return storeImage(data, merchantId, "PRODUCT");
+    }
+
+    /** 商品与门店共用对象存储和归属表，用途在登记时固化，认领时必须匹配。 */
+    public String storeImage(byte[] data, String merchantId, String usageType) {
         if (merchantId == null || merchantId.isBlank()) throw new AppException(ResponseCode.ILLEGAL_PARAMETER);
         if (data == null || data.length == 0 || data.length > 2_000_000) {
             throw new AppException(ResponseCode.UPLOAD_INVALID);
@@ -60,16 +65,27 @@ public class ProductImageRepository implements IProductImageRepository {
         if (properties.qiniuSelected()) {
             // 云端上传在数据库事务与商品锁之外完成；只有上传成功才登记可认领对象。
             String key = qiniu.upload(png, "qiniu/" + name);
-            register(key, merchantId);
+            register(key, merchantId, usageType);
             return ProductImageRef.qiniu(name).url();
         }
         writeLocal(png, name);
-        register(name, merchantId);
+        register(name, merchantId, usageType);
         return ProductImageRef.local(name).url();
     }
 
-    private void register(String objectKey, String merchantId) {
-        if (dao.registerProductImageUpload(objectKey, merchantId) != 1) {
+    /** 门店资料只能引用本商户按 STORE 用途上传的图片；仅持有 URL 不能跨商户使用。 */
+    public void requireOwnedStoreImage(String merchantId, String imageUrl) {
+        ProductImageRef ref = ProductImageRef.of(imageUrl);
+        if (ref.local() && !Files.isRegularFile(objectPath(ref.objectKey()))) {
+            throw new AppException(ResponseCode.NOT_FOUND);
+        }
+        if (dao.countImageUpload(ref.objectKey(), merchantId, "STORE") == 0) {
+            throw new AppException(ResponseCode.AUTH_FORBIDDEN);
+        }
+    }
+
+    private void register(String objectKey, String merchantId, String usageType) {
+        if (dao.registerProductImageUpload(objectKey, merchantId, usageType) != 1) {
             // 云端对象此时可能成为孤儿；宁可让本次上传失败，也不返回不可认领的地址。
             throw new IllegalStateException("图片对象登记失败");
         }
