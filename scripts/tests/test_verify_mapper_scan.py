@@ -120,6 +120,33 @@ class MapperScanTest(unittest.TestCase):
                 )
                 self.assertEqual(findings, [])
 
+    def test_leading_wildcard_from_bind_is_detected(self):
+        direct = self.scan(
+            '<mapper><select id="search"><bind name="pattern" value="\'%\' + q + \'%\'"/>'
+            'SELECT * FROM products WHERE title LIKE #{pattern}</select></mapper>'
+        )
+        self.assertIn("LEADING_WILDCARD", direct[0]["patterns"])
+        self.assertFalse(direct[0]["narrowed"])
+
+        for expression in ("LIKE #{pattern}", "LIKE (#{pattern,jdbcType=VARCHAR})", "LIKE ${pattern}"):
+            with self.subTest(expression=expression):
+                findings = self.scan(
+                    '<mapper><sql id="binding"><bind name="prefix" value="\'%\'"/>'
+                    '<bind name="pattern" value="prefix + query + \'%\'"/></sql>'
+                    '<select id="search">SELECT * FROM cat_product p <include refid="binding"/>'
+                    'WHERE p.title ' + expression + '</select></mapper>'
+                )
+                self.assertIn("LEADING_WILDCARD", findings[0]["patterns"])
+                self.assertFalse(findings[0]["narrowed"])
+
+        for value in ("query + '%'", "'book%' + query"):
+            with self.subTest(value=value):
+                findings = self.scan(
+                    '<mapper><select id="search"><bind name="pattern" value="' + value + '"/>'
+                    'SELECT * FROM products WHERE title LIKE #{pattern}</select></mapper>'
+                )
+                self.assertEqual(findings, [])
+
     def test_unknown_and_cyclic_includes_fail_closed(self):
         examples = (
             '<mapper><select id="search"><include refid="missing"/></select></mapper>',
