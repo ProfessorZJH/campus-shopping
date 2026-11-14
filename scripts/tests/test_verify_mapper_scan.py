@@ -143,7 +143,7 @@ class MapperScanTest(unittest.TestCase):
                 self.assertIn("LEADING_WILDCARD", findings[0]["patterns"])
                 self.assertFalse(findings[0]["narrowed"])
 
-        for expression in ("LIKE 'book%'", "LIKE CONCAT(#{q}, '%')", "LIKE CONCAT('book', #{q}, '%')"):
+        for expression in ("LIKE 'book%'", "LIKE CONCAT('book', #{q}, '%')"):
             with self.subTest(expression=expression):
                 findings = self.scan(
                     '<mapper><select id="search">SELECT * FROM cat_product p WHERE p.title '
@@ -156,7 +156,7 @@ class MapperScanTest(unittest.TestCase):
             '<mapper><select id="search"><bind name="pattern" value="\'%\' + q + \'%\'"/>'
             'SELECT * FROM products WHERE title LIKE #{pattern}</select></mapper>'
         )
-        self.assertIn("LEADING_WILDCARD", direct[0]["patterns"])
+        self.assertIn("DYNAMIC_LIKE_PATTERN", direct[0]["patterns"])
         self.assertFalse(direct[0]["narrowed"])
 
         for expression in ("LIKE #{pattern}", "LIKE (#{pattern,jdbcType=VARCHAR})", "LIKE ${pattern}"):
@@ -167,7 +167,7 @@ class MapperScanTest(unittest.TestCase):
                     '<select id="search">SELECT * FROM cat_product p <include refid="binding"/>'
                     'WHERE p.title ' + expression + '</select></mapper>'
                 )
-                self.assertIn("LEADING_WILDCARD", findings[0]["patterns"])
+                self.assertIn("DYNAMIC_LIKE_PATTERN", findings[0]["patterns"])
                 self.assertFalse(findings[0]["narrowed"])
 
         for value in ("query + '%'", "'book%' + query"):
@@ -176,7 +176,15 @@ class MapperScanTest(unittest.TestCase):
                     '<mapper><select id="search"><bind name="pattern" value="' + value + '"/>'
                     'SELECT * FROM products WHERE title LIKE #{pattern}</select></mapper>'
                 )
-                self.assertEqual(findings, [])
+                self.assertIn("DYNAMIC_LIKE_PATTERN", findings[0]["patterns"])
+
+        for expression in ("LIKE #{query}", "LIKE CONCAT(#{query}, '%')"):
+            with self.subTest(expression=expression):
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM products WHERE title '
+                    + expression + '</select></mapper>'
+                )
+                self.assertIn("DYNAMIC_LIKE_PATTERN", findings[0]["patterns"])
 
     def test_unknown_and_cyclic_includes_fail_closed(self):
         examples = (

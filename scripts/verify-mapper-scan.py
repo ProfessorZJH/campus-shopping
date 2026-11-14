@@ -44,9 +44,11 @@ SQL_TOKEN = re.compile(
     r'|(?P<paren>[()])|(?P<word>[a-z_]\w*)|(?P<other>.)',
     re.IGNORECASE | re.DOTALL,
 )
-LIKE_BIND = re.compile(r'\blike\b\s*\(?\s*[#$]\{\s*([a-z_]\w*)(?:\s*,[^}]*)?\s*\}', re.IGNORECASE)
-BIND_LITERAL = re.compile(r'''^\s*\(*\s*['"]%''')
-BIND_REFERENCE = re.compile(r'^\s*\(*\s*([a-z_]\w*)\b', re.IGNORECASE)
+# 参数值可能以通配符开头，静态检查无法证明时按潜在前导通配符处理。
+DYNAMIC_LIKE = re.compile(
+    r'\blike\b\s*\(?\s*(?:concat\s*\(\s*)?[#$]\{\s*[a-z_]\w*(?:\s*,[^}]*)?\s*\}',
+    re.IGNORECASE,
+)
 
 # 已登记豁免：必须写明原因与到期日；到期后重新评审，不允许无限期挂账。
 ALLOW = {
@@ -172,37 +174,6 @@ def expanded_sql(element, fragments, include_optional=True, stack=()):
     return ' '.join(parts)
 
 
-def wildcard_bindings(element, fragments):
-    """收集可能产生前导 % 的 bind；无法推断的运行时参数仍需人工审查。"""
-    bindings = {}
-
-    def collect(node, stack=()):
-        for child in node:
-            if child.tag == 'bind':
-                bindings.setdefault(child.get('name', ''), []).append(child.get('value', ''))
-            elif child.tag == 'include':
-                name = child.get('refid')
-                if name not in fragments or name in stack:
-                    raise ValueError(f'无法解析 mapper 片段: {name}')
-                collect(fragments[name], (*stack, name))
-            else:
-                collect(child, stack)
-
-    collect(element)
-    wildcard = set()
-    changed = True
-    while changed:
-        changed = False
-        for name, expressions in bindings.items():
-            for expression in expressions:
-                reference = BIND_REFERENCE.match(expression)
-                if name not in wildcard and (BIND_LITERAL.match(expression) or
-                                             (reference and reference.group(1) in wildcard)):
-                    wildcard.add(name)
-                    changed = True
-    return wildcard
-
-
 def scan(path):
     """返回该 mapper 里每一处不可索引匹配的发现。"""
     root = ET.parse(path).getroot()
@@ -214,10 +185,8 @@ def scan(path):
         if any(token.lastgroup == 'word' and token.group().upper() in {'REGEXP', 'RLIKE', 'REGEXP_LIKE'}
                for token in SQL_TOKEN.finditer(statement)):
             hits.append('REGEXP_MATCH')
-        bound_wildcards = wildcard_bindings(select, fragments)
-        if any(match.group(1) in bound_wildcards for match in LIKE_BIND.finditer(statement)):
-            if 'LEADING_WILDCARD' not in hits:
-                hits.append('LEADING_WILDCARD')
+        if DYNAMIC_LIKE.search(statement):
+            hits.append('DYNAMIC_LIKE_PATTERN')
         if not hits:
             continue
         unconditional = expanded_sql(select, fragments, include_optional=False)
