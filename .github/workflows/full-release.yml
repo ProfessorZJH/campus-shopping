@@ -60,6 +60,9 @@ jobs:
           python scripts/verify-api-schemas.py
           python scripts/verify-java-readability.py
           python scripts/verify-release.py
+          python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions
+          python scripts/verify-mapper-scan.py
+          python scripts/verify-fix-regressions.py
       - name: Python and Java deterministic regressions
         run: |
           (cd ai-service && python -m pytest -q)
