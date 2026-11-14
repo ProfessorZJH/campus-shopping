@@ -9,6 +9,7 @@
 | **工程门禁地基 Wave 0（2026-11-12）** | [实施与验证记录](testing/ENGINEERING-WAVE0-20261112.md)：门禁插件声明、domain 单测依赖、mapper 去重与扫描脚本；后附 WSL 恢复后的补充验证与剩余未验证范围 |
 | **前端统一第二批（2026-11-14）** | [后台业务视图验证](testing/FRONTEND-UNIFICATION-BATCH2-20261114.md)：商户订单、库存、商品表单与平台审核 |
 | **交互式代码地图** | [项目全景](code-map/project-overview/README.md) · [下单到模拟支付专题](code-map/order-payment/README.md)：源码基线、交互地图与更新方法 |
+| **前端统一第三批（2026-11-14）** | [消费者与导购验证](testing/FRONTEND-UNIFICATION-BATCH3-20261114.md)：购物车状态、导购组件、响应式与流式恢复 |
 | **开发操作入口与AI流程** | [AGENTS](../AGENTS.md)、[AI开发流程](development/AI-WORKFLOW.md)、[前端开发与构建入口](development/FRONTEND.md)、[Java/DDD规范](development/JAVA-STYLE.md) |
 | **PR与主线质量门禁** | [PR模板](../.github/pull_request_template.md)、[main保护与核验](development/REPOSITORY-GATES.md) |
 | **Git cleanup and category icons (2026-11-11)** | [Branch/worktree cleanup and recovery](testing/GIT-CLEANUP-20261111.md), [Category icon verification](testing/CATEGORY-ICONS-20261111.md) |

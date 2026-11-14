@@ -68,7 +68,7 @@ def main():
         expect(dialog).to_have_count(0)
         checks.append('cart unknown-result retry reuses key; changed quantity gets a fresh nonempty key')
         hold(page,'/cart');page.get_by_role('button',name='刷新',exact=True).click();pending(page)
-        expect(page.locator('.inline-loading')).to_contain_text('加载购物车');expect(page.locator('.mobile-empty')).to_have_count(0)
+        expect(page.locator('.status-panel--loading')).to_contain_text('加载购物车');expect(page.locator('.mobile-empty')).to_have_count(0)
         page.locator('.mobile-tabbar').get_by_role('button',name='订单',exact=True).click()
         expect(page.locator('.order-tabs')).to_be_visible();finish(page,f.cart)
         expect(page.locator('.cart-line')).to_have_count(0)

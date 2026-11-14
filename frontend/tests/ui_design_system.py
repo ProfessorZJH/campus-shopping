@@ -16,6 +16,8 @@ ROUTES = (
     ('/', '.consumer-shell'),
     ('/cart', '.consumer-shell'),
     ('/orders', '.consumer-shell'),
+    ('/ai', '.consumer-shell'),
+    ('/product/preview-p1', '.consumer-shell'),
     ('/shops/preview-m1', '.consumer-shell'),
     ('/merchant/products', '.merchant-shell'),
     ('/merchant/orders', '.merchant-shell'),

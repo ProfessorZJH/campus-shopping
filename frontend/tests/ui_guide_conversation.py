@@ -196,6 +196,13 @@ def main():
         page.get_by_role('button', name='确认加购', exact=True).click()
         expect(page.locator('.proposal-feedback')).to_contain_text('价格或版本已变化')
         expect(page.locator('.rec-check').first).to_have_class(re.compile(r'\bchecked\b'))
+        selection = page.locator('.rec-check').first
+        expect(selection).to_have_attribute('aria-pressed', 'true')
+        selection.click()
+        expect(selection).to_have_attribute('aria-pressed', 'false')
+        selection.click()
+        expect(selection).to_have_attribute('aria-pressed', 'true')
+        checks.append('推荐选择状态向键盘和辅助技术暴露并随操作更新')
         expect(page.get_by_role('button', name='确认加购', exact=True)).to_be_enabled()
         checks.append('变价拒绝保留选择、提案未误标成功且允许重试')
         fixture.confirm_failure = None
@@ -221,7 +228,10 @@ def main():
         fixture.messages = [{'id': 'm1', 'role': 'assistant', 'content': '旧会话回答', 'citations': [], 'citationStatus': 'MISSING'}]
         fixture.proposals = []
         page = open_guide(browser, fixture)
-        page.get_by_role('button', name='历史会话', exact=False).click()
+        history = page.get_by_role('button', name='历史会话', exact=False)
+        expect(history).to_have_attribute('aria-expanded', 'false')
+        history.click()
+        expect(history).to_have_attribute('aria-expanded', 'true')
         page.get_by_role('button', name='旧会话', exact=False).click()
         expect(page.locator('.chat-thread')).to_contain_text('旧会话回答')
         expect(page.locator('.citation-chip')).to_have_count(0)
