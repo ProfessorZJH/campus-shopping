@@ -25,14 +25,14 @@
 | `npm run format:check --prefix frontend`、`npm run typecheck --prefix frontend` | PASS；Java、前端格式及前端类型检查 |
 | `node --test frontend/tests/*.test.mjs` | PASS，35 项 |
 | `python scripts/build-ui-bundle.py`，随后 `--check` | PASS，源文件与生成静态资源一致 |
-| `python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions` | PASS，18 项；包括条件、嵌套引用、过滤不一致、未知引用、前导通配符和 `OR` 分支的场景 |
+| `python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions` | PASS，20 项；包括条件、嵌套引用、过滤不一致、未知引用、前导通配符和 `OR` 分支的场景 |
 | `verify-mapper-scan.py`、`verify-fix-regressions.py`、`verify-source.py`、`verify-release.py`、`verify-domain.py` | PASS；静态检查与 56 项领域探针，不代表真实服务验收 |
 | API/DDL/供应链检查及 Java 可读性检查 | PASS；`verify-api-schemas.py` 为 75 项 |
 | Maven 目标测试 | PASS，`InventoryFinishLockOrderTest`、`OrderExpiryDiagnosticsTest`、`CatalogCartReadModelTest` 共 18 项；使用 `-Dfrontend.skip=true`，前端已单独构建并检查 |
 | `-Pstatic-analysis` 目标测试 | PASS，库存锁序测试 2 项并生成 app 模块 JaCoCo 报告；未配置覆盖率门槛 |
 | `CommerceMySqlIntegrationTest` | 独立 MySQL 8 容器中 Surefire 报告 97 项、0 失败、0 错误、1 跳过；测试结束后外层进程捕获输出因 Windows 字符解码失败，未取得该次 Maven 退出码。跳过项随后在另建 MySQL 和两个独立 Redis 容器中单独运行，1 项 PASS、Maven exit 0。两次运行不能表述为一次完整的 97 项零跳过运行。 |
 | `ai-service` 的 `python -m pytest -q` | 系统 Python 环境先因 Pydantic 2.8.2 与锁文件不一致出现 1 项 schema 失败；隔离环境按 `requirements-dev.lock` 安装 Pydantic 2.13.5 后，404 项 PASS，1 warning。 |
-| 两份交互地图浏览器渲染与 SVG XML 解析 | 两图渲染及联动检查 PASS，六个导出 SVG XML 可解析；与真实业务验收无关 |
+| 两份交互地图浏览器渲染与 SVG XML 解析 | 两图渲染及联动检查 PASS，六个导出 SVG XML 可解析；见[订单地图报告](evidence/code-map/campus-shopping-order-payment-20261112-渲染验证.json)和[项目地图报告](evidence/code-map/campus-shopping-project-overview-20261112-渲染验证.json)。与真实业务验收无关。 |
 | `git diff --check` | 自有改动 PASS；两份 Mermaid 第三方压缩文件含上游尾随空格，完整差异检查会提示这些行。保留分发文件原内容，并以实际浏览器渲染验证。 |
 
 ## 未验证范围

@@ -22,9 +22,10 @@
 ```powershell
 $skill = Join-Path $HOME '.codex\skills\xfg-coding-map-skills'
 node (Join-Path $skill 'scripts\build-map.mjs') --data 'docs\code-map\project-overview\map-data.json' --out 'docs\code-map\project-overview' --force
-node 'docs\code-map\order-payment\render-map-compat.mjs' --html 'docs\code-map\project-overview\campus-shopping-project-overview-20261112.html' --force
+$renderOut = Join-Path 'docs\testing\evidence\code-map' ('project-overview-' + [guid]::NewGuid().ToString('N'))
+node 'docs\code-map\order-payment\render-map-compat.mjs' --html 'docs\code-map\project-overview\campus-shopping-project-overview-20261112.html' --out $renderOut
 ```
 
-`--force` 会覆盖对应的生成文件，操作前应先检查已有修改。构建会运行静态校验；浏览器渲染检查需要 Node.js 22+ 和 Chrome/Chromium，成功后生成 SVG、PNG 和渲染验证 JSON。
+`--force` 会覆盖对应的生成文件，操作前应先检查已有修改。构建会运行静态校验；浏览器渲染检查需要 Node.js 22+ 和 Chrome/Chromium，将 SVG、PNG 和报告写入新的测试证据目录。核对后可按需更新地图目录中的图像。已有[渲染验证报告](../../testing/evidence/code-map/campus-shopping-project-overview-20261112-渲染验证.json)。
 
 项目共用的 `order-payment/render-map-compat.mjs` 适配上游渲染器的分类筛选，并在导出 SVG 时使用 XML 序列化：它仍验证筛选后有可见及隐藏卡片、重置后全部恢复。HTML 运行不依赖该验证脚本。

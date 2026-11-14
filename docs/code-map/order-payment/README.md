@@ -13,9 +13,10 @@
 ```powershell
 $skill = Join-Path $HOME '.codex\skills\xfg-coding-map-skills'
 node (Join-Path $skill 'scripts\build-map.mjs') --data 'docs\code-map\order-payment\map-data.json' --out 'docs\code-map\order-payment' --force
-node 'docs\code-map\order-payment\render-map-compat.mjs' --html 'docs\code-map\order-payment\campus-shopping-order-payment-20261112.html' --force
+$renderOut = Join-Path 'docs\testing\evidence\code-map' ('order-payment-' + [guid]::NewGuid().ToString('N'))
+node 'docs\code-map\order-payment\render-map-compat.mjs' --html 'docs\code-map\order-payment\campus-shopping-order-payment-20261112.html' --out $renderOut
 ```
 
-`--force` 会覆盖本目录中的同名生成文件，重生成前应检查已有修改。构建脚本会执行静态校验；渲染检查需要 Node.js 22+ 和 Chrome/Chromium，并输出 SVG、PNG 及渲染验证 JSON。
+`--force` 会覆盖本目录中的同名生成文件，重生成前应检查已有修改。构建脚本会执行静态校验；渲染检查需要 Node.js 22+ 和 Chrome/Chromium，将 SVG、PNG 和报告写入新的测试证据目录。核对后可按需更新地图目录中的图像。已有[渲染验证报告](../../testing/evidence/code-map/campus-shopping-order-payment-20261112-渲染验证.json)。
 
 上游渲染脚本默认用“新增”筛选卡片，而本图只标记已有代码和测试。`render-map-compat.mjs` 在运行时选择一个实际有内容的筛选项，仍检查筛选前后有隐藏卡片、可见卡片及恢复结果；导出 SVG 时使用 XML 序列化，避免 HTML 换行标签产生无效 XML。该适配不修改地图模板或上游技能文件。

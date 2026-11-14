@@ -23,7 +23,7 @@ class MapperScanTest(unittest.TestCase):
         findings = self.scan(
             '<mapper><sql id="outer"><include refid="inner"/></sql>'
             '<sql id="inner">AND LOCATE(#{q}, p.title)</sql>'
-            '<select id="search">SELECT * FROM cat_product p <include refid="outer"/></select></mapper>'
+            '<select id="search">SELECT * FROM cat_product p WHERE 1=1 <include refid="outer"/></select></mapper>'
         )
         self.assertEqual(len(findings), 1)
         self.assertFalse(findings[0]["narrowed"])
@@ -31,7 +31,7 @@ class MapperScanTest(unittest.TestCase):
     def test_xml_attributes_and_comments_do_not_hide_or_invent_findings(self):
         findings = self.scan(
             "<mapper><sql id='filter'>AND LOCATE(#{q}, p.title)</sql>"
-            "<select resultType='long' id='search'>SELECT * FROM cat_product p "
+            "<select resultType='long' id='search'>SELECT * FROM cat_product p WHERE 1=1 "
             "<!-- AND merchant_id=#{merchantId} --><include refid='filter' /></select></mapper>"
         )
         self.assertEqual(len(findings), 1)
@@ -84,18 +84,62 @@ class MapperScanTest(unittest.TestCase):
                 )
                 self.assertEqual(findings[0]["narrowed"], expected)
 
-    def test_lower_column_detection_does_not_depend_on_alias(self):
-        for column in ("o.title", "oi.title", "other_alias.title", "`o`.`title`", "title"):
-            with self.subTest(column=column):
+    def test_case_function_column_detection_does_not_depend_on_alias(self):
+        for function, column in ((function, column) for function in ("LOWER", "UPPER")
+                                 for column in ("o.title", "oi.title", "other_alias.title", "`o`.`title`", "title")):
+            with self.subTest(function=function, column=column):
                 findings = self.scan(
-                    '<mapper><select id="search">SELECT * FROM products o WHERE LOWER('
-                    + column + ') = LOWER(#{q})</select></mapper>'
+                    '<mapper><select id="search">SELECT * FROM products o WHERE '
+                    + function + '(' + column + ') = ' + function + '(#{q})</select></mapper>'
                 )
                 self.assertIn("FUNCTION_ON_COLUMN", findings[0]["patterns"])
                 self.assertFalse(findings[0]["narrowed"])
         self.assertEqual(self.scan(
             '<mapper><select id="search">SELECT * FROM products WHERE title = LOWER(#{q})</select></mapper>'
         ), [])
+
+    def test_only_filtering_contexts_are_scanned(self):
+        harmless = (
+            "SELECT LOWER(p.title) FROM products p ORDER BY UPPER(p.title)",
+            "SELECT LOCATE('book', p.title) FROM products p",
+            "SELECT * FROM products p WHERE p.title='LOWER(p.title)' ORDER BY LOWER(p.title)",
+        )
+        for statement in harmless:
+            with self.subTest(statement=statement):
+                self.assertEqual(self.scan('<mapper><select id="search">' + statement + '</select></mapper>'), [])
+        filtering = (
+            "SELECT * FROM products p WHERE UPPER(p.title)=#{q}",
+            "SELECT * FROM products p JOIN merchants m ON UPPER(p.title)=m.name",
+            "SELECT COUNT(*) FROM products p GROUP BY p.title HAVING LOWER(p.title)=#{q}",
+            "SELECT * FROM products p WHERE EXISTS (SELECT LOWER(x.title) FROM products x "
+            "WHERE UPPER(x.title)=#{q})",
+        )
+        for statement in filtering:
+            with self.subTest(statement=statement):
+                findings = self.scan('<mapper><select id="search">' + statement + '</select></mapper>')
+                self.assertIn("FUNCTION_ON_COLUMN", findings[0]["patterns"])
+        for container in ("where", "trim"):
+            with self.subTest(container=container):
+                attributes = ' prefix="WHERE" prefixOverrides="AND |OR "' if container == "trim" else ''
+                findings = self.scan(
+                    '<mapper><select id="search">SELECT * FROM products p <' + container + attributes + '>'
+                    '<if test="q != null">AND UPPER(p.title)=#{q}</if>'
+                    '</' + container + '></select></mapper>'
+                )
+                self.assertIn("FUNCTION_ON_COLUMN", findings[0]["patterns"])
+                self.assertFalse(findings[0]["narrowed"])
+
+    def test_allowlist_requires_reason_and_strict_iso_date(self):
+        mapper_scan.validate_allowlist({"test": {"reason": "reviewed", "until": "2027-03-31"}})
+        for entry in (
+            {"reason": "reviewed", "until": "2027/03/31"},
+            {"reason": "reviewed", "until": "20270331"},
+            {"reason": " ", "until": "2027-03-31"},
+            {"until": "2027-03-31"},
+            {"reason": "reviewed"},
+        ):
+            with self.subTest(entry=entry), self.assertRaises(ValueError):
+                mapper_scan.validate_allowlist({"test": entry})
 
     def test_regexp_matches_are_detected_outside_literals(self):
         for expression in ("p.title REGEXP #{q}", "p.title RLIKE '^book'", "REGEXP_LIKE(p.title, #{q})"):

@@ -24,10 +24,10 @@ APP_MAPPER_DIR = 'campus-shopping-app/src/main/resources/mybatis/mapper'
 IDENTIFIER = r'(?:`[^`]+`|[a-z_]\w*)'
 SCAN_PATTERNS = [
     ('LOCATE_SUBSTRING', re.compile(r'\blocate\s*\(', re.IGNORECASE)),
-    ('LEADING_WILDCARD', re.compile(r'''\blike\b\s*\(?\s*(?:['"]%|concat\s*\(\s*['"]%)''', re.IGNORECASE)),
     ('FUNCTION_ON_COLUMN', re.compile(
-        rf'\blower\s*\(\s*(?:{IDENTIFIER}\s*\.\s*)?{IDENTIFIER}\s*\)', re.IGNORECASE)),
+        rf'\b(?:lower|upper)\s*\(\s*(?:{IDENTIFIER}\s*\.\s*)?{IDENTIFIER}\s*\)', re.IGNORECASE)),
 ]
+LEADING_WILDCARD = re.compile(r'''\blike\b\s*\(?\s*(?:['"]%|concat\s*\(\s*['"]%)''', re.IGNORECASE)
 
 # 只认可独立的顶层 AND 合取项；不能把 OR 分支或子查询中的条件当成全局收窄。
 NARROWING_TERM = re.compile(
@@ -104,6 +104,51 @@ ALLOW = {
 CONDITIONAL_TAGS = {'if', 'choose', 'when', 'otherwise', 'foreach'}
 
 
+def filtering_sql(statement):
+    """保留 WHERE、JOIN ON、HAVING 及其子查询中的过滤内容，遮蔽投影和排序。"""
+    active = [False]
+    parts = []
+    for token in SQL_TOKEN.finditer(statement):
+        kind, value = token.lastgroup, token.group()
+        if kind == 'paren' and value == '(':
+            parts.append(value if active[-1] else ' ')
+            active.append(active[-1])
+        elif kind == 'paren' and value == ')':
+            parts.append(value if active[-1] else ' ')
+            if len(active) > 1:
+                active.pop()
+        else:
+            if kind == 'word':
+                word = value.upper()
+                if word in {'WHERE', 'ON', 'HAVING'}:
+                    active[-1] = True
+                elif word in {'SELECT', 'JOIN', 'GROUP', 'ORDER', 'LIMIT', 'OFFSET',
+                              'UNION', 'INTERSECT', 'EXCEPT'}:
+                    active[-1] = False
+            parts.append(value if active[-1] and kind != 'comment' else ' ' * len(value))
+    return ''.join(parts)
+
+
+def without_sql_literals(statement):
+    """保留反引号标识符，遮蔽普通字符串，以免将字符串内容误认成函数。"""
+    return ''.join(' ' * len(token.group()) if token.lastgroup == 'quoted' and token.group()[0] != '`'
+                   else token.group() for token in SQL_TOKEN.finditer(statement))
+
+
+def validate_allowlist(allow):
+    """登记的每项例外都必须有原因和严格的 ISO 到期日。"""
+    for key, entry in allow.items():
+        if not isinstance(entry, dict) or not isinstance(entry.get('reason'), str) or not entry['reason'].strip():
+            raise ValueError(f'例外缺少原因: {key}')
+        until = entry.get('until')
+        try:
+            parsed = date.fromisoformat(until)
+        except (TypeError, ValueError):
+            raise ValueError(f'例外到期日无效: {key}') from None
+        if parsed.isoformat() != until:
+            raise ValueError(f'例外到期日必须是 YYYY-MM-DD: {key}')
+
+
 def top_level_where(statement):
     """提取顶层 WHERE 和其顶层关键字；不理解的结构不作为收窄证据。"""
     depth = 0
@@ -169,7 +214,11 @@ def expanded_sql(element, fragments, include_optional=True, stack=()):
                 raise ValueError(f'mapper 片段循环引用: {name}')
             parts.append(expanded_sql(fragments[name], fragments, include_optional, (*stack, name)))
         elif include_optional or child.tag not in CONDITIONAL_TAGS:
-            parts.append(expanded_sql(child, fragments, include_optional, stack))
+            content = expanded_sql(child, fragments, include_optional, stack)
+            if child.tag == 'where' or (child.tag == 'trim' and child.get('prefix', '').strip().upper() == 'WHERE'):
+                parts.append(' WHERE ' + content if content.strip() else '')
+            else:
+                parts.append(content)
         parts.append(child.tail or '')
     return ' '.join(parts)
 
@@ -181,11 +230,16 @@ def scan(path):
     findings = []
     for select in root.findall('select'):
         statement = expanded_sql(select, fragments)
-        hits = [name for name, pattern in SCAN_PATTERNS if pattern.search(statement)]
+        filters = filtering_sql(statement)
+        code = without_sql_literals(filters)
+        hits = [name for name, pattern in SCAN_PATTERNS if pattern.search(code)]
+        if any(token.lastgroup == 'word' and token.group().upper() == 'LIKE' and
+               LEADING_WILDCARD.match(filters, token.start()) for token in SQL_TOKEN.finditer(filters)):
+            hits.append('LEADING_WILDCARD')
         if any(token.lastgroup == 'word' and token.group().upper() in {'REGEXP', 'RLIKE', 'REGEXP_LIKE'}
-               for token in SQL_TOKEN.finditer(statement)):
+               for token in SQL_TOKEN.finditer(filters)):
             hits.append('REGEXP_MATCH')
-        if DYNAMIC_LIKE.search(statement):
+        if DYNAMIC_LIKE.search(code):
             hits.append('DYNAMIC_LIKE_PATTERN')
         if not hits:
             continue
@@ -206,6 +260,11 @@ def scan(path):
 def main():
     argv = sys.argv[1:]
     verbose = '--list' in argv
+    try:
+        validate_allowlist(ALLOW)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 1
     paths = [Path(p) for p in sorted(glob.glob(str(ROOT / MAPPER_GLOB)))]
     if not paths:
         print('未找到任何 mapper 文件，检查 MAPPER_GLOB 是否与实际布局一致')
@@ -219,7 +278,7 @@ def main():
             key = f"{finding['file']}#{finding['statement']}"
             allowed = ALLOW.get(key)
             # 豁免带到期日：过期后自动恢复为越界，防止挂账变成永久豁免。
-            expired = allowed is not None and allowed['until'] < date.today().isoformat()
+            expired = allowed is not None and date.fromisoformat(allowed['until']) < date.today()
             effective = allowed is not None and not expired
             verdict = 'PASS' if finding['narrowed'] or effective else 'FAIL'
             if verdict == 'FAIL':
