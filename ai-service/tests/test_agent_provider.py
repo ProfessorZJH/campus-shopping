@@ -194,3 +194,44 @@ def test_complete_masks_pii_in_outbound_messages(tmp_path, monkeypatch):
     assert "13812345678" not in outbound_text
     assert "test@campus.edu.cn" not in outbound_text
     assert "[已脱敏]" in outbound_text
+
+
+def test_runtime_llm_updates_readiness_dependency_state(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.main import create_app
+    from app.observability import counts, lock
+
+    with lock:
+        counts.pop("llm.last_success_at", None)
+        counts.pop("llm.last_failure_at", None)
+
+    state = {"status": 200}
+
+    def handler(request):
+        if state["status"] != 200:
+            return httpx.Response(state["status"], text="upstream failure")
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ready-ok"}}], "usage": {"total_tokens": 2}})
+
+    original = httpx.Client
+    monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(handler), **kwargs))
+    cfg = settings(tmp_path)
+    app = create_app(cfg)
+    try:
+        with TestClient(app) as client:
+            before = client.get("/ready", headers={"X-Service-Key": KEY}).json()
+            assert before["dependencies"]["llm"]["state"] == "UNVERIFIED"
+
+            app.state.runtime_bridge.model.complete(messages=[{"role": "user", "content": "测试就绪"}], tools=TOOLS, metadata={"runId": "r-ready"})
+            after_ok = client.get("/ready", headers={"X-Service-Key": KEY}).json()
+            assert after_ok["dependencies"]["llm"]["state"] == "UP"
+
+            import time as _time
+            _time.sleep(0.01)
+            state["status"] = 503
+            with pytest.raises(AgentModelError, match="UPSTREAM_5XX"):
+                app.state.runtime_bridge.model.complete(messages=[{"role": "user", "content": "测试降级"}], tools=TOOLS, metadata={"runId": "r-fail"})
+            after_fail = client.get("/ready", headers={"X-Service-Key": KEY}).json()
+            assert after_fail["dependencies"]["llm"]["state"] == "DEGRADED"
+    finally:
+        app.state.store.close()
+

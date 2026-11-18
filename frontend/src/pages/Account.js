@@ -69,8 +69,8 @@ export default {
           !isApply.value
             ? api('/invitations' + query({ page: invitePage.value, size: 20 }))
             : Promise.resolve([]),
-          !isApply.value && !isInvite.value && !store.workspace
-            ? api('/workspace').catch(() => null)
+          !isApply.value && !isInvite.value
+            ? api('/workspace').catch(() => store.workspace)
             : Promise.resolve(store.workspace),
         ]);
         if (stamp !== loadEpoch || actor !== store.user?.userId) return;
@@ -127,6 +127,9 @@ export default {
       try {
         await api('/invitations/' + encodeURIComponent(i.id) + '/accept', { method: 'POST' });
         if (!current()) return;
+        const latestWorkspace = await api('/workspace').catch(() => null);
+        if (!current()) return;
+        if (latestWorkspace) store.workspace = latestWorkspace;
         notify('邀请已接受');
         await load();
       } catch (e) {

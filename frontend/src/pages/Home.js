@@ -79,12 +79,44 @@ export default {
     onMounted(() => loadPublic({ signal: initialScope.begin().signal }));
     const pageInfo = computed(() => store.publicPage);
     const priceActive = computed(() => appliedMin.value != null || appliedMax.value != null);
+    const hasActiveSearch = computed(() =>
+      Boolean(
+        search.value.trim() ||
+        category.value ||
+        merchant.value ||
+        appliedMin.value != null ||
+        appliedMax.value != null ||
+        sort.value !== 'popular' ||
+        page.value > 1,
+      ),
+    );
     const chosen = computed(
       () => selected.value?.skus?.find((s) => s.skuId === chosenSku.value) || skuOf(selected.value),
     );
     const productCategory = (p) =>
       store.categories.find((c) => c.code === p.categoryCode)?.name || '好物';
     const currentShop = (p) => store.merchants.find((m) => m.merchantId === p.merchantId) || {};
+    async function retryLoad() {
+      if (preview) return;
+      if (hasActiveSearch.value) {
+        if (!store.categories.length || !store.merchants.length) {
+          await Promise.all([
+            api('/categories')
+              .then((c) => {
+                store.categories = c || [];
+              })
+              .catch(() => {}),
+            api('/merchants')
+              .then((m) => {
+                store.merchants = m || [];
+              })
+              .catch(() => {}),
+          ]);
+        }
+        return loadSearch();
+      }
+      return loadPublic({ signal: initialScope.begin().signal });
+    }
     async function loadSearch() {
       if (preview) return;
       const request = scope.begin();
@@ -266,6 +298,7 @@ export default {
       staticCategoryArt,
       loadPublic,
       loadSearch,
+      retryLoad,
       setCategory,
       applyKeyword,
       applyPrice,
@@ -301,7 +334,7 @@ export default {
       <div class="price-filter" aria-label="价格筛选"><span class="price-filter-label">价格区间</span><input v-model="priceMin" inputmode="decimal" placeholder="最低" aria-label="最低价（元）" @keydown.enter="applyPrice"/><span>—</span><input v-model="priceMax" inputmode="decimal" placeholder="最高" aria-label="最高价（元）" @keydown.enter="applyPrice"/><button class="outline-button" @click="applyPrice">应用</button><button v-if="priceActive" @click="clearPrice">清除价格</button><button class="price-filter-reset" @click="resetFilters">重置筛选</button></div>
       <div v-if="priceError" class="inline-error price-filter-error" role="alert"><Icon name="alert" :size="16"/>{{priceError}}</div>
       <StatusPanel v-if="store.loading" state="loading" message="正在加载"/>
-      <div v-if="store.error" class="inline-error"><Icon name="alert" :size="18"/>{{store.error}} <button v-if="!preview" type="button" class="outline-button small" @click="loadPublic()">重试</button></div>
+      <div v-if="store.error" class="inline-error"><Icon name="alert" :size="18"/>{{store.error}} <button v-if="!preview" type="button" class="outline-button small" @click="retryLoad()">重试</button></div>
       <StatusPanel v-if="!store.loading&&!shown.length&&!store.error" state="empty" message="暂无符合条件的商品" action-label="查看全部" @retry="resetFilters"/>
       <div class="home-product-grid">
         <article class="home-product" v-for="p in shown" :key="p.productId" @click="showDetail(p)">

@@ -139,14 +139,13 @@ class RuntimeBridge:
         self._continuations: dict[str, _Continuation] = {}
         self._responses: dict[tuple[str, str], tuple[float, str, RuntimeBridgeResponse]] = {}
         self._inflight_requests: set[tuple[str, str]] = set()
+        self._inflight_starts: set[tuple[str, str]] = set()
         self._inflight_continuations: set[str] = set()
 
     def _prune_locked(self, now: float) -> None:
         expired_cont = [cid for cid, item in self._continuations.items() if item.expires_at <= now]
         for cid in expired_cont:
             self._continuations.pop(cid, None)
-        while len(self._continuations) > self._max_cached_states:
-            self._continuations.pop(next(iter(self._continuations)), None)
 
         expired_resp = [key for key, item in self._responses.items() if item[0] <= now]
         for key in expired_resp:
@@ -213,6 +212,8 @@ class RuntimeBridge:
             if request.phase == "START":
                 if request.question is None or request.continuationId is not None or request.toolResults:
                     raise RuntimeBridgeError("INVALID_START", 422)
+                if len(self._continuations) + len(self._inflight_starts) >= self._max_cached_states:
+                    raise RuntimeBridgeError("RUNTIME_BUSY", 429)
                 candidate_messages: list[dict[str, Any]] = [{"role": "user", "content": request.question}]
                 tools = self._tools(request.allowedTools)
                 continuation_id = hashlib.sha256(f"{request.runId}|{request.requestId}|{time.time_ns()}".encode()).hexdigest()[:32]
@@ -220,6 +221,7 @@ class RuntimeBridge:
                 next_rounds = 1
                 expected_state: _Continuation | None = None
                 self._inflight_requests.add(key)
+                self._inflight_starts.add(key)
             else:
                 if not request.continuationId or request.continuationId not in self._continuations:
                     raise RuntimeBridgeError("CONTINUATION_NOT_FOUND", 409)
@@ -324,6 +326,7 @@ class RuntimeBridge:
         finally:
             with self._lock:
                 self._inflight_requests.discard(key)
+                self._inflight_starts.discard(key)
                 if request.phase == "CONTINUE":
                     self._inflight_continuations.discard(continuation_id)
         return response

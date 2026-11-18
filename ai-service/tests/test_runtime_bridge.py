@@ -461,3 +461,46 @@ def test_concurrent_continue_and_inflight_duplicate_do_not_double_invoke_model()
 
     assert winner.status == "FINAL"
     assert model.continue_calls == 1
+
+
+def test_unexpired_continuations_are_preserved_and_capacity_rejects_excess_starts():
+    model = FakeModel(
+        tool_response("call-live-1"),
+        tool_response("call-live-2"),
+        final_response("首个续接保持有效"),
+        final_response("第二个续接保持有效"),
+    )
+    settings = Settings(api_key=KEY, db_path="/tmp/runtime-bridge-capacity.sqlite")
+    runtime = RuntimeBridge(settings, model=model, max_cached_states=2)
+
+    s1 = request(request_id="req-live-1")
+    r1 = runtime.turn(s1, service_key=KEY, capability="cap", signature=signed(s1, "cap"), capability_digest=digest("cap"))
+    s2 = request(request_id="req-live-2")
+    r2 = runtime.turn(s2, service_key=KEY, capability="cap", signature=signed(s2, "cap"), capability_digest=digest("cap"))
+
+    # Third START must fail with 429 RUNTIME_BUSY instead of silently evicting live continuation r1.
+    s3 = request(request_id="req-live-3")
+    with pytest.raises(RuntimeBridgeError) as busy_err:
+        runtime.turn(s3, service_key=KEY, capability="cap", signature=signed(s3, "cap"), capability_digest=digest("cap"))
+    assert busy_err.value.code == "RUNTIME_BUSY" and busy_err.value.status == 429
+
+    c1 = request(
+        phase="CONTINUE",
+        request_id="req-live-cont-1",
+        continuation_id=r1.continuationId,
+        current_scope=s1.scope,
+        results=[{"callId": "call-live-1", "name": "search_products", "result": {"ok": 1}}],
+    )
+    done1 = runtime.turn(c1, service_key=KEY, capability="cap", signature=signed(c1, "cap"), capability_digest=digest("cap"))
+    assert done1.status == "FINAL" and done1.answer == "首个续接保持有效"
+
+    c2 = request(
+        phase="CONTINUE",
+        request_id="req-live-cont-2",
+        continuation_id=r2.continuationId,
+        current_scope=s2.scope,
+        results=[{"callId": "call-live-2", "name": "search_products", "result": {"ok": 2}}],
+    )
+    done2 = runtime.turn(c2, service_key=KEY, capability="cap", signature=signed(c2, "cap"), capability_digest=digest("cap"))
+    assert done2.status == "FINAL" and done2.answer == "第二个续接保持有效"
+

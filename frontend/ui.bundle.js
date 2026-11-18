@@ -12860,6 +12860,11 @@
       onMounted$d(() => loadPublic({ signal: initialScope.begin().signal }));
       const pageInfo = computed$f(() => store.publicPage);
       const priceActive = computed$f(() => appliedMin.value != null || appliedMax.value != null);
+      const hasActiveSearch = computed$f(
+        () => Boolean(
+          search.value.trim() || category.value || merchant.value || appliedMin.value != null || appliedMax.value != null || sort.value !== "popular" || page.value > 1
+        )
+      );
       const chosen = computed$f(
         () => {
           var _a, _b;
@@ -12871,6 +12876,25 @@
         return ((_a = store.categories.find((c) => c.code === p2.categoryCode)) == null ? void 0 : _a.name) || "好物";
       };
       const currentShop = (p2) => store.merchants.find((m) => m.merchantId === p2.merchantId) || {};
+      async function retryLoad() {
+        if (preview) return;
+        if (hasActiveSearch.value) {
+          if (!store.categories.length || !store.merchants.length) {
+            await Promise.all([
+              api("/categories").then((c) => {
+                store.categories = c || [];
+              }).catch(() => {
+              }),
+              api("/merchants").then((m) => {
+                store.merchants = m || [];
+              }).catch(() => {
+              })
+            ]);
+          }
+          return loadSearch();
+        }
+        return loadPublic({ signal: initialScope.begin().signal });
+      }
       async function loadSearch() {
         if (preview) return;
         const request2 = scope.begin();
@@ -13043,6 +13067,7 @@
         staticCategoryArt,
         loadPublic,
         loadSearch,
+        retryLoad,
         setCategory,
         applyKeyword,
         applyPrice,
@@ -13383,7 +13408,7 @@
                   key: 0,
                   type: "button",
                   class: "outline-button small",
-                  onClick: ($event) => _ctx.loadPublic()
+                  onClick: ($event) => _ctx.retryLoad()
                 }, "重试", 8, ["onClick"])) : _createCommentVNode("v-if", true)
               ])) : _createCommentVNode("v-if", true),
               !_ctx.store.loading && !_ctx.shown.length && !_ctx.store.error ? (_openBlock(), _createBlock(_component_StatusPanel, {
@@ -19689,7 +19714,7 @@
           const [a, i, w] = await Promise.all([
             !isApply.value && !isInvite.value ? api("/merchant-applications/mine/page" + query({ page: page.value, size: 10 })) : Promise.resolve({ items: [], total: 0 }),
             !isApply.value ? api("/invitations" + query({ page: invitePage.value, size: 20 })) : Promise.resolve([]),
-            !isApply.value && !isInvite.value && !store.workspace ? api("/workspace").catch(() => null) : Promise.resolve(store.workspace)
+            !isApply.value && !isInvite.value ? api("/workspace").catch(() => store.workspace) : Promise.resolve(store.workspace)
           ]);
           if (stamp !== loadEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return;
           apps.value = a.items || [];
@@ -19744,6 +19769,9 @@
         try {
           await api("/invitations/" + encodeURIComponent(i.id) + "/accept", { method: "POST" });
           if (!current()) return;
+          const latestWorkspace = await api("/workspace").catch(() => null);
+          if (!current()) return;
+          if (latestWorkspace) store.workspace = latestWorkspace;
           notify("邀请已接受");
           await load();
         } catch (e) {

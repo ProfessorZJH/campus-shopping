@@ -81,6 +81,7 @@ class OpenAICompatibleToolModel:
         payload = self._payload(messages, tools, stream=False, tool_choice=metadata.get("toolChoice", "auto"))
         with lock:
             counts["agent.llm.calls"] += 1
+            counts["llm.calls"] += 1
         try:
             with httpx.Client(
                 timeout=httpx.Timeout(30.0, read=self.settings.llm_timeout_seconds),
@@ -95,23 +96,35 @@ class OpenAICompatibleToolModel:
                     headers={"Authorization": "Bearer " + self.settings.llm_key},
                     json=payload,
                 )
+                now = time.time()
                 with lock:
-                    counts["agent.llm.last_success_at"] = time.time()
+                    counts["agent.llm.last_success_at"] = now
+                    counts["llm.last_success_at"] = now
                 return result
         except httpx.HTTPStatusError as error:
             failure("agent.llm", error)
+            failure("llm", error)
             status = error.response.status_code
             raise AgentModelError("UPSTREAM_429" if status == 429 else "UPSTREAM_5XX" if status >= 500 else "UPSTREAM_HTTP_ERROR") from None
-        except (httpx.TimeoutException, TimeoutError):
+        except (httpx.TimeoutException, TimeoutError) as error:
+            failure("agent.llm", error)
+            failure("llm", error)
             raise AgentModelError("UPSTREAM_TIMEOUT") from None
-        except httpx.HTTPError:
+        except httpx.HTTPError as error:
+            failure("agent.llm", error)
+            failure("llm", error)
             raise AgentModelError("UPSTREAM_CONNECTION") from None
-        except (TypeError, ValueError, KeyError):
+        except (TypeError, ValueError, KeyError) as error:
+            failure("agent.llm", error)
+            failure("llm", error)
             raise AgentModelError("INVALID_MODEL_RESPONSE") from None
 
     def stream(self, *, messages: list[dict[str, Any]], tools: list[dict[str, Any]], metadata: dict[str, Any]) -> Iterable[Mapping[str, Any]]:
         self._validate()
         payload = self._payload(messages, tools, stream=True, tool_choice=metadata.get("toolChoice", "auto"))
+        with lock:
+            counts["agent.llm.stream.calls"] += 1
+            counts["llm.calls"] += 1
         try:
             with httpx.Client(
                 timeout=httpx.Timeout(30.0, read=self.settings.llm_timeout_seconds),
@@ -147,8 +160,10 @@ class OpenAICompatibleToolModel:
                         body = line[5:].strip()
                         if body == "[DONE]":
                             saw_done = True
+                            now = time.time()
                             with lock:
-                                counts["agent.llm.stream.last_success_at"] = time.time()
+                                counts["agent.llm.stream.last_success_at"] = now
+                                counts["llm.last_success_at"] = now
                             return
                         try:
                             chunk = json.loads(body)
@@ -162,11 +177,20 @@ class OpenAICompatibleToolModel:
                         yield chunk
                     if not saw_done:
                         raise AgentModelError("STREAM_NOT_TERMINATED")
+        except AgentModelError as error:
+            failure("agent.llm.stream", error)
+            failure("llm", error)
+            raise
         except httpx.HTTPStatusError as error:
             failure("agent.llm.stream", error)
+            failure("llm", error)
             status = error.response.status_code
             raise AgentModelError("UPSTREAM_429" if status == 429 else "UPSTREAM_5XX" if status >= 500 else "UPSTREAM_HTTP_ERROR") from None
-        except (httpx.TimeoutException, TimeoutError):
+        except (httpx.TimeoutException, TimeoutError) as error:
+            failure("agent.llm.stream", error)
+            failure("llm", error)
             raise AgentModelError("UPSTREAM_TIMEOUT") from None
-        except httpx.HTTPError:
+        except httpx.HTTPError as error:
+            failure("agent.llm.stream", error)
+            failure("llm", error)
             raise AgentModelError("UPSTREAM_CONNECTION") from None
