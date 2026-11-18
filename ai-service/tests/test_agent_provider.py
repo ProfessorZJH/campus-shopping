@@ -173,3 +173,24 @@ def test_stream_requires_done_marker_and_bounds_response_size(tmp_path, monkeypa
     monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(oversized_response), **kwargs))
     with pytest.raises(AgentModelError, match="STREAM_RESPONSE_TOO_LARGE"):
         list(model.stream(messages=[], tools=TOOLS, metadata={}))
+
+
+def test_complete_masks_pii_in_outbound_messages(tmp_path, monkeypatch):
+    sent_payloads = []
+
+    def handler(request):
+        sent_payloads.append(json.loads(request.content))
+        return httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+
+    original = httpx.Client
+    monkeypatch.setattr("app.agent_provider.httpx.Client", lambda **kwargs: original(transport=httpx.MockTransport(handler), **kwargs))
+    model = OpenAICompatibleToolModel(settings(tmp_path))
+    model.complete(
+        messages=[{"role": "user", "content": "我的手机号是13812345678，邮箱test@campus.edu.cn，帮我找茶"}],
+        tools=TOOLS,
+        metadata={"runId": "run-pii"},
+    )
+    outbound_text = json.dumps(sent_payloads[0], ensure_ascii=False)
+    assert "13812345678" not in outbound_text
+    assert "test@campus.edu.cn" not in outbound_text
+    assert "[已脱敏]" in outbound_text

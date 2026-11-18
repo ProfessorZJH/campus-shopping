@@ -5,19 +5,25 @@ import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.LongConsumer;
@@ -126,6 +132,7 @@ public class AiGatewayService {
         if (requestId == null) requestId = UUID.randomUUID().toString();
         int timeout = Math.max(5, Math.min(timeoutSeconds, 120));
         try (var permit = resources.acquire()) {
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout);
             HttpRequest httpRequest = HttpRequest.newBuilder(URI.create(url.replaceAll("/$", "") + "/v1/query/stream"))
                 .timeout(Duration.ofSeconds(timeout))
                 .header("Content-Type", "application/json")
@@ -134,32 +141,22 @@ public class AiGatewayService {
                 .header("X-Request-ID", requestId)
                 .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(request), StandardCharsets.UTF_8))
                 .build();
-            HttpResponse<InputStream> response = client.send(httpRequest, HttpResponse.BodyHandlers.ofInputStream());
-            try (InputStream body = response.body()) {
+            CompletableFuture<HttpResponse<StreamChunkQueue>> future = client.sendAsync(httpRequest, ignored -> new StreamChunkQueue());
+            HttpResponse<StreamChunkQueue> response;
+            try {
+                long remainingNanos = Math.max(1L, deadline - System.nanoTime());
+                response = future.get(remainingNanos, TimeUnit.NANOSECONDS);
+            } catch (TimeoutException e) {
+                future.cancel(true);
+                throw unavailable(e);
+            } catch (ExecutionException e) {
+                throw unavailable(e.getCause() instanceof Exception cause ? cause : e);
+            }
+            try (StreamChunkQueue stream = response.body()) {
                 if (response.statusCode() == 422) throw new RemoteStatusException(422);
                 if (response.statusCode() / 100 != 2) throw new AppException(ResponseCode.AI_UNAVAILABLE);
-                try (BufferedReader reader = new BufferedReader(new InputStreamReader(body, StandardCharsets.UTF_8))) {
-                    long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(timeout);
-                    String event = null;
-                    String data = null;
-                    String line;
-                    while ((line = readBoundedLine(reader, 65536, deadline)) != null) {
-                        if (line.isEmpty()) {
-                            AiGatewayDTO.Answer answer = consumeStreamEvent(event, data, progress);
-                            if (answer != null) return answer;
-                            event = null;
-                            data = null;
-                        } else if (line.startsWith("event:")) {
-                            event = line.substring("event:".length()).trim();
-                        } else if (line.startsWith("data:")) {
-                            String value = line.substring("data:".length()).trim();
-                            data = data == null ? value : data + "\n" + value;
-                            if (data.length() > 1_000_000) throw new AppException(ResponseCode.AI_UNAVAILABLE);
-                        }
-                    }
-                    AiGatewayDTO.Answer answer = consumeStreamEvent(event, data, progress);
-                    if (answer != null) return answer;
-                }
+                AiGatewayDTO.Answer answer = readSseAnswer(stream, deadline, progress);
+                if (answer != null) return answer;
             }
             throw new AppException(ResponseCode.AI_UNAVAILABLE);
         } catch (InterruptedException e) {
@@ -168,6 +165,80 @@ public class AiGatewayService {
         } catch (IOException | IllegalArgumentException e) {
             throw unavailable(e);
         }
+    }
+
+    private AiGatewayDTO.Answer readSseAnswer(StreamChunkQueue stream, long deadline, LongConsumer progress) throws IOException, InterruptedException {
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(CodingErrorAction.REPLACE)
+            .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        StringBuilder currentLine = new StringBuilder(256);
+        String[] state = new String[2];
+        while (true) {
+            byte[] chunk = stream.poll(deadline);
+            boolean eof = chunk == null;
+            ByteBuffer input = eof ? ByteBuffer.allocate(0) : ByteBuffer.wrap(chunk);
+            CharBuffer chars = CharBuffer.allocate(Math.max(64, input.remaining() + 8));
+            while (true) {
+                var result = decoder.decode(input, chars, eof);
+                chars.flip();
+                AiGatewayDTO.Answer answer = drainDecodedChars(chars, currentLine, state, progress);
+                if (answer != null) return answer;
+                chars.clear();
+                if (result.isUnderflow()) break;
+            }
+            if (eof) {
+                CharBuffer flush = CharBuffer.allocate(16);
+                decoder.flush(flush);
+                flush.flip();
+                AiGatewayDTO.Answer answer = drainDecodedChars(flush, currentLine, state, progress);
+                if (answer != null) return answer;
+                if (!currentLine.isEmpty()) {
+                    String trailing = trimCarriageReturn(currentLine);
+                    currentLine.setLength(0);
+                    AiGatewayDTO.Answer last = processSseLine(trailing, state, progress);
+                    if (last != null) return last;
+                }
+                return consumeStreamEvent(state[0], state[1], progress);
+            }
+        }
+    }
+
+    private AiGatewayDTO.Answer drainDecodedChars(CharBuffer chars, StringBuilder currentLine, String[] state, LongConsumer progress) throws IOException {
+        while (chars.hasRemaining()) {
+            char ch = chars.get();
+            if (ch == '\n') {
+                String line = trimCarriageReturn(currentLine);
+                currentLine.setLength(0);
+                AiGatewayDTO.Answer answer = processSseLine(line, state, progress);
+                if (answer != null) return answer;
+            } else {
+                if (currentLine.length() >= 65536) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+                currentLine.append(ch);
+            }
+        }
+        return null;
+    }
+
+    private String trimCarriageReturn(StringBuilder line) {
+        int len = line.length();
+        return len > 0 && line.charAt(len - 1) == '\r' ? line.substring(0, len - 1) : line.toString();
+    }
+
+    private AiGatewayDTO.Answer processSseLine(String line, String[] state, LongConsumer progress) throws IOException {
+        if (line.isEmpty()) {
+            AiGatewayDTO.Answer answer = consumeStreamEvent(state[0], state[1], progress);
+            state[0] = null;
+            state[1] = null;
+            return answer;
+        }
+        if (line.startsWith("event:")) {
+            state[0] = line.substring("event:".length()).trim();
+        } else if (line.startsWith("data:")) {
+            String value = line.substring("data:".length()).trim();
+            state[1] = state[1] == null ? value : state[1] + "\n" + value;
+            if (state[1].length() > 1_000_000) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        }
+        return null;
     }
 
     private AiGatewayDTO.Answer consumeStreamEvent(String event, String data, LongConsumer progress) throws IOException {
@@ -192,26 +263,86 @@ public class AiGatewayService {
         };
     }
 
-    private String readBoundedLine(BufferedReader reader, int maxLength, long deadline) throws IOException {
-        StringBuilder line = new StringBuilder(Math.min(maxLength, 256));
-        int value;
-        while (true) {
-            while (!reader.ready()) {
-                if (System.nanoTime() >= deadline) throw new IOException("AI stream timeout");
-                try {
-                    Thread.sleep(25);
-                } catch (InterruptedException interrupted) {
-                    Thread.currentThread().interrupt();
-                    throw new IOException("AI stream interrupted", interrupted);
+    private static final class StreamChunkQueue implements HttpResponse.BodySubscriber<StreamChunkQueue>, AutoCloseable {
+
+        private static final Object EOF = new Object();
+        private static final int WINDOW = 64;
+
+        private final CompletableFuture<StreamChunkQueue> ready = new CompletableFuture<>();
+        private final LinkedBlockingQueue<Object> queue = new LinkedBlockingQueue<>(WINDOW + 2);
+        private volatile Flow.Subscription subscription;
+        private volatile boolean closed;
+
+        @Override
+        public CompletionStage<StreamChunkQueue> getBody() {
+            return ready;
+        }
+
+        @Override
+        public void onSubscribe(Flow.Subscription subscription) {
+            this.subscription = subscription;
+            ready.complete(this);
+            if (closed) {
+                subscription.cancel();
+            } else {
+                subscription.request(WINDOW);
+            }
+        }
+
+        @Override
+        public void onNext(List<ByteBuffer> item) {
+            if (closed) return;
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+            for (ByteBuffer part : item) {
+                if (part.hasRemaining()) {
+                    byte[] bytes = new byte[part.remaining()];
+                    part.get(bytes);
+                    buffer.writeBytes(bytes);
                 }
             }
-            value = reader.read();
-            if (value == -1) break;
-            if (value == '\n') return line.toString().endsWith("\r") ? line.substring(0, line.length() - 1) : line.toString();
-            if (line.length() >= maxLength) throw new AppException(ResponseCode.AI_UNAVAILABLE);
-            line.append((char) value);
+            byte[] payload = buffer.toByteArray();
+            if (payload.length == 0) {
+                Flow.Subscription sub = subscription;
+                if (sub != null && !closed) sub.request(1);
+                return;
+            }
+            if (!queue.offer(payload)) {
+                close();
+                queue.offer(new IOException("AI stream queue overflow"));
+            }
         }
-        return line.isEmpty() ? null : line.toString();
+
+        @Override
+        public void onError(Throwable throwable) {
+            queue.offer(throwable == null ? new IOException("AI stream error") : throwable);
+        }
+
+        @Override
+        public void onComplete() {
+            queue.offer(EOF);
+        }
+
+        byte[] poll(long deadlineNanos) throws IOException, InterruptedException {
+            long remaining = deadlineNanos - System.nanoTime();
+            if (remaining <= 0) throw new IOException("AI stream timeout");
+            Object item = queue.poll(remaining, TimeUnit.NANOSECONDS);
+            if (item == null) throw new IOException("AI stream timeout");
+            if (item == EOF) return null;
+            if (item instanceof Throwable error) {
+                if (error instanceof IOException io) throw io;
+                throw new IOException("AI stream failed", error);
+            }
+            Flow.Subscription sub = subscription;
+            if (sub != null && !closed) sub.request(1);
+            return (byte[]) item;
+        }
+
+        @Override
+        public void close() {
+            closed = true;
+            Flow.Subscription sub = subscription;
+            if (sub != null) sub.cancel();
+        }
     }
 
     public AiGatewayDTO.ProductSearchResult semanticProducts(AiGatewayDTO.ProductSearch request) {

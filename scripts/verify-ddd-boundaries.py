@@ -132,5 +132,5 @@ def verify(output):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/ddd-refactor-20261029/boundaries.json')
+    parser.add_argument('--output', type=Path, default=ROOT/'var/verify/boundaries.json')
     verify(parser.parse_args().output)

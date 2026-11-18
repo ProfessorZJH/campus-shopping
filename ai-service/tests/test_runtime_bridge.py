@@ -276,3 +276,55 @@ def test_runtime_route_obeys_request_body_limit(tmp_path):
         assert response.status_code == 413
     finally:
         app.state.store.close()
+
+
+def test_continue_failure_does_not_corrupt_messages_on_retry_and_evicts_bounded_cache():
+    from app.agent_runtime import AgentModelError
+
+    class FlakyThenOkModel:
+        def __init__(self):
+            self.calls = []
+            self._step = 0
+
+        def complete(self, **kwargs):
+            self._step += 1
+            self.calls.append(list(kwargs["messages"]))
+            if self._step == 1:
+                return tool_response("call-retry")
+            if self._step == 2:
+                raise AgentModelError("UPSTREAM_5XX")
+            return final_response("重试恢复成功")
+
+    model = FlakyThenOkModel()
+    settings = Settings(api_key=KEY, db_path="/tmp/runtime-bridge-retry.sqlite")
+    runtime = RuntimeBridge(settings, model=model, max_cached_states=2)
+    start = request(request_id="req-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+    failed_follow = request(
+        phase="CONTINUE",
+        request_id="req-cont-fail",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-retry", "name": "search_products", "result": {"items": []}}],
+    )
+    with pytest.raises(RuntimeBridgeError) as err:
+        runtime.turn(failed_follow, service_key=KEY, capability="cap", signature=signed(failed_follow, "cap"), capability_digest=digest("cap"))
+    assert err.value.code == "UPSTREAM_5XX"
+
+    retry_follow = request(
+        phase="CONTINUE",
+        request_id="req-cont-ok",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-retry", "name": "search_products", "result": {"items": []}}],
+    )
+    recovered = runtime.turn(retry_follow, service_key=KEY, capability="cap", signature=signed(retry_follow, "cap"), capability_digest=digest("cap"))
+    assert recovered.status == "FINAL"
+    assert recovered.answer == "重试恢复成功"
+    # Tool result message must appear only once, not duplicated by the failed attempt.
+    assert [m["role"] for m in model.calls[-1]] == ["user", "assistant", "tool"]
+
+    for idx in range(5):
+        extra = request(request_id=f"req-cap-{idx}")
+        runtime.turn(extra, service_key=KEY, capability="cap", signature=signed(extra, "cap"), capability_digest=digest("cap"))
+    assert len(runtime._responses) <= 2

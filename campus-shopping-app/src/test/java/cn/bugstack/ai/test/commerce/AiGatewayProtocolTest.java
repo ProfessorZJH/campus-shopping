@@ -172,6 +172,36 @@ class AiGatewayProtocolTest {
         }
     }
 
+    @Test
+    void abruptlyClosedStreamFailsImmediatelyInsteadOfWaitingForFullTimeout() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/query/stream", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = "event: started\ndata: {\"mode\":\"FULL_RESPONSE\"}\n\n".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var client = gateway(server);
+            ReflectionTestUtils.setField(client, "timeoutSeconds", 30);
+            long started = System.nanoTime();
+            var error = assertThrows(AppException.class, () ->
+                client.queryStream(
+                    new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
+                    null
+                )
+            );
+            long elapsedMs = (System.nanoTime() - started) / 1_000_000;
+            assertEquals("AI0001", error.getCode());
+            assertTrue(elapsedMs < 3000, "abrupt EOF should fail promptly, elapsedMs=" + elapsedMs);
+        } finally {
+            server.stop(0);
+        }
+    }
+
     private AiGatewayService gateway(HttpServer server) {
         var gateway = new AiGatewayService();
         ReflectionTestUtils.setField(

@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,7 @@ public class AiStreamEndpoint {
 
     private static final ThreadPoolExecutor EXECUTOR = new ThreadPoolExecutor(
         2,
-        8,
+        32,
         30,
         TimeUnit.SECONDS,
         new SynchronousQueue<>(),
@@ -77,21 +78,25 @@ public class AiStreamEndpoint {
     }
 
     private void run(SseEmitter emitter, String actor, ChatRequestDTO request) {
+        AtomicReference<String> activeConversationId = new AtomicReference<>(request.getConversationId());
         try {
             ChatResult result = shopping.chatStream(
                 actor,
                 request.getConversationId(),
                 request.getQuestion(),
-                conversationId -> send(emitter, "started", envelope(conversationId, "FULL_RESPONSE", null, null)),
-                bytes -> send(emitter, "progress", envelope(request.getConversationId(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
+                conversationId -> {
+                    activeConversationId.set(conversationId);
+                    send(emitter, "started", envelope(conversationId, "FULL_RESPONSE", null, null));
+                },
+                bytes -> send(emitter, "progress", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
             );
             send(emitter, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
         } catch (AiTurnCancelledException cancelled) {
-            send(emitter, "cancelled", envelope(request.getConversationId(), "FULL_RESPONSE", null, "CANCELLED"));
+            send(emitter, "cancelled", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "CANCELLED"));
         } catch (AppException failure) {
-            send(emitter, "failed", envelope(request.getConversationId(), "FULL_RESPONSE", null, failure.getCode()));
+            send(emitter, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, failure.getCode()));
         } catch (RuntimeException failure) {
-            send(emitter, "failed", envelope(request.getConversationId(), "FULL_RESPONSE", null, "UN_ERROR"));
+            send(emitter, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "UN_ERROR"));
         } finally {
             emitter.complete();
         }

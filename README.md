@@ -1,136 +1,67 @@
-# 校园智能导购及商品交易平台 · R1 交付候选版
+# 校园智能导购及商品交易平台（Campus Shopping）
 
-> **本地真实 Spring/MySQL、真实 AI 导购与浏览器交易闭环已完成列明范围的验收。** Docker、Qdrant、生产部署与性能验收不在本次通过范围，具体证据见下文。
+> 基于 **DDD 六边形模块化单体 + 受控混合 RAG 智能导购** 构建的校园商品交易与智能导购全栈系统。交易事实（价格、库存、权限、订单、核销、退款）由 Java/MySQL 强一致裁决；Python 智能服务仅承担意图解析、混合检索与加购提案建议，不拥有任何交易写权限。
 
-## Redis 主线整合（2026-10-31）
+## 1. 核心架构与工程规模
 
-Redis能力已移植到当前主线与PR #10审查修复上，保留最新领域与事务实现。真实临时MySQL和本机Redis：Maven189项、Python49项、HTTP173项、双实例9项和真实浏览器8项通过。已有库必须停止旧实例并显式升级；两种租约字段的版本不能混跑。见[整合验收与边界](docs/testing/REDIS-MAIN-INTEGRATION-20261031.md)及[Redis运行手册](docs/operations/REDIS-12-runbook.md)。
+- **后端（Java 17 / Spring Boot 3.4.3 / MyBatis 3.0.4 / Redisson 4.8.0）**：
+  - 遵循小傅哥 DDD 七模块分层：`campus-shopping-types`（公共类型与错误码）、`api`（契约接口与 DTO）、`domain`（7 大限界上下文业务规则、聚合、仓储与窄 Port）、`case`（跨领域事务编排与锁序控制）、`infrastructure`（MyBatis 数据访问、Redis 协调与外部 HTTP/七牛适配）、`trigger`（HTTP Controller、独立 SSE 端点与定时任务）、`app`（启动装配与生产安全守卫）。
+  - **数据与接口规模**：`44` 张 MySQL 业务与治理表、`33` 个不可变版本迁移脚本（启动只读校验结构指纹与校验和，显式维护窗口迁移）、`102` 条自动生成并双向校验的 JSON HTTP 路由 + 独立 AI SSE 流式路由（`/api/v1/ai/chat/stream`）。
+- **智能导购与检索服务（`ai-service/` · Python 3.11 / FastAPI）**：
+  - **全量公开商品混合召回**：MySQL 全表上架商品词面加权召回（Top 200） + 可选 Milvus 全目录语义向量召回（Top 80，经 Java MySQL 实时复验状态） + 两级 RRF（$k=60$）融合 + 跨商品 SKU 轮询采样与规格/预算/数量硬约束过滤。
+  - **四重知识安全护栏**：知识库可见性/外发双白名单（内部资料默认本地 256 维哈希向量入 SQLite，不外发外部模型）、PII 自动脱敏、Java 侧调用前后三次权限快照指纹复核（防 TOCTOU 越权泄漏）、基于 `turn_token` 600 秒会话租约与 `Propagation.NEVER` 的零数据库锁长调用。
+- **同源三端前端（`frontend/` · Vue 3 + Vite + TypeScript 渐进类型）**：
+  - 零第三方运行时 UI/路由重依赖，内置五维身份与商户代次隔离（Epoch Fencing）防异步串号、带内存上限的 SSE 流式解析与断线轮询恢复，完整覆盖**消费者端、商户工作台（含自定义角色 RBAC）、平台管理端及 RAG 检索调试台**共 13 个核心视图（另保留早期 `/legacy.html` 兼容入口与 `/?demo=1#/` 纯前端视觉预览模式）。
 
-## 当前代码与文档收口（2026-10-30）
+## 2. 已实现的核心业务闭环
 
-当前 Case 职责、命名、只读响应模型、会话/邀请分页、知识容量和 AI 预算/数量修复及本轮隔离复验，统一见[最终报告](docs/testing/DDD-DOC-CLOSURE-20261030.md)与[DDD 参考对照](docs/architecture/DDD-REFERENCE-DOC-AUDIT-20261030.md)。现行接口以[生成契约](docs/api/http-api.md)和[行为契约](docs/api/behavior-v1.1.md)为准。以下日期分节保留各阶段执行范围，旧 NOT_RUN 不表示当前仍未运行。
+| 端侧 / 领域 | 核心能力 |
+|---|---|
+| **消费者端** | 注册/会话登录（CSRF 保护）、公开商品多维搜索与全局排序、多规格详情与多图展示、按商户购物车、幂等结算锁库、15 分钟超时关单、模拟支付、自提动态令牌签发、未提货整单退款与争议申诉、AI 流式导购问答与提案勾选确认加购 |
+| **商户工作台** | 入驻资料提交与幂等开通、门店设置、商品/多 SKU/多图（LOCAL 或七牛云）管理、补货与低可售库存预警、库存流水追踪、订单备货与自提令牌核销、售后审核、店员邀请撤销与 15 项细粒度自定义角色 RBAC、商户公开/内部知识库管理 |
+| **平台监管端** | 受控管理员引导、商户入驻审核（同事务开通商户/首店/Owner）、商户启停监管、违规商品强制下架、全局类目维护、争议退款平台裁决、全站经营数据与趋势统计、平台知识库与只读 RAG 命中调试 |
 
-## 工程化收敛（2026-10-29）
+> **明确边界说明**：当前所有支付、退款均为校内交易状态模拟，不涉及真实资金清结算；支持多 Java 实例共享同一 MySQL/Redis 连接单 Python 服务；120 例评测数据集仍待最终人工复核冻结（`DRAFT`），外部云模型连通性、生产高可用与极限容量压测按独立验收报告管理。
 
-前端构建接入 Maven、迁移版本及校验和校验、AI 请求关联与脱敏诊断、商品索引清理、锁定依赖、格式及镜像 CI 门禁、自动交付清单已补齐。构建需 JDK17、Node 22.16.0、Python3.11，使用仓库 `mvnw.cmd` / `mvnw`。已有数据库须先通过 `scripts/migrate-database.py` 升级并登记历史，应用启动只读校验。见[工程化变更与实际验证](docs/testing/ENGINEERING-10.md)及[迁移手册](docs/database/migrations/README.md)。
+## 3. 快速导航入口
 
-## 本地真实导购与页面验收（2026-10-29）
+- **毕业设计与答辩专区**：[毕设全周期总控台](docs/thesis/README.md) · [开题答辩攻略与讲稿](docs/thesis/01-OPENING-DEFENSE-GUIDE.md) · [论文六章写作蓝图](docs/thesis/02-THESIS-CHAPTER-BLUEPRINT.md) · [系统图表与44表/102路由速查手册](docs/thesis/03-ARCHITECTURE-AND-DATA-MANUAL.md) · [评测实验SOP与终期答辩Q&A](docs/thesis/04-EXPERIMENT-AND-FINAL-DEFENSE-QA.md)
+- **权威工程与规格索引**：[全量文档唯一索引](docs/README.md) · [AI 协作与工程约束](AGENTS.md) · [开发与门禁流程](docs/development/AI-WORKFLOW.md) · [架构决策记录 ADR](docs/architecture/decisions.md)
+- **接口、数据与运维手册**：[HTTP 接口文档](docs/api/http-api.md) · [OpenAPI 规范](docs/api/openapi.json) · [行为契约](docs/api/behavior-v1.1.md) · [AI 流式协议](docs/api/streaming.md) · [数据库模型](docs/database/logical-data-model.md) · [R1 运行手册](docs/operations/R1-runbook.md) · [Redis 运行手册](docs/operations/REDIS-12-runbook.md) · [智能导购评测说明](ai-service/evaluation/README.md)
 
-按用户授权备份并重建本机 `campus_shopping`，执行最新增量 SQL；真实 HTTP 173 项、严格 AI 事务 19 项、页面商品操作 5 项、交易闭环 12 项、路由/权限/移动端 40 项（含 28 条路由）、基础浏览器 8 项、只读 MySQL 核对 8 项通过。最新 Maven `verify` 为 63 通过、29 跳过，Python 40 通过。真实模型推荐 → 确认加购 → 模拟支付 → 自提核销及退款均有实际落库证据。
+## 4. 本地构建、启动与验证
 
-- [完整报告、原始失败与复测](docs/testing/LOCAL-LIVE-20261029.md) · [数据库结果](docs/testing/evidence/local-live/database-readback.json) · [真实页面截图](docs/testing/evidence/local-live/browser/)
-- 本机预览 `http://127.0.0.1:8091/#/`，不要加 `demo=1`。凭据及备份在 Git 忽略的 `.env` / `var/local-live/`。Milvus 的现有 HTTP 连接仅通过显式本地验收入口使用，正常部署 TLS 策略不变。
-
-以下阶段记录保留当时的验证边界；后续本地端到端结果以上节报告为准。
-
-## 前序真实 AI 子系统验收（2026-10-29）
-
-真实 NVIDIA Embedding → Milvus（121 件合成商品）→ Uvicorn HTTP → 讯飞推荐已跑通；预算、数量、库存、知识引用/白名单、重复及增量同步、连接失败降级等复测后 21 项有效检查通过。Python 单测 40 通过；Maven `verify` 构建成功，48 通过、28 MySQL 测试跳过。商品事实使用验收数据，Java/MySQL 事务与正式同步未验收。
-
-- [验收结果、原始失败与复测、连接例外和复现命令](docs/testing/AI-LIVE-20261029.md) · [脱敏汇总](docs/testing/evidence/ai-live-summary.json)
-- 凭据仅保存在 Git 忽略的本地 `.env`；正常应用仍要求安全 Milvus 连接。本轮按用户指定的 HTTP 地址仅做显式验收例外，未修改正式商品集合。
-
-在已有小傅哥 DDD 工程上持续实现，保留 Java17 / Spring Boot3.4.3 / MyBatis3.0.4；因真实跨域事务增加 Case 模块。前端为同源 Vue3，AI 为独立 Python FastAPI。
-
-## 前端 UI 改造（2026-10-28）
-
-根据高保真原型实现的 **消费者首页、AI 导购、商户商品管理** 三个 Vue 3 页面，默认新界面为 `/#/`、`/#/ai`、`/#/merchant/products`；原 R1 其他功能仍可以访问 `/legacy.html`。纯视觉预览访问 `/?demo=1#/`，标识演示数据且不执行写入。
-
-- [前端运行说明](frontend/README.md) · [三页实施规格](docs/specs/UI-THREE-PAGES.md) · [浏览器验证报告](docs/testing/UI-THREE-PAGES-VERIFICATION.md)
-- 真实浏览器截图在 `docs/testing/evidence/ui-three-pages/`；本批 23 项浏览器检查通过，Java/MySQL 全栈仍待本地验收。
-
-## 前端全页面扩展（2026-10-28）
-
-在前三页高保真设计基础上补齐消费者购物/订单/自提/账号、商户订单库存店员售后及平台商户审核监管知识库等页面。共覆盖 26 个页面路由，延续一致的清爽浅色设计。使用真实 Java Controller 路径与 DTO 发送请求；只验证了浏览器与接口契约替身，尚未通过 Spring/MySQL 端到端联调。
-
-- [完整页面规格与路由](docs/specs/UI-REMAINING-PAGES.md)
-- [浏览器与契约测试记录](docs/testing/UI-REMAINING-PAGES-VERIFICATION.md)
-- [前端预览与联调说明](frontend/README.md)
-
-## SDD-05：商户自定义角色与权限（2026-10-28）
-
-在商户工作台新增 **角色权限**（`/#/merchant/roles`），Owner 可以新建、修改、删除本商户自定义角色，并在 **店员管理**（`/#/merchant/team`）把成员分配到自定义角色。默认 Owner/CLERK 不可删除或修改，平台管理员不能通过商户接口授予。角色权限包含商品、库存、订单、自提、售后、知识库等 15 个权限码；敏感的角色治理、成员管理、门店设置仍由 Owner 独占，所有受控接口由 Java 按当前登录人和商户实时复权，前端菜单/操作以同一份工作台权限码渲染。
-
-商品列表新增 `NEWEST`、`PRICE_ASC`、`STOCK_DESC` 三种 **服务端全局排序**，先排序再分页。现有数据库升级须先备份并执行 `docs/database/migrations/V20261028_02__merchant_rbac.sql`，旧库若尚未应用 SDD-02 图片字段，还需先执行 `V20261028_01`。**这属于源码与浏览器替身验证完成的候选版，真实 Maven/MySQL 及多角色登录的端到端测试仍未完成。**
-
-- [SDD-05 领域、接口与权限矩阵](docs/specs/SDD-RBAC-05.md) · [真实执行结果和未跑测试](docs/testing/SDD-RBAC-05-VERIFICATION.md)
-- [角色管理桌面/移动截图](docs/testing/evidence/rbac/) · [新增 SQL](docs/database/migrations/V20261028_02__merchant_rbac.sql)
-
-## UI-06：前端界面收敛（2026-10-29）
-
-基于 v1.2 RBAC，对消费者、商户、平台页面进行展示精简：移除重复中文教程、装饰性英文副标题、页面上的权限技术码和不可用通知入口；保留真实交易状态、必填校验及权限错误。商户/平台窄屏现有导航不再消失，改为权限一致的可滚动菜单，并自动定位当前页面。角色设计预览现在有只读示例数据，正式版角色 CRUD 与服务端鉴权逻辑不变。
-
-- [界面规范](docs/specs/UI-POLISH-06.md) · [验证记录](docs/testing/UI-POLISH-06-VERIFICATION.md) · [前端运行说明](frontend/README.md)
-- 仅源码、预编译静态资源与受控浏览器回归完成，**真实 Spring/MySQL 端到端联调仍需执行**。
-
-## SDD-07：商品按需求召回与讯飞 MaaS 模型接入（2026-10-29）
-
-导购不再截取最新 100 个商品后才排序：先用 Python 规则/可选 LLM 生成有上限的检索词，Java Catalog 通过 MySQL 在全部已上架商品中进行关键词召回，最多取 200 商品/300 SKU，再由 Python BM25 与可选模型推荐。价格、库存、权限和加购仍由 Java 复核；不声称商品向量索引已建立。
-
-可在**本地未提交的 `.env`** 中配置 `LLM_BASE_URL=https://maas-api.cn-huabei-1.xf-yun.com/v2`、`LLM_MODEL=spark-x2.6`（若控制台授权的模型 ID 不同则替换），并配置私有 `LLM_API_KEY`。本次未将 API Key 写进工程，也未完成真实讯飞与 MySQL 联调。
-
-- [召回与安全设计](docs/specs/SDD-AI-RECALL-07.md) · [验收记录](docs/testing/SDD-AI-RECALL-07-VERIFICATION.md)
-
-## 商品图片闭环（IMG-01 · 2026-10-28）
-
-商户商品管理已补上传/预览/换图/移除主图交互：使用已存在的 Java 上传接口获取 `/media/*.png`，创建/编辑商品时提交 `imageUrl`；消费者首页、详情、AI、购物车等页面统一显示图片和缺图占位。浏览器与 API 契约测试已通过，**真实 Spring/MySQL 图片联调仍未验收**。
-
-- [完整图片规格](docs/specs/UI-PRODUCT-IMAGES.md) · [实际验证](docs/testing/UI-PRODUCT-IMAGES-VERIFICATION.md)
-
-## SDD-02 前后端契约与历史商品图片修复（2026-10-28）
-
-在完整前端和 IMG-01 基础上补齐商户公开详情、多 SKU、新版本文档、后台商户名、服务端分页、购物车与 AI 推荐主图、**订单历史图片快照**。新增订单字段的旧库迁移文件：`docs/database/migrations/V20261028_01__order_item_image_snapshot.sql`；**升级旧库前先备份并执行该 SQL，再启动新 Java 代码**。
-
-- [实施规格](docs/specs/SDD-INTEGRATION-02.md) · [真实验证层级](docs/testing/SDD-INTEGRATION-02-VERIFICATION.md) · [纯 Java 检查](scripts/verify-sdd-model.py)
-- 设计预览与模拟 HTTP 不代表 Java/MySQL 已联调；商户、审核等部分自由文本列表筛选仍是“当前页过滤”，不声明跨页搜索能力。
-
-## 已写入的业务能力
-
-- 消费者：注册、会话登录、公开商品搜索、多规格选择、按商户购物车、下单、模拟支付、取消、自提凭证、未提货整单退款、导购与提案确认。
-- 商户：完整入驻申请、门店资料、商品/规格/售价、图片上传、补货、备货/核销、售后、员工邀请与撤销、公开或内部知识库。
-- 平台：受控管理员初始化、审核开通、暂停/恢复商户、商品监管、类目管理、争议退款裁决、订单与经营统计。
-- AI：文本/Markdown/文本 PDF 入库与版本发布、权限白名单、混合检索、引用、会话、10分钟提案、确认后幂等加购；无模型时明显标记本地检索演示。
-
-所有真实资金行为均为模拟；没有实际扣款、分账或商户提现。首版每商户一个门店、一订单一个商户。
-
-## 交付入口
-
-[交付范围与限制](docs/DELIVERY-R1.md) · [运行手册](docs/operations/R1-runbook.md) · [实际验证报告](docs/testing/R1-verification.md) · [实施规格](docs/specs/RELEASE-01.md) · [需求追踪](docs/TRACEABILITY.md) · [接口清单](docs/api/http-api.md)
-
-## 本地构建与启动
-
-具备 Docker Engine + Compose 且能下载镜像/依赖的机器：
+### 4.1 容器化一键体验（需 Docker Engine + Compose）
 
 ```bash
 python scripts/dev-up.py
-# 健康检查成功后，再运行完整真实业务验收；不能把启动等同验收。
+# 待容器健康检查就绪后，可执行真实跨服务 HTTP 验收
 python scripts/smoke-full.py
 ```
 
-首次启动生成 `.env` 中的随机数据库/服务/管理员凭据，不覆盖已有配置。管理员用户名/密码查看本地 `.env`；不要提交、截图或分享该文件。默认只开放 `http://127.0.0.1:8091`。生产必须增加 HTTPS、Secure Cookie、备份和安全验收，不能直接公网部署默认演示配置。
+首次运行自动在本地未追踪的 `.env` 中生成随机数据库、Redis、服务间密钥与初始管理员凭据（请勿提交或截图 `.env`），默认仅绑定本机 `http://127.0.0.1:8091/#/`。
 
-不用 Docker 时，按运行手册配置 MySQL 8、JDK17、Maven、Python环境，并执行 `mvn clean verify`。本包没有伪造已经构建的 JAR。
+### 4.2 源码构建与常用质量门禁（JDK 17 / Node 22.16.0 / Python 3.11）
 
-## 实际测试层级
+```bash
+# 前端与 Java 格式、TS 类型、前端单测与 UI 产物一致性检查
+npm run format:check --prefix frontend
+npm run typecheck --prefix frontend
+npm test --prefix frontend
+python scripts/build-ui-bundle.py --check
 
-- `python scripts/verify-domain.py`：编译原始生产纯领域代码，56项规则检查及5000步库存随机序列。
-- `python scripts/verify-http-body.py`：真实JDK客户端/服务器验证HTTP正文大小和完整响应超时。
-- `cd ai-service && python -m pytest -q`：真实Python应用/SQLite检索；外部LLM故障等使用标注清楚的测试替身。
-- `python scripts/smoke-ai-local.py`：启动真实Uvicorn并通过本机TCP验证共享密钥、索引、白名单和删除。
-- `python frontend/tests/contract_ui.py`：真实Vue/Chromium，**后端是接口替身**，不是Java数据库联调。
-- `mvn verify`：2026-10-29 最新构建成功，63 通过、29 MySQL 用例跳过；本轮未执行 `clean verify`。`scripts/smoke-full.py`、`frontend/tests/live_ui.py` 和新增 `live_shopping.py` 已通过本机真实 MySQL/模型验收，范围见上方报告，不能把构建或有限用例等同穷尽验证。
+# 数据库迁移契约、API 契约、Mapper 全表扫描与 DDD 边界静态门禁
+python scripts/schema_contract.py --check
+python scripts/verify-api-contract.py
+python scripts/verify-api-schemas.py
+python scripts/verify-mapper-scan.py
+python scripts/verify-release.py
+python scripts/verify-domain.py
 
-## 工程目录
+# Python 智能导购服务测试与离线评测
+cd ai-service && python -m pytest -q
+python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profile local
 
-`api` 定义接口/DTO；`trigger` 实现HTTP入口；`case` 编排跨域事务；`domain` 维护业务模型与仓储/远程Port接口；`infrastructure` 实现MyBatis和Python HTTP网关；`app` 启动与安全配置；`types` 公共业务错误。`frontend/` 为可编辑模板和浏览器测试，`ai-service/` 为Python服务。
-
-保留中文业务注释、AppException/ResponseCode、Controller内捕获；不增加远程密码Port或全局业务异常处理器。历史教学代码和教程不再作为当前运行步骤，以上R1规格为准。
-
-## SDD-08：NVIDIA Embedding + Milvus 商品混合召回（2026-10-29）
-
-增加可选独立 Milvus 商品索引（非取代 MySQL 商品事实源），采用 MySQL 词面召回 + Milvus 语义召回 + RRF 融合；Python 对候选同时做 BM25 与语义 RRF。Java 默认关闭的增量同步任务负责将公开商品及活动规格分批索引，不保存实时价格/库存至向量库。Milvus 故障降级关键词召回；跨商户和权限仍按 MySQL 验证。不得使用公网明文 HTTP 传送 root 凭据。
-
-- [SDD-08 设计/内网契约/安全/验收](docs/specs/SDD-AI-HYBRID-08.md)
-- [SDD-08 验证记录](docs/testing/SDD-AI-HYBRID-08-VERIFICATION.md)
-- 需安全设置 `MILVUS_URI`、`MILVUS_TOKEN`、`EMBEDDING_BASE_URL`、`EMBEDDING_API_KEY`、`EMBEDDING_MODEL`；`AI_PRODUCT_VECTOR_SYNC_ENABLED=true` 才进行索引同步。
-- 启动后可 `docker compose exec ai python -m app.smoke_vector` 进行只读连通测试。真实 Milvus/模型的独立子系统验收已补充，详见[2026-10-29 验收记录](docs/testing/AI-LIVE-20261029.md)；Compose 全栈仍未验收。
+# Java 全模块构建与测试（完整集成测试需按开发流程配置隔离 MySQL/Redis）
+./mvnw clean verify
+```
