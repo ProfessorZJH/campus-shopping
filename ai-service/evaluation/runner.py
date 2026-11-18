@@ -22,7 +22,8 @@ def offers_for(data, case):
     """fixture报价，不宣称执行过Java召回/权限。保持同案例R-RULE/R-LLM候选相同。"""
     merchants = {m['merchantId']: m['status'] for m in data['merchants']['merchants']}
     return [dict(skuId=s['skuId'], merchantId=p['merchantId'], productId=p['productId'], title=p['title'],
-                 description=p['description'], specKey=s['specKey'], priceCent=s['priceCent'], available=s['onHand'] - s['reserved'])
+                 description=p['description'], specKey=s['specKey'], attributes=dict(s.get('attributes') or {}),
+                 priceCent=s['priceCent'], available=s['onHand'] - s['reserved'])
             for p in data['products'] if p['status'] == 'PUBLISHED' and p['merchantId'] in case['allowedMerchantIds']
             and merchants[p['merchantId']] == 'ACTIVE' for s in p['skus'] if s['status'] == 'ACTIVE'][:300]
 

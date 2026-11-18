@@ -24,6 +24,39 @@ class ProtocolBoundaryTest {
     }
 
     @Test
+    void resolverProvidesExplicitPriceFilterMessageOnTypeMismatch() throws Exception {
+        var mapper = new ObjectMapper();
+        var resolver = new ApiProtocolExceptionResolver(mapper);
+        var priceMismatch = new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+            "abc",
+            Long.class,
+            "minPriceCent",
+            null,
+            new NumberFormatException("For input string: \"abc\"")
+        );
+        var priceRequest = new MockHttpServletRequest("GET", "/api/v1/products");
+        var priceResponse = new MockHttpServletResponse();
+        assertNotNull(resolver.resolveException(priceRequest, priceResponse, null, priceMismatch));
+        assertEquals(400, priceResponse.getStatus());
+        var priceJson = mapper.readTree(priceResponse.getContentAsString());
+        assertEquals("0002", priceJson.get("code").asText());
+        assertEquals("价格条件必须为非负整数（单位：分）", priceJson.get("info").asText());
+
+        var sizeMismatch = new org.springframework.web.method.annotation.MethodArgumentTypeMismatchException(
+            "abc",
+            Integer.class,
+            "size",
+            null,
+            new NumberFormatException("For input string: \"abc\"")
+        );
+        var sizeRequest = new MockHttpServletRequest("GET", "/api/v1/products/page");
+        var sizeResponse = new MockHttpServletResponse();
+        assertNotNull(resolver.resolveException(sizeRequest, sizeResponse, null, sizeMismatch));
+        assertEquals(400, sizeResponse.getStatus());
+        assertEquals("非法参数", mapper.readTree(sizeResponse.getContentAsString()).get("info").asText());
+    }
+
+    @Test
     void registrationRetryAfterMatchesItsFiveMinuteWindow() throws Exception {
         verifyRateLimit("/api/v1/auth/register", 30, 299, 300);
         verifyRateLimit("/api/v1/auth/login", 300, 59, 60);

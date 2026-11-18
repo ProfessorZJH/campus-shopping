@@ -29,7 +29,6 @@ import java.security.Principal;
 import java.util.List;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,7 +37,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 /** HTTP 入口只做协议转换、可信身份提取和响应封装。 */
 @Slf4j
@@ -335,15 +333,6 @@ public class CatalogController implements ICatalogApi {
             var result = catalogQuery.adminPage(actor(principal), merchantId, q, page, size);
             return PageResponseDTO.of(products(result.items()), page, size, result.total());
         });
-    }
-
-    /** 数字查询参数解析失败时仍返回统一信封，避免价格条件被静默忽略。 */
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public Response<Void> invalidQueryValue(MethodArgumentTypeMismatchException failure) {
-        String name = failure.getName();
-        String info =
-            "minPriceCent".equals(name) || "maxPriceCent".equals(name) ? "价格条件必须为非负整数（单位：分）" : ResponseCode.ILLEGAL_PARAMETER.getInfo();
-        return ApiResponses.rejected(new AppException(ResponseCode.ILLEGAL_PARAMETER.getCode(), info));
     }
 
     private <T> Response<T> execute(Supplier<T> action) {

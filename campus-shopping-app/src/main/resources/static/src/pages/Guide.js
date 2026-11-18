@@ -179,6 +179,8 @@ export default {
           },
         });
         if (recovered && recovered !== true) applyConversationSnapshot(recovered, id, stamp);
+        else if (recovered === true && stamp === conversationEpoch)
+          notify('后台仍在生成回答，稍后可重新打开当前会话查看结果');
         return recovered;
       } finally {
         reconnecting.value = false;
@@ -394,7 +396,7 @@ export default {
         if (currentProposal(stamp, actor, proposalId)) {
           proposal.value = updated;
           selectedIds.value = chosen;
-          notify('已确认提案，购物车已更新');
+          notify('已加入，购物车已更新');
         }
       } catch (err) {
         if (currentProposal(stamp, actor, proposalId)) {
@@ -421,11 +423,11 @@ export default {
         });
         if (currentProposal(stamp, actor, proposalId)) {
           proposal.value = null;
-          notify('已放弃提案');
+          notify('已收起推荐');
         }
       } catch (err) {
         if (currentProposal(stamp, actor, proposalId)) {
-          proposalFeedback.value = err?.message || '放弃提案失败，请稍后重试。';
+          proposalFeedback.value = err?.message || '操作未完成，请稍后重试。';
           notify(proposalFeedback.value);
         }
       } finally {
@@ -474,15 +476,14 @@ export default {
   template: `
     <ConsumerShell active="ai">
       <section class="ai-hero">
-        <div class="ai-hero-text"><h1><span>AI</span> 导购助手</h1><p>想买什么？问我就好。</p></div>
-        <img src="./images/robot.webp" alt="AI 导购机器人" class="ai-hero-robot"/>
-        <span class="orb-decoration orb-one">✦</span><span class="orb-decoration orb-two">✧</span>
+        <div class="ai-hero-text"><h1><span>AI</span> 导购助手</h1><p>说出预算、口味或场景，挑好后由你确认加购</p></div>
+        <img src="./images/robot.webp" alt="AI 导购助手" class="ai-hero-robot"/>
       </section>
       <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="confirmingProposal" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
       <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :error="error"/>
-      <GuideRecommendations v-if="showProposal" :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm"/>
+      <GuideRecommendations v-if="showProposal" :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
-      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="问问 AI，帮你找好物…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="20"/></button></form>
+      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="例如：30元内适合复习吃的零食…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="19"/></button></form>
     </ConsumerShell>`,
 };

@@ -4,6 +4,9 @@
 
 | 阅读目标 | 文档 |
 |---|---|
+| **产品需求收束与 UI/UX 去 AI 味打磨（2026-11-18）** | [需求收束与核心功能架构（含 Mermaid 流程图）](requirements/PRODUCT-CONVERGENCE-20261118.md) · [UI/UX 优化与 7 层全链路真实验收记录](testing/UX-CONVERGENCE-POLISH-20261118.md) |
+| **毕业设计与开题/终期答辩全周期资料（2026-11-18）** | [毕设总控台](thesis/README.md) · [开题攻略与PPT讲稿](thesis/01-OPENING-DEFENSE-GUIDE.md) · [论文六章蓝图与公式源码映射](thesis/02-THESIS-CHAPTER-BLUEPRINT.md) · [44表/102路由与图表手册](thesis/03-ARCHITECTURE-AND-DATA-MANUAL.md) · [评测实验SOP与终期答辩题库](thesis/04-EXPERIMENT-AND-FINAL-DEFENSE-QA.md) |
+| **毕设答辩前多维审查修复（2026-11-18）** | [缺陷修复与治理记录](testing/DEFENSE-REVIEW-FIXES-20261118.md)：流式断流快速失败、Milvus `/ready` 恢复、`RuntimeBridge` 并发有界缓存、门禁补齐与 ADR 勘误 |
 | **前端统一第一批（2026-11-14）** | [基础视觉与公共交互验证](testing/FRONTEND-UNIFICATION-BATCH1-20261114.md)：设计变量、分页、状态反馈与隔离全栈结果 |
 | **Git 整理与工作区复核（2026-11-14）** | [整理和验证记录](testing/GIT-INTEGRATION-20261114.md)：主线基线、遗留目录备份、工程改动与验证范围 |
 | **工程门禁地基 Wave 0（2026-11-12）** | [实施与验证记录](testing/ENGINEERING-WAVE0-20261112.md)：门禁插件声明、domain 单测依赖、mapper 去重与扫描脚本；后附 WSL 恢复后的补充验证与剩余未验证范围 |
@@ -38,7 +41,7 @@
 | 原始产品需求 | [PRD](requirements/PRD.md) |
 | 决策如何收敛 | [决策清单](requirements/open-questions.md)、[ADR](architecture/decisions.md) |
 | 领域边界 | [业务架构](architecture/business-architecture.md)、[上下文映射](architecture/context-map.md) |
-| **当前权威 HTTP 契约** | [99 条 JSON 路由与字段](api/http-api.md)、[OpenAPI JSON](api/openapi.json)、[行为约定](api/behavior-v1.1.md)、[错误码](api/error-codes.md)、[独立 AI SSE 协议](api/streaming.md) |
+| **当前权威 HTTP 契约** | [102 条路由与字段](api/http-api.md)、[OpenAPI JSON](api/openapi.json)、[行为约定](api/behavior-v1.1.md)、[错误码](api/error-codes.md)、[独立 AI SSE 协议](api/streaming.md) |
 | **SDD-03 代码契约修复** | [实施规格](specs/SDD-API-CONTRACT-03.md)、[验证记录](testing/SDD-API-CONTRACT-03-VERIFICATION.md) |
 | **SDD-04 本批缺陷修复（F01–F10）** | [修复规格](specs/SDD-REPAIR-04.md)、[验证记录](testing/SDD-REPAIR-04-VERIFICATION.md) |
 | **SDD-05 商户自定义 RBAC + 全局排序** | [设计/权限矩阵](specs/SDD-RBAC-05.md)、[验证记录](testing/SDD-RBAC-05-VERIFICATION.md) |

@@ -8,7 +8,7 @@
 
 结构重构已通过 PR #63 合入 `main`，合并提交为 `89e2981`。对应的[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #325 已通过；真实外部供应商 smoke、生产部署和性能仍属于完成后的独立验收范围，不改变本次结构重构完成结论。
 
-AnswerFlow 规则树、Agent v1.1 和 Trading/Repository P2 是完成后的独立演进边界：前者在出现稳定的第二回答分支时再扩展，Agent 等待独立产品决策，Trading/Repository 仅在出现可量化的 SQL、并发或审计收益时继续优化。
+AnswerFlow 规则树、Agent v1.1 公开入口收口和 Trading/Repository P2 是完成后的独立演进边界：前者在出现稳定的第二回答分支时再扩展，Agent v1.1 已完成 M0～M3 底座契约与受控网关但默认保持关闭（等待公开入口与真实联调决策），Trading/Repository 仅在出现可量化的 SQL、并发或审计收益时继续优化。
 
 PR #63 的远端验收已完成并通过；命令、版本、环境和结果见[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)，原始日志由 GitHub Actions run #325 保留。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
 
@@ -33,6 +33,6 @@ PR #63 的远端验收已完成并通过；命令、版本、环境和结果见[
 | 三端产品 | Vue 源码、权限导航与列表分页 | 真实后台浏览器及契约替身分别记录，不能互相代替 |
 | 部署 | Dockerfile/Compose/CI 配置 | SDD-12整合提交的[远端CI与实际镜像验收](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41161066987)通过；本机未启动Docker，生产部署未验收。新修改仍须对应提交的CI |
 
-后续专项工作为论文级检索数据集、真实模型回归、生产安全与可信代理拓扑、备份恢复及压力测试。上线时对实际版本和环境重新执行验收。SSE、会话删除、多Python副本、真实支付/分账不属于当前已交付能力。
+后续专项工作为论文级检索数据集、真实模型回归、生产安全与可信代理拓扑、备份恢复及压力测试。上线时对实际版本和环境重新执行验收。独立 AI SSE 协议已随产品化 M3 交付（见 [streaming.md](api/streaming.md)）；会话删除、多Python副本、真实支付/分账仍不属于当前已交付能力。
 
-2026-10-28 的 87 路由与 NOT_RUN 记录已归为历史；现行 93 条 API 以[生成接口](api/http-api.md)、[OpenAPI](api/openapi.json)和[行为契约](api/behavior-v1.1.md)为准。
+2026-10-28 的 87 路由、93 路由与 NOT_RUN 记录已归为历史；现行 102 条 API 以[生成接口](api/http-api.md)、[OpenAPI](api/openapi.json)和[行为契约](api/behavior-v1.1.md)为准。

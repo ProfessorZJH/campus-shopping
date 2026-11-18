@@ -68,11 +68,11 @@ export default {
     return { mode, username, password, displayName, busy, error, submit };
   },
   template: `<div v-modal="() => $emit('close')" class="ui-overlay" @click.self="$emit('close')"><form class="login-dialog" @submit.prevent="submit" aria-label="账号登录">
-     <div class="login-dialog-heading"><span class="auth-logo"><Icon name="sparkles" :size="22"/></span><button type="button" @click="$emit('close')" aria-label="关闭登录窗"><Icon name="x" :size="20" /></button></div>
-     <h2>{{mode==='login'?'欢迎回来':'创建账号'}}</h2>
-     <label for="login-name">账号</label><input id="login-name" v-model="username" autocomplete="username" :minlength="mode==='register'?4:undefined" required maxlength="32" placeholder="用户名"/>
-     <label for="login-password">密码</label><input id="login-password" v-model="password" type="password" :autocomplete="mode==='login'?'current-password':'new-password'" required :minlength="mode==='register'?8:undefined" :maxlength="mode==='register'?64:undefined" placeholder="输入密码"/>
-     <template v-if="mode==='register'"><small>用户名4~32位，字母开头，仅含字母、数字、下划线；密码8~64字符，UTF-8不超过72字节。</small><label for="login-display">昵称</label><input id="login-display" v-model="displayName" maxlength="50" placeholder="昵称（选填）"/></template>
+     <div class="login-dialog-heading"><span class="auth-logo"><Icon name="store" :size="21"/></span><button type="button" @click="$emit('close')" aria-label="关闭登录窗"><Icon name="x" :size="20" /></button></div>
+     <h2>{{mode==='login'?'账号登录':'注册新账号'}}</h2>
+     <label for="login-name">账号</label><input id="login-name" v-model="username" autocomplete="username" :minlength="mode==='register'?4:undefined" required maxlength="32" placeholder="请输入用户名"/>
+     <label for="login-password">密码</label><input id="login-password" v-model="password" type="password" :autocomplete="mode==='login'?'current-password':'new-password'" required :minlength="mode==='register'?8:undefined" :maxlength="mode==='register'?64:undefined" placeholder="请输入密码"/>
+     <template v-if="mode==='register'"><small class="auth-hint">账号以字母开头（4~32位字母、数字或下划线），密码 8~64 位</small><label for="login-display">昵称</label><input id="login-display" v-model="displayName" maxlength="50" placeholder="选填，用于订单展示"/></template>
      <div v-if="error" class="login-error">{{error}}</div>
      <button type="submit" class="primary-wide login-submit" :disabled="busy">{{busy?'请稍候…':mode==='login'?'登录':'注册'}}</button>
      <button type="button" class="login-switch" @click="mode=mode==='login'?'register':'login';error=''">{{mode==='login'?'没有账号？注册':'已有账号？登录'}}</button>

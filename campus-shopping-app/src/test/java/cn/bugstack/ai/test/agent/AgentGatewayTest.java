@@ -184,6 +184,42 @@ class AgentGatewayTest {
         verify(repository, never()).claimInvocation(any());
     }
 
+    @Test
+    void naturalLanguagePhraseFallsBackToChineseBigramsWhenExactClauseMisses() {
+        IAgentRunRepository repository = mock(IAgentRunRepository.class);
+        IUserAccountService accounts = mock(IUserAccountService.class);
+        AgentRunVO run = run("buyer", AgentScopeVO.CONSUMER, null, Set.of("merchant-1"), "capability");
+        when(repository.find("run-1")).thenReturn(run);
+        when(repository.activeTurnExpiry("buyer", "conversation", "turn-token")).thenReturn(NOW.plusSeconds(600));
+        when(repository.invocation("run-1", "call-phrase")).thenReturn(null);
+        when(repository.claimInvocation(any())).thenReturn(true);
+        when(repository.completeInvocation(eq("run-1"), eq("call-phrase"), anyString(), any(), any())).thenReturn(true);
+
+        ICatalogCandidateQuery catalog = mock(ICatalogCandidateQuery.class);
+        when(catalog.candidateRecall(List.of("适合宿舍用的台灯"), 50)).thenReturn(List.of());
+        when(catalog.candidateRecall(List.of("宿舍", "台灯"), 50)).thenReturn(List.of(new ProductCandidateSnapshot("product-lamp", List.of("sku-lamp"))));
+        when(catalog.availableOffers(List.of("sku-lamp"))).thenReturn(List.of(offer("sku-lamp", "product-lamp", "merchant-1", "store-1", "护眼台灯", 3900)));
+        IInventoryService inventory = mock(IInventoryService.class);
+        when(inventory.stocks(List.of("sku-lamp"))).thenReturn(List.of(new StockVO("merchant-1", "store-1", "sku-lamp", 10, 0, 1)));
+        IMerchantService merchants = mock(IMerchantService.class);
+        when(merchants.findAll(List.of("merchant-1"))).thenReturn(List.of(merchant("merchant-1", "ACTIVE")));
+
+        AgentToolInvocationCaseImpl tools = new AgentToolInvocationCaseImpl(
+            repository,
+            mockRuns(repository, accounts),
+            catalog,
+            inventory,
+            merchants,
+            accounts,
+            clock
+        );
+        AgentToolResultVO result = tools.invoke(
+            new AgentToolInvocationCommand("buyer", "run-1", "capability", "call-phrase", "search_products", "适合宿舍用的台灯", 5, null)
+        );
+        assertEquals(1, result.candidates().size());
+        assertEquals("product-lamp", result.candidates().get(0).productId());
+    }
+
     private AgentRunCaseImpl mockRuns(IAgentRunRepository repository, IUserAccountService accounts) {
         return new AgentRunCaseImpl(repository, accounts, mock(IAccessService.class), clock);
     }

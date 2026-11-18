@@ -62,18 +62,22 @@ export default {
           invitations.value = [];
           return;
         }
-        const [a, i] = await Promise.all([
+        const [a, i, w] = await Promise.all([
           !isApply.value && !isInvite.value
             ? api('/merchant-applications/mine/page' + query({ page: page.value, size: 10 }))
             : Promise.resolve({ items: [], total: 0 }),
           !isApply.value
             ? api('/invitations' + query({ page: invitePage.value, size: 20 }))
             : Promise.resolve([]),
+          !isApply.value && !isInvite.value
+            ? api('/workspace').catch(() => store.workspace)
+            : Promise.resolve(store.workspace),
         ]);
         if (stamp !== loadEpoch || actor !== store.user?.userId) return;
         apps.value = a.items || [];
         pageInfo.value = a;
         invitations.value = i || [];
+        if (w) store.workspace = w;
       } catch (e) {
         if (stamp === loadEpoch) error.value = e.message;
       } finally {
@@ -123,6 +127,9 @@ export default {
       try {
         await api('/invitations/' + encodeURIComponent(i.id) + '/accept', { method: 'POST' });
         if (!current()) return;
+        const latestWorkspace = await api('/workspace').catch(() => null);
+        if (!current()) return;
+        if (latestWorkspace) store.workspace = latestWorkspace;
         notify('邀请已接受');
         await load();
       } catch (e) {
@@ -155,8 +162,8 @@ export default {
       load,
     };
   },
-  template: `<ConsumerShell active="account"><div class="mobile-page-top"><button @click="go('/account')" aria-label="返回"><Icon name="arrowLeft"/></button><b>{{isApply?'商户入驻':isInvite?'收到的邀请':'个人中心'}}</b><button v-if="!isApply&&!isInvite" @click="load" aria-label="刷新"><Icon name="refresh"/></button></div>
- <template v-if="!isApply&&!isInvite"><section class="account-profile"><div class="profile-avatar"><Icon name="user" :size="30"/></div><div><h1>{{store.user?.displayName||'校园同学'}}</h1><p>{{store.user?.username||'登录后查看订单与申请'}}</p></div><button v-if="!store.user&&!preview" class="outline-button" @click="login=true">登录 / 注册</button><span v-if="preview" class="demo-pill">设计预览</span></section><div class="account-quick"><button @click="go('/orders')"><Icon name="order"/><span>我的订单</span></button><button @click="go('/cart')"><Icon name="cart"/><span>购物车</span></button><button @click="go('/apply')"><Icon name="store"/><span>商户入驻</span></button><button @click="go('/invitations')"><Icon name="users"/><span>邀请</span></button></div><div class="account-section-head"><h2>入驻记录</h2><button @click="go('/apply')">去申请 <Icon name="chevronRight" :size="15"/></button></div><div v-if="error" class="inline-error">{{error}}</div><div class="account-application" v-for="a in apps" :key="a.applicationId"><div><strong>{{a.merchantName}}</strong><span>{{a.storeName}} · {{a.location}}</span></div><b class="status-tag" :class="a.status==='APPROVED'?'published':'draft'">{{applicationStatusLabel(a.status)}}</b><p v-if="a.rejectionReason">{{a.rejectionReason}}</p></div><div v-if="!loading&&!apps.length&&!error" class="mobile-empty">暂无入驻记录</div><UiPagination v-if="!preview&&pageInfo.total>0" :page="page" :has-next="pageInfo.hasNext" :busy="loading" @previous="page--" @next="page++">{{pageInfo.total}} 条</UiPagination></template>
- <form v-else-if="isApply" class="account-form detail-card" @submit.prevent="submit"><label>经营名称<input v-model.trim="form.merchantName" required maxlength="100" placeholder="商户名称"/></label><label>经营品类<select v-model="form.category"><option>便利零售</option><option>水果生鲜</option><option>文具用品</option><option>饮品</option><option>其他</option></select></label><label>联系人<input v-model.trim="form.contactName" required maxlength="50"/></label><label>联系电话<input v-model.trim="form.contactPhone" required maxlength="30"/></label><label>首个门店名称<input v-model.trim="form.storeName" required maxlength="100"/></label><label>自提位置<input v-model.trim="form.location" required maxlength="200" placeholder="如：学一食堂一层"/></label><button class="teal-button" type="submit" :disabled="preview||busy||!store.user">{{!store.user&&!preview?'请先登录':'提交入驻申请'}}</button></form>
- <section v-else class="detail-card"><h2>收到的邀请</h2><div class="invitation-line" v-for="i in invitations" :key="i.id"><div><strong>{{i.merchantId}}</strong><small>{{invitationIsExpired(i)?'已过期':invitationStatusLabel(i.status)}}</small></div><button class="outline-button" :disabled="preview||busy||loading||i.status!=='PENDING'||invitationIsExpired(i)" @click="accept(i)">接受</button></div><div v-if="!loading&&!error&&!invitations.length" class="mobile-empty">暂无邀请</div><UiPagination v-if="!preview&&(invitePage>1||invitations.length===20)" :page="invitePage" :has-next="invitations.length>=20" :busy="loading" @previous="invitePage--" @next="invitePage++"/></section><AuthDialog v-if="login" @close="login=false" @success="load"/></ConsumerShell>`,
+  template: `<ConsumerShell active="account"><div class="mobile-page-top"><button @click="go(isApply||isInvite?'/account':'/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>{{isApply?'商户入驻':isInvite?'收到的邀请':'个人中心'}}</b><button v-if="!isApply&&!isInvite" @click="load" aria-label="刷新"><Icon name="refresh"/></button></div>
+ <template v-if="!isApply&&!isInvite"><section class="account-profile"><div class="profile-avatar"><Icon name="user" :size="30"/></div><div><h1>{{store.user?.displayName||'校园同学'}}</h1><p>{{store.user?.username||'登录后查看订单与入驻进度'}}</p></div><button v-if="!store.user&&!preview" class="outline-button" @click="login=true">登录 / 注册</button><span v-if="preview" class="demo-pill">设计预览</span></section><div class="account-quick"><button @click="go('/orders')"><Icon name="order"/><span>我的订单</span></button><button @click="go('/cart')"><Icon name="cart"/><span>购物车</span></button><button @click="go('/apply')"><Icon name="store"/><span>商户入驻</span></button><button @click="go('/invitations')"><Icon name="users"/><span>邀请</span></button></div><section v-if="preview||store.workspace?.merchants?.length||store.workspace?.platformAdmin" class="account-workspaces detail-card"><div class="account-section-head compact"><h2>管理工作台</h2></div><div class="workspace-entry-list"><button v-if="preview||store.workspace?.merchants?.length" type="button" class="workspace-entry-btn" @click="go('/merchant')"><span class="mini-icon"><Icon name="store" :size="18"/></span><div><strong>商户工作台</strong><small>{{store.workspace?.merchants?.[0]?.name||'管理商品、库存与自提订单'}}</small></div><Icon name="chevronRight" :size="16"/></button><button v-if="preview||store.workspace?.platformAdmin" type="button" class="workspace-entry-btn" @click="go('/admin')"><span class="mini-icon"><Icon name="shield" :size="18"/></span><div><strong>平台管理端</strong><small>入驻审核、商品巡检与争议裁决</small></div><Icon name="chevronRight" :size="16"/></button></div></section><div class="account-section-head"><h2>入驻记录</h2><button @click="go('/apply')">去申请 <Icon name="chevronRight" :size="15"/></button></div><div v-if="error" class="inline-error">{{error}}</div><div class="account-application" v-for="a in apps" :key="a.applicationId"><div><strong>{{a.merchantName}}</strong><span>{{a.storeName}} · {{a.location}}</span></div><b class="status-tag" :class="a.status==='APPROVED'?'published':'draft'">{{applicationStatusLabel(a.status)}}</b><p v-if="a.rejectionReason">{{a.rejectionReason}}</p></div><div v-if="!loading&&!apps.length&&!error" class="mobile-empty">暂无入驻记录</div><UiPagination v-if="!preview&&pageInfo.total>0" :page="page" :has-next="pageInfo.hasNext" :busy="loading" @previous="page--" @next="page++">{{pageInfo.total}} 条</UiPagination></template>
+ <form v-else-if="isApply" class="account-form detail-card" @submit.prevent="submit"><label>经营名称<input v-model.trim="form.merchantName" required maxlength="100" placeholder="例如：学一便利店"/></label><label>经营品类<select v-model="form.category"><option>便利零售</option><option>水果生鲜</option><option>文具用品</option><option>饮品</option><option>其他</option></select></label><label>联系人<input v-model.trim="form.contactName" required maxlength="50" placeholder="真实姓名"/></label><label>联系电话<input v-model.trim="form.contactPhone" required maxlength="30" placeholder="手机号"/></label><label>首个门店名称<input v-model.trim="form.storeName" required maxlength="100" placeholder="例如：学一食堂店"/></label><label>自提位置<input v-model.trim="form.location" required maxlength="200" placeholder="如：学一食堂一层东侧"/></label><button class="teal-button" type="submit" :disabled="preview||busy||!store.user">{{!store.user&&!preview?'请先登录':'提交入驻申请'}}</button></form>
+ <section v-else class="detail-card"><h2>收到的邀请</h2><div class="invitation-line" v-for="i in invitations" :key="i.id"><div><strong>{{i.merchantName||store.merchants.find(m=>m.merchantId===i.merchantId)?.name||i.merchantId}}</strong><small>{{invitationIsExpired(i)?'已过期':invitationStatusLabel(i.status)}}</small></div><button class="outline-button" :disabled="preview||busy||loading||i.status!=='PENDING'||invitationIsExpired(i)" @click="accept(i)">接受</button></div><div v-if="!loading&&!error&&!invitations.length" class="mobile-empty">暂无邀请</div><UiPagination v-if="!preview&&(invitePage>1||invitations.length===20)" :page="invitePage" :has-next="invitations.length>=20" :busy="loading" @previous="invitePage--" @next="invitePage++"/></section><AuthDialog v-if="login" @close="login=false" @success="load"/></ConsumerShell>`,
 };

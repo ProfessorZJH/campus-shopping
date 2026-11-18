@@ -38,6 +38,7 @@ export interface MessageResponse {
 
 export interface ProposalItem {
   skuId: string;
+  productId?: string | null;
   merchantId: string;
   title: string;
   specKey: string;
@@ -45,6 +46,7 @@ export interface ProposalItem {
   priceCent: number;
   quoteVersion: number;
   quantity: number;
+  detailAvailable?: boolean;
 }
 
 export interface Proposal {

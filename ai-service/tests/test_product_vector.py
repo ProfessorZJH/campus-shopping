@@ -128,3 +128,32 @@ def test_unpublished_product_is_removed_and_delete_retry_is_safe(tmp_path):
         assert client.post('/v1/products/delete',json={'productIds':[]}).status_code==422
     with TestClient(create_app(settings(tmp_path))) as client:
         assert client.post('/v1/products/delete',json={'productIds':['old-101']}).status_code==401
+
+
+def test_product_search_updates_readiness_from_degraded_to_up(tmp_path):
+    from app.observability import counts, lock
+    s=settings(tmp_path,milvus_uri='http://milvus:19530',milvus_token='test:fake',embedding_url='https://integrate.api.nvidia.com/v1',embedding_key='test',embedding_model='nvidia/nemotron-3.5-embed-1b')
+    app=create_app(s)
+    app.state.products._client=FakeMilvus()
+    app.state.products.provider=FakeEmbedding()
+    with lock:
+        saved=dict(counts)
+        counts.clear()
+    try:
+        with TestClient(app,headers={'X-Service-Key':KEY}) as client:
+            assert client.get('/ready').json()['dependencies']['product.search']['state']=='UNVERIFIED'
+            original=app.state.products._client
+            class BrokenMilvus:
+                def has_collection(self,**_):raise RuntimeError('milvus down')
+            app.state.products._client=BrokenMilvus()
+            assert client.post('/v1/products/search',json={'query':'茶','limit':2}).status_code==503
+            assert counts['product.search.failures']==1
+            assert client.get('/ready').json()['dependencies']['product.search']['state']=='DEGRADED'
+            app.state.products._client=original
+            assert client.post('/v1/products/index',json={'products':ITEMS}).status_code==200
+            assert client.post('/v1/products/search',json={'query':'茶','limit':2}).status_code==200
+            assert client.get('/ready').json()['dependencies']['product.search']['state']=='UP'
+    finally:
+        with lock:
+            counts.clear()
+            counts.update(saved)

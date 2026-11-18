@@ -2,6 +2,7 @@ package cn.bugstack.ai.cases.agent.impl;
 
 import static cn.bugstack.ai.types.common.Checks.require;
 
+import cn.bugstack.ai.cases.agent.IAgentRunCase;
 import cn.bugstack.ai.cases.agent.IAgentRuntimeCase;
 import cn.bugstack.ai.cases.agent.model.AgentRuntimeReceipt;
 import cn.bugstack.ai.cases.agent.model.AgentToolInvocationCommand;
@@ -37,14 +38,14 @@ public class AgentRuntimeCaseImpl implements IAgentRuntimeCase {
 
     private static final int MAX_ROUNDS = 4;
 
-    private final AgentRunCaseImpl runs;
+    private final IAgentRunCase runs;
     private final IAgentRunRepository repository;
     private final cn.bugstack.ai.cases.agent.IAgentToolInvocationCase tools;
     private final IAgentRuntimePort runtime;
     private final Clock clock;
 
     public AgentRuntimeCaseImpl(
-        AgentRunCaseImpl runs,
+        IAgentRunCase runs,
         IAgentRunRepository repository,
         cn.bugstack.ai.cases.agent.IAgentToolInvocationCase tools,
         IAgentRuntimePort runtime,

@@ -4,6 +4,7 @@ import static cn.bugstack.ai.types.common.Checks.require;
 import static cn.bugstack.ai.types.common.Checks.text;
 
 import cn.bugstack.ai.cases.agent.IAgentConsumerReadToolCase;
+import cn.bugstack.ai.cases.agent.IAgentRunCase;
 import cn.bugstack.ai.cases.agent.IAgentToolInvocationCase;
 import cn.bugstack.ai.cases.agent.model.AgentToolInvocationCommand;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductCandidateSnapshot;
@@ -45,12 +46,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-/** M2 妫ｆ牗澹掗崣顏囶嚢瀹搞儱鍙块敍姘偓娆撯偓澶婂将閸ョ偛鎮楅悽?Java 闁插秵鏌婇弽鎼佺崣缂佸繗鎯€閻樿埖鈧降鈧焦濮ゆ禒宄版嫲鎼存挸鐡ㄩ妴?*/
+/** M2 受控只读工具执行：所有查询经由 Java 重新核验经营资格、实时价格与可用库存。 */
 @Service
 public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
 
     private final IAgentRunRepository repository;
-    private final AgentRunCaseImpl runs;
+    private final IAgentRunCase runs;
     private final ICatalogCandidateQuery catalog;
     private final IInventoryService inventory;
     private final IMerchantService merchants;
@@ -61,7 +62,7 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
 
     public AgentToolInvocationCaseImpl(
         IAgentRunRepository repository,
-        AgentRunCaseImpl runs,
+        IAgentRunCase runs,
         ICatalogCandidateQuery catalog,
         IInventoryService inventory,
         IMerchantService merchants,
@@ -74,7 +75,7 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
     @Autowired
     public AgentToolInvocationCaseImpl(
         IAgentRunRepository repository,
-        AgentRunCaseImpl runs,
+        IAgentRunCase runs,
         ICatalogCandidateQuery catalog,
         IInventoryService inventory,
         IMerchantService merchants,
@@ -222,6 +223,12 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
 
         int recallLimit = Math.min(200, Math.max(request.limit() * 10, request.limit()));
         List<ProductCandidateSnapshot> snapshots = catalog.candidateRecall(terms, recallLimit);
+        if (snapshots.isEmpty()) {
+            List<String> bigrams = chineseBigrams(request.query());
+            if (!bigrams.isEmpty() && !bigrams.equals(terms)) {
+                snapshots = catalog.candidateRecall(bigrams, recallLimit);
+            }
+        }
         if (snapshots.isEmpty()) return new AgentToolResultVO(AgentToolRegistry.SEARCH_PRODUCTS, AgentToolRegistry.VERSION, true, List.of());
 
         List<String> skuIds = snapshots
@@ -296,5 +303,19 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
         List<String> chunks = new ArrayList<>();
         for (int from = 0; from < value.length(); from += 20) chunks.add(value.substring(from, Math.min(value.length(), from + 20)));
         return chunks.stream();
+    }
+
+    private List<String> chineseBigrams(String query) {
+        String cleaned = query.replaceAll("(?:帮我|给我|请问|有没有|我想|我要|推荐|适合|用的|买点|想买|购买|的)", " ");
+        List<String> bigrams = new ArrayList<>();
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("[\\u4e00-\\u9fff]{2,}").matcher(cleaned);
+        while (matcher.find() && bigrams.size() < 8) {
+            String seq = matcher.group();
+            for (int i = 0; i < seq.length() - 1 && bigrams.size() < 8; i++) {
+                String gram = seq.substring(i, i + 2);
+                if (!bigrams.contains(gram)) bigrams.add(gram);
+            }
+        }
+        return bigrams;
     }
 }
