@@ -13,6 +13,7 @@ import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.ServletRequestBindingException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.handler.AbstractHandlerExceptionResolver;
@@ -37,6 +38,7 @@ public class ApiProtocolExceptionResolver extends AbstractHandlerExceptionResolv
         if (!request.getRequestURI().startsWith(request.getContextPath() + "/api/") || response.isCommitted()) return null;
         int status;
         ResponseCode code;
+        String info = null;
         if (RequestBodyLimitFilter.isTooLarge(exception)) {
             status = 413;
             code = ResponseCode.REQUEST_TOO_LARGE;
@@ -47,6 +49,12 @@ public class ApiProtocolExceptionResolver extends AbstractHandlerExceptionResolv
         ) {
             status = 400;
             code = ResponseCode.ILLEGAL_PARAMETER;
+            if (exception instanceof MethodArgumentTypeMismatchException mismatch) {
+                String name = mismatch.getName();
+                if ("minPriceCent".equals(name) || "maxPriceCent".equals(name)) {
+                    info = "价格条件必须为非负整数（单位：分）";
+                }
+            }
         } else if (exception instanceof HttpRequestMethodNotSupportedException method) {
             status = 405;
             code = ResponseCode.METHOD_NOT_ALLOWED;
@@ -64,7 +72,7 @@ public class ApiProtocolExceptionResolver extends AbstractHandlerExceptionResolv
             return null;
         }
         try {
-            ApiErrorWriter.write(mapper, response, status, code);
+            ApiErrorWriter.write(mapper, response, status, code, info == null ? code.getInfo() : info);
             return new ModelAndView();
         } catch (IOException writeFailure) {
             // 客户端已断开时让容器完成处理，不将异常内容写入响应。

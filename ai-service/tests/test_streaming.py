@@ -117,3 +117,20 @@ def test_provider_stream_parser_rejects_done_without_success_finish(monkeypatch)
     import pytest
     with pytest.raises(ValueError, match='未正常结束'):
         ''.join(provider.stream_complete('system', {'question': '测试'}))
+
+
+def test_query_stream_propagates_request_id_to_worker_thread(tmp_path, monkeypatch):
+    from app.observability import request_id
+    app = main.create_app(Settings(api_key=KEY, db_path=str(tmp_path / 'stream-ctx.db')))
+    captured = []
+
+    def controlled_answer(*args, **kwargs):
+        captured.append(request_id.get())
+        return {'answer': '完成', 'mode': 'LOCAL_RETRIEVAL_DEMO'}
+
+    monkeypatch.setattr(main, 'answer', controlled_answer)
+    supplied = 'req-stream-trace-12345678'
+    with TestClient(app, headers={'X-Service-Key': KEY, 'X-Request-ID': supplied}) as client:
+        response = client.post('/v1/query/stream', json={'question': '测试', 'allowedDocumentIds': [], 'offers': []})
+    assert response.status_code == 200
+    assert captured == [supplied]

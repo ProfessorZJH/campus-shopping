@@ -213,9 +213,27 @@
   font-size: 12px;
   font-weight: 800;
 }
+.topbar-avatar {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid #e7edf2;
+  color: #334a65;
+  background: #fafcfd;
+}
+.topbar-avatar:hover {
+  border-color: #cbe2ea;
+  background: #f2f9fa;
+}
 .admin-user {
   font-size: 12px;
   font-weight: 650;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .merchant-main {
   max-width: 1680px;

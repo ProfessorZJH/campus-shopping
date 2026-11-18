@@ -197,12 +197,17 @@ def main():
         expect(page.locator('.proposal-feedback')).to_contain_text('价格或版本已变化')
         expect(page.locator('.rec-check').first).to_have_class(re.compile(r'\bchecked\b'))
         selection = page.locator('.rec-check').first
+        photo_button = page.locator('button.rec-photo').first
         expect(selection).to_have_attribute('aria-pressed', 'true')
-        selection.click()
+        expect(photo_button).to_have_attribute('aria-pressed', 'true')
+        photo_button.focus()
+        page.keyboard.press('Space')
         expect(selection).to_have_attribute('aria-pressed', 'false')
-        selection.click()
+        expect(photo_button).to_have_attribute('aria-pressed', 'false')
+        page.keyboard.press('Enter')
         expect(selection).to_have_attribute('aria-pressed', 'true')
-        checks.append('推荐选择状态向键盘和辅助技术暴露并随操作更新')
+        expect(photo_button).to_have_attribute('aria-pressed', 'true')
+        checks.append('推荐选择状态与商品图按钮均支持键盘 Space/Enter 切换并暴露 aria-pressed')
         expect(page.get_by_role('button', name='确认加购', exact=True)).to_be_enabled()
         checks.append('变价拒绝保留选择、提案未误标成功且允许重试')
         fixture.confirm_failure = None

@@ -2,6 +2,7 @@
 from __future__ import annotations
 import hashlib,json
 from .config import Settings
+from .observability import observed
 from .retrieval import Provider
 
 class ProductIndex:
@@ -51,9 +52,13 @@ class ProductIndex:
     def upsert(self,products: list[dict]) -> dict:
         if not self.enabled:return {'indexed':0,'unchanged':0,'mode':'DISABLED'}
         if not products:return {'indexed':0,'unchanged':0,'mode':'MILVUS'}
-        client=self._connect();collection=self.settings.product_collection
         ids=[p['productId'] for p in products]
         if len(set(ids))!=len(ids):raise ValueError('商品 ID 重复')
+        return self._upsert_observed(products, ids)
+
+    @observed('product.index')
+    def _upsert_observed(self, products: list[dict], ids: list[str]) -> dict:
+        client=self._connect();collection=self.settings.product_collection
         fingerprints={p['productId']:hashlib.sha256((self.provider.model_tag+'\0'+self._doc(p)).encode()).hexdigest() for p in products}
         existing={}
         if client.has_collection(collection_name=collection):
@@ -72,6 +77,10 @@ class ProductIndex:
 
     def search(self,query: str,limit: int=80) -> dict:
         if not self.enabled:return {'productIds':[],'mode':'DISABLED'}
+        return self._search_observed(query, limit)
+
+    @observed('product.search')
+    def _search_observed(self, query: str, limit: int) -> dict:
         client=self._connect();collection=self.settings.product_collection
         if not client.has_collection(collection_name=collection):return {'productIds':[],'mode':'EMPTY_INDEX'}
         vector=self.provider.embed([query],input_type='query')[0]
@@ -86,6 +95,10 @@ class ProductIndex:
         if not 1 <= len(product_ids) <= 100 or any(not isinstance(value, str) or not 1 <= len(value) <= 64 for value in product_ids):
             raise ValueError('商品 ID 列表无效')
         if not self.enabled:return {'deleted':0,'mode':'DISABLED'}
+        return self._delete_observed(product_ids)
+
+    @observed('product.delete')
+    def _delete_observed(self, product_ids: list[str]) -> dict:
         client = self._connect()
         if not client.has_collection(collection_name=self.settings.product_collection):
             return {'deleted':0,'mode':'EMPTY_INDEX'}

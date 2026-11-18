@@ -1,6 +1,6 @@
 """仅接受 Java 后端持有的共享密钥。ACL 白名单在 Java 构造，前端不能直接访问此服务。"""
 from __future__ import annotations
-import base64,json,secrets,subprocess,sys,threading
+import base64,contextvars,json,secrets,subprocess,sys,threading
 from queue import Empty,Full,Queue
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -205,7 +205,8 @@ def create_app(settings: Settings|None=None):
                     worker_done.set();release_gate()
             started=False
             try:
-                thread=threading.Thread(target=work,name='ai-query-stream',daemon=True);thread.start();started=True
+                ctx=contextvars.copy_context()
+                thread=threading.Thread(target=ctx.run,args=(work,),name='ai-query-stream',daemon=True);thread.start();started=True
                 yield event('started',{'mode':'FULL_RESPONSE' if not settings.llm_key else 'UPSTREAM_STREAMING_JSON'})
                 while not worker_done.is_set() or not queue.empty():
                     try:name,payload=queue.get(timeout=.25)
@@ -221,7 +222,8 @@ def create_app(settings: Settings|None=None):
         try:return products.upsert([p.model_dump() for p in request.products])
         except ValueError as e:raise HTTPException(400,str(e)) from None
         except Exception as error:
-            failure('product.index', error)
+            if not getattr(error, '_observed_recorded', False):
+                failure('product.index', error)
             raise HTTPException(503,'商品向量索引不可用') from None
         finally:gate.release()
     @app.post('/v1/products/search',dependencies=[Depends(authorized)])
@@ -229,7 +231,8 @@ def create_app(settings: Settings|None=None):
         if not gate.acquire(blocking=False):raise HTTPException(429,'向量检索繁忙')
         try:return products.search(request.query,request.limit)
         except Exception as error:
-            failure('product.search', error)
+            if not getattr(error, '_observed_recorded', False):
+                failure('product.search', error)
             raise HTTPException(503,'商品向量检索不可用') from None
         finally:gate.release()
     @app.post('/v1/products/delete',dependencies=[Depends(authorized)])
@@ -238,7 +241,8 @@ def create_app(settings: Settings|None=None):
         try:return products.delete(request.productIds)
         except ValueError as error:raise HTTPException(400,str(error)) from None
         except Exception as error:
-            failure('product.delete', error)
+            if not getattr(error, '_observed_recorded', False):
+                failure('product.delete', error)
             raise HTTPException(503,'商品向量清理不可用') from None
         finally:gate.release()
     @app.get('/v1/diagnostics',dependencies=[Depends(authorized)])

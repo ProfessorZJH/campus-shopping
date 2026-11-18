@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """无三方依赖时编译并运行生产纯领域类，不替代完整 Maven/数据库测试。"""
+import argparse
 from pathlib import Path
 import subprocess
 import tempfile
@@ -19,6 +20,9 @@ files += ['campus-shopping-domain/'+BASE+'domain/'+p for p in [
  'shoppingai/model/valobj/ProposalVO.java','shoppingai/model/valobj/ProposalItemVO.java']]
 files += [str(p.relative_to(ROOT)).replace('\\','/') for p in (ROOT/'campus-shopping-domain'/BASE/'domain').rglob('*EnumVO.java') if p.name != 'UserAccountStatusEnumVO.java']
 files += ['scripts/verification/DomainRulesCheck.java']
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--output', type=Path, default=ROOT/'var/verify/domain-rules.txt')
+args, _ = parser.parse_known_args()
 with tempfile.TemporaryDirectory(prefix='campus-domain-') as out:
     subprocess.run(['javac','-encoding','UTF-8','--release','17','-d',out,*[str(ROOT/f) for f in files]],check=True)
     result=subprocess.run(['java','-Dfile.encoding=UTF-8','-Dstdout.encoding=UTF-8','-Dstderr.encoding=UTF-8',
@@ -26,6 +30,6 @@ with tempfile.TemporaryDirectory(prefix='campus-domain-') as out:
     if result.returncode:
         print(result.stdout);print(result.stderr);result.check_returncode()
     print(result.stdout)
-    target=ROOT/'docs/testing/evidence/domain-rules.txt';target.parent.mkdir(parents=True,exist_ok=True);target.write_text(result.stdout,encoding='utf-8')
+    target=args.output;target.parent.mkdir(parents=True,exist_ok=True);target.write_text(result.stdout,encoding='utf-8')
     checks=[l[5:] for l in result.stdout.splitlines() if l.startswith('PASS ')]
     (target.with_suffix('.json')).write_text(json.dumps({'timestamp':datetime.now(timezone.utc).isoformat(),'javaTarget':17,'productionSourcesCompiled':len(files)-1,'passedChecks':len(checks),'checks':checks,'randomizedInventoryOperations':5000,'mavenTested':False,'databaseTested':False,'frameworkStubsUsed':False},ensure_ascii=False,indent=2),encoding='utf-8')

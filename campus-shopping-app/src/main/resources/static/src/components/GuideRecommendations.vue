@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import ProductImage from './ProductImage.js';
-import { money } from '../services/store.js';
+import { money, shopName } from '../services/store.js';
 
 interface Recommendation {
   skuId: string;
   productId?: string;
+  merchantId?: string;
+  merchantName?: string;
   title: string;
   specKey: string;
   priceCent: number;
+  quantity?: number;
   imageUrl?: string;
   product?: { imageUrl?: string };
   detailAvailable?: boolean;
@@ -27,6 +30,7 @@ defineEmits<{
   detail: [item: Recommendation];
   reject: [];
   confirm: [];
+  cart: [];
 }>();
 </script>
 
@@ -35,13 +39,15 @@ defineEmits<{
     <div class="recommendation-header">
       <div>
         <h2>
-          为你选了 <em>{{ items.length }}</em> 件好物
+          为你挑了 <em>{{ items.length }}</em> 件好物
         </h2>
+        <p>勾选想要的商品，确认后加入购物车</p>
       </div>
     </div>
     <div class="rec-cards">
-      <article v-for="(item, index) in items" :key="item.skuId" class="rec-item">
+      <article v-for="item in items" :key="item.skuId" class="rec-item">
         <button
+          type="button"
           class="rec-check"
           :class="{ checked: selectedIds.includes(item.skuId) }"
           :aria-label="'选择' + item.title"
@@ -50,15 +56,24 @@ defineEmits<{
         >
           <Icon name="check" :size="13" />
         </button>
-        <div class="rec-photo">
+        <button
+          type="button"
+          class="rec-photo"
+          :aria-label="'切换勾选' + item.title"
+          :aria-pressed="selectedIds.includes(item.skuId)"
+          @click="$emit('toggle', item.skuId)"
+        >
           <ProductImage :src="item.imageUrl || item.product?.imageUrl" :alt="item.title" />
-        </div>
+        </button>
         <div class="rec-card-content">
           <div class="rec-item-tag">
-            {{ index === 0 ? 'HOT PICK' : index === 1 ? 'DAILY' : 'GOOD VALUE' }}
+            {{ item.merchantName || (item.merchantId ? shopName(item.merchantId) : '校内自提') }}
           </div>
           <strong>{{ item.title }}</strong>
-          <small>{{ item.specKey }}</small>
+          <small
+            >{{ item.specKey
+            }}<template v-if="(item.quantity || 1) > 1"> × {{ item.quantity }}</template></small
+          >
           <button
             class="rec-detail-link"
             type="button"
@@ -68,8 +83,7 @@ defineEmits<{
             {{ item.detailAvailable ? '查看详情' : '详情暂不可用' }}
           </button>
           <div class="rec-price">
-            <span>{{ money(item.priceCent) }}</span
-            ><span class="pick-mini"><Icon name="plus" :size="15" /></span>
+            <span>{{ money(item.priceCent) }}</span>
           </div>
         </div>
       </article>
@@ -82,10 +96,19 @@ defineEmits<{
       <div class="proposal-actions">
         <button
           v-if="!preview && proposalStatus === 'PENDING'"
+          type="button"
           class="ghost-decline"
           @click="$emit('reject')"
         >
           放弃
+        </button>
+        <button
+          v-if="proposalStatus === 'CONFIRMED'"
+          type="button"
+          class="outline-button small"
+          @click="$emit('cart')"
+        >
+          去购物车
         </button>
         <button
           class="confirm-button"

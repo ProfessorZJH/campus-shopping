@@ -131,7 +131,8 @@ public class AgentRunCaseImpl implements IAgentRunCase {
         return receipt(failed, null);
     }
 
-    AgentRunVO usable(String actor, String runId, String capabilityToken) {
+    @Override
+    public AgentRunVO usable(String actor, String runId, String capabilityToken) {
         String user = text(actor, "用户", 64);
         accounts.requireActive(user);
         AgentRunVO run = repository.find(text(runId, "Run", 64));

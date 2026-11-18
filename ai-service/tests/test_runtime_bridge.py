@@ -276,3 +276,231 @@ def test_runtime_route_obeys_request_body_limit(tmp_path):
         assert response.status_code == 413
     finally:
         app.state.store.close()
+
+
+def test_continue_failure_does_not_corrupt_messages_on_retry_and_evicts_bounded_cache():
+    from app.agent_runtime import AgentModelError
+
+    class FlakyThenOkModel:
+        def __init__(self):
+            self.calls = []
+            self._step = 0
+
+        def complete(self, **kwargs):
+            self._step += 1
+            self.calls.append(list(kwargs["messages"]))
+            if self._step == 1:
+                return tool_response("call-retry")
+            if self._step == 2:
+                raise AgentModelError("UPSTREAM_5XX")
+            return final_response("重试恢复成功")
+
+    model = FlakyThenOkModel()
+    settings = Settings(api_key=KEY, db_path="/tmp/runtime-bridge-retry.sqlite")
+    runtime = RuntimeBridge(settings, model=model, max_cached_states=2)
+    start = request(request_id="req-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+    failed_follow = request(
+        phase="CONTINUE",
+        request_id="req-cont-fail",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-retry", "name": "search_products", "result": {"items": []}}],
+    )
+    with pytest.raises(RuntimeBridgeError) as err:
+        runtime.turn(failed_follow, service_key=KEY, capability="cap", signature=signed(failed_follow, "cap"), capability_digest=digest("cap"))
+    assert err.value.code == "UPSTREAM_5XX"
+
+    retry_follow = request(
+        phase="CONTINUE",
+        request_id="req-cont-ok",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-retry", "name": "search_products", "result": {"items": []}}],
+    )
+    recovered = runtime.turn(retry_follow, service_key=KEY, capability="cap", signature=signed(retry_follow, "cap"), capability_digest=digest("cap"))
+    assert recovered.status == "FINAL"
+    assert recovered.answer == "重试恢复成功"
+    # Tool result message must appear only once, not duplicated by the failed attempt.
+    assert [m["role"] for m in model.calls[-1]] == ["user", "assistant", "tool"]
+
+    for idx in range(5):
+        extra = request(request_id=f"req-cap-{idx}")
+        runtime.turn(extra, service_key=KEY, capability="cap", signature=signed(extra, "cap"), capability_digest=digest("cap"))
+    assert len(runtime._responses) <= 2
+
+
+def test_continue_validates_pending_tool_call_ids_count_names_and_duplicates():
+    two_calls = {
+        "choices": [
+            {
+                "message": {
+                    "tool_calls": [
+                        {"id": "call-a", "type": "function", "function": {"name": "search_products", "arguments": '{"query":"tea"}'}},
+                        {"id": "call-b", "type": "function", "function": {"name": "search_products", "arguments": '{"query":"milk"}'}},
+                    ]
+                }
+            }
+        ]
+    }
+    model = FakeModel(two_calls, final_response("两项工具结果核验通过"))
+    runtime = bridge(model)
+    start = request(request_id="req-pending-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+
+    invalid_batches = [
+        [{"callId": "call-a", "name": "search_products", "result": {}}],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-b", "name": "search_products", "result": {}},
+            {"callId": "call-c", "name": "search_products", "result": {}},
+        ],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-a", "name": "search_products", "result": {}},
+        ],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-wrong", "name": "search_products", "result": {}},
+        ],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-b", "name": "knowledge_qa", "result": {}},
+        ],
+    ]
+    for idx, bad_results in enumerate(invalid_batches):
+        bad_req = request(
+            phase="CONTINUE",
+            request_id=f"req-bad-{idx}",
+            continuation_id=first.continuationId,
+            current_scope=start.scope,
+            results=bad_results,
+        )
+        with pytest.raises(RuntimeBridgeError) as err:
+            runtime.turn(bad_req, service_key=KEY, capability="cap", signature=signed(bad_req, "cap"), capability_digest=digest("cap"))
+        assert err.value.code == "INVALID_CONTINUE" and err.value.status == 422
+
+    # Valid results submitted in reverse order are accepted and normalized to pending_calls order.
+    ok_req = request(
+        phase="CONTINUE",
+        request_id="req-valid-continue",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[
+            {"callId": "call-b", "name": "search_products", "result": {"q": "milk"}},
+            {"callId": "call-a", "name": "search_products", "result": {"q": "tea"}},
+        ],
+    )
+    done = runtime.turn(ok_req, service_key=KEY, capability="cap", signature=signed(ok_req, "cap"), capability_digest=digest("cap"))
+    assert done.status == "FINAL"
+    assert [m["tool_call_id"] for m in model.calls[-1]["messages"] if m["role"] == "tool"] == ["call-a", "call-b"]
+
+
+def test_concurrent_continue_and_inflight_duplicate_do_not_double_invoke_model():
+    import concurrent.futures
+    import threading
+
+    entered_continue = threading.Event()
+    release_continue = threading.Event()
+
+    class BlockingContinueModel:
+        def __init__(self):
+            self.start_calls = 0
+            self.continue_calls = 0
+            self._lock = threading.Lock()
+
+        def complete(self, **kwargs):
+            phase = kwargs["metadata"]["phase"]
+            if phase == "START":
+                with self._lock:
+                    self.start_calls += 1
+                return tool_response("call-race")
+            with self._lock:
+                self.continue_calls += 1
+            entered_continue.set()
+            assert release_continue.wait(timeout=5.0)
+            return final_response("单次并发赢家完成")
+
+    model = BlockingContinueModel()
+    runtime = bridge(model)
+    start = request(request_id="req-race-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+
+    cont_a = request(
+        phase="CONTINUE",
+        request_id="req-race-a",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-race", "name": "search_products", "result": {"ok": True}}],
+    )
+    cont_b = request(
+        phase="CONTINUE",
+        request_id="req-race-b",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-race", "name": "search_products", "result": {"ok": True}}],
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        fut_a = pool.submit(
+            runtime.turn, cont_a, service_key=KEY, capability="cap", signature=signed(cont_a, "cap"), capability_digest=digest("cap")
+        )
+        assert entered_continue.wait(timeout=5.0)
+
+        # Both a second requestId on the same continuationId AND an identical in-flight requestId must fail fast with 409.
+        with pytest.raises(RuntimeBridgeError) as conflict_err:
+            runtime.turn(cont_b, service_key=KEY, capability="cap", signature=signed(cont_b, "cap"), capability_digest=digest("cap"))
+        assert conflict_err.value.code == "CONTINUATION_IN_PROGRESS" and conflict_err.value.status == 409
+
+        with pytest.raises(RuntimeBridgeError) as dup_err:
+            runtime.turn(cont_a, service_key=KEY, capability="cap", signature=signed(cont_a, "cap"), capability_digest=digest("cap"))
+        assert dup_err.value.code == "REQUEST_IN_PROGRESS" and dup_err.value.status == 409
+
+        release_continue.set()
+        winner = fut_a.result(timeout=5.0)
+
+    assert winner.status == "FINAL"
+    assert model.continue_calls == 1
+
+
+def test_unexpired_continuations_are_preserved_and_capacity_rejects_excess_starts():
+    model = FakeModel(
+        tool_response("call-live-1"),
+        tool_response("call-live-2"),
+        final_response("首个续接保持有效"),
+        final_response("第二个续接保持有效"),
+    )
+    settings = Settings(api_key=KEY, db_path="/tmp/runtime-bridge-capacity.sqlite")
+    runtime = RuntimeBridge(settings, model=model, max_cached_states=2)
+
+    s1 = request(request_id="req-live-1")
+    r1 = runtime.turn(s1, service_key=KEY, capability="cap", signature=signed(s1, "cap"), capability_digest=digest("cap"))
+    s2 = request(request_id="req-live-2")
+    r2 = runtime.turn(s2, service_key=KEY, capability="cap", signature=signed(s2, "cap"), capability_digest=digest("cap"))
+
+    # Third START must fail with 429 RUNTIME_BUSY instead of silently evicting live continuation r1.
+    s3 = request(request_id="req-live-3")
+    with pytest.raises(RuntimeBridgeError) as busy_err:
+        runtime.turn(s3, service_key=KEY, capability="cap", signature=signed(s3, "cap"), capability_digest=digest("cap"))
+    assert busy_err.value.code == "RUNTIME_BUSY" and busy_err.value.status == 429
+
+    c1 = request(
+        phase="CONTINUE",
+        request_id="req-live-cont-1",
+        continuation_id=r1.continuationId,
+        current_scope=s1.scope,
+        results=[{"callId": "call-live-1", "name": "search_products", "result": {"ok": 1}}],
+    )
+    done1 = runtime.turn(c1, service_key=KEY, capability="cap", signature=signed(c1, "cap"), capability_digest=digest("cap"))
+    assert done1.status == "FINAL" and done1.answer == "首个续接保持有效"
+
+    c2 = request(
+        phase="CONTINUE",
+        request_id="req-live-cont-2",
+        continuation_id=r2.continuationId,
+        current_scope=s2.scope,
+        results=[{"callId": "call-live-2", "name": "search_products", "result": {"ok": 2}}],
+    )
+    done2 = runtime.turn(c2, service_key=KEY, capability="cap", signature=signed(c2, "cap"), capability_digest=digest("cap"))
+    assert done2.status == "FINAL" and done2.answer == "第二个续接保持有效"
+

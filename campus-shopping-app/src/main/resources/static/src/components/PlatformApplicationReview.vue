@@ -46,14 +46,14 @@ defineEmits<{
       {{ application.rejectionReason }}
     </div>
     <template v-if="application.status === 'SUBMITTED'">
-      <label class="field-label" for="platform-field-1">审核意见</label>
+      <label class="field-label" for="platform-field-1">审核意见（驳回必填）</label>
       <textarea
         id="platform-field-1"
         class="admin-input"
         :value="reason"
         rows="3"
         maxlength="500"
-        placeholder="拒绝时必须填写原因"
+        placeholder="请填写驳回原因或审核备注"
         @input="$emit('update:reason', ($event.target as HTMLTextAreaElement).value)"
       ></textarea>
       <div class="form-buttons">

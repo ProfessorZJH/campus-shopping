@@ -21,7 +21,7 @@ def body(path, method='post'):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/ddd-refactor-20261029/api-schemas.json')
+    parser.add_argument('--output', type=Path, default=ROOT/'var/verify/api-schemas.json')
     args = parser.parse_args()
     checks = []
     for name, schema in SPEC['components']['schemas'].items():
