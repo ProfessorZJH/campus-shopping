@@ -39,7 +39,7 @@ def main():
     def screenshot(page,name):
         page.screenshot(path=str(OUT/(name+'.png')),full_page=True,
                         mask=[page.locator('.pickup-code code'),page.locator('input[type=password]'),
-                              page.get_by_placeholder('输入买家自提令牌')])
+                              page.get_by_placeholder('输入买家自提码')])
     def capture(response):
         if '/api/v1/' not in response.url:return
         try:
@@ -190,7 +190,7 @@ def main():
                 buyer.get_by_role('button',name='刷新',exact=True).click()
                 expect(buyer.get_by_role('button',name='领取自提凭证',exact=True)).to_be_enabled()
                 token=response_for(buyer,'/pickup-token','POST',lambda:buyer.get_by_role('button',name='领取自提凭证',exact=True).click())
-                owner.get_by_placeholder('输入买家自提令牌').fill(token['token'])
+                owner.get_by_placeholder('输入买家自提码').fill(token['token'])
                 response_for(owner,'/verify','POST',lambda:owner.get_by_role('button',name='核销自提',exact=True).click())
                 buyer.get_by_role('button',name='刷新',exact=True).click()
                 expect(buyer.locator('.pickup-hero h1')).to_have_text('已完成')

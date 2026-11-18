@@ -8,7 +8,6 @@ export const merchantNav = [
   ['users', '店员管理', '/merchant/team'],
   ['shield', '角色权限', '/merchant/roles'],
   ['book', '知识库', '/merchant/knowledge'],
-  ['search', 'RAG 调试', '/merchant/knowledge/debug'],
   ['settings', '门店设置', '/merchant/settings'],
 ];
 
@@ -20,7 +19,6 @@ export const adminNav = [
   ['order', '订单监管', '/admin/orders'],
   ['shield', '争议处理', '/admin/disputes'],
   ['book', '知识库', '/admin/knowledge'],
-  ['search', 'RAG 调试', '/admin/knowledge/debug'],
   ['grid', '分类管理', '/admin/categories'],
 ];
 
@@ -41,6 +39,8 @@ export const merchantPermissions = Object.freeze({
 export const backofficeRoutes = Object.freeze([
   ...merchantNav.map(([, , path]) => path),
   ...adminNav.map(([, , path]) => path),
+  '/merchant/knowledge/debug',
+  '/admin/knowledge/debug',
 ]);
 
 export const backofficeTitles = Object.freeze({
@@ -53,7 +53,7 @@ export const backofficeTitles = Object.freeze({
   '/merchant/team': '店员管理',
   '/merchant/roles': '角色权限',
   '/merchant/knowledge': '知识库',
-  '/merchant/knowledge/debug': 'RAG 检索调试',
+  '/merchant/knowledge/debug': '问答检索测试',
   '/merchant/settings': '门店设置',
   '/admin': '平台总览',
   '/admin/applications': '商户审核',
@@ -62,6 +62,6 @@ export const backofficeTitles = Object.freeze({
   '/admin/orders': '订单监管',
   '/admin/disputes': '争议处理',
   '/admin/knowledge': '知识库',
-  '/admin/knowledge/debug': 'RAG 检索调试',
+  '/admin/knowledge/debug': '问答检索测试',
   '/admin/categories': '分类管理',
 });

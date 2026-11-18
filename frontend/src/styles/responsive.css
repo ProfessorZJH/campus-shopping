@@ -251,6 +251,13 @@
   padding: 0 12px;
   font-size: 12.5px;
 }
+.auth-hint {
+  display: block;
+  font-size: 11px;
+  color: #7f91a4;
+  line-height: 1.5;
+  margin-top: 8px;
+}
 .login-error {
   font-size: 11px;
   color: #ed6573;
@@ -278,8 +285,8 @@
     padding: 7px 6px 10px;
   }
   .rec-item-tag {
-    font-size: 7px;
-    letter-spacing: 0.3px;
+    font-size: 9px;
+    letter-spacing: 0;
   }
   .rec-item strong {
     font-size: 11px;
