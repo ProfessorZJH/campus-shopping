@@ -37,6 +37,10 @@ def observed(operation):
                 return result
             except Exception as error:
                 failure(operation, error)
+                try:
+                    setattr(error, "_observed_recorded", True)
+                except Exception:
+                    pass
                 raise
             finally:
                 elapsed = round((time.perf_counter() - started) * 1000)

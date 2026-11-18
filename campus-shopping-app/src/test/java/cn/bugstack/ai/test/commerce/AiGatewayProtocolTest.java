@@ -172,6 +172,102 @@ class AiGatewayProtocolTest {
         }
     }
 
+    @Test
+    void abruptlyClosedStreamFailsImmediatelyInsteadOfWaitingForFullTimeout() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/v1/query/stream", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = "event: started\ndata: {\"mode\":\"FULL_RESPONSE\"}\n\n".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "text/event-stream");
+            exchange.sendResponseHeaders(200, 0);
+            exchange.getResponseBody().write(response);
+            exchange.close();
+        });
+        server.start();
+        try {
+            var client = gateway(server);
+            ReflectionTestUtils.setField(client, "timeoutSeconds", 30);
+            long started = System.nanoTime();
+            var error = assertThrows(AppException.class, () ->
+                client.queryStream(
+                    new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
+                    null
+                )
+            );
+            long elapsedMs = (System.nanoTime() - started) / 1_000_000;
+            assertEquals("AI0001", error.getCode());
+            assertTrue(elapsedMs < 3000, "abrupt EOF should fail promptly, elapsedMs=" + elapsedMs);
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
+    void queryStreamReassemblesMultiByteChineseAndEmojiSplitAcrossChunkBoundaries() throws Exception {
+        String expectedAnswer = "中餐夜宵：东湖便利无糖乌龙茶与豚骨拉面🍜";
+        String ssePayload =
+            "event: started\n" +
+            "data: {\"mode\":\"FULL_RESPONSE\"}\n\n" +
+            "event: progress\n" +
+            "data: {\"bytes\":42}\n\n" +
+            "event: completed\n" +
+            "data: {\"answer\":\"" +
+            expectedAnswer +
+            "\",\"mode\":\"LLM\",\"retrievalMode\":\"LOCAL\",\"rewrittenQuery\":\"中餐夜宵\",\"warning\":null,\"citations\":[],\"recommendations\":[],\"latencyMs\":12}\n\n";
+        byte[] raw = ssePayload.getBytes(StandardCharsets.UTF_8);
+
+        // Locate the 3-byte UTF-8 sequence of '中' (0xE4 0xB8 0xAD) and split after its 2nd byte.
+        int splitIndex = -1;
+        for (int i = 0; i <= raw.length - 3; i++) {
+            if ((raw[i] & 0xFF) == 0xE4 && (raw[i + 1] & 0xFF) == 0xB8 && (raw[i + 2] & 0xFF) == 0xAD) {
+                splitIndex = i + 2;
+                break;
+            }
+        }
+        assertTrue(splitIndex > 0, "UTF-8 bytes of '中' must exist in payload");
+        int twoByteSplit = splitIndex;
+
+        for (boolean singleByteMode : new boolean[] { false, true }) {
+            var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+            server.createContext("/v1/query/stream", exchange -> {
+                exchange.getRequestBody().readAllBytes();
+                exchange.getResponseHeaders().set("Content-Type", "text/event-stream; charset=utf-8");
+                exchange.sendResponseHeaders(200, 0);
+                try (var out = exchange.getResponseBody()) {
+                    if (singleByteMode) {
+                        for (byte b : raw) {
+                            out.write(b);
+                            out.flush();
+                        }
+                    } else {
+                        out.write(raw, 0, twoByteSplit);
+                        out.flush();
+                        try {
+                            Thread.sleep(20);
+                        } catch (InterruptedException ignored) {
+                            Thread.currentThread().interrupt();
+                        }
+                        out.write(raw, twoByteSplit, raw.length - twoByteSplit);
+                        out.flush();
+                    }
+                }
+            });
+            server.start();
+            try {
+                var seenProgress = new java.util.concurrent.atomic.AtomicLong(-1);
+                var answer = gateway(server).queryStream(
+                    new AiGatewayDTO.Query("q", java.util.List.of(), java.util.List.of(), java.util.List.of(), "q", java.util.List.of(), java.util.List.of()),
+                    seenProgress::set
+                );
+                assertEquals(expectedAnswer, answer.answer());
+                assertFalse(answer.answer().contains("\uFFFD"), "decoded answer must not contain replacement character");
+                assertEquals(42L, seenProgress.get());
+            } finally {
+                server.stop(0);
+            }
+        }
+    }
+
     private AiGatewayService gateway(HttpServer server) {
         var gateway = new AiGatewayService();
         ReflectionTestUtils.setField(

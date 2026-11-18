@@ -2,7 +2,17 @@ import { createHash } from 'node:crypto';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import { basename, extname, relative, resolve, sep } from 'node:path';
 
-const textExtensions = new Set(['.css', '.html', '.js', '.json', '.mjs', '.svg', '.txt']);
+const textExtensions = new Set([
+  '.css',
+  '.html',
+  '.js',
+  '.json',
+  '.mjs',
+  '.svg',
+  '.ts',
+  '.txt',
+  '.vue',
+]);
 const utf8 = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true });
 
 // Git 文本检出可能仍带 CRLF；构建输入与输出都采用 LF，图片等二进制保持原字节。

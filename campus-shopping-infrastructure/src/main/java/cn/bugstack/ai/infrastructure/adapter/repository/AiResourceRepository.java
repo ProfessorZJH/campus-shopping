@@ -24,6 +24,7 @@ public class AiResourceRepository implements IAiResourceRepository {
 
     private final java.util.concurrent.atomic.AtomicLong syncSkips = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.concurrent.atomic.AtomicLong syncLockFailures = new java.util.concurrent.atomic.AtomicLong();
+    private volatile String initializedPermitKey;
 
     public long syncSkips() {
         return syncSkips.get();
@@ -52,13 +53,21 @@ public class AiResourceRepository implements IAiResourceRepository {
         RedisClients redis = clients.getIfAvailable();
         if (redis == null) return () -> {};
         try {
-            var semaphore = redis.security().getPermitExpirableSemaphore(redis.namespace() + ":ai:admission:v1");
-            semaphore.trySetPermits(permits);
+            String semaphoreKey = redis.namespace() + ":ai:admission:v1";
+            var semaphore = redis.security().getPermitExpirableSemaphore(semaphoreKey);
+            if (!semaphoreKey.equals(initializedPermitKey)) {
+                semaphore.trySetPermits(permits);
+                initializedPermitKey = semaphoreKey;
+            }
             String id = semaphore.tryAcquire(0, 180, TimeUnit.SECONDS);
+            if (id == null && recoverMissingSemaphore(semaphore)) {
+                id = semaphore.tryAcquire(0, 180, TimeUnit.SECONDS);
+            }
             if (id == null) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+            String permitId = id;
             return () -> {
                 try {
-                    semaphore.tryRelease(id);
+                    semaphore.tryRelease(permitId);
                 } catch (RuntimeException error) {
                     log.warn("ai_permit_release_failed diagnostic={}", FailureDiagnostics.describe(error));
                 }
@@ -71,6 +80,14 @@ public class AiResourceRepository implements IAiResourceRepository {
             log.warn("ai_admission_unavailable diagnostic={}", FailureDiagnostics.describe(error));
             throw new AppException(ResponseCode.AI_UNAVAILABLE);
         }
+    }
+
+    private boolean recoverMissingSemaphore(org.redisson.api.RPermitExpirableSemaphore semaphore) {
+        if (semaphore.trySetPermits(permits)) {
+            log.warn("ai_admission_reinitialized permits={}", permits);
+            return true;
+        }
+        return semaphore.availablePermits() > 0;
     }
 
     public boolean coordinateProductSync(Runnable task) {

@@ -2,7 +2,7 @@
 """发布静态一致性检查：真实JDK语法树、内部接口、Mapper类型、DDL字段和文档链接。
 这里不加载Spring/MyBatis，也不把检查结果当作完整Maven编译或数据库测试。
 """
-import ast,datetime,json,os,re,subprocess,tempfile,xml.etree.ElementTree as ET
+import argparse,ast,datetime,json,os,re,subprocess,tempfile,xml.etree.ElementTree as ET
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 errors=[];counts={}
@@ -16,7 +16,7 @@ def project_files():
         for name in names:
             yield Path(directory)/name
 
-def main():
+def main(out: Path | None = None):
     with tempfile.TemporaryDirectory(prefix='campus-source-index-') as temp:
         subprocess.run(['javac','-encoding','UTF-8','--release','17','-d',temp,str(ROOT/'scripts/SourceIndex.java')],check=True)
         output=subprocess.check_output(['java','-Dfile.encoding=UTF-8','-cp',temp,'SourceIndex',str(ROOT)],text=True,encoding='utf-8')
@@ -116,10 +116,14 @@ def main():
     need(not any(p.name == 'GlobalExceptionHandler.java' for p in files),'意外新增全局业务异常处理器')
     need(not any(p.name == 'IPasswordHasherPort.java' for p in files),'密码本地处理被错误定义为远程Port')
     report={'timestamp':datetime.datetime.now(datetime.timezone.utc).isoformat(),'type':'STATIC_SOURCE_AND_CONTRACT_ONLY','status':'PASS' if not errors else 'FAIL','counts':counts,'errors':errors,'mavenCompiled':False,'springMySqlTested':False}
-    out=ROOT/'docs/testing/evidence/static-release.json';out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
+    out = out or (ROOT/'var/verify/static-release.json')
+    out.parent.mkdir(parents=True,exist_ok=True);out.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps(report,ensure_ascii=False,indent=2))
     if errors:raise SystemExit(1)
 
 if __name__=='__main__':
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', type=Path, default=ROOT/'var/verify/static-release.json')
+    args = parser.parse_args()
+    main(args.output)
     subprocess.run([os.sys.executable, '-B', str(ROOT/'scripts/verify-ddd-boundaries.py')],check=True)

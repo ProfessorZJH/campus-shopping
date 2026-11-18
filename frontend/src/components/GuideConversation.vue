@@ -29,9 +29,9 @@ defineProps<{
 <template>
   <section class="chat-thread" aria-label="AI对话">
     <div v-if="!messages.length" class="chat-welcome">
-      <span class="chat-welcome-icon"><Icon name="sparkles" :size="22" /></span>
-      <h2>你好，同学。</h2>
-      <p>告诉我预算或想买的东西。</p>
+      <span class="chat-welcome-icon"><Icon name="sparkles" :size="21" /></span>
+      <h2>想买点什么？</h2>
+      <p>直接点击上方标签，或在下方输入你的预算与需求</p>
     </div>
     <div
       v-for="(message, index) in messages"
@@ -76,9 +76,9 @@ defineProps<{
       <span class="chat-avatar"><img :src="robotImage" alt="AI" /></span>
       <div class="typing-bubble">
         <i></i><i></i><i></i>
-        <small v-if="reconnecting">连接已断开，正在恢复原会话…</small>
-        <small v-else-if="cancelRequested">正在停止本轮生成…</small>
-        <small v-else-if="streamProgress">已读取 {{ streamProgress }} 字节</small>
+        <small v-if="reconnecting">网络波动，正在恢复对话…</small>
+        <small v-else-if="cancelRequested">正在停止…</small>
+        <small v-else-if="streamProgress">正在为你挑选合适商品…</small>
       </div>
     </div>
     <div v-if="error" class="inline-error"><Icon name="alert" :size="17" />{{ error }}</div>

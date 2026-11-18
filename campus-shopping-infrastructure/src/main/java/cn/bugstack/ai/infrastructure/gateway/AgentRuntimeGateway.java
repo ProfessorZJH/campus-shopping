@@ -1,6 +1,7 @@
 package cn.bugstack.ai.infrastructure.gateway;
 
 import cn.bugstack.ai.domain.shoppingai.adapter.port.IAgentRuntimePort;
+import cn.bugstack.ai.domain.shoppingai.adapter.repository.IAiResourceRepository;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeCommandVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeResultVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentRuntimeStatusVO;
@@ -24,6 +25,8 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -43,19 +46,27 @@ public class AgentRuntimeGateway implements IAgentRuntimePort {
     private final String serviceKey;
     private final boolean enabled;
     private final int timeoutSeconds;
+    private final ObjectProvider<IAiResourceRepository> resources;
 
+    public AgentRuntimeGateway(ObjectMapper mapper, String baseUrl, String serviceKey, boolean enabled, int timeoutSeconds) {
+        this(mapper, baseUrl, serviceKey, enabled, timeoutSeconds, null);
+    }
+
+    @Autowired
     public AgentRuntimeGateway(
         ObjectMapper mapper,
         @Value("${campus.ai.url:http://127.0.0.1:8100}") String baseUrl,
         @Value("${campus.ai.service-key:}") String serviceKey,
         @Value("${campus.ai.agent-runtime.enabled:false}") boolean enabled,
-        @Value("${campus.ai.agent-runtime.timeout-seconds:60}") int timeoutSeconds
+        @Value("${campus.ai.agent-runtime.timeout-seconds:60}") int timeoutSeconds,
+        ObjectProvider<IAiResourceRepository> resources
     ) {
         this.mapper = mapper;
         this.baseUrl = baseUrl;
         this.serviceKey = serviceKey;
         this.enabled = enabled;
         this.timeoutSeconds = Math.max(1, Math.min(timeoutSeconds, 120));
+        this.resources = resources;
         this.client = HttpClient.newBuilder()
             .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
@@ -105,7 +116,8 @@ public class AgentRuntimeGateway implements IAgentRuntimePort {
                 .toList()
         );
         long started = System.nanoTime();
-        try {
+        IAiResourceRepository resourceRepo = resources == null ? null : resources.getIfAvailable();
+        try (IAiResourceRepository.Permit ignoredPermit = resourceRepo == null ? () -> {} : resourceRepo.acquire()) {
             HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl.replaceAll("/$", "") + "/internal/v1/agent/runtime/turn"))
                 .timeout(Duration.ofSeconds(timeoutSeconds))
                 .header("Content-Type", "application/json")

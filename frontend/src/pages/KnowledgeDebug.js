@@ -1,6 +1,7 @@
 import BackofficeShell from '../components/BackofficeShell.js';
 import { api } from '../services/api.js';
-const { ref, computed } = Vue;
+import { store, go, loadMerchant } from '../services/store.js';
+const { ref, computed, onMounted } = Vue;
 
 export default {
   name: 'KnowledgeDebug',
@@ -11,7 +12,10 @@ export default {
       busy = ref(false),
       error = ref(''),
       result = ref(null);
-    const role = computed(() => (location.hash.startsWith('#/admin') ? 'admin' : 'merchant'));
+    const role = computed(() => (store.route.startsWith('/admin') ? 'admin' : 'merchant'));
+    onMounted(() => {
+      if (role.value === 'merchant' && !store.merchants.length) loadMerchant();
+    });
     async function run() {
       const q = question.value.trim();
       if (!q || q.length > 1000 || busy.value) return;
@@ -28,7 +32,7 @@ export default {
         busy.value = false;
       }
     }
-    return { question, preview, busy, error, result, role, run };
+    return { question, preview, busy, error, result, role, go, run };
   },
-  template: `<BackofficeShell :role="role" title="RAG 检索调试"><section class="knowledge-debug-page"><p class="muted">仅返回当前账号可读文档；回答预览和分数用于调试，不代表交易事实或答案正确性。</p><textarea v-model="question" maxlength="1000" rows="4" placeholder="输入要调试的知识问题"></textarea><label class="check-line"><input type="checkbox" v-model="preview"/> 请求回答预览（会显示实际模式）</label><button class="teal-button" :disabled="busy||!question.trim()" @click="run">{{busy?'检索中…':'开始检索'}}</button><p v-if="error" class="inline-error">{{error}}</p><div v-if="result" class="knowledge-debug-result"><div class="stat-row"><span>查询：{{result.query}}</span><span>检索模式：{{result.retrievalMode||'未知'}}</span><span>回答模式：{{result.answerMode||'未知'}}</span></div><p v-if="result.warning" class="muted">{{result.warning}}</p><blockquote v-if="result.answerPreview">{{result.answerPreview}}</blockquote><table v-if="result.hits?.length"><thead><tr><th>排名</th><th>文档/版本</th><th>片段</th><th>分数</th><th>类型</th></tr></thead><tbody><tr v-for="hit in result.hits" :key="hit.documentId+'-'+hit.rank"><td>{{hit.rank}}</td><td>{{hit.title}}<br/><small>{{hit.documentId}} · v{{hit.version}}</small></td><td>{{hit.snippet}}</td><td>{{hit.score}}</td><td>{{hit.scoreType}}</td></tr></tbody></table><p v-else class="muted">没有返回可展示的授权命中。</p></div></section></BackofficeShell>`,
+  template: `<BackofficeShell :role="role" title="问答检索测试"><template #actions><button class="outline-button small" @click="go(role==='admin'?'/admin/knowledge':'/merchant/knowledge')"><Icon name="arrowLeft" :size="15"/>返回知识库</button></template><section class="ops-card knowledge-debug-page"><p class="kb-debug-desc">输入顾客常问的问题，验证当前已发布知识文档能否准确命中（仅做测试，不会写入导购记录）。</p><textarea class="admin-input kb-debug-input" v-model="question" maxlength="1000" rows="3" placeholder="例如：门店几点打烊？未提货怎么申请退款？"></textarea><div class="kb-debug-controls"><label class="check-line"><input type="checkbox" v-model="preview"/> 同时生成回答预览</label><button class="teal-button" :disabled="busy||!question.trim()" @click="run">{{busy?'检索中…':'开始检索'}}</button></div><p v-if="error" class="inline-error">{{error}}</p><div v-if="result" class="knowledge-debug-result"><div class="stat-row"><span>测试问题：<strong>{{result.query}}</strong></span><span>检索方式：{{result.retrievalMode||'默认'}}</span><span v-if="result.answerMode">回答方式：{{result.answerMode}}</span></div><p v-if="result.warning" class="kb-debug-warn">{{result.warning}}</p><blockquote v-if="result.answerPreview" class="kb-debug-answer">{{result.answerPreview}}</blockquote><div v-if="result.hits?.length" class="ops-table-wrap"><table class="ops-table"><thead><tr><th>排序</th><th>命中文档</th><th>匹配片段</th><th>相关度</th></tr></thead><tbody><tr v-for="hit in result.hits" :key="hit.documentId+'-'+hit.rank"><td>#{{hit.rank}}</td><td><strong>{{hit.title}}</strong><small>v{{hit.version}}</small></td><td class="kb-hit-snippet">{{hit.snippet}}</td><td>{{hit.score}}</td></tr></tbody></table></div><p v-else class="admin-empty">未匹配到当前可见的已发布文档</p></div></section></BackofficeShell>`,
 };

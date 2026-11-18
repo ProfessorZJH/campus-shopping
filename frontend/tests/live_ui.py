@@ -330,7 +330,7 @@ def main():
             checks.append('新版管理员 Session 登录并访问入驻审核')
 
             page.goto(args.base_url + '/#/admin/knowledge/debug', wait_until='domcontentloaded')
-            expect(page.locator('.merchant-page-heading h1')).to_have_text('RAG 检索调试')
+            expect(page.locator('.merchant-page-heading h1')).to_have_text('问答检索测试')
             page.locator('textarea').fill('平台规则')
             page.get_by_role('button', name='开始检索', exact=True).click()
             expect(page.locator('.knowledge-debug-result')).to_be_visible(timeout=15000)

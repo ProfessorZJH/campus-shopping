@@ -24,7 +24,7 @@ export const store = reactive({
   photo: null,
   reloadId: 0,
   publicPage: { page: 1, size: 20, total: 0, hasNext: false },
-  merchantPage: { page: 1, size: 12, total: 0, hasNext: false },
+  merchantPage: { page: 1, size: 9, total: 0, hasNext: false },
 });
 export const money = (cent) => '¥' + (Number(cent || 0) / 100).toFixed(2).replace(/\.00$/, '');
 export const skuOf = (p) => p?.skus?.find((s) => s.status === 'ACTIVE') || p?.skus?.[0] || {};
@@ -186,7 +186,7 @@ export async function loadMerchant({
   if (preview) {
     store.products = DEMO_PRODUCTS.filter((p) => p.merchantId === 'preview-m1');
     store.stocks = DEMO_STOCKS;
-    store.merchantPage = { page: 1, size: 12, total: store.products.length, hasNext: false };
+    store.merchantPage = { page: 1, size: 9, total: store.products.length, hasNext: false };
     store.categories = DEMO_CATEGORIES;
     store.merchants = DEMO_MERCHANTS;
     store.merchantId = 'preview-m1';
