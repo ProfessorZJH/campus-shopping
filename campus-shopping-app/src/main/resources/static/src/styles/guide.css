@@ -349,6 +349,8 @@
   color: #fff;
 }
 .rec-photo {
+  width: 100%;
+  padding: 0;
   height: 124px;
   background: linear-gradient(180deg, #f7fbfd, #fff);
   overflow: hidden;

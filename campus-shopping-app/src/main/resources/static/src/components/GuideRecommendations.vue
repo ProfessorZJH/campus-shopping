@@ -47,6 +47,7 @@ defineEmits<{
     <div class="rec-cards">
       <article v-for="item in items" :key="item.skuId" class="rec-item">
         <button
+          type="button"
           class="rec-check"
           :class="{ checked: selectedIds.includes(item.skuId) }"
           :aria-label="'选择' + item.title"
@@ -55,9 +56,15 @@ defineEmits<{
         >
           <Icon name="check" :size="13" />
         </button>
-        <div class="rec-photo" @click="$emit('toggle', item.skuId)">
+        <button
+          type="button"
+          class="rec-photo"
+          :aria-label="'切换勾选' + item.title"
+          :aria-pressed="selectedIds.includes(item.skuId)"
+          @click="$emit('toggle', item.skuId)"
+        >
           <ProductImage :src="item.imageUrl || item.product?.imageUrl" :alt="item.title" />
-        </div>
+        </button>
         <div class="rec-card-content">
           <div class="rec-item-tag">
             {{ item.merchantName || (item.merchantId ? shopName(item.merchantId) : '校内自提') }}

@@ -167,17 +167,32 @@ public class AiGatewayService {
         }
     }
 
+    private static final byte[] EMPTY_BYTES = new byte[0];
+
     private AiGatewayDTO.Answer readSseAnswer(StreamChunkQueue stream, long deadline, LongConsumer progress) throws IOException, InterruptedException {
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPLACE)
             .onUnmappableCharacter(CodingErrorAction.REPLACE);
         StringBuilder currentLine = new StringBuilder(256);
         String[] state = new String[2];
+        byte[] carry = EMPTY_BYTES;
+        CharBuffer chars = CharBuffer.allocate(1024);
         while (true) {
             byte[] chunk = stream.poll(deadline);
             boolean eof = chunk == null;
-            ByteBuffer input = eof ? ByteBuffer.allocate(0) : ByteBuffer.wrap(chunk);
-            CharBuffer chars = CharBuffer.allocate(Math.max(64, input.remaining() + 8));
+            ByteBuffer input;
+            if (eof) {
+                input = ByteBuffer.wrap(carry);
+                carry = EMPTY_BYTES;
+            } else if (carry.length == 0) {
+                input = ByteBuffer.wrap(chunk);
+            } else {
+                byte[] combined = new byte[carry.length + chunk.length];
+                System.arraycopy(carry, 0, combined, 0, carry.length);
+                System.arraycopy(chunk, 0, combined, carry.length, chunk.length);
+                input = ByteBuffer.wrap(combined);
+                carry = EMPTY_BYTES;
+            }
             while (true) {
                 var result = decoder.decode(input, chars, eof);
                 chars.flip();
@@ -186,12 +201,19 @@ public class AiGatewayService {
                 chars.clear();
                 if (result.isUnderflow()) break;
             }
+            if (!eof && input.hasRemaining()) {
+                carry = new byte[input.remaining()];
+                input.get(carry);
+            }
             if (eof) {
-                CharBuffer flush = CharBuffer.allocate(16);
-                decoder.flush(flush);
-                flush.flip();
-                AiGatewayDTO.Answer answer = drainDecodedChars(flush, currentLine, state, progress);
-                if (answer != null) return answer;
+                while (true) {
+                    var flushResult = decoder.flush(chars);
+                    chars.flip();
+                    AiGatewayDTO.Answer answer = drainDecodedChars(chars, currentLine, state, progress);
+                    if (answer != null) return answer;
+                    chars.clear();
+                    if (flushResult.isUnderflow()) break;
+                }
                 if (!currentLine.isEmpty()) {
                     String trailing = trimCarriageReturn(currentLine);
                     currentLine.setLength(0);

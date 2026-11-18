@@ -13978,7 +13978,7 @@
   const _hoisted_2$4 = { class: "recommendation-header" };
   const _hoisted_3$4 = { class: "rec-cards" };
   const _hoisted_4$4 = ["aria-label", "aria-pressed", "onClick"];
-  const _hoisted_5$3 = ["onClick"];
+  const _hoisted_5$3 = ["aria-label", "aria-pressed", "onClick"];
   const _hoisted_6$3 = { class: "rec-card-content" };
   const _hoisted_7$3 = { class: "rec-item-tag" };
   const _hoisted_8$2 = ["disabled", "onClick"];
@@ -14050,6 +14050,7 @@
                   class: "rec-item"
                 }, [
                   createBaseVNode("button", {
+                    type: "button",
                     class: normalizeClass(["rec-check", { checked: __props.selectedIds.includes(item.skuId) }]),
                     "aria-label": "选择" + item.title,
                     "aria-pressed": __props.selectedIds.includes(item.skuId),
@@ -14060,8 +14061,11 @@
                       size: 13
                     })
                   ], 10, _hoisted_4$4),
-                  createBaseVNode("div", {
+                  createBaseVNode("button", {
+                    type: "button",
                     class: "rec-photo",
+                    "aria-label": "切换勾选" + item.title,
+                    "aria-pressed": __props.selectedIds.includes(item.skuId),
                     onClick: ($event) => _ctx.$emit("toggle", item.skuId)
                   }, [
                     createVNode(unref(ProductImage), {

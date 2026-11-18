@@ -46,3 +46,23 @@
 | 核心业务链路 HTTP + OpenAPI 核验 | `smoke-full.py --base-url http://127.0.0.1:18091 --check-contract` | `PASS` | **291/291 项通过**（含双用户并发抢最后 1 件库存、幂等键、知识权限隔离，**213 次真实响应**逐条通过 OpenAPI Schema 校验） |
 | 真实全栈浏览器与七牛 CSP 验收 | `live_ui.py`（22/22）、`live_m2_fulfillment.py`（5/5）、三端 7 步核心闭环走查（7/7）、`verify-qiniu-csp-browser.py`（9/9） | `PASS` | 全部真实后端浏览器验收与严格 CSP 检查通过，未触碰本机原有 `3306`/`5173`/`8091` 服务 |
 | 外部商业模型 / 云端 Milvus / 生产压测 | `smoke-ai-live.py` / 生产环境压测 | `NOT_RUN` | 按仓库规范，公网第三方供应商配额调用与生产容量不在常规本地验收中自动触发，按既有专项报告边界保留 |
+
+## 4. 代码审查问题追补修复与专项回归（2026-11-18）
+
+针对审查指出的 1 项 P1 合并阻断、3 项 P2 边界风险及 1 项 P3 无障碍体验问题，逐项完成源码修复并新增专项回归测试：
+
+1. **P1 · SSE 流式响应跨分片 UTF-8 中文/Emoji 截断修复（`AiGatewayService.readSseAnswer`）**
+   - **修复**：在 `CharsetDecoder.decode(input, chars, eof)` 返回 `UNDERFLOW` 且 `!eof && input.hasRemaining()` 时，将未消费的 1~3 字节多字节 UTF-8 前缀保存在 `carry` 缓冲中并与下一网络分片拼接解码，消除跨 TCP 分片切开多字节字符导致的 `\uFFFD` 乱码或 SSE JSON 解析失败。
+   - **回归测试**：`AiGatewayProtocolTest#queryStreamReassemblesMultiByteChineseAndEmojiSplitAcrossChunkBoundaries`（同时覆盖将汉字“中” `0xE4 0xB8 0xAD` 在第 2 字节处拆包，以及包含中文与 4 字节 Emoji `🍜` 的完整 SSE 载荷按**逐单字节 `1 byte/chunk` 刷写**两种极端分片边界）。
+2. **P2 · `RuntimeBridge` 同续接 / 同请求并发重入保护（`ai-service/app/runtime_bridge.py`）**
+   - **修复**：在锁内维护 `_inflight_requests` 与 `_inflight_continuations` 集合（`finally` 必定释放），并在模型返回提交阶段校验当前续接实例未被替换，阻止同一 `continuationId` 或同一 `(runId, requestId)` 并发穿透锁重复调用上游模型。
+   - **回归测试**：`test_runtime_bridge.py::test_concurrent_continue_and_inflight_duplicate_do_not_double_invoke_model`（通过线程栅栏构造真实并发重入，确认 `CONTINUATION_IN_PROGRESS` / `REQUEST_IN_PROGRESS` 快速返回 HTTP `409` 且上游模型仅被调用 `1` 次）。
+3. **P2 · `RuntimeBridge` `CONTINUE` 阶段待处理工具调用严格核验（`ai-service/app/runtime_bridge.py`）**
+   - **修复**：将 `_Continuation.pending_calls` 升级为 `(callId, name)` 元组序列，在 `CONTINUE` 阶段严格校验 `toolResults` 数量无增减、`callId` 无重复、每个 `(callId, name)` 与待处理调用一一对应，并按原调用顺序归一化写入上下文；同时拒绝模型返回重复 `callId`。
+   - **回归测试**：`test_runtime_bridge.py::test_continue_validates_pending_tool_call_ids_count_names_and_duplicates`（覆盖少传、多传、重复 ID、错误 ID、错误工具名 5 类拒绝场景及乱序合法结果归一化）。
+4. **P2 · Redis 准入信号量 Key 丢失自愈与容量耗尽区分（`AiResourceRepository.acquire`）**
+   - **修复**：当 `tryAcquire` 返回 `null` 时，通过 `recoverMissingSemaphore` 利用 Redisson `trySetPermits` 底层 Lua `GET == false` 原子判空特性：若因容量真实耗尽（Key 仍存在且值为 `0`）则保持返回 `AI0001` 不超发许可；若因 Redis 重启或 Key 被淘汰删除则原子重设初始许可并重试获取一次。
+   - **回归测试**：新增单测 `AiResourceRepositoryTest` + 增强真实 Redis 集成测试 `RedisInfrastructureIntegrationTest`（实测删除 `:ai:admission:v1` 后同一仓储实例可自动恢复准入，且恢复后并发超额请求仍被 `AI0001` 拦截）。
+5. **P3 · AI 推荐卡片商品图片支持键盘无障碍操作（`GuideRecommendations.vue`）**
+   - **修复**：将 `.rec-photo` 由可点击 `<div>` 改为语义化 `<button type="button">`，补充 `aria-label` 与 `aria-pressed` 状态同步及按钮盒模型重置。
+   - **回归测试**：`frontend/tests/ui_guide_conversation.py` 增加对 `button.rec-photo` 的键盘 `focus()` + `Space` / `Enter` 切换勾选与 `aria-pressed` 状态断言。

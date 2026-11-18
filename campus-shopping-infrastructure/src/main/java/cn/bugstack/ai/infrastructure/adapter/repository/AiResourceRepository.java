@@ -60,10 +60,14 @@ public class AiResourceRepository implements IAiResourceRepository {
                 initializedPermitKey = semaphoreKey;
             }
             String id = semaphore.tryAcquire(0, 180, TimeUnit.SECONDS);
+            if (id == null && recoverMissingSemaphore(semaphore)) {
+                id = semaphore.tryAcquire(0, 180, TimeUnit.SECONDS);
+            }
             if (id == null) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+            String permitId = id;
             return () -> {
                 try {
-                    semaphore.tryRelease(id);
+                    semaphore.tryRelease(permitId);
                 } catch (RuntimeException error) {
                     log.warn("ai_permit_release_failed diagnostic={}", FailureDiagnostics.describe(error));
                 }
@@ -76,6 +80,14 @@ public class AiResourceRepository implements IAiResourceRepository {
             log.warn("ai_admission_unavailable diagnostic={}", FailureDiagnostics.describe(error));
             throw new AppException(ResponseCode.AI_UNAVAILABLE);
         }
+    }
+
+    private boolean recoverMissingSemaphore(org.redisson.api.RPermitExpirableSemaphore semaphore) {
+        if (semaphore.trySetPermits(permits)) {
+            log.warn("ai_admission_reinitialized permits={}", permits);
+            return true;
+        }
+        return semaphore.availablePermits() > 0;
     }
 
     public boolean coordinateProductSync(Runnable task) {

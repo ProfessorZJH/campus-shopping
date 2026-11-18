@@ -328,3 +328,136 @@ def test_continue_failure_does_not_corrupt_messages_on_retry_and_evicts_bounded_
         extra = request(request_id=f"req-cap-{idx}")
         runtime.turn(extra, service_key=KEY, capability="cap", signature=signed(extra, "cap"), capability_digest=digest("cap"))
     assert len(runtime._responses) <= 2
+
+
+def test_continue_validates_pending_tool_call_ids_count_names_and_duplicates():
+    two_calls = {
+        "choices": [
+            {
+                "message": {
+                    "tool_calls": [
+                        {"id": "call-a", "type": "function", "function": {"name": "search_products", "arguments": '{"query":"tea"}'}},
+                        {"id": "call-b", "type": "function", "function": {"name": "search_products", "arguments": '{"query":"milk"}'}},
+                    ]
+                }
+            }
+        ]
+    }
+    model = FakeModel(two_calls, final_response("两项工具结果核验通过"))
+    runtime = bridge(model)
+    start = request(request_id="req-pending-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+
+    invalid_batches = [
+        [{"callId": "call-a", "name": "search_products", "result": {}}],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-b", "name": "search_products", "result": {}},
+            {"callId": "call-c", "name": "search_products", "result": {}},
+        ],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-a", "name": "search_products", "result": {}},
+        ],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-wrong", "name": "search_products", "result": {}},
+        ],
+        [
+            {"callId": "call-a", "name": "search_products", "result": {}},
+            {"callId": "call-b", "name": "knowledge_qa", "result": {}},
+        ],
+    ]
+    for idx, bad_results in enumerate(invalid_batches):
+        bad_req = request(
+            phase="CONTINUE",
+            request_id=f"req-bad-{idx}",
+            continuation_id=first.continuationId,
+            current_scope=start.scope,
+            results=bad_results,
+        )
+        with pytest.raises(RuntimeBridgeError) as err:
+            runtime.turn(bad_req, service_key=KEY, capability="cap", signature=signed(bad_req, "cap"), capability_digest=digest("cap"))
+        assert err.value.code == "INVALID_CONTINUE" and err.value.status == 422
+
+    # Valid results submitted in reverse order are accepted and normalized to pending_calls order.
+    ok_req = request(
+        phase="CONTINUE",
+        request_id="req-valid-continue",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[
+            {"callId": "call-b", "name": "search_products", "result": {"q": "milk"}},
+            {"callId": "call-a", "name": "search_products", "result": {"q": "tea"}},
+        ],
+    )
+    done = runtime.turn(ok_req, service_key=KEY, capability="cap", signature=signed(ok_req, "cap"), capability_digest=digest("cap"))
+    assert done.status == "FINAL"
+    assert [m["tool_call_id"] for m in model.calls[-1]["messages"] if m["role"] == "tool"] == ["call-a", "call-b"]
+
+
+def test_concurrent_continue_and_inflight_duplicate_do_not_double_invoke_model():
+    import concurrent.futures
+    import threading
+
+    entered_continue = threading.Event()
+    release_continue = threading.Event()
+
+    class BlockingContinueModel:
+        def __init__(self):
+            self.start_calls = 0
+            self.continue_calls = 0
+            self._lock = threading.Lock()
+
+        def complete(self, **kwargs):
+            phase = kwargs["metadata"]["phase"]
+            if phase == "START":
+                with self._lock:
+                    self.start_calls += 1
+                return tool_response("call-race")
+            with self._lock:
+                self.continue_calls += 1
+            entered_continue.set()
+            assert release_continue.wait(timeout=5.0)
+            return final_response("单次并发赢家完成")
+
+    model = BlockingContinueModel()
+    runtime = bridge(model)
+    start = request(request_id="req-race-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+
+    cont_a = request(
+        phase="CONTINUE",
+        request_id="req-race-a",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-race", "name": "search_products", "result": {"ok": True}}],
+    )
+    cont_b = request(
+        phase="CONTINUE",
+        request_id="req-race-b",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-race", "name": "search_products", "result": {"ok": True}}],
+    )
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+        fut_a = pool.submit(
+            runtime.turn, cont_a, service_key=KEY, capability="cap", signature=signed(cont_a, "cap"), capability_digest=digest("cap")
+        )
+        assert entered_continue.wait(timeout=5.0)
+
+        # Both a second requestId on the same continuationId AND an identical in-flight requestId must fail fast with 409.
+        with pytest.raises(RuntimeBridgeError) as conflict_err:
+            runtime.turn(cont_b, service_key=KEY, capability="cap", signature=signed(cont_b, "cap"), capability_digest=digest("cap"))
+        assert conflict_err.value.code == "CONTINUATION_IN_PROGRESS" and conflict_err.value.status == 409
+
+        with pytest.raises(RuntimeBridgeError) as dup_err:
+            runtime.turn(cont_a, service_key=KEY, capability="cap", signature=signed(cont_a, "cap"), capability_digest=digest("cap"))
+        assert dup_err.value.code == "REQUEST_IN_PROGRESS" and dup_err.value.status == 409
+
+        release_continue.set()
+        winner = fut_a.result(timeout=5.0)
+
+    assert winner.status == "FINAL"
+    assert model.continue_calls == 1

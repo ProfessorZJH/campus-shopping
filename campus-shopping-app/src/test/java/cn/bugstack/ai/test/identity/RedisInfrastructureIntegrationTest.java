@@ -47,6 +47,14 @@ class RedisInfrastructureIntegrationTest {
             try (var permit = resources.acquire()) {
                 assertNotNull(permit);
             }
+            clients
+                .security()
+                .getPermitExpirableSemaphore(clients.namespace() + ":ai:admission:v1")
+                .delete();
+            try (var recovered = resources.acquire()) {
+                assertNotNull(recovered);
+                assertThrows(cn.bugstack.ai.types.exception.AppException.class, resources::acquire);
+            }
             var expired = clients.security().getPermitExpirableSemaphore(clients.namespace() + ":expires");
             expired.trySetPermits(1);
             assertNotNull(expired.tryAcquire(0, 100, TimeUnit.MILLISECONDS));
