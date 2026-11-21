@@ -13,7 +13,7 @@
     "preview": "vite preview --host 127.0.0.1"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "5.2.4",
+    "@vitejs/plugin-vue": "6.0.11",
     "@vue/compiler-dom": "3.5.45",
     "acorn": "8.19.0",
     "magic-string": "0.30.17",
