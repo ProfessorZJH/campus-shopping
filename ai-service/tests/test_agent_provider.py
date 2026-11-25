@@ -72,6 +72,8 @@ def test_complete_sends_native_tools_and_parses_raw_response(tmp_path, monkeypat
     assert sent[0][1]["authorization"] == "Bearer agent-llm-key"
     assert sent[0][2]["tools"] == TOOLS
     assert sent[0][2]["stream"] is False
+    assert sent[0][2]["messages"][0]["role"] == "system"
+    assert "只读" in sent[0][2]["messages"][0]["content"]
     assert "agent-llm-key" not in json.dumps(response)
 
 

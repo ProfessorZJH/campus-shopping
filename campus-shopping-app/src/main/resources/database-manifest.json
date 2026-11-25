@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "schemaFingerprint": "6c77e8dc45f0c5c541f7bad79702e9c609ce8a13794f7b359178db1b806ed6e3",
+  "schemaFingerprint": "bdcf5727947149d744c981d2aef68e20c353e8eb250d3413782bcd5b2094290f",
   "migrations": [
     {
       "version": "V20261028_01",
@@ -101,6 +101,11 @@
       "version": "V20261109_01",
       "file": "V20261109_01__agent_run_gateway.sql",
       "sha256": "6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac"
+    },
+    {
+      "version": "V20261125_01",
+      "file": "V20261125_01__stage2_query_and_lock_indexes.sql",
+      "sha256": "1daa37ca27629dd1ed662abb1c6f3026fd0c9df90920eb02f4b6e1866d02659a"
     }
   ]
 }

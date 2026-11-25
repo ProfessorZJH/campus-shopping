@@ -24,11 +24,18 @@ public interface ITradingDao {
         @Param("buyer") String buyer,
         @Param("merchant") String merchant,
         @Param("status") String status,
+        @Param("since") Instant since,
         @Param("offset") int offset,
         @Param("limit") int limit,
         @Param("q") String q
     );
-    long countOrders(@Param("buyer") String buyer, @Param("merchant") String merchant, @Param("status") String status, @Param("q") String q);
+    long countOrders(
+        @Param("buyer") String buyer,
+        @Param("merchant") String merchant,
+        @Param("status") String status,
+        @Param("since") Instant since,
+        @Param("q") String q
+    );
     List<OrderPO> ordersByPickupState(
         @Param("buyer") String buyer,
         @Param("merchant") String merchant,

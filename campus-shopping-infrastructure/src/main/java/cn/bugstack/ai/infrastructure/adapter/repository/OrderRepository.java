@@ -12,14 +12,20 @@ import cn.bugstack.ai.types.enums.ResponseCode;
 import jakarta.annotation.Resource;
 import java.time.*;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /** 本地持久化适配器；业务规则由对应领域服务维护。 */
 @Repository
 public class OrderRepository implements IOrderRepository {
 
+    private static final Duration PLATFORM_ORDER_WINDOW = Duration.ofDays(365);
+
     @Resource
     private ITradingDao dao;
+
+    @Autowired(required = false)
+    private Clock clock;
 
     public CheckoutRequestVO begin(String user, String key, String fingerprint) {
         dao.gate(user, key, fingerprint);
@@ -73,7 +79,7 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q) {
-        var rows = dao.orders(buyer, merchant, status, offset, size, q);
+        var rows = dao.orders(buyer, merchant, status, querySince(buyer, merchant), offset, size, q);
         if (rows.isEmpty()) return List.of();
         var items = dao
             .itemsByOrders(rows.stream().map(OrderPO::getId).toList())
@@ -90,7 +96,13 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public long countOrders(String buyer, String merchant, String status, String q) {
-        return dao.countOrders(buyer, merchant, status, q);
+        return dao.countOrders(buyer, merchant, status, querySince(buyer, merchant), q);
+    }
+
+    private Instant querySince(String buyer, String merchant) {
+        if (buyer != null || merchant != null) return Instant.EPOCH;
+        Instant now = clock == null ? Instant.now() : clock.instant();
+        return now.minus(PLATFORM_ORDER_WINDOW);
     }
 
     public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int offset, int size, String q, String pickupState) {

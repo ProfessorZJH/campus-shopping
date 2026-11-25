@@ -100,9 +100,10 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     @Override
     public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int page, int size, String q, String pickupState) {
+        String requiredMerchant = text(merchant, "商户编号", 64);
         return repository.ordersByPickupState(
             buyer,
-            merchant,
+            requiredMerchant,
             OrderStatusEnumVO.filter(status),
             offset(page, size),
             size,
@@ -113,7 +114,8 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     @Override
     public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
-        return repository.countOrdersByPickupState(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100), pickupStateFilter(pickupState));
+        String requiredMerchant = text(merchant, "商户编号", 64);
+        return repository.countOrdersByPickupState(buyer, requiredMerchant, OrderStatusEnumVO.filter(status), optional(q, 100), pickupStateFilter(pickupState));
     }
 
     private String pickupStateFilter(String value) {

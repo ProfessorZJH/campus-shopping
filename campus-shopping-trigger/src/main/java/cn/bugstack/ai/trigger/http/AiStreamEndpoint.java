@@ -94,8 +94,10 @@ public class AiStreamEndpoint {
         } catch (AiTurnCancelledException cancelled) {
             send(emitter, "cancelled", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "CANCELLED"));
         } catch (AppException failure) {
+            ControllerFailures.record(log, failure);
             send(emitter, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, failure.getCode()));
         } catch (RuntimeException failure) {
+            ControllerFailures.unexpected(log, failure);
             send(emitter, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "UN_ERROR"));
         } finally {
             emitter.complete();

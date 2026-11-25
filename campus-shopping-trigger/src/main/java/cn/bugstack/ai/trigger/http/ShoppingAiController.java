@@ -17,9 +17,11 @@ import cn.bugstack.ai.api.dto.MessageResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalItemResponseDTO;
 import cn.bugstack.ai.api.dto.ProposalResponseDTO;
 import cn.bugstack.ai.api.response.Response;
+import cn.bugstack.ai.cases.shoppingai.AiTurnCancelledException;
 import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
+import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
 import java.security.Principal;
@@ -272,6 +274,10 @@ public class ShoppingAiController implements IShoppingAiApi {
     private <T> Response<T> execute(Supplier<T> action) {
         try {
             return ApiResponses.success(action.get());
+        } catch (AiTurnCancelledException e) {
+            AppException rejected = new AppException(ResponseCode.STATE_CONFLICT.getCode(), "本轮导购已取消");
+            ControllerFailures.record(log, rejected);
+            return ApiResponses.rejected(rejected);
         } catch (AppException e) {
             ControllerFailures.record(log, e);
             return ApiResponses.rejected(e);

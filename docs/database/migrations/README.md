@@ -9,7 +9,7 @@
 1. 备份并在副本验证，核对 MySQL 版本至少为 8.0.16（本次实际使用 8.0.31）。
 2. 准备有 DDL 权限的升级账号，在当前终端设置 `DB_USERNAME` / `DB_PASSWORD`；凭据不放命令行、不提交 Git。
 3. 在目标库执行下面的前置检查，结果必须全为 0；异常记录应由业务负责人核对，不能自动删行或改金额。
-4. 在维护窗口运行下方显式迁移命令。CLI 按版本号顺序执行当前 `docs/database/migrations/` 中全部迁移：`V20261028_01`（订单图片）、`V20261028_02`（RBAC）、`V20261029_01`（完整性及索引）、`V20261030_01`（知识索引请求标识与会话租约）、`V20261031_01`（会话租约补充）、`V20261031_02`（知识租约与配额）、`V20261031_03`（AI 同步检查点）、`V20261102_01`（商品图片对象引用及历史主图回填）、`V20261104_01`（图片对象商户归属）、`V20261105_01`（库存唯一归属与分页索引）、`V20261105_02`（结构漂移审计），成功后逐项登记 SHA-256。索引和图片对象表可能消耗额外空间并产生元数据锁等待。
+4. 在维护窗口运行下方显式迁移命令。CLI 按版本号顺序执行当前 `docs/database/migrations/` 中全部 21 份迁移（自 `V20261028_01` 至 `V20261125_01__stage2_query_and_lock_indexes.sql`，完整清单见 `campus-shopping-app/src/main/resources/database-manifest.json`），成功后逐项登记 SHA-256。索引和图片对象表可能消耗额外空间并产生元数据锁等待。
 ```powershell
 python -m pip install --require-hashes -r ai-service/requirements-dev.lock
 python scripts/migrate-database.py --host 127.0.0.1 --port 3306 --database campus_shopping
@@ -53,6 +53,11 @@ SELECT COUNT(*) AS invalid_refunds FROM trd_refund WHERE amount_cent <= 0;
 | `ix_document_base(base_id,created_at DESC,id)` | 知识库文档分页与 COUNT |
 | `ix_message_sequence(conversation_id,seq_no)` | 最近会话消息按真实序列取数 |
 | `ix_proposal_conversation(user_id,conversation_id,created_at DESC,id)` | 本人会话的提案列表 |
+| `ix_knowledge_base_merchant(merchant_id)` | 知识索引按归属商户定位并发锁行 |
+| `ix_document_base_index_lease(base_id,index_expires_at,id)` | 活跃知识索引租约并发统计与锁定 |
+| `ix_order_merchant_created(merchant_id,created_at DESC,id)` | 商户全状态订单分页按创建时间倒序读取 |
+| `ix_after_sale_status_created(status,created_at DESC,id)` | 平台售后争议队列按状态与时间倒序分页 |
+| `ix_merchant_status_created(status,created_at DESC,id)` | 公开商户列表按状态与创建时间倒序分页 |
 
 上述是访问路径补齐，不表示经过大数据量性能压测；生产数据量下仍需 `EXPLAIN ANALYZE` 与容量评估。
 
