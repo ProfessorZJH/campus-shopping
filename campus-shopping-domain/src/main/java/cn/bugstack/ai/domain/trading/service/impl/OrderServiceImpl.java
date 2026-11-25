@@ -90,12 +90,22 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
         return repository.orders(buyer, merchant, OrderStatusEnumVO.filter(status), offset(page, size), size, optional(q, 100));
     }
 
+    @Override
+    public List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size, String q, Instant since) {
+        return repository.orders(buyer, merchant, OrderStatusEnumVO.filter(status), offset(page, size), size, optional(q, 100), since);
+    }
+
     public long countOrders(String buyer, String merchant, String status) {
         return countOrders(buyer, merchant, status, "");
     }
 
     public long countOrders(String buyer, String merchant, String status, String q) {
         return repository.countOrders(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100));
+    }
+
+    @Override
+    public long countOrders(String buyer, String merchant, String status, String q, Instant since) {
+        return repository.countOrders(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100), since);
     }
 
     @Override

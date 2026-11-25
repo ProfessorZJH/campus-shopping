@@ -57,7 +57,7 @@ from .provider import Provider
 
 class KnowledgeStore:
     def __init__(self,settings: Settings):
-        self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock();self._delete_epoch: dict[str,int]={}
+        self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock();self._delete_epoch: dict[str,int]={};self._deleting: dict[str,int]={}
         db_path = Path(settings.db_path)
         fresh = not db_path.exists()
         self.db=sqlite3.connect(settings.db_path,check_same_thread=False,isolation_level=None)
@@ -97,6 +97,7 @@ class KnowledgeStore:
         if version < 1: raise ValueError('文档版本无效')
         pieces=chunks(text);fingerprint=hashlib.sha256((title+'\0'+text).encode()).hexdigest()
         with self.lock:
+            if self._deleting.get(doc_id,0)>0:raise ValueError('文档正在删除，无法重新索引')
             epoch=self._delete_epoch.get(doc_id,0)
             prior=self.db.execute('SELECT fingerprint,model FROM docs WHERE id=?',(doc_id,)).fetchone()
             if prior and prior['fingerprint']!=fingerprint:raise ValueError('文档版本内容不可变；请使用新版本ID')
@@ -113,7 +114,7 @@ class KnowledgeStore:
             self._delete_qdrant_doc(doc_id)
         deleted_during_index=False
         with self.lock:
-            if self._delete_epoch.get(doc_id,0)!=epoch:
+            if self._deleting.get(doc_id,0)>0 or self._delete_epoch.get(doc_id,0)!=epoch:
                 deleted_during_index=True
             else:
                 self.db.execute('BEGIN IMMEDIATE')
@@ -131,13 +132,21 @@ class KnowledgeStore:
         return len(rows)
     def delete(self,doc_id: str):
         with self.lock:
+            self._deleting[doc_id]=self._deleting.get(doc_id,0)+1
             self._delete_epoch[doc_id]=self._delete_epoch.get(doc_id,0)+1
-        if self.settings.qdrant_url:self._delete_qdrant_doc(doc_id)
-        with self.lock:
-            self.db.execute('BEGIN IMMEDIATE')
-            try:
-                self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,));self.db.execute('DELETE FROM docs WHERE id=?',(doc_id,));self.db.execute('COMMIT')
-            except Exception:self.db.execute('ROLLBACK');raise
+        try:
+            if self.settings.qdrant_url:self._delete_qdrant_doc(doc_id)
+            with self.lock:
+                self.db.execute('BEGIN IMMEDIATE')
+                try:
+                    self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,));self.db.execute('DELETE FROM docs WHERE id=?',(doc_id,));self.db.execute('COMMIT')
+                except Exception:self.db.execute('ROLLBACK');raise
+        finally:
+            with self.lock:
+                self._delete_epoch[doc_id]=self._delete_epoch.get(doc_id,0)+1
+                remaining=self._deleting.get(doc_id,1)-1
+                if remaining<=0:self._deleting.pop(doc_id,None)
+                else:self._deleting[doc_id]=remaining
     @observed('knowledge.search')
     def search(self,query: str,allowed: list[str],top_k: int=6,*,_strategy: str='hybrid',_trace: dict|None=None,external_document_ids: list[str]|None=None) -> tuple[list[dict],str]:
         # 私有评测接缝；生产HTTP不接受策略或trace参数，默认排序保持不变。
