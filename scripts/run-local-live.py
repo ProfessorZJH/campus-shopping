@@ -39,7 +39,12 @@ def main():
     env.update(AI_LOCAL_ACCEPTANCE_BIND='127.0.0.1', SPRING_PROFILES_ACTIVE='dev',
                AI_SERVICE_URL='http://127.0.0.1:8100', DB_INIT_MODE='never',
                SESSION_COOKIE_SECURE='false')
-    python = ROOT / 'var/venv-ai-live/Scripts/python.exe' if os.name == 'nt' else Path(sys.executable)
+    if os.name == 'nt':
+        candidates = (ROOT / 'ai-service/.venv/Scripts/python.exe', ROOT / 'var/venv-ai-live/Scripts/python.exe')
+        python = next((c for c in candidates if c.exists()), Path(sys.executable))
+    else:
+        candidates = (ROOT / 'ai-service/.venv/bin/python',)
+        python = next((c for c in candidates if c.exists()), Path(sys.executable))
     commands = {
         'ai': [str(python), '-m', 'uvicorn', 'app.local_acceptance:create_app', '--factory',
                '--host', '127.0.0.1', '--port', '8100'],

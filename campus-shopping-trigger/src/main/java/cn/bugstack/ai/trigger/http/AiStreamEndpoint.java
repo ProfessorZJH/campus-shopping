@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -68,16 +69,26 @@ public class AiStreamEndpoint {
             return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(ApiResponses.rejected(failure));
         }
         SseEmitter emitter = new SseEmitter(120_000L);
+        AtomicBoolean clientGone = new AtomicBoolean(false);
+        emitter.onCompletion(() -> clientGone.set(true));
+        emitter.onTimeout(() -> {
+            clientGone.set(true);
+            emitter.complete();
+        });
+        emitter.onError(error -> {
+            clientGone.set(true);
+            log.debug("ai_stream_client_error diagnostic={}", cn.bugstack.ai.types.common.FailureDiagnostics.describe(error));
+        });
         try {
-            EXECUTOR.execute(() -> run(emitter, actor, request));
+            EXECUTOR.execute(() -> run(emitter, clientGone, actor, request));
         } catch (RuntimeException rejected) {
-            send(emitter, "failed", envelope(request.getConversationId(), "FULL_RESPONSE", null, "AI_STREAM_BUSY"));
+            send(emitter, clientGone, "failed", envelope(request.getConversationId(), "FULL_RESPONSE", null, "AI_STREAM_BUSY"));
             emitter.complete();
         }
         return emitter;
     }
 
-    private void run(SseEmitter emitter, String actor, ChatRequestDTO request) {
+    private void run(SseEmitter emitter, AtomicBoolean clientGone, String actor, ChatRequestDTO request) {
         AtomicReference<String> activeConversationId = new AtomicReference<>(request.getConversationId());
         try {
             ChatResult result = shopping.chatStream(
@@ -86,29 +97,35 @@ public class AiStreamEndpoint {
                 request.getQuestion(),
                 conversationId -> {
                     activeConversationId.set(conversationId);
-                    send(emitter, "started", envelope(conversationId, "FULL_RESPONSE", null, null));
+                    send(emitter, clientGone, "started", envelope(conversationId, "FULL_RESPONSE", null, null));
                 },
-                bytes -> send(emitter, "progress", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
+                bytes -> send(emitter, clientGone, "progress", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
             );
-            send(emitter, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
+            send(emitter, clientGone, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
         } catch (AiTurnCancelledException cancelled) {
-            send(emitter, "cancelled", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "CANCELLED"));
+            send(emitter, clientGone, "cancelled", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "CANCELLED"));
         } catch (AppException failure) {
             ControllerFailures.record(log, failure);
-            send(emitter, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, failure.getCode()));
+            send(emitter, clientGone, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, failure.getCode()));
         } catch (RuntimeException failure) {
             ControllerFailures.unexpected(log, failure);
-            send(emitter, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "UN_ERROR"));
+            send(emitter, clientGone, "failed", envelope(activeConversationId.get(), "FULL_RESPONSE", null, "UN_ERROR"));
         } finally {
-            emitter.complete();
+            if (clientGone.compareAndSet(false, true)) {
+                emitter.complete();
+            }
         }
     }
 
-    private void send(SseEmitter emitter, String event, Object data) {
+    private void send(SseEmitter emitter, AtomicBoolean clientGone, String event, Object data) {
+        if (clientGone.get()) return;
         try {
             emitter.send(SseEmitter.event().name(event).data(data));
-        } catch (Exception ignored) {
-            emitter.complete();
+        } catch (Exception error) {
+            if (clientGone.compareAndSet(false, true)) {
+                log.debug("ai_stream_send_failed event={} diagnostic={}", event, cn.bugstack.ai.types.common.FailureDiagnostics.describe(error));
+                emitter.complete();
+            }
         }
     }
 

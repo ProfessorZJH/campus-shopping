@@ -165,8 +165,8 @@ export default {
     );
     let searchDelay;
     function refreshPage() {
-      if (preview) return;
-      loadMerchant({
+      if (preview) return Promise.resolve();
+      return loadMerchant({
         signal: scope.begin().signal,
         page: page.value,
         size: 9,
@@ -265,7 +265,7 @@ export default {
           },
         });
         modal.value = '';
-        await loadMerchant();
+        await refreshPage();
         notify('商品已创建（草稿）');
       } catch (e) {
         notify(e.message);
@@ -312,7 +312,7 @@ export default {
           { method: 'POST', body: { specKey, priceCent } },
         );
         modal.value = '';
-        await loadMerchant();
+        await refreshPage();
         notify('规格已新增');
         drawerTab.value = 'sku';
       } catch (e) {
@@ -342,7 +342,7 @@ export default {
             body: { active: sku.status !== 'ACTIVE', expectedVersion: selected.value.version },
           },
         );
-        await loadMerchant();
+        await refreshPage();
         notify('规格状态已更新');
       } catch (e) {
         notify(e.message);
@@ -366,7 +366,7 @@ export default {
             '/publish',
           { method: 'POST', body: { published: p.status !== 'PUBLISHED' } },
         );
-        await loadMerchant();
+        await refreshPage();
         notify(p.status === 'PUBLISHED' ? '已下架' : '已上架');
       } catch (err) {
         notify(err.message);
@@ -400,7 +400,7 @@ export default {
         pendingReplenishKey.value = '';
         pendingReplenishPayload.value = '';
         adjustment.value = 1;
-        await loadMerchant();
+        await refreshPage();
         notify('补货完成');
       } catch (err) {
         notify(err.message);
@@ -444,7 +444,7 @@ export default {
             },
           },
         );
-        await loadMerchant();
+        await refreshPage();
         notify('商品信息已更新');
       } catch (err) {
         notify(err.message);
@@ -481,7 +481,7 @@ export default {
           { method: 'PUT', body: { priceCent: cent, expectedVersion: selected.value.version } },
         );
         modal.value = '';
-        await loadMerchant();
+        await refreshPage();
         notify('售价已更新');
       } catch (err) {
         notify(err.message);
@@ -517,6 +517,7 @@ export default {
       previewGuard,
       notify,
       loadMerchant,
+      refreshPage,
       invalidateMerchantSearch,
       owned,
       merchant,
@@ -563,7 +564,7 @@ export default {
   },
   template: `
   <BackofficeShell title="商品管理">
-    <template #actions><div class="head-actions"><button class="outline-button small" @click="loadMerchant" :disabled="store.loading"><Icon name="refresh" :size="16"/>刷新</button><button class="teal-button" @click="openCreate" :disabled="!owned"><Icon name="plus" :size="18"/>新增商品</button></div></template>
+    <template #actions><div class="head-actions"><button class="outline-button small" @click="refreshPage" :disabled="store.loading"><Icon name="refresh" :size="16"/>刷新</button><button class="teal-button" @click="openCreate" :disabled="!owned"><Icon name="plus" :size="18"/>新增商品</button></div></template>
         <div v-if="store.error" class="inline-error merchant-error"><Icon name="alert" :size="18"/>{{store.error}}<button v-if="!preview" class="merchant-login-action" @click="loginOpen=true">登录账号</button></div>
         <div v-if="!canRead" class="ops-card access-denied">当前角色没有商品查看权限，请联系商户经营者授权。</div><template v-else><section class="inventory-summary" aria-label="商品概况">
           <div class="summary-piece"><span class="summary-icon blue"><Icon name="package" :size="20"/></span><div><span>{{preview?'全部商品':'当前商品数'}}</span><strong>{{preview?count.all:store.merchantPage.total}}</strong></div></div>
@@ -574,7 +575,7 @@ export default {
         </section>
         <section class="product-workspace">
           <div class="product-list-panel">
-            <div class="product-tabs"><button :class="{active:status===''}" @click="status=''">全部 <b v-if="preview||status===''">{{preview?count.all:store.merchantPage.total}}</b></button><button :class="{active:status==='PUBLISHED'}" @click="status='PUBLISHED'">在售 <b v-if="preview||status==='PUBLISHED'">{{preview?count.published:store.merchantPage.total}}</b></button><button :class="{active:status==='UNPUBLISHED'}" @click="status='UNPUBLISHED'">已下架</button><button :class="{active:status==='low'}" @click="status='low'">低库存 <b>{{count.low}}</b></button></div>
+            <div class="product-tabs"><button :class="{active:status===''}" @click="status=''">全部 <b v-if="preview||status===''">{{preview?count.all:store.merchantPage.total}}</b></button><button :class="{active:status==='PUBLISHED'}" @click="status='PUBLISHED'">在售 <b v-if="preview||status==='PUBLISHED'">{{preview?count.published:store.merchantPage.total}}</b></button><button :class="{active:status==='DRAFT'}" @click="status='DRAFT'">草稿</button><button :class="{active:status==='UNPUBLISHED'}" @click="status='UNPUBLISHED'">已下架</button><button :class="{active:status==='low'}" @click="status='low'">低库存 <b>{{count.low}}</b></button></div>
             <div class="product-toolbar"><label class="table-search"><Icon name="search" :size="17"/><input v-model="search" placeholder="搜索商品名称或规格" aria-label="搜索商品"/></label><label class="table-select"><select v-model="category" aria-label="分类筛选"><option value="">全部分类</option><option v-for="c in store.categories" :value="c.code">{{c.name}}</option></select><Icon name="chevronDown" :size="14"/></label><label class="table-select"><select v-model="sort" aria-label="商品排序"><option value="NEWEST">最新上架</option><option value="PRICE_ASC">价格从低到高</option><option value="STOCK_DESC">库存从高到低</option></select></label><button class="filter-reset" @click="search='';category='';status='';sort='NEWEST'">重置</button><span class="toolbar-count">{{preview?filtered.length:store.merchantPage.total}} 件</span></div>
             <div class="product-table-scroll"><table class="product-table"><thead><tr><th>商品</th><th>规格</th><th>分类</th><th class="t-right">售价</th><th class="t-right">可售</th><th>状态</th><th class="t-right">操作</th></tr></thead><tbody>
               <tr v-for="p in pageRows" :key="p.productId" :class="{'row-selected':selected?.productId===p.productId}" @click="choose(p)">
@@ -612,6 +613,6 @@ export default {
       <MerchantCreateForm v-if="modal==='create'" v-model:form="form" :categories="store.categories" :merchant-id="store.merchantId" :preview="preview" :owned="owned" :saving="saving" :image-uploading="createImageUploading" :image-invalid="createImageInvalid" @close="modal=''" @submit="create" @add-sku="addCreateSku" @remove-sku="removeCreateSku" @image-busy="createImageUploading=$event" @image-invalid="createImageInvalid=$event"/>
       <form class="merchant-modal narrow" v-else-if="modal==='addSku'" @submit.prevent="addSku"><div class="merchant-modal-header"><h2>新增规格</h2><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="18"/></button></div><label class="field-label" for="merchant-field-8">规格名称</label><input id="merchant-field-8" class="admin-input" maxlength="100" v-model="skuForm.specKey" required placeholder="例如：500ml"/><label class="field-label" for="merchant-field-9">售价（元）</label><input id="merchant-field-9" class="admin-input" v-model="skuForm.price" inputmode="decimal" required placeholder="0.00"/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving">保存规格</button></div></form><form class="merchant-modal narrow" v-else-if="modal==='price'" @submit.prevent="savePrice"><div class="merchant-modal-header"><div><h2>修改售价</h2></div><button type="button" @click="modal=''" aria-label="关闭"><Icon name="x" :size="20"/></button></div><div class="field-muted">{{selected?.title}} · {{activePriceSku?.specKey}}</div><label class="field-label" for="merchant-field-10">售价（元）</label><input id="merchant-field-10" class="admin-input" v-model="newPrice" inputmode="decimal" required/><div class="form-buttons"><button type="button" class="outline-button" @click="modal=''">取消</button><button type="submit" class="teal-button" :disabled="preview||saving">保存售价</button></div></form>
     </div>
-    <AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="loadMerchant" />
+    <AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="refreshPage" />
   </BackofficeShell>`,
 };

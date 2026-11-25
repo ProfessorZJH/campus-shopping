@@ -168,11 +168,16 @@ export default {
       if (stamp !== loadVersion) return;
       const mid = store.merchantId;
       if (!mid) {
+        loading.value = false;
         error.value = store.error || '尚未加入商户';
         return;
       }
-      if (restricted.value) return;
+      if (restricted.value) {
+        loading.value = false;
+        return;
+      }
       if (preview) {
+        loading.value = false;
         pageInfo.value = { total: DEMO_MERCHANT_ORDERS.length, hasNext: false };
         stats.value = { ...DEMO_STATS };
         orders.value = DEMO_MERCHANT_ORDERS.map((o) => ({ ...o }));
@@ -255,6 +260,9 @@ export default {
           ]);
           if (!current()) return;
           stockRows.value = stockResult.items || [];
+          if (sku.value && !stockRows.value.some((s) => s.skuId === sku.value)) {
+            sku.value = '';
+          }
           moves.value = movements.items || [];
           movementPageInfo.value = movements;
           pageInfo.value = stockResult;

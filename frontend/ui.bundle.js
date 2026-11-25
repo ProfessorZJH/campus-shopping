@@ -16309,8 +16309,8 @@
       );
       let searchDelay;
       function refreshPage() {
-        if (preview) return;
-        loadMerchant({
+        if (preview) return Promise.resolve();
+        return loadMerchant({
           signal: scope.begin().signal,
           page: page.value,
           size: 9,
@@ -16410,7 +16410,7 @@
             }
           });
           modal2.value = "";
-          await loadMerchant();
+          await refreshPage();
           notify("商品已创建（草稿）");
         } catch (e) {
           notify(e.message);
@@ -16449,7 +16449,7 @@
             { method: "POST", body: { specKey, priceCent } }
           );
           modal2.value = "";
-          await loadMerchant();
+          await refreshPage();
           notify("规格已新增");
           drawerTab.value = "sku";
         } catch (e) {
@@ -16473,7 +16473,7 @@
               body: { active: sku2.status !== "ACTIVE", expectedVersion: selected.value.version }
             }
           );
-          await loadMerchant();
+          await refreshPage();
           notify("规格状态已更新");
         } catch (e) {
           notify(e.message);
@@ -16493,7 +16493,7 @@
             "/merchants/" + encodeURIComponent(store.merchantId) + "/products/" + encodeURIComponent(p2.productId) + "/publish",
             { method: "POST", body: { published: p2.status !== "PUBLISHED" } }
           );
-          await loadMerchant();
+          await refreshPage();
           notify(p2.status === "PUBLISHED" ? "已下架" : "已上架");
         } catch (err) {
           notify(err.message);
@@ -16524,7 +16524,7 @@
           pendingReplenishKey.value = "";
           pendingReplenishPayload.value = "";
           adjustment.value = 1;
-          await loadMerchant();
+          await refreshPage();
           notify("补货完成");
         } catch (err) {
           notify(err.message);
@@ -16559,7 +16559,7 @@
               }
             }
           );
-          await loadMerchant();
+          await refreshPage();
           notify("商品信息已更新");
         } catch (err) {
           notify(err.message);
@@ -16584,7 +16584,7 @@
             { method: "PUT", body: { priceCent: cent, expectedVersion: selected.value.version } }
           );
           modal2.value = "";
-          await loadMerchant();
+          await refreshPage();
           notify("售价已更新");
         } catch (err) {
           notify(err.message);
@@ -16620,6 +16620,7 @@
         previewGuard,
         notify,
         loadMerchant,
+        refreshPage,
         invalidateMerchantSearch,
         owned,
         merchant,
@@ -16679,7 +16680,7 @@
             _createElementVNode("div", { class: "head-actions" }, [
               _createElementVNode("button", {
                 class: "outline-button small",
-                onClick: _ctx.loadMerchant,
+                onClick: _ctx.refreshPage,
                 disabled: _ctx.store.loading
               }, [
                 _createVNode2(_component_Icon, {
@@ -16863,6 +16864,10 @@
                             /* TEXT */
                           )) : _createCommentVNode("v-if", true)
                         ], 10, ["onClick"]),
+                        _createElementVNode("button", {
+                          class: _normalizeClass({ active: _ctx.status === "DRAFT" }),
+                          onClick: ($event) => _ctx.status = "DRAFT"
+                        }, "草稿", 10, ["onClick"]),
                         _createElementVNode("button", {
                           class: _normalizeClass({ active: _ctx.status === "UNPUBLISHED" }),
                           onClick: ($event) => _ctx.status = "UNPUBLISHED"
@@ -17651,7 +17656,7 @@
               _ctx.loginOpen ? (_openBlock(), _createBlock(_component_AuthDialog, {
                 key: 4,
                 onClose: ($event) => _ctx.loginOpen = false,
-                onSuccess: _ctx.loadMerchant
+                onSuccess: _ctx.refreshPage
               }, null, 8, ["onClose", "onSuccess"])) : _createCommentVNode("v-if", true)
             ];
           }),
@@ -17667,7 +17672,7 @@
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$7 },
     setup() {
       const scope = requestScope();
-      const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
+      const product = ref$9(null), shop = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
       const defaultSku = (p2) => {
         var _a;
         return ((_a = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available || 0) > 0)) || skuOf(p2);
@@ -17683,7 +17688,7 @@
         () => store.merchants.find((m) => {
           var _a;
           return m.merchantId === ((_a = product.value) == null ? void 0 : _a.merchantId);
-        }) || {}
+        }) || shop.value || {}
       );
       const detailImages = computed$9(
         () => {
@@ -17702,6 +17707,7 @@
         const request2 = scope.begin();
         const target = id.value;
         product.value = null;
+        shop.value = null;
         error.value = "";
         errorCode.value = "";
         loading.value = true;
@@ -17711,7 +17717,15 @@
           } else {
             if (!target) throw Error("无效商品地址");
             const p2 = await api("/products/" + pathId(target), { signal: request2.signal });
-            if (request2.current()) product.value = p2;
+            if (request2.current()) {
+              product.value = p2;
+              if ((p2 == null ? void 0 : p2.merchantId) && !store.merchants.some((m) => m.merchantId === p2.merchantId)) {
+                api("/merchants/public/" + pathId(p2.merchantId), { signal: request2.signal }).then((m) => {
+                  if (request2.current() && m) shop.value = m;
+                }).catch(() => {
+                });
+              }
+            }
           }
         } catch (e) {
           if (request2.current()) {
@@ -18081,7 +18095,7 @@
       onMounted$8(load);
       onUnmounted$5(() => ++loadVersion);
       watch$6(page, load);
-      return { merchant, products, error, loading, page, hasNext, go, money, skuOf, load };
+      return { merchant, products, error, loading, page, hasNext, go, money, skuOf, priceSku, load };
     },
     render: (() => {
       const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx } = Vue;
@@ -18212,7 +18226,7 @@
                           _createElementVNode(
                             "span",
                             null,
-                            _toDisplayString(_ctx.money(_ctx.skuOf(p2).priceCent)),
+                            _toDisplayString(_ctx.money((_ctx.priceSku(p2) || _ctx.skuOf(p2)).priceCent)),
                             1
                             /* TEXT */
                           )
@@ -20294,6 +20308,16 @@
                 class: "detail-card"
               }, [
                 _createElementVNode("h2", null, "收到的邀请"),
+                _ctx.error ? (_openBlock(), _createElementBlock(
+                  "div",
+                  {
+                    key: 0,
+                    class: "inline-error"
+                  },
+                  _toDisplayString(_ctx.error),
+                  1
+                  /* TEXT */
+                )) : _createCommentVNode("v-if", true),
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
                   null,
@@ -20330,11 +20354,11 @@
                   /* KEYED_FRAGMENT */
                 )),
                 !_ctx.loading && !_ctx.error && !_ctx.invitations.length ? (_openBlock(), _createElementBlock("div", {
-                  key: 0,
+                  key: 1,
                   class: "mobile-empty"
                 }, "暂无邀请")) : _createCommentVNode("v-if", true),
                 !_ctx.preview && (_ctx.invitePage > 1 || _ctx.invitations.length === 20) ? (_openBlock(), _createBlock(_component_UiPagination, {
-                  key: 1,
+                  key: 2,
                   page: _ctx.invitePage,
                   "has-next": _ctx.invitations.length >= 20,
                   busy: _ctx.loading,
@@ -20697,11 +20721,16 @@
         if (stamp !== loadVersion) return;
         const mid = store.merchantId;
         if (!mid) {
+          loading.value = false;
           error.value = store.error || "尚未加入商户";
           return;
         }
-        if (restricted.value) return;
+        if (restricted.value) {
+          loading.value = false;
+          return;
+        }
         if (preview) {
+          loading.value = false;
           pageInfo.value = { total: DEMO_MERCHANT_ORDERS.length, hasNext: false };
           stats.value = { ...DEMO_STATS };
           orders.value = DEMO_MERCHANT_ORDERS.map((o) => ({ ...o }));
@@ -20775,6 +20804,9 @@
             ]);
             if (!current()) return;
             stockRows.value = stockResult.items || [];
+            if (sku2.value && !stockRows.value.some((s) => s.skuId === sku2.value)) {
+              sku2.value = "";
+            }
             moves.value = movements.items || [];
             movementPageInfo.value = movements;
             pageInfo.value = stockResult;
@@ -22808,13 +22840,28 @@
                       1
                       /* TEXT */
                     ),
-                    _createElementVNode(
-                      "span",
-                      null,
-                      _toDisplayString(_ctx.docInfo.total) + " 项",
-                      1
-                      /* TEXT */
-                    )
+                    _createElementVNode("div", null, [
+                      _createElementVNode(
+                        "span",
+                        null,
+                        _toDisplayString(_ctx.docInfo.total) + " 项",
+                        1
+                        /* TEXT */
+                      ),
+                      _createElementVNode("button", {
+                        class: "outline-button small",
+                        type: "button",
+                        disabled: _ctx.busy || !_ctx.active,
+                        onClick: _ctx.loadDocs,
+                        "aria-label": "刷新文档列表"
+                      }, [
+                        _createVNode2(_component_Icon, {
+                          name: "refresh",
+                          size: 14
+                        }),
+                        _createTextVNode("刷新")
+                      ], 8, ["disabled", "onClick"])
+                    ])
                   ]),
                   (_openBlock(true), _createElementBlock(
                     _Fragment,
@@ -23473,6 +23520,7 @@
         const current = route.value;
         error.value = "";
         if (preview) {
+          loading.value = false;
           allowed.value = true;
           stats.value = { ...DEMO_STATS };
           applications.value = DEMO_APPLICATIONS;
@@ -23677,6 +23725,11 @@
         }
         perform("/admin/categories", { ...category.value });
       }
+      function toggleCategory(c) {
+        const next = { code: c.code, name: c.name, active: !c.active };
+        category.value = next;
+        perform("/admin/categories", next);
+      }
       function selectApplication(a) {
         selectedId.value = a.applicationId;
         reason.value = "";
@@ -23737,6 +23790,7 @@
         forceProduct,
         decideRefund,
         saveCategory,
+        toggleCategory,
         selectApplication
       };
     },
@@ -24785,8 +24839,8 @@
                         ),
                         _createElementVNode("button", {
                           class: "row-link",
-                          onClick: ($event) => _ctx.category = { code: c.code, name: c.name, active: !c.active },
-                          disabled: _ctx.preview
+                          onClick: ($event) => _ctx.toggleCategory(c),
+                          disabled: _ctx.loading || !!_ctx.error || _ctx.preview || _ctx.busy
                         }, _toDisplayString(c.active ? "停用" : "恢复"), 9, ["onClick", "disabled"])
                       ]);
                     }),

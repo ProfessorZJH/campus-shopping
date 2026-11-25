@@ -30,4 +30,10 @@ public interface IOrderQueryService {
     Instant oldestExpired();
     TradingStatsVO statistics(String merchant);
     OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
+
+    /** 多实例下协调逾期关单扫描；无共享锁时直接执行。 */
+    default boolean coordinateExpiryScan(Runnable task) {
+        task.run();
+        return true;
+    }
 }

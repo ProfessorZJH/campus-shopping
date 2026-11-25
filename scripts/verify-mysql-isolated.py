@@ -470,7 +470,7 @@ def run(args, report):
             shutil.copy2(ROOT/'pom.xml', build_root/'pom.xml')
             for name in ('ai-service', 'frontend', 'scripts', '.mvn'):
                 shutil.copytree(ROOT/name, build_root/name,
-                                ignore=shutil.ignore_patterns('node_modules', 'dist', '__pycache__', 'target'))
+                                ignore=shutil.ignore_patterns('node_modules', 'dist', '__pycache__', 'target', '.venv', 'var', '.pytest_cache'))
             for name in ('mvnw', 'mvnw.cmd'):
                 shutil.copy2(ROOT/name, build_root/name)
             for name in ('database', 'dev-ops/mysql/sql'):

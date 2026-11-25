@@ -8,14 +8,19 @@ import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
 import cn.bugstack.ai.domain.trading.model.valobj.*;
 import cn.bugstack.ai.infrastructure.dao.ITradingDao;
 import cn.bugstack.ai.infrastructure.dao.po.*;
+import cn.bugstack.ai.infrastructure.redis.RedisClients;
+import cn.bugstack.ai.types.common.FailureDiagnostics;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import jakarta.annotation.Resource;
 import java.time.*;
 import java.util.*;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 /** 本地持久化适配器；业务规则由对应领域服务维护。 */
+@Slf4j
 @Repository
 public class OrderRepository implements IOrderRepository {
 
@@ -26,6 +31,9 @@ public class OrderRepository implements IOrderRepository {
 
     @Autowired(required = false)
     private Clock clock;
+
+    @Autowired(required = false)
+    private ObjectProvider<RedisClients> redisClients;
 
     public CheckoutRequestVO begin(String user, String key, String fingerprint) {
         dao.gate(user, key, fingerprint);
@@ -236,5 +244,36 @@ public class OrderRepository implements IOrderRepository {
         );
         require(order.getTotalCent() == p.getTotalCent(), ResponseCode.UN_ERROR);
         return order;
+    }
+
+    @Override
+    public boolean coordinateExpiryScan(Runnable task) {
+        RedisClients redis = redisClients == null ? null : redisClients.getIfAvailable();
+        if (redis == null) {
+            task.run();
+            return true;
+        }
+        var lock = redis.security().getLock(redis.namespace() + ":lock:order-expiry-scan");
+        boolean acquired;
+        try {
+            acquired = lock.tryLock();
+        } catch (RuntimeException error) {
+            log.warn("order_expiry_lock_unavailable diagnostic={}", FailureDiagnostics.describe(error));
+            return false;
+        }
+        if (!acquired) {
+            log.debug("order_expiry_scan_skipped reason=CONTENDED");
+            return false;
+        }
+        try {
+            task.run();
+            return true;
+        } finally {
+            try {
+                if (lock.isHeldByCurrentThread()) lock.unlock();
+            } catch (RuntimeException error) {
+                log.warn("order_expiry_unlock_failed diagnostic={}", FailureDiagnostics.describe(error));
+            }
+        }
     }
 }

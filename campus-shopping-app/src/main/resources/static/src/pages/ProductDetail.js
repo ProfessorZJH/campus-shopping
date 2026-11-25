@@ -12,6 +12,7 @@ export default {
   setup() {
     const scope = requestScope();
     const product = ref(null),
+      shop = ref(null),
       chosen = ref(''),
       count = ref(1),
       busy = ref(false),
@@ -27,7 +28,8 @@ export default {
       () => product.value?.skus?.find((s) => s.skuId === chosen.value) || defaultSku(product.value),
     );
     const merchant = computed(
-      () => store.merchants.find((m) => m.merchantId === product.value?.merchantId) || {},
+      () =>
+        store.merchants.find((m) => m.merchantId === product.value?.merchantId) || shop.value || {},
     );
     const detailImages = computed(() =>
       product.value?.images?.length
@@ -46,6 +48,7 @@ export default {
       const request = scope.begin();
       const target = id.value;
       product.value = null;
+      shop.value = null;
       error.value = '';
       errorCode.value = '';
       loading.value = true;
@@ -55,7 +58,16 @@ export default {
         } else {
           if (!target) throw Error('无效商品地址');
           const p = await api('/products/' + pathId(target), { signal: request.signal });
-          if (request.current()) product.value = p;
+          if (request.current()) {
+            product.value = p;
+            if (p?.merchantId && !store.merchants.some((m) => m.merchantId === p.merchantId)) {
+              api('/merchants/public/' + pathId(p.merchantId), { signal: request.signal })
+                .then((m) => {
+                  if (request.current() && m) shop.value = m;
+                })
+                .catch(() => {});
+            }
+          }
         }
       } catch (e) {
         if (request.current()) {
