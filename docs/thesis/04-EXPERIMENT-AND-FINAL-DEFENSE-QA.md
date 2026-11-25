@@ -8,12 +8,12 @@
 
 仓库已在 `ai-service/evaluation/` 内置了完整的防作弊评测引擎（固定 `PYTHONHASHSEED=20261031`、物理断网沙箱、Scorer v3）。为了让论文第 5 章具备极高说服力，按以下三步完成实验：
 
-### 步骤 1：消除合成查询偏差、修复评测器截断并冻结 Gold 数据集
-1. **当前数据集诚实状态**：现有 `ai-service/evaluation/datasets/campus-shopping-v1/` 处于 `DRAFT` 状态（`0/120` 人工复核），**不能直接作为论文第 5 章正式数据引用**，必须在正式出表前完成以下 3 项整改：
-   - **消除标题词面泄漏**：当前 `generate.py` 生成的查询中普遍直接嵌入完整商品标题及序号（如“无糖乌龙茶校园系列12”），会导致纯字面匹配（BM25 / SQL `LOCATE`）虚高。需挑选约 40～50 条 `fuzzy-use`、`synonym`、`multi-turn` 样本，改写为**不含商品原名但语义明确的真实校园口语**（例如：“期末通宵复习想喝点不长胖的茶饮”、“宿舍桌面看书不刺眼的照明工具”）；
-   - **修正金标逻辑冲突**：校准 `public-knowledge`（`case-071..080`，生产策略对规则问答不推荐商品）、清理无关的邻号 grade-1 文档标注，并为 `attributes-negation` 补齐真实 `forbiddenAttributes` 字段；
-   - **修复评测器截断与隔离策略**：解除 `evaluation/runner.py` 中对 342 个在售 SKU 硬截断到 `[:300]` 的限制（避免丢弃后段金标 SKU），并使内部文档建索引遵循生产默认的 `external_allowed=False` 隔离规则。
-2. **人工复核与冻结**：完成上述校对后，按 [ai-service/evaluation/README.md](../../ai-service/evaluation/README.md) 运行 `python -m evaluation.review_validation` 验证并将数据集状态升级为 `ACCEPTED`。
+### 步骤 1：复核去偏差版 `campus-shopping-v1`（`1.1-draft`）并冻结 Gold 数据集
+1. **已完成的结构去偏差与评测器修复（`1.1-draft` / `draft-v2`）**：
+   - **消除标题词面泄漏与单类目偏差**：`generate.py` 已将 240 个商品分散至 6 个校园真实类目（`stationery`/`beverage`/`dairy`/`snack`/`dormitory`/`sports`）；`fuzzy-use`（10 例）与 `followup`（10 例）已全部改为自然校园口语/真实指代问句且不含商品标题与系列序号，跨 `dev`/`test` 零近重复告警（`nearDuplicateWarnings = []`）；`budget` 同步覆盖“低于/少于/不超过/块钱以内/我的预算是”等中文句式；
+   - **修正金标逻辑冲突**：`public-knowledge`（10 例）已统一为 `KNOWLEDGE_ONLY` 预期动作（不再错误要求推荐商品），`grade-1` 辅助证据改为同政策主题的另一公开门店文档；`attributes-negation`（10 例）已补齐 `forbiddenAttributes: {"pack": "family"}` 并从相关集中移除被禁止规格；
+   - **修复评测器截断与内网隔离**：`evaluation/runner.py` 已移除 `offers_for` 对后段 SKU（`p198..p239`）的 `[:300]` 静默截断，严格按 `visibility == 'PUBLIC'` 隔离内部文档不外发外部嵌入/大模型，并在 `R-RULE`/`R-LLM` 中对多轮追问执行一致的确定性上下文改写。
+2. **正式出表前仍需的人工复核与冻结**：当前数据集仍诚实保持 `status: "DRAFT"`（`0/120` 人工复核）。在生成论文第 5 章正式最终数据表前，请按 [ai-service/evaluation/README.md](../../ai-service/evaluation/README.md) 导出复核包完成人工逐例审阅，运行 `python -m evaluation.review_validation` 通过结构核验后再冻结为 `ACCEPTED`。
 
 ### 步骤 2：运行知识库与商品召回消融实验（一键生成论文三线表数据）
 

@@ -13,7 +13,7 @@ public final class SkuConstraintPolicy {
     private static final Pattern CUE_PREFIX = Pattern.compile("^(" + CUES + ")");
     private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
     private static final Pattern PRICE_CLAUSE = Pattern.compile(
-        "^(?:(?:超过|高于|大于|多于|贵于)\\s*[\\d零〇一二两三四五六七八九十百千万点.]+\\s*(?:元|块钱|块)?(?:的.*)?|(?:太|很|过|偏)?(?:贵|便宜|高价|低价)(?:的.*)?)$"
+        "^(?:(?:超过|高于|大于|多于|贵于)\\s*[\\d零〇一二两三四五六七八九十百千万点.]+\\s*(?:元|块钱|块)?(?:(?:的|买|购买|挑|挑选|找|看|看看|推荐|下单|加购|来).*)?|(?:太|很|过|偏)?(?:贵|便宜|高价|低价)(?:的.*)?)$"
     );
     private static final Pattern SHOPPING_VERB = Pattern.compile("^(?:买|购买|挑|挑选|找|看|看看|推荐|下单|加购|来)+");
     private static final Pattern QTY_PREFIX = Pattern.compile(

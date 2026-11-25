@@ -96,3 +96,34 @@ def test_review_export_never_overwrites_human_annotations(tmp_path, data):
         export(tmp_path / 'new-review.html', data)
     assert annotations.read_text(encoding='utf-8') == 'human work in progress\n'
     assert not (tmp_path / 'new-review.html').exists()
+
+
+def test_debiased_dataset_fixes_title_leakage_negation_and_public_knowledge_gold(data):
+    products = {p["productId"]: p for p in data["products"]}
+    docs = {d["documentId"]: d for d in data["knowledge"]}
+    qrels = {q["caseId"]: q for q in data["qrels"]}
+    assert len({p["categoryCode"] for p in data["products"]}) >= 6
+    assert data["validation"]["nearDuplicateWarnings"] == []
+    for case in data["cases"]:
+        qr = qrels[case["caseId"]]
+        if case["queryType"] == "fuzzy-use":
+            for pid in case["relevantProductIds"]:
+                title = products[pid]["title"]
+                assert title not in case["originalQuery"]
+                assert title.split("校园系列", 1)[0] not in case["originalQuery"]
+        elif case["queryType"] == "followup":
+            assert "校园系列" not in case["originalQuery"]
+        elif case["queryType"] == "attributes-negation":
+            assert case["constraints"]["forbiddenAttributes"] == {"pack": "family"}
+            for sid in qr["sku"]:
+                assert not sid.endswith("-1")
+        elif case["queryType"] == "public-knowledge":
+            assert case["expectedBehavior"]["action"] == "KNOWLEDGE_ONLY"
+            assert qr["product"] == {} and qr["sku"] == {}
+            assert len(qr["document"]) == 2
+            doc_ids = list(qr["document"])
+            # 同一政策主题的两个公开门店文档（编号相差 6），避免无关政策充当 grade-1。
+            nums = sorted(int(did[1:3]) for did in doc_ids)
+            assert nums[1] - nums[0] == 6
+            assert all(docs[did]["visibility"] == "PUBLIC" for did in doc_ids)
+
