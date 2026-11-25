@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { api, resetCsrf, onUnauthorized } from '../src/services/api.js';
+import {
+  api,
+  stream,
+  idempotency,
+  resetCsrf,
+  onUnauthorized,
+  setIdentityGuard,
+} from '../src/services/api.js';
 const response = (data, status = 200, code = '0000') =>
   new Response(JSON.stringify({ data, code }), { status });
 const deferred = () => {
@@ -81,4 +88,94 @@ test('waiting for CSRF cannot change the captured write body', async () => {
   token.resolve(response({ headerName: 'X-CSRF-TOKEN', token: 'test' }));
   await pending;
   assert.deepEqual(JSON.parse(received), { skuId: 'first', quantity: 1 });
+});
+
+test('cross-tab account switch blocks initial mutation before CSRF fetch and blocks silent retry', async () => {
+  resetCsrf();
+  let mismatchUser = null;
+  let writes = 0;
+  let liveActor = 'user-b';
+  setIdentityGuard({
+    currentActor: () => 'user-a',
+    onMismatch: (user) => {
+      mismatchUser = user;
+    },
+  });
+  try {
+    globalThis.fetch = async (url) => {
+      if (url.endsWith('/auth/csrf')) return response({ headerName: 'X-CSRF-TOKEN', token: 't1' });
+      if (url.endsWith('/auth/me')) return response({ userId: liveActor, username: liveActor });
+      writes += 1;
+      return response(null, 403, 'A0005');
+    };
+    // Case 1: cold CSRF cache — actor switch must be rejected before the first mutation leaves the tab.
+    await assert.rejects(api('/orders', { method: 'POST', body: { merchantId: 'm1' } }), {
+      code: 'IDENTITY_CHANGED',
+    });
+    assert.equal(writes, 0);
+    assert.equal(mismatchUser?.userId, 'user-b');
+
+    // Case 2: warm CSRF cache — account switches after CSRF is cached, server rejects with A0005, retry must not execute under user-b.
+    resetCsrf();
+    mismatchUser = null;
+    liveActor = 'user-a';
+    let step = 0;
+    globalThis.fetch = async (url) => {
+      if (url.endsWith('/auth/csrf')) return response({ headerName: 'X-CSRF-TOKEN', token: 't1' });
+      if (url.endsWith('/auth/me')) return response({ userId: liveActor, username: liveActor });
+      writes += 1;
+      step += 1;
+      if (step === 1) {
+        liveActor = 'user-b';
+        return response({ ok: true });
+      }
+      return response(null, 403, 'A0005');
+    };
+    await api('/cart/items', { method: 'POST', body: { skuId: 's1', quantity: 1 } });
+    await assert.rejects(api('/orders', { method: 'POST', body: { merchantId: 'm1' } }), {
+      code: 'IDENTITY_CHANGED',
+    });
+    assert.equal(writes, 2);
+    assert.equal(mismatchUser?.userId, 'user-b');
+  } finally {
+    setIdentityGuard();
+  }
+});
+
+test('idempotency falls back cleanly when crypto.randomUUID is unavailable', () => {
+  const original = crypto.randomUUID;
+  Object.defineProperty(crypto, 'randomUUID', { value: undefined, configurable: true });
+  try {
+    const key = idempotency();
+    assert.match(key, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+  } finally {
+    Object.defineProperty(crypto, 'randomUUID', { value: original, configurable: true });
+  }
+});
+
+test('stream preserves non-CSRF 403 error message and surfaces HTTP 200 JSON rejections', async () => {
+  resetCsrf();
+  globalThis.fetch = async (url) => {
+    if (url.endsWith('/auth/csrf')) return response({ headerName: 'X-CSRF-TOKEN', token: 't1' });
+    return new Response(JSON.stringify({ code: 'A0003', info: '无权限调用' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  await assert.rejects(stream('/ai/chat/stream', { body: { question: 'hi' } }), {
+    code: 'A0003',
+    message: '无权限调用',
+  });
+
+  globalThis.fetch = async (url) => {
+    if (url.endsWith('/auth/csrf')) return response({ headerName: 'X-CSRF-TOKEN', token: 't1' });
+    return new Response(JSON.stringify({ code: '0002', info: '问题不能为空' }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  };
+  await assert.rejects(stream('/ai/chat/stream', { body: { question: '' } }), {
+    code: '0002',
+    message: '问题不能为空',
+  });
 });

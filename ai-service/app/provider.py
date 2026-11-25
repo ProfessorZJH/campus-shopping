@@ -109,10 +109,11 @@ class _ProviderCore:
                         choices=chunk.get('choices')
                         if not isinstance(choices,list) or not choices:continue
                         choice=choices[0];reason=choice.get('finish_reason')
-                        if reason is not None:
+                        if reason not in (None,''):
                             if reason!='stop':raise ValueError('模型流式未正常结束')
                             finish_reason=reason
-                        content=(choice.get('delta') or {}).get('content','')
+                        raw_content=(choice.get('delta') or {}).get('content')
+                        content='' if raw_content is None else raw_content
                         if not isinstance(content,str):raise ValueError('模型流式内容无效')
                         total+=len(content.encode('utf-8'))
                         if total>20000:raise ValueError('模型输出无效或超限')

@@ -3,11 +3,25 @@ import { api, query, stream } from './api.js';
 const conversationPath = (id, suffix) => '/ai/conversations/' + encodeURIComponent(id) + suffix;
 const wait = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
+function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage, knownCount = null) {
   if (!expectedQuestion) return true;
   const lastQuestion = messageHistory.length - 2;
   const tailQuestion = messageHistory[lastQuestion];
   const tailAnswer = messageHistory[messageHistory.length - 1];
+  if (
+    lastQuestion < 0 ||
+    tailQuestion?.role !== 'user' ||
+    tailQuestion.content !== expectedQuestion ||
+    tailAnswer?.role !== 'assistant'
+  ) {
+    return false;
+  }
+  if (typeof knownCount === 'number' && knownCount >= 0) {
+    return messageHistory.length >= knownCount + 2;
+  }
+  if (knownLastMessage?.id && tailAnswer?.id) {
+    return tailAnswer.id !== knownLastMessage.id;
+  }
   let knownLastIndex = -1;
   if (knownLastMessage) {
     for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
@@ -18,13 +32,7 @@ function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
       }
     }
   }
-  return (
-    lastQuestion >= 0 &&
-    tailQuestion?.role === 'user' &&
-    tailQuestion.content === expectedQuestion &&
-    tailAnswer?.role === 'assistant' &&
-    (knownLastIndex < 0 || knownLastIndex < lastQuestion)
-  );
+  return knownLastIndex < 0 || knownLastIndex < lastQuestion;
 }
 
 function failedEventError(payload) {
@@ -51,13 +59,17 @@ export function createGuideConversationTransport({
     return request('/ai/conversations' + query({ page, size }));
   }
 
-  async function loadSnapshot(id, { expectedQuestion = null, knownLastMessage = null } = {}) {
+  async function loadSnapshot(
+    id,
+    { expectedQuestion = null, knownLastMessage = null, knownCount = null } = {},
+  ) {
     const [history, proposals] = await Promise.all([
       request(conversationPath(id, '/messages')),
       request(conversationPath(id, '/proposals')),
     ]);
     const messageHistory = history || [];
-    if (!hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage)) return false;
+    if (!hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage, knownCount))
+      return false;
     return {
       id,
       messages: messageHistory,
@@ -70,6 +82,7 @@ export function createGuideConversationTransport({
     isCurrent = () => true,
     expectedQuestion = null,
     knownLastMessage = null,
+    knownCount = null,
     onCancelRequested,
   }) {
     if (!id) return false;
@@ -91,7 +104,7 @@ export function createGuideConversationTransport({
       }
       if (status?.status === 'IDLE') {
         try {
-          return await loadSnapshot(id, { expectedQuestion, knownLastMessage });
+          return await loadSnapshot(id, { expectedQuestion, knownLastMessage, knownCount });
         } catch (error) {
           if (!['NETWORK', 'TIMEOUT'].includes(error?.code)) return false;
           await sleep(500);

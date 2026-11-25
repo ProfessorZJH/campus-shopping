@@ -44,6 +44,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,6 +58,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
     private static final Logger log = LoggerFactory.getLogger(ShoppingAiCaseImpl.class);
+    private static final Pattern REPLACEMENT_PATTERN = Pattern.compile("换一个|换一款|还有别的|类似的|便宜点|便宜一些|更便宜");
 
     private final KnowledgeEgressPolicy egress;
     private final IConversationService conversations;
@@ -129,7 +131,12 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         List<KnowledgeScopeVO> current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
         List<AiCitationVO> citations = evidenceAssembler.verifyOutput(actor, answer.citations(), current);
-        String preview = answerPreview ? answer.answer() : null;
+        Map<String, String> visibilityByDoc = current
+            .stream()
+            .collect(Collectors.toMap(KnowledgeScopeVO::id, KnowledgeScopeVO::visibility, (first, second) -> first));
+        boolean hasNonPublicCitation = citations.stream().anyMatch(c -> !"PUBLIC".equals(visibilityByDoc.get(c.documentId())));
+        // 内部文档即便临时放行外发，调试预览正文也不得透出未脱敏原文片段，统一改用已脱敏引用摘要。
+        String preview = !answerPreview ? null : hasNonPublicCitation ? ShoppingAnswerPolicy.evidenceAnswer(citations) : answer.answer();
         String warning = answer.warning();
         if (!answerPreview) warning = warning == null || warning.isBlank() ? "未请求回答预览；排名仅用于检索调试，不代表答案正确性。" : warning;
         return new KnowledgeDebugResult(
@@ -167,8 +174,8 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         accounts.requireActive(actor);
         String normalizedQuestion = text(question, "问题", 2000);
         var turn = conversations.beginTurn(actor, conversationId, normalizedQuestion);
-        if (conversationReady != null) conversationReady.accept(turn.conversationId());
         try {
+            if (conversationReady != null) conversationReady.accept(turn.conversationId());
             return answer(actor, turn, normalizedQuestion, progress);
         } catch (RuntimeException failure) {
             try {
@@ -264,7 +271,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             quotes.stream().map(ProposalItemVO::title).toList()
         );
         String safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
-        boolean replacementRequest = question.matches(".*(?:换一个|换一款|还有别的|类似的|便宜点|便宜一些|更便宜).*");
+        boolean replacementRequest = REPLACEMENT_PATTERN.matcher(question).find();
         if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
             safeText = items.isEmpty()
                 ? replacementRequest

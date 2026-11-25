@@ -1,5 +1,5 @@
 import { DEMO_MERCHANTS, DEMO_CATEGORIES, DEMO_PRODUCTS, DEMO_STOCKS } from './demo.js';
-import { api, query, resetCsrf, onUnauthorized } from './api.js';
+import { api, query, resetCsrf, warmCsrf, onUnauthorized, setIdentityGuard } from './api.js';
 const { reactive } = Vue;
 export const preview =
   window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get('demo') === '1';
@@ -64,6 +64,7 @@ export function replaceSession(user) {
   clearTimeout(toastTimer);
   store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
   store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
+  if (user && !preview) warmCsrf();
 }
 onUnauthorized(() => {
   if (
@@ -76,6 +77,15 @@ onUnauthorized(() => {
     store.cartCount
   )
     replaceSession(null);
+});
+setIdentityGuard({
+  currentActor: () => actorId(store.user),
+  onMismatch: (liveUser) => {
+    replaceSession(liveUser || null);
+    notify(
+      liveUser ? '检测到其他标签页已切换账号，请重新确认后再操作' : '登录状态已失效，请重新登录',
+    );
+  },
 });
 export function switchMerchantContext(id) {
   if (id === store.merchantId) return;
@@ -213,6 +223,7 @@ export async function loadMerchant({
     const next =
       options.find((m) => m.merchantId === requested)?.merchantId || options[0]?.merchantId || '';
     store.user = user;
+    if (user) warmCsrf();
     store.workspace = workspace;
     store.categories = categories || [];
     store.merchants = options;
@@ -273,7 +284,10 @@ export async function loadSession() {
     original = actorId(store.user);
   try {
     const user = await api('/auth/me');
-    if (stamp === sessionEpoch && actorId(store.user) === original) store.user = user;
+    if (stamp === sessionEpoch && actorId(store.user) === original) {
+      store.user = user;
+      if (user) warmCsrf();
+    }
   } catch (err) {
     if (err.status !== 401 && err.code !== 'A0004') throw err;
     if (

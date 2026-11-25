@@ -92,3 +92,26 @@ test('disconnect recovery waits through cancellation and loads an idle snapshot'
     '/ai/conversations/conv-1/proposals',
   ]);
 });
+
+test('snapshot validation accepts repeated assistant fallback text when message count advances', async () => {
+  const repeated = '没有找到足够相关且可访问的资料或可售商品，请补充品类、用途或预算。';
+  const transport = createGuideConversationTransport({
+    request: async (path) => {
+      if (path.endsWith('/messages'))
+        return [
+          { role: 'user', content: '第一问' },
+          { role: 'assistant', content: repeated },
+          { role: 'user', content: '第二问' },
+          { role: 'assistant', content: repeated },
+        ];
+      return [];
+    },
+  });
+  const snapshot = await transport.loadSnapshot('conv-2', {
+    expectedQuestion: '第二问',
+    knownLastMessage: { role: 'assistant', content: repeated },
+    knownCount: 2,
+  });
+  assert.equal(snapshot.id, 'conv-2');
+  assert.equal(snapshot.messages.length, 4);
+});

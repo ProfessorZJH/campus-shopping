@@ -1,6 +1,6 @@
 # R1 数据模型与迁移说明
 
-> 当前 MySQL DDL 共有 37 张表。迁移入口使用 `sys_schema_migration`；`sys_schema_version` 仅为历史保留表。2026-10-29 已在隔离 MySQL 8.0.31 验证建库、旧库升级、重复迁移与脏数据拒绝；证据见 [SDD-09 专项审查](../testing/CONTRACT-DATABASE-API-AUDIT-09.md)。
+> 当前 MySQL DDL 共有 44 张表（含 20 份已发布迁移）。迁移入口使用 `sys_schema_migration`；`sys_schema_version` 仅为历史保留表。2026-10-29 已在隔离 MySQL 8.0.31 验证建库、旧库升级、重复迁移与脏数据拒绝；证据见 [SDD-09 专项审查](../testing/CONTRACT-DATABASE-API-AUDIT-09.md)，最新全量 44 表与迁移升级基线见 [全栈隔离验收](../testing/FULL-STACK-ISOLATION-20261121.md)。
 > 权威建表源：[`schema.sql`](../../campus-shopping-app/src/main/resources/schema.sql)。分类初始数据：[`data.sql`](../../campus-shopping-app/src/main/resources/data.sql)。
 
 ## 执行前必须确认
@@ -9,7 +9,7 @@
 
 只针对此前教学版账号/申请表，先备份并核对 SHOW CREATE TABLE，按运行手册应用 [`03_upgrade_teaching_schema.sql`](../dev-ops/mysql/sql/03_upgrade_teaching_schema.sql)，再建其余表与执行 [`04_case_sensitive_keys.sql`](../dev-ops/mysql/sql/04_case_sensitive_keys.sql)。这些脚本不是任意历史数据库的通用迁移工具。
 
-`CREATE TABLE IF NOT EXISTS` 不修复已有不兼容表；严禁把旧完整 P1 草案直接执行到当前库。旧草案已经改名为非 SQL 文本保存，仅供历史追溯。
+`CREATE TABLE IF NOT EXISTS` 不修复已有不兼容表；严禁把旧版历史草案直接执行到当前库。
 
 ## 事务与约束
 
@@ -27,7 +27,7 @@
 
 ## SDD-09 索引与数据完整性（2026-10-29）
 
-补齐会话消息序列、会话提案、知识库文档、SKU 库存、库存流水、本人申请及角色成员统计的查询索引；订单行数量/单价、支付金额、退款金额增加 CHECK。现有 R1 数据库在备份与脏数据前置核查后执行 `V20261029_01__contract_integrity_and_indexes.sql`，详见 [升级说明](migrations/README.md)。`V20261102_01` 统一 SKU 库存余额为一行并补齐已实测列表索引；发现重复库存行时迁移会失败，不自动合并库存。不自动修改历史数据，DDL 可能部分成功后中断，可按定义检查并重跑。
+补齐会话消息序列、会话提案、知识库文档、SKU 库存、库存流水、本人申请及角色成员统计的查询索引；订单行数量/单价、支付金额、退款金额增加 CHECK。现有 R1 数据库在备份与脏数据前置核查后执行 `V20261029_01__contract_integrity_and_indexes.sql`，详见 [升级说明](migrations/README.md)。`V20261105_01__inventory_integrity_and_query_indexes.sql` 统一 SKU 库存余额为一行并补齐已实测列表索引；发现重复库存行时迁移会失败，不自动合并库存。不自动修改历史数据，DDL 可能部分成功后中断，可按定义检查并重跑。
 
 ## 当前表与字段
 

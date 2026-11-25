@@ -16,16 +16,27 @@ def chinese_integer(raw: str) -> int:
     if raw.isdigit():return int(raw)
     digits={'零':0,'〇':0,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9}
     units={'十':10,'百':100,'千':1000}
-    total=section=number=0
+    total=section=number=last_unit=0
+    saw_zero=False
     for char in raw:
-        if char in digits:number=digits[char]
-        elif char=='万':total+=(section+number)*10000;section=number=0
-        else:section+=(number or 1)*units[char];number=0
+        if char in digits:
+            value=digits[char]
+            if value==0:saw_zero=True;number=0
+            else:number=value
+        elif char=='万':
+            total+=(section+number)*10000;section=number=0;last_unit=10000;saw_zero=False
+        else:
+            unit=units[char]
+            section+=(number or 1)*unit;number=0;last_unit=unit;saw_zero=False
+    if number>0 and last_unit>=100 and not saw_zero:
+        number*=last_unit//10
     return total+section+number
 
 NUMBER=r'[\d零〇一二两三四五六七八九十百千万点.]+'
 DIGITS=r'零〇一二两三四五六七八九十百千万'
 SIMPLE=r'一二两三四五六七八九'
+CURRENCY=r'(?:元|块钱|块)'
+QUANTITY_UNIT=r'[个件份瓶盒包本支杯袋斤条双把台张根套箱桶罐卷只副对]'
 # 复合口语数词：二三 十、十二 三、一百二三 等区间；完整数词（如一百零二、二十三点五）不得误判。
 UNCERTAIN=(r'(?:['+DIGITS+r'\d]*[几多来余]|['+DIGITS+r'\d]+\s*[到至~-]\s*['+DIGITS+r'\d]+'
            r'|['+SIMPLE+r']['+SIMPLE+r'][十百千万]|[百千万]['+SIMPLE+r']['+SIMPLE+r']'
@@ -35,11 +46,16 @@ FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一�
 
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
-    patterns=[r'(?:预算|上限)\s*('+NUMBER+r')\s*(?:元|块)?',r'(?:不超过|最多|不到)\s*('+NUMBER+r')\s*(?:元|块)',r'('+NUMBER+r')\s*(?:元|块)\s*(?:以内|以下|左右)']
-    marker=bool(re.search(r'预算|不超过|最多|不到|上限|(?:元|块)\s*(?:以内|以下|左右)|(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*[到至~-]\s*(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*(?:元|块)',question))
-    if marker and re.search(UNCERTAIN+r'(?:元|块)',question):return None,'AMBIGUOUS'
+    patterns=[
+        (r'(?:预算|上限)(?:\s*(?:是|为|在|控制在|大概|大约))?\s*('+NUMBER+r')\s*'+CURRENCY+r'?', False),
+        (r'(?:不要超过|不超过|最多|不到)\s*('+NUMBER+r')\s*'+CURRENCY, False),
+        (r'(?:低于|少于)\s*('+NUMBER+r')\s*'+CURRENCY, True),
+        (r'('+NUMBER+r')\s*'+CURRENCY+r'\s*(?:以内|以下|之内|左右)', False),
+    ]
+    marker=bool(re.search(r'预算|不要超过|不超过|最多|不到|低于|少于|上限|'+CURRENCY+r'\s*(?:以内|以下|之内|左右)|(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*[到至~-]\s*(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*'+CURRENCY,question))
+    if marker and re.search(UNCERTAIN+CURRENCY,question):return None,'AMBIGUOUS'
     amounts=[]
-    for pattern in patterns:
+    for pattern,strict_upper in patterns:
         for raw in re.findall(pattern,question):
             try:
                 if re.fullmatch(r'\d+(?:\.\d{1,2})?',raw):amount=Decimal(raw)
@@ -49,7 +65,10 @@ def budget_intent(question: str) -> tuple[int|None,str]:
                     amount=Decimal(chinese_integer(whole))+Decimal('0.'+digits if digits else '0')
                 else:return None,'INVALID'
                 cents=int(amount*100)
-                if not 0<=cents<=100000000:return None,'INVALID'
+                if strict_upper:
+                    if not 0<cents<=100000000:return None,'INVALID'
+                    cents-=1
+                elif not 0<=cents<=100000000:return None,'INVALID'
                 amounts.append(cents)
             except (InvalidOperation,ValueError):return None,'INVALID'
     if not amounts:return None,'AMBIGUOUS' if marker else 'UNSPECIFIED'
@@ -58,12 +77,12 @@ def budget_intent(question: str) -> tuple[int|None,str]:
 def budget_cent(question: str) -> int|None:
     return budget_intent(question)[0]
 
-QUANTITY_PATTERN=re.compile(r'(?<![\d.零〇一二两三四五六七八九十百千万])(\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)\s*[个件份瓶盒包本支杯袋斤]')
+QUANTITY_PATTERN=re.compile(r'(?<![\d.零〇一二两三四五六七八九十百千万])(\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百千万]+)\s*'+QUANTITY_UNIT+r'(?!装)')
 
 def quantity_intent(question: str) -> tuple[int|None,str]:
     """区分未指定、明确有效、歧义和超限数量，不从完整数词中间截取。"""
     question=re.sub(r'换一个|换一款|还有一个选择','',question)
-    if re.search(UNCERTAIN+r'[个件份瓶盒包本支杯袋斤]',question):return None,'AMBIGUOUS'
+    if re.search(UNCERTAIN+QUANTITY_UNIT+r'(?!装)',question):return None,'AMBIGUOUS'
     matches=QUANTITY_PATTERN.findall(question)
     if not matches:return None,'UNSPECIFIED'
     if len(matches)!=1:return None,'AMBIGUOUS'

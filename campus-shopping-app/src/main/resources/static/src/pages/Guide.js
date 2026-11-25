@@ -33,6 +33,8 @@ export default {
     const loadingHistory = ref(false);
     const openingConversation = ref(false);
     const confirmingProposal = ref(false);
+    const rejectingProposal = ref(false);
+    const proposalBusy = computed(() => confirmingProposal.value || rejectingProposal.value);
     const proposalFeedback = ref('');
     const streamProgress = ref(0);
     const reconnecting = ref(false);
@@ -98,6 +100,10 @@ export default {
         input.value = '';
         thinking.value = false;
         confirmingProposal.value = false;
+        rejectingProposal.value = false;
+        reconnecting.value = false;
+        cancelRequested.value = false;
+        streamProgress.value = 0;
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
@@ -165,7 +171,14 @@ export default {
       return true;
     }
 
-    async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
+    async function recoverAfterDisconnect(
+      stamp,
+      actor,
+      id,
+      expectedQuestion,
+      knownLastMessage,
+      knownCount,
+    ) {
       if (!id || actor !== store.user?.userId) return false;
       reconnecting.value = true;
       try {
@@ -174,8 +187,9 @@ export default {
           isCurrent: () => stamp === conversationEpoch && actor === store.user?.userId,
           expectedQuestion,
           knownLastMessage,
+          knownCount,
           onCancelRequested: () => {
-            cancelRequested.value = true;
+            if (stamp === conversationEpoch) cancelRequested.value = true;
           },
         });
         if (recovered && recovered !== true) applyConversationSnapshot(recovered, id, stamp);
@@ -183,7 +197,7 @@ export default {
           notify('后台仍在生成回答，稍后可重新打开当前会话查看结果');
         return recovered;
       } finally {
-        reconnecting.value = false;
+        if (stamp === conversationEpoch) reconnecting.value = false;
       }
     }
 
@@ -201,12 +215,13 @@ export default {
 
     async function ask(question = input.value) {
       const text = String(question || '').trim();
-      if (!text || thinking.value || openingConversation.value) return;
+      if (!text || thinking.value || openingConversation.value || proposalBusy.value) return;
       if (text.length > 500) {
         notify('问题不能超过500字');
         return;
       }
       const stamp = ++conversationEpoch;
+      const knownCount = messages.value.length;
       const knownLastMessage = messages.value[messages.value.length - 1] || null;
       input.value = '';
       error.value = '';
@@ -256,6 +271,11 @@ export default {
         });
         completed = result.completed;
         cancelled = result.cancelled;
+        if (cancelled && !completed && stamp === conversationEpoch) {
+          messages.value.pop();
+          input.value = text;
+          notify('已停止本次生成');
+        }
       } catch (err) {
         if (err?.name === 'AbortError' && (cancelRequested.value || stamp !== conversationEpoch))
           return;
@@ -266,6 +286,7 @@ export default {
             streamConversationId,
             text,
             knownLastMessage,
+            knownCount,
           );
           if (recovered) return;
         }
@@ -276,7 +297,10 @@ export default {
         }
       } finally {
         if (activeStreamController === controller) activeStreamController = null;
-        if (stamp === conversationEpoch) thinking.value = false;
+        if (stamp === conversationEpoch) {
+          thinking.value = false;
+          cancelRequested.value = false;
+        }
       }
     }
     async function loadHistory(reset = true) {
@@ -301,13 +325,16 @@ export default {
       }
     }
     async function openConversation(c) {
-      if (preview || thinking.value || !c?.id) return;
+      if (preview || thinking.value || proposalBusy.value || !c?.id) return;
       const stamp = ++conversationEpoch;
       openingConversation.value = true;
       try {
         await loadConversationSnapshot(c.id, stamp);
-        proposalFeedback.value = '';
-        historyOpen.value = false;
+        if (stamp === conversationEpoch) {
+          error.value = '';
+          proposalFeedback.value = '';
+          historyOpen.value = false;
+        }
       } catch (e) {
         if (stamp === conversationEpoch) notify(e.message);
       } finally {
@@ -316,7 +343,7 @@ export default {
     }
     /** 新对话只切换前端会话代次；旧请求仍可能在服务端完成，但不得写回当前页面。 */
     function newConversation() {
-      if (confirmingProposal.value) return;
+      if (proposalBusy.value) return;
       stopActiveStream();
       ++conversationEpoch;
       store.conversationId = '';
@@ -328,6 +355,9 @@ export default {
       error.value = '';
       input.value = '';
       thinking.value = false;
+      reconnecting.value = false;
+      cancelRequested.value = false;
+      streamProgress.value = 0;
       openingConversation.value = false;
       historyOpen.value = false;
     }
@@ -376,7 +406,7 @@ export default {
       return stamp === conversationEpoch && actor === store.user?.userId;
     }
     async function confirm() {
-      if (previewGuard() || !proposal.value?.id || thinking.value) return;
+      if (previewGuard() || !proposal.value?.id || thinking.value || proposalBusy.value) return;
       const stamp = conversationEpoch,
         actor = store.user?.userId,
         proposalId = proposal.value.id,
@@ -386,7 +416,6 @@ export default {
         return;
       }
       proposalFeedback.value = '';
-      thinking.value = true;
       confirmingProposal.value = true;
       try {
         const updated = await api('/ai/proposals/' + encodeURIComponent(proposalId) + '/confirm', {
@@ -404,19 +433,16 @@ export default {
           notify(proposalFeedback.value);
         }
       } finally {
-        if (currentProposal(stamp, actor, proposalId)) {
-          thinking.value = false;
-          confirmingProposal.value = false;
-        }
+        if (currentProposal(stamp, actor, proposalId)) confirmingProposal.value = false;
       }
     }
     async function reject() {
-      if (previewGuard() || !proposal.value?.id || thinking.value) return;
+      if (previewGuard() || !proposal.value?.id || thinking.value || proposalBusy.value) return;
       const stamp = conversationEpoch,
         actor = store.user?.userId,
         proposalId = proposal.value.id;
       proposalFeedback.value = '';
-      thinking.value = true;
+      rejectingProposal.value = true;
       try {
         await api('/ai/proposals/' + encodeURIComponent(proposalId) + '/reject', {
           method: 'POST',
@@ -431,7 +457,7 @@ export default {
           notify(proposalFeedback.value);
         }
       } finally {
-        if (currentRequest(stamp, actor)) thinking.value = false;
+        if (currentRequest(stamp, actor)) rejectingProposal.value = false;
       }
     }
     return {
@@ -463,6 +489,8 @@ export default {
       loadingHistory,
       openingConversation,
       confirmingProposal,
+      rejectingProposal,
+      proposalBusy,
       proposalFeedback,
       streamProgress,
       reconnecting,
@@ -479,11 +507,11 @@ export default {
         <div class="ai-hero-text"><h1><span>AI</span> 导购助手</h1><p>说出预算、口味或场景，挑好后由你确认加购</p></div>
         <img src="./images/robot.webp" alt="AI 导购助手" class="ai-hero-robot"/>
       </section>
-      <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="confirmingProposal" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
-      <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
+      <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
+      <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
       <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :error="error"/>
-      <GuideRecommendations v-if="showProposal" :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
+      <GuideRecommendations v-if="showProposal" :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :rejecting="rejectingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
       <div class="chat-composer-placeholder" aria-hidden="true"></div>
-      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation" aria-label="输入问题" maxlength="500" placeholder="例如：30元内适合复习吃的零食…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||!input.trim()" aria-label="发送问题"><Icon name="send" :size="19"/></button></form>
+      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：30元内适合复习吃的零食…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="19"/></button></form>
     </ConsumerShell>`,
 };

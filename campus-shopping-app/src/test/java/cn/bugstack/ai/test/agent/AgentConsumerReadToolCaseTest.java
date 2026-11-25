@@ -84,6 +84,60 @@ class AgentConsumerReadToolCaseTest {
     }
 
     @Test
+    void knowledgeQaExcludesInternalDocumentsFromConsumerScope() {
+        IUserAccountService accounts = mock(IUserAccountService.class);
+        IKnowledgeCase knowledge = mock(IKnowledgeCase.class);
+        IAiEnginePort engine = mock(IAiEnginePort.class);
+        IOrderQueryCase orders = mock(IOrderQueryCase.class);
+        KnowledgeScopeVO publicScope = new KnowledgeScopeVO("doc-pub", "校园 FAQ", "PUBLIC", "base-pub", null);
+        KnowledgeScopeVO internalScope = new KnowledgeScopeVO("doc-int", "商户内部手册", "MERCHANT_INTERNAL", "base-int", "m1");
+        KnowledgeDocumentVO publicDoc = new KnowledgeDocumentVO(
+            "doc-pub",
+            "root-1",
+            "base-pub",
+            "校园 FAQ",
+            null,
+            "PUBLIC",
+            1,
+            "PUBLISHED",
+            "READY",
+            "公开退货说明",
+            null,
+            NOW
+        );
+        when(knowledge.readableScope("dual-role")).thenReturn(List.of(publicScope, internalScope), List.of(publicScope, internalScope));
+        when(engine.recall("退货规则", List.of())).thenReturn(new AiRecallVO("退货规则", List.of("退货")));
+        when(engine.query(any())).thenAnswer(invocation -> {
+            var q = invocation.getArgument(0, cn.bugstack.ai.domain.shoppingai.model.entity.AiQueryEntity.class);
+            assertEquals(List.of("doc-pub"), q.allowedDocumentIds());
+            assertEquals(List.of("doc-pub"), q.externalDocumentIds());
+            return new AiAnswerVO(
+                "公开退货说明",
+                "LOCAL_RETRIEVAL_DEMO",
+                "LOCAL",
+                "退货规则",
+                null,
+                List.of(new AiCitationVO("doc-pub", "chunk-1", "校园 FAQ", "公开退货说明", 0.9)),
+                List.of(),
+                5
+            );
+        });
+        when(knowledge.citationDocuments("dual-role", List.of("doc-pub"))).thenReturn(List.of(publicDoc));
+
+        AgentConsumerReadToolCaseImpl read = new AgentConsumerReadToolCaseImpl(
+            accounts,
+            knowledge,
+            engine,
+            new KnowledgeEgressPolicy("base-int", "m1"),
+            orders
+        );
+        var result = read.knowledgeQa("dual-role", new AgentKnowledgeQaRequestVO("退货规则"));
+        assertEquals("公开退货说明", result.answer());
+        assertEquals(1, result.citations().size());
+        assertEquals("doc-pub", result.citations().get(0).documentId());
+    }
+
+    @Test
     void knowledgeQaFailsWhenScopeChangesDuringModelCall() {
         IUserAccountService accounts = mock(IUserAccountService.class);
         IKnowledgeCase knowledge = mock(IKnowledgeCase.class);

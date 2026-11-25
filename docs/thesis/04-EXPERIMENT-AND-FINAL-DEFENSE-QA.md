@@ -63,7 +63,7 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profi
 
 3. **第 4～6 分钟 · 商户自定义 RBAC 与售后争议平台裁决**
    - 展示商户工作台 `/#/merchant/roles` 15 项细粒度权限勾选与 `/#/merchant/inventory` 低可售库存预警及流水追踪。
-   - 快速演示一笔未提货订单：**消费者申请退款 → 商户驳回 → 消费者申诉 → 切换平台管理员（`/#/admin/aftersales`）裁决通过退款并自动释放预占库存**，体现三方权责闭环。
+   - 快速演示一笔未提货订单：**消费者申请退款 → 商户驳回 → 消费者申诉 → 切换平台管理员（`/#/admin/disputes`）裁决通过退款并自动释放预占库存**，体现三方权责闭环。
 
 4. **第 6～8 分钟 · 平台知识库调试台与工程门禁收尾**
    - 打开 `/#/admin/knowledge/debug`（RAG 检索调试台），输入售后/自提规则问题，展示各分块的 RRF 分数、版本号与命中排名，直观证明检索引擎是**白盒可解释、权限受控**的，而非黑盒调包。
@@ -91,7 +91,7 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split smoke --profi
    - **答**：全链路（MySQL 表字段 `BIGINT`、Java `long priceCent`、JSON DTO、Python 预算校验）统一使用**以“分”为单位的 64 位整数**。IEEE 754 浮点数（`double`/`float`）存在二进制精度丢失（如 `0.1 + 0.2 != 0.3`），而整数分运算在加减乘及总价核对时绝对精确、性能最高，仅在前端视图层格式化为 `¥xx.xx` 展示。
 
 7. **问：如果用户在 AI 推荐出“10 元特价商品”后过了 5 分钟才点确认加购，这 5 分钟内商家把价格改成了 15 元，系统怎么处理？**
-   - **答**：提案生成时在 `ai_proposal` 中快照了当时的 `priceCent=1000` 和 SKU 的乐观锁版本号 `quoteVersion`。5 分钟后用户点击确认时，`ProposalConfirmationCaseImpl` 在同一数据库事务中 `SELECT ... FOR UPDATE` 锁定当前 SKU，比对 `o.priceCent() == item.priceCent() && o.version() == item.quoteVersion()`。发现版本或价格已变，立即抛出 `C0002（商品价格已变动）` 回滚事务，前端保留用户勾选状态并提示刷新最新报价，绝不按过期价格成交，也绝不悄悄按涨价后的价格强买。
+   - **答**：提案生成时在 `ai_proposal` 中快照了当时的 `priceCent=1000` 和商品聚合版本号 `quoteVersion`（源自 `cat_product.version`）。5 分钟后用户点击确认时，`ProposalConfirmationCaseImpl` 在同一数据库事务中按确定性锁序锁定当前商品与 SKU，比对 `o.priceCent() == item.priceCent() && o.version() == item.quoteVersion()`。发现版本或价格已变，立即抛出 `C0002（商品价格已变动）` 回滚事务，前端保留用户勾选状态并提示刷新最新报价，绝不按过期价格成交，也绝不悄悄按涨价后的价格强买。
 
 8. **问：自提核销码是怎么存储和防伪造的？**
    - **答**：数据库 `ful_pickup_task` 表中**不存储明文自提码**，只存储高熵随机令牌的 **SHA-256 哈希摘要**及过期时间。买家每次重新签发自提码都会原子覆盖旧哈希使旧截图立即作废；店员核销时需同时具备当前商户的 `pickup.verify` 权限、订单无挂起退款单，且提交令牌哈希匹配，核销成功后立即清空有效状态防止二次提货。

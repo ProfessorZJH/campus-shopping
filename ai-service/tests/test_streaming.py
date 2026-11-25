@@ -134,3 +134,45 @@ def test_query_stream_propagates_request_id_to_worker_thread(tmp_path, monkeypat
         response = client.post('/v1/query/stream', json={'question': '测试', 'allowedDocumentIds': [], 'offers': []})
     assert response.status_code == 200
     assert captured == [supplied]
+
+
+def test_provider_stream_parser_accepts_null_content_and_empty_finish_reason(monkeypatch):
+    class Response:
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def raise_for_status(self): return None
+        def iter_lines(self):
+            yield 'data: {"choices":[{"delta":{"role":"assistant","content":null},"finish_reason":""}]}'
+            yield 'data: {"choices":[{"delta":{"content":"{\\"answer\\":\\"完成\\""},"finish_reason":""}]}'
+            yield 'data: {"choices":[{"delta":{"content":"}"},"finish_reason":"stop"}]}'
+            yield 'data: [DONE]'
+
+    class Client:
+        def __init__(self, **_): pass
+        def __enter__(self): return self
+        def __exit__(self, *_): return False
+        def stream(self, *_, **__): return Response()
+
+    monkeypatch.setattr('app.retrieval.httpx.Client', Client)
+    settings = Settings(api_key=KEY, db_path='var/stream-null-delta.db', llm_url='http://localhost:9999', llm_key='configured', llm_model='model')
+    provider = Provider(settings)
+    assert ''.join(provider.stream_complete('system', {'question': '测试'})) == '{"answer":"完成"}'
+
+
+def test_query_stream_drops_advisory_progress_on_backpressure_and_forwards_answer_preview(tmp_path, monkeypatch):
+    app = main.create_app(Settings(api_key=KEY, db_path=str(tmp_path / 'stream-backpressure.db'), llm_url='http://localhost:9999', llm_key='configured', llm_model='model'))
+    observed = {}
+
+    def burst_answer(*args, **kwargs):
+        observed['answer_preview'] = kwargs.get('answer_preview')
+        progress = kwargs.get('_stream_progress')
+        cancelled_flags = [progress(16) for _ in range(80)] if progress else []
+        observed['any_cancelled'] = any(cancelled_flags)
+        return {'answer': '完成', 'mode': 'LOCAL_RETRIEVAL_DEMO', 'recommendations': [], 'citations': []}
+
+    monkeypatch.setattr(main, 'answer', burst_answer)
+    with TestClient(app, headers={'X-Service-Key': KEY}) as client:
+        response = client.post('/v1/query/stream', json={'question': '测试', 'allowedDocumentIds': [], 'offers': [], 'answerPreview': False})
+    assert response.status_code == 200
+    assert 'event: completed' in response.text
+    assert observed == {'answer_preview': False, 'any_cancelled': False}

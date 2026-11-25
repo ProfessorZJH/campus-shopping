@@ -20,9 +20,11 @@ export default {
       errorCode = ref(''),
       imageIndex = ref(0),
       touchStartX = ref(null);
+    const defaultSku = (p) =>
+      p?.skus?.find((s) => s.status === 'ACTIVE' && Number(s.available || 0) > 0) || skuOf(p);
     const id = computed(() => safeDecodeId(store.route.split('/')[2] || ''));
     const sku = computed(
-      () => product.value?.skus?.find((s) => s.skuId === chosen.value) || skuOf(product.value),
+      () => product.value?.skus?.find((s) => s.skuId === chosen.value) || defaultSku(product.value),
     );
     const merchant = computed(
       () => store.merchants.find((m) => m.merchantId === product.value?.merchantId) || {},
@@ -64,7 +66,7 @@ export default {
         if (request.current()) loading.value = false;
       }
       if (!request.current()) return;
-      chosen.value = skuOf(product.value).skuId || '';
+      chosen.value = defaultSku(product.value).skuId || '';
       imageIndex.value = 0;
       count.value = 1;
     }

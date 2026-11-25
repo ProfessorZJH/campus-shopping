@@ -100,18 +100,20 @@ export default {
       if (preview) return;
       if (hasActiveSearch.value) {
         if (!store.categories.length || !store.merchants.length) {
+          const request = initialScope.begin();
           await Promise.all([
-            api('/categories')
+            api('/categories', { signal: request.signal })
               .then((c) => {
-                store.categories = c || [];
+                if (request.current()) store.categories = c || [];
               })
               .catch(() => {}),
-            api('/merchants')
+            api('/merchants/public', { signal: request.signal })
               .then((m) => {
-                store.merchants = m || [];
+                if (request.current()) store.merchants = m || [];
               })
               .catch(() => {}),
           ]);
+          if (!request.current()) return;
         }
         return loadSearch();
       }

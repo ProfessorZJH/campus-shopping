@@ -28,5 +28,20 @@
   {"question":"预算二三十元","history":[],"budgetCent":null,"quantity":null,"clarify":true},
   {"question":"预算十二三元","history":[],"budgetCent":null,"quantity":null,"clarify":true},
   {"question":"买二十三瓶水","history":[],"budgetCent":null,"quantity":23,"clarify":false},
-  {"question":"预算二十三元","history":[],"budgetCent":2300,"quantity":null,"clarify":false}
+  {"question":"预算二十三元","history":[],"budgetCent":2300,"quantity":null,"clarify":false},
+  {"question":"预算一百五","history":[],"budgetCent":15000,"quantity":null,"clarify":false},
+  {"question":"预算两百五元","history":[],"budgetCent":25000,"quantity":null,"clarify":false},
+  {"question":"预算一千五元","history":[],"budgetCent":150000,"quantity":null,"clarify":false},
+  {"question":"预算一百零五元","history":[],"budgetCent":10500,"quantity":null,"clarify":false},
+  {"question":"我的预算是50元","history":[],"budgetCent":5000,"quantity":null,"clarify":false},
+  {"question":"预算为50元","history":[],"budgetCent":5000,"quantity":null,"clarify":false},
+  {"question":"50块钱以内","history":[],"budgetCent":5000,"quantity":null,"clarify":false},
+  {"question":"不要超过50元","history":[],"budgetCent":5000,"quantity":null,"clarify":false},
+  {"question":"低于50元","history":[],"budgetCent":4999,"quantity":null,"clarify":false},
+  {"question":"少于50元","history":[],"budgetCent":4999,"quantity":null,"clarify":false},
+  {"question":"低于0元","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"买12支装中性笔","history":[],"budgetCent":null,"quantity":null,"clarify":false},
+  {"question":"买一个12支装中性笔","history":[],"budgetCent":null,"quantity":1,"clarify":false},
+  {"question":"买2条毛巾","history":[],"budgetCent":null,"quantity":2,"clarify":false},
+  {"question":"买3双袜子","history":[],"budgetCent":null,"quantity":3,"clarify":false}
 ]
