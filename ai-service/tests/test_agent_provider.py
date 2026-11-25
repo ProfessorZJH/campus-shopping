@@ -237,3 +237,36 @@ def test_runtime_llm_updates_readiness_dependency_state(tmp_path, monkeypatch):
     finally:
         app.state.store.close()
 
+
+def test_pii_redaction_covers_formatted_phones_landlines_and_tool_call_arguments():
+    from app.agent_provider import _sanitize_messages
+    from app.egress import minimized
+
+    sample = "联系 +86 138-1234-5678 或 139 8765 4321 或座机 010-88881234，邮箱 test@campus.edu.cn，订单 2026-11-25 规格 0.5mm"
+    redacted = minimized(sample, "question")
+    assert "138-1234-5678" not in redacted
+    assert "139 8765 4321" not in redacted
+    assert "010-88881234" not in redacted
+    assert "test@campus.edu.cn" not in redacted
+    assert "2026-11-25" in redacted
+    assert "0.5mm" in redacted
+
+    msgs = [
+        {
+            "role": "assistant",
+            "content": "致电 0571-88881234",
+            "tool_calls": [
+                {
+                    "id": "call-1",
+                    "type": "function",
+                    "function": {"name": "search_products", "arguments": '{"query": "电话 +8613812345678"}'},
+                }
+            ],
+        }
+    ]
+    cleaned = _sanitize_messages(msgs)
+    assert "0571-88881234" not in cleaned[0]["content"]
+    assert "13812345678" not in cleaned[0]["tool_calls"][0]["function"]["arguments"]
+    assert "[已脱敏]" in cleaned[0]["tool_calls"][0]["function"]["arguments"]
+
+

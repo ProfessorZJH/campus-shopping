@@ -1,8 +1,11 @@
 server:
   address: 0.0.0.0
-  # 来源地址必须是实际连接对端；边缘代理负责清洗客户端转发头。
-  forward-headers-strategy: none
+  # 默认不信任任意客户端转发头；仅在受控边缘代理清洗转发头后通过 FORWARD_HEADERS_STRATEGY=framework 显式开启。
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
+  shutdown: graceful
 spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}

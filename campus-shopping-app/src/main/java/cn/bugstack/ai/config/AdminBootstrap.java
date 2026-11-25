@@ -32,13 +32,23 @@ public class AdminBootstrap implements ApplicationRunner {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void run(ApplicationArguments args) {
-        if (password == null || password.length() < 16) throw new IllegalStateException("管理员初始化密码至少 16 位，必须通过环境变量设置");
         String userId;
         try {
             userId = accounts.findUserId(username);
+            // 管理员已初始化且仍具备平台管理员角色时直接幂等放行，允许部署后轮换密码而不阻断重启。
+            if (access.isAdmin(userId)) {
+                return;
+            }
+            if (password == null || password.length() < 16) {
+                throw new IllegalStateException("管理员初始化密码至少 16 位，必须通过环境变量设置");
+            }
+            // 同名普通账号须凭初始化密码核验身份，禁止静默提权已有非管理员用户。
             accounts.authenticate(username, password);
         } catch (AppException e) {
             if (!ResponseCode.NOT_FOUND.getCode().equals(e.getCode())) throw e;
+            if (password == null || password.length() < 16) {
+                throw new IllegalStateException("管理员初始化密码至少 16 位，必须通过环境变量设置");
+            }
             userId = accounts.register(username, password, "平台管理员").getUserId();
         }
         if (!access.isAdmin(userId)) {

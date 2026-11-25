@@ -36,4 +36,10 @@ public interface IOrderRepository {
     void refund(String order, long amount);
     TradingStatsVO statistics(String merchant);
     OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
+
+    /** 多实例下协调逾期关单扫描，避免同批行锁争抢；无分布式锁时直接执行。 */
+    default boolean coordinateExpiryScan(Runnable task) {
+        task.run();
+        return true;
+    }
 }

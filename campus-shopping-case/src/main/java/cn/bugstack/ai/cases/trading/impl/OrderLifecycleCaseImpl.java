@@ -28,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
 
+    private static final int MAX_APPEAL_ROUNDS = 3;
+
     private final IOrderService trading;
     private final IOrderEventService events;
     private final IAfterSaleService afterSales;
@@ -165,6 +167,14 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
         AfterSaleVO before = afterSales.afterSaleForUpdate(id);
+        if (before != null && before.state() != AfterSaleStatusEnumVO.DISPUTED) {
+            long disputeRounds = events
+                .events(id)
+                .stream()
+                .filter(e -> "REFUND_DISPUTED".equals(e.type()))
+                .count();
+            require(disputeRounds < MAX_APPEAL_ROUNDS, ResponseCode.REFUND_STATE_INVALID);
+        }
         AfterSaleVO result = afterSales.appeal(o, buyer);
         if (before == null || before.state() != AfterSaleStatusEnumVO.DISPUTED) {
             events.record(id, result.id(), "REFUND_DISPUTED", buyer, "BUYER", "");

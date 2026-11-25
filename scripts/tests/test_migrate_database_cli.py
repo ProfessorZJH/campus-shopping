@@ -79,6 +79,15 @@ class MigrateDatabaseCliTest(unittest.TestCase):
         )
         connection.close.assert_called_once_with()
 
+    def test_ssl_options_build_tls_context_when_requested(self):
+        self.assertIsNone(migrate_database.build_ssl_context("", False, False))
+        ctx_cert = migrate_database.build_ssl_context("", True, False)
+        self.assertIsNotNone(ctx_cert)
+        self.assertFalse(ctx_cert.check_hostname)
+        ctx_identity = migrate_database.build_ssl_context("", False, True)
+        self.assertIsNotNone(ctx_identity)
+        self.assertTrue(ctx_identity.check_hostname)
+
 
 if __name__ == "__main__":
     unittest.main()

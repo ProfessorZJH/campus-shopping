@@ -7,6 +7,7 @@ import cn.bugstack.ai.domain.trading.model.aggregate.AfterSaleAggregate;
 import cn.bugstack.ai.domain.trading.model.aggregate.OrderAggregate;
 import cn.bugstack.ai.domain.trading.model.entity.OrderItemEntity;
 import cn.bugstack.ai.domain.trading.model.valobj.*;
+import cn.bugstack.ai.domain.trading.service.IOrderExpiryCoordinator;
 import cn.bugstack.ai.domain.trading.service.IOrderQueryService;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -17,7 +18,7 @@ import org.springframework.transaction.annotation.*;
 
 /** Order 领域能力；跨领域事务由 Case 编排。 */
 @Service
-public class OrderServiceImpl implements IOrderService, IOrderQueryService {
+public class OrderServiceImpl implements IOrderService, IOrderQueryService, IOrderExpiryCoordinator {
 
     private final IOrderRepository repository;
     private final Clock clock;
@@ -156,6 +157,11 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     public Instant oldestExpired() {
         return repository.oldestExpired(clock.instant());
+    }
+
+    @Override
+    public boolean coordinateExpiryScan(Runnable task) {
+        return repository.coordinateExpiryScan(task);
     }
 
     public TradingStatsVO statistics(String merchant) {
