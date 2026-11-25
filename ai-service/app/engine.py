@@ -167,6 +167,14 @@ def knowledge_question(question: str) -> bool:
                 and re.search(r'怎么|如何|怎样|流程|规则|政策|说明|须知|多久|什么时候|哪里|能否|是否|能不能', question))
 
 
+def has_service_inquiry(question: str) -> bool:
+    """混合提问（边挑商品边问自提时间/地点/售后）时允许同时附带已授权公开知识摘要。"""
+    return bool(
+        re.search(r'退款|退货|售后|自提|取货|营业|配送|支付|付款|发票|保修|使用|备货|到货', question)
+        and re.search(r'几点|时间|怎么|如何|怎样|流程|规则|政策|说明|须知|多久|什么时候|哪里|在哪|地址|位置|能否|是否|能不能', question)
+    )
+
+
 def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[dict],history: list[dict],retrieval_query: str="",semantic_sku_ids: list[str]|None=None,*,_trace: dict|None=None,external_document_ids: list[str]|None=None,_stream_progress=None,answer_preview: bool=True) -> dict:
     started=time.perf_counter();query=retrieval_query or query_rewrite(question,history,store)
     egress=set(external_document_ids or [])
@@ -245,9 +253,9 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     if not text:
         parts=[]
         visible=[c for c in evidence if c['documentId'] in egress]
-        if visible and not offers and not specs.active:
+        if visible and (not offers or has_service_inquiry(question)) and not specs.active:
             parts.append('根据当前允许访问的知识资料：')
-            for c in visible[:3]:parts.append('《'+c['title']+'》：'+c['snippet'][:180])
+            for c in visible[:(3 if not offers else 2)]:parts.append('《'+c['title']+'》：'+c['snippet'][:180])
         if recommendations:
             lookup={o['skuId']:o for o in candidates}
             parts.append('可查看以下商品：'+ '；'.join(lookup[r['skuId']]['title']+'（'+lookup[r['skuId']]['specKey']+'）×'+str(r['quantity']) for r in recommendations))

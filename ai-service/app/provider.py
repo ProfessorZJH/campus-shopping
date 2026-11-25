@@ -74,12 +74,7 @@ class _ProviderCore:
             result=_bounded_json(client,'POST',s.llm_url+'/chat/completions',limit=262_144,headers={'Authorization':'Bearer '+s.llm_key},json=data)
             content=result['choices'][0]['message']['content']
             if not isinstance(content,str) or len(content)>20000:raise ValueError('模型输出无效或超限')
-            content=content.strip()
-            if content.startswith('```'):
-                content=re.sub(r'^```(?:json)?\s*|\s*```$', '', content).strip()
-            result=json.loads(content)
-            if not isinstance(result,dict):raise ValueError('模型应返回 JSON 对象')
-            return result
+            return self.parse_json_content(content)
 
     def stream_complete(self,system: str,payload: dict[str,Any]):
         """读取 OpenAI 兼容供应商的真实 SSE 分块；调用方负责消费到结束或主动关闭。"""
@@ -131,8 +126,23 @@ class _ProviderCore:
     @staticmethod
     def parse_json_content(content: str) -> dict[str,Any]:
         content=content.strip()
-        if content.startswith('```'):content=re.sub(r'^```(?:json)?\s*|\s*```$', '', content).strip()
-        result=json.loads(content)
+        if content.startswith('```'):
+            content=re.sub(r'^```(?:json)?\s*|\s*```$', '', content).strip()
+        try:
+            result=json.loads(content)
+        except json.JSONDecodeError:
+            fenced=re.search(r'```(?:json)?\s*(\{.*?\})\s*```', content, re.DOTALL)
+            if fenced:
+                result=json.loads(fenced.group(1))
+            else:
+                start=content.find('{')
+                if start<0:
+                    raise
+                decoder=json.JSONDecoder()
+                result, end=decoder.raw_decode(content, start)
+                trailing=content[end:].strip()
+                if trailing and ('{' in trailing or '}' in trailing):
+                    raise ValueError('模型返回多个或残缺 JSON 对象')
         if not isinstance(result,dict):raise ValueError('模型应返回 JSON 对象')
         return result
 
