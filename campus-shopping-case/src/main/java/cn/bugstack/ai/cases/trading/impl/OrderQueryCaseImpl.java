@@ -30,6 +30,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class OrderQueryCaseImpl implements IOrderQueryCase {
 
+    private static final Duration PLATFORM_ORDER_WINDOW = Duration.ofDays(365);
+
     private final IOrderQueryService orders;
     private final IAfterSaleQueryService afterSales;
     private final IFulfillmentService fulfillment;
@@ -74,7 +76,8 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
 
     public OrderPage platform(String actor, String state, int page, int size, String q) {
         access.requireAdmin(actor);
-        return page(null, null, state, page, size, q);
+        Instant since = Instant.now().minus(PLATFORM_ORDER_WINDOW);
+        return new OrderPage(views(orders.orders(null, null, state, page, size, q, since)), orders.countOrders(null, null, state, q, since));
     }
 
     private OrderPage page(String buyer, String merchant, String state, int page, int size, String q) {

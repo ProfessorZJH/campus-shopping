@@ -381,6 +381,28 @@ def test_knowledge_index_downgrade_cleans_stale_qdrant_and_blocks_delete_race(tm
         with pytest.raises(ValueError,match='已删除|已被删除'):
             store.index('doc-race','竞态','在索引期间被删除后不得复活本地文档',version=1,external_allowed=True)
         assert store.db.execute('SELECT COUNT(*) FROM docs WHERE id=?',('doc-race',)).fetchone()[0]==0
+
+        # Active delete in progress must block an overlapping index started mid-delete.
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        entered,release=threading.Event(),threading.Event()
+        store.index('doc-overlap','重叠','验证删除进行中启动索引被拒绝',version=1,external_allowed=False)
+        def slow_qdrant(method,path,body=None):
+            if method=='POST' and path.endswith('/points/delete?wait=true'):
+                entered.set()
+                assert release.wait(5)
+            return {'status':'ok'}
+        monkeypatch.setattr(store,'_qdrant',slow_qdrant)
+        with ThreadPoolExecutor(1) as pool:
+            fut=pool.submit(store.delete,'doc-overlap')
+            try:
+                assert entered.wait(3)
+                with pytest.raises(ValueError,match='正在删除'):
+                    store.index('doc-overlap','重叠','验证删除进行中启动索引被拒绝',version=1,external_allowed=False)
+            finally:
+                release.set()
+            fut.result(timeout=5)
+        assert store.db.execute('SELECT COUNT(*) FROM docs WHERE id=?',('doc-overlap',)).fetchone()[0]==0
     finally:
         store.close()
 

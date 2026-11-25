@@ -79,7 +79,13 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q) {
-        var rows = dao.orders(buyer, merchant, status, querySince(buyer, merchant), offset, size, q);
+        return orders(buyer, merchant, status, offset, size, q, null);
+    }
+
+    @Override
+    public List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q, Instant since) {
+        Instant effectiveSince = since != null ? since : querySince(buyer, merchant);
+        var rows = dao.orders(buyer, merchant, status, effectiveSince, offset, size, q);
         if (rows.isEmpty()) return List.of();
         var items = dao
             .itemsByOrders(rows.stream().map(OrderPO::getId).toList())
@@ -96,7 +102,13 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public long countOrders(String buyer, String merchant, String status, String q) {
-        return dao.countOrders(buyer, merchant, status, querySince(buyer, merchant), q);
+        return countOrders(buyer, merchant, status, q, null);
+    }
+
+    @Override
+    public long countOrders(String buyer, String merchant, String status, String q, Instant since) {
+        Instant effectiveSince = since != null ? since : querySince(buyer, merchant);
+        return dao.countOrders(buyer, merchant, status, effectiveSince, q);
     }
 
     private Instant querySince(String buyer, String merchant) {

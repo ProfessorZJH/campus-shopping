@@ -200,4 +200,26 @@ class OrderBatchQueryTest {
         verify(dao).countOrders(null, null, "", expectedWindowStart, "");
         verify(dao).countOrders(null, "m", "", Instant.EPOCH, "");
     }
+
+    @Test
+    void platformPageReusesSingleCutoffInstantForRowsAndCount() {
+        var orders = mock(IOrderQueryService.class);
+        var refunds = mock(IAfterSaleQueryService.class);
+        var pickup = mock(IFulfillmentService.class);
+        var events = mock(IOrderEventService.class);
+        var merchants = mock(IMerchantService.class);
+        var access = mock(IAccessService.class);
+        var accounts = mock(IUserAccountService.class);
+        var useCase = new OrderQueryCaseImpl(orders, refunds, pickup, events, merchants, access, accounts);
+        when(orders.orders(isNull(), isNull(), eq("PAID"), eq(1), eq(20), eq(""), any(Instant.class))).thenReturn(List.of());
+        when(orders.countOrders(isNull(), isNull(), eq("PAID"), eq(""), any(Instant.class))).thenReturn(0L);
+
+        useCase.platform("admin", "PAID", 1, 20, "");
+
+        var listCutoff = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        var countCutoff = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        verify(orders).orders(isNull(), isNull(), eq("PAID"), eq(1), eq(20), eq(""), listCutoff.capture());
+        verify(orders).countOrders(isNull(), isNull(), eq("PAID"), eq(""), countCutoff.capture());
+        assertEquals(listCutoff.getValue(), countCutoff.getValue());
+    }
 }
