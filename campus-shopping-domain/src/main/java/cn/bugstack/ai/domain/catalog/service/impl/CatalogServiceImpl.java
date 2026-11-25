@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 售价、规格与发布规则，不越过仓储直接访问数据表。
@@ -314,13 +316,13 @@ public class CatalogServiceImpl implements ICatalogService {
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.MANDATORY)
     public List<SkuOfferVO> saleOffersForUpdate(List<String> ids) {
         return loadOffers(ids, true, true);
     }
 
     @Override
-    @org.springframework.transaction.annotation.Transactional(propagation = org.springframework.transaction.annotation.Propagation.MANDATORY)
+    @Transactional(propagation = Propagation.MANDATORY)
     public List<SkuOfferVO> offersForUpdate(List<String> ids) {
         return loadOffers(ids, false, true);
     }

@@ -19,7 +19,7 @@ npm run dev --prefix frontend          # 开发服务器，默认 127.0.0.1:5173
 npm run typecheck --prefix frontend    # vue-tsc --noEmit，检查 .ts/.vue
 npm run format --prefix frontend       # Prettier：js/ts/vue 及 Java
 npm run format:check --prefix frontend
-node scripts/build.mjs                 # 等价于 npm run build --prefix frontend
+node frontend/scripts/build.mjs        # 等价于 npm run build --prefix frontend
 python scripts/build-ui-bundle.py      # 正式生成 ui.bundle.js、UI 指纹并同步 Spring 静态副本
 python scripts/build-ui-bundle.py --check
 ```

@@ -1,9 +1,8 @@
 # P1 · Identity 身份权限领域详细设计
 
-> **R1 对齐说明（2026-10-28）**：本文保留需求来源与历史设计；当前冻结规则以 [R1 实施规格](../specs/RELEASE-01.md) 为准，实际实现/验证状态见 [R1 交付清单](../DELIVERY-R1.md)。历史“下一批/待开发/已通过”描述不作为本次执行证据。
+> **当前对齐说明（2026-11-21）**：本文描述已实现的 Identity/RBAC 边界；会话、跨商户授权和撤销规则以 [R1 实施规格](../specs/RELEASE-01.md)、[SDD-05](../specs/SDD-RBAC-05.md) 与 [SDD-12](../specs/SDD-REDIS-12.md) 为准。
 
-> 实现进度：[身份闭环 P1-01](../iterations/P1-01-auth-session.md)。账号功能与商户成员功能分开验收，不以前者代替后者。
-> 状态：账号认证代码已实现、完整验证待执行；平台角色、商户成员与授权仍是待实现设计。  
+> 实现状态：数据库登录、共享 Redis Session、CSRF、平台角色、商户成员、邀请接受/撤销和自定义 RBAC 已进入主线。
 > 对应需求：FR-001、FR-002、FR-003、FR-008；[PRD](../requirements/PRD.md)。  
 > 建模方法：参与者 → 命令/只读模型 → 领域事件 → 业务对象 → 聚合与服务 → 公开接口与测试。
 
@@ -227,15 +226,10 @@ HTTP 输入仅包含业务必要资料；`operatorUserId`、`applicantUserId` �
 - 禁用账号、撤销成员权限后，下一次敏感业务操作被服务端拒绝。
 - 领域单元测试不启动 Spring/MySQL；集成测试覆盖唯一约束与事务回滚。
 
-## 12. 本领域待决策
+## 12. 当前冻结规则
 
-- 登录身份字段与密码策略（PRD OPEN-01）和会话实现（ADR-005）。
-- 邀请生效期限、被邀请对象能否同时拥有其他商户角色；默认允许多商户，但必须保持不同范围。
-- Owner 是否允许邀请另一个 Owner；首版建议不开放，以免出现所有权转移与“最后 Owner”问题。
-
-
-## 当前练习进度（2026-10-27）
-
-- IAM-01 已提供 dev 用户注册纵切的可对照代码与手写教程：[`../tutorial/06-iam01-register-handwrite.md`](../tutorial/06-iam01-register-handwrite.md)。
-- P1-01 已替换内存 Basic 认证，注册账号可通过数据库凭据登录。实际 MySQL 运行及完整 P1 验收仍未完成；历史教程不再作为安全配置基线。
-- 本次增加 `iam_user.display_name` 的新库建表；如果之前执行过缺少该列的 P1 草案，需先完成数据表迁移。
+- 用户名密码登录使用 BCrypt 摘要、同源 Cookie Session 与 CSRF；多 Java 实例通过 Redis 共享会话。
+- 平台角色与商户成员角色分离，所有敏感操作按当前 `userId + merchantId + permission` 实时复验。
+- 店员邀请默认 24 小时有效，目标必须为已注册用户；接受后授予 Clerk，撤销后在下一请求生效。
+- Owner 可配置自定义角色，`team.manage/store.manage/role.manage` 保持 Owner 独占；首版不开放转移 Owner。
+- 身份实现与验收入口见 [当前路线](../ROADMAP.md)，不再使用早期 P1 草案作为开发依据。

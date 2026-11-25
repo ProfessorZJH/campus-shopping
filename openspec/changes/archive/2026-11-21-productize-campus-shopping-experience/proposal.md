@@ -51,14 +51,14 @@ M1 的独立前端工作不等待 PR #49；M3 的重叠 AI 后端工作须先核
 
 无已有 OpenSpec 能力基线需要在本次规划中直接修改：`openspec list --specs --json` 当前为空。上述 delta 仅定义拟新增的体验、读模型与流式能力；退款失败恢复等既有行为缺陷继续引用 R1/既有 UI 规格修复，不将整个商城、权限或交易规则重新声明成新能力。
 
-尚未迁移的规则继续由已接受 SDD/ADR 管理；首次同步能力基线时按 [OpenSpec 资料归属](../../../docs/development/OPENSPEC.md)核对边界并更新旧文档引用。此处没有把待实施 delta 发布为当前业务契约。
+尚未迁移的规则继续由已接受 SDD/ADR 管理；首次同步能力基线时按 [OpenSpec 资料归属](../../../../docs/development/OPENSPEC.md)核对边界并更新旧文档引用。此处没有把待实施 delta 发布为当前业务契约。
 
 ## Impact
 
 - **基线与来源**：静态审查标注 `27f4f6db`；本次获取并核对的 main 为 `c9cd43fbb19660f1112a7692fcdffdd619d4ca3b`。审查和参考图是输入资料，实际缺口以当前源码及已接受需求共同判断；截图中的数字、评分、处理时限和流程不自动成为现有事实。
 - **预期实现范围**：`frontend/src`、前端构建/测试、相关 Java API/Case/领域/查询与持久化、AI HTTP Port/Python、必要的新迁移及契约。具体依赖和落点由 [Design](design.md)维护。本次文件变化限定为本变更目录及文档入口。
-- **不变量**：沿用 [R1](../../../docs/specs/RELEASE-01.md)、[行为契约](../../../docs/api/behavior-v1.1.md)、[SDD-12](../../../docs/specs/SDD-REDIS-12.md)与已接受 ADR。Java/MySQL 裁决价格、库存、权限与成交；保留同库事务、稳定锁序、幂等、CSRF、600 秒会话租约与实际执行期间的 Python 许可。
+- **不变量**：沿用 [R1](../../../../docs/specs/RELEASE-01.md)、[行为契约](../../../../docs/api/behavior-v1.1.md)、[SDD-12](../../../../docs/specs/SDD-REDIS-12.md)与已接受 ADR。Java/MySQL 裁决价格、库存、权限与成交；保留同库事务、稳定锁序、幂等、CSRF、600 秒会话租约与实际执行期间的 Python 许可。
 - **业务范围**：多商户、每商户单门店、单商户单门店订单、模拟支付、未提货整单模拟退款。真实支付、已提货退货、多门店、通用动态商品属性、优惠券、完整盘点与财务对账列为后续需求，不由视觉改造引入。
 - **可观察验收**：浏览/导购→商品详情→加购→确认下单→模拟支付→备货→凭证核销；另一笔未提货订单→退款申请→商户拒绝→平台介入→最终处理。并验证表单失败、重复提交、变价缺货、旧提案/订单、权限撤销、会话切换及 AI 超时等分支。
-- **验证与发布边界**：按 [开发流程](../../../docs/development/AI-WORKFLOW.md)执行相关回归；按本次会话约定，全量 Maven/Compose 放在隔离 CI，不在本机启动全量验收。真实模型效果、正式域名 HTTPS、生产与性能结果分别记录，不能由文档校验或替身测试推断通过。
-- **既有工作衔接**：[PR #49](https://github.com/ProfessorZJH/campus-shopping/pull/49)的状态、差异和审查意见须在相关阶段重新核对；[现有导购评测变更](../evaluate-shopping-retrieval-recommendations/proposal.md)保留自己的人工标注和真实调用任务；七牛沿用[第一轮联调范围](../../../docs/testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)，备案后的正式域名复验单独登记。
+- **验证与发布边界**：按 [开发流程](../../../../docs/development/AI-WORKFLOW.md)执行相关回归；按本次会话约定，全量 Maven/Compose 放在隔离 CI，不在本机启动全量验收。真实模型效果、正式域名 HTTPS、生产与性能结果分别记录，不能由文档校验或替身测试推断通过。
+- **既有工作衔接**：[PR #49](https://github.com/ProfessorZJH/campus-shopping/pull/49)的状态、差异和审查意见须在相关阶段重新核对；[现有导购评测变更](../../evaluate-shopping-retrieval-recommendations/proposal.md)保留自己的人工标注和真实调用任务；七牛沿用[第一轮联调范围](../../../../docs/testing/QINIU-IMAGES-LIVE-ROUND1-20261105.md)，备案后的正式域名复验单独登记。

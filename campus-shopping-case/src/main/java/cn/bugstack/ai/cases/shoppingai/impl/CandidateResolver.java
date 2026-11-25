@@ -12,6 +12,7 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.SemanticProductRankVO;
 import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
+import cn.bugstack.ai.types.common.FailureDiagnostics;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import java.util.ArrayList;
@@ -50,7 +51,7 @@ final class CandidateResolver {
             semanticRanks = engine.semanticProductRanks(recall.query(), 80);
         } catch (AppException e) {
             if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;
-            log.warn("商品语义召回降级 diagnostic={}", cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
+            log.warn("商品语义召回降级 diagnostic={}", FailureDiagnostics.describe(e));
         }
         List<String> semanticIds = semanticRanks.stream().map(SemanticProductRankVO::productId).toList();
         List<ProductCandidateSnapshot> semantic = catalog.candidateRecallByIds(semanticIds);

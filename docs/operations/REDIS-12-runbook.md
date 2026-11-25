@@ -28,6 +28,6 @@ MySQL对话租约沿用主线600秒，由 `turn_*` 字段裁决。崩溃后等�
 
 真实Redis测试需设置 REDIS_TEST_ADDRESS、独立实例 REDIS_TEST_CACHE_ADDRESS（及可选 REDIS_TEST_PASSWORD）。每次使用随机cs:test命名空间，不使用FLUSHDB/FLUSHALL，不输出凭据。Spring安全隔离测试显式关闭Redis；RedisSessionCrossInstanceTest启动两个真实HTTP实例，身份测试使用H2，不把它当作MySQL事务证据。交易和租约证据来自全新临时MySQL。
 
-Windows复现：仅在确认两个实例均为测试专用后，设置 REDIS_TEST_ADDRESS=redis://127.0.0.1:16379、REDIS_TEST_CACHE_ADDRESS=redis://127.0.0.1:16380 和 MAVEN_OPTS=-Dpython.executable=python，然后运行 python scripts/verify-mysql-isolated.py --mysql-bin D:/develop/mysql-8.0.31-winx64/bin --maven mvnw.cmd --http-smoke --artifact-dir var/verified-integration --output docs/testing/evidence/redis-main-integration/mysql.json。脚本仅操作全新临时库，结束清理；使用本机已启动 Redis，不启动 Docker Redis、不清空 Redis。它会启动两个临时 Java 实例并运行 scripts/smoke-redis-shared.py，验证共享身份、撤权、展示实时性与共享登录限额。Python执行 cd ai-service && python -m pytest -q。发布还须执行格式、API、边界和schema检查。
+Windows复现：仅在确认两个实例均为测试专用后，设置 `REDIS_TEST_ADDRESS`、`REDIS_TEST_CACHE_ADDRESS`、`REDIS_TEST_PASSWORD`，再把 `REDIS_TEST_SERVER_COMMAND` 配置为绝对 Python 解释器与 `scripts/redis-test-server.py` 的 JSON 数组；该绝对路径是必需的，因为 Surefire 子进程工作目录不是仓库根。然后运行 `python scripts/verify-mysql-isolated.py --mysql-bin D:/develop/mysql-8.0.31-winx64/bin --maven mvnw.cmd --http-smoke --artifact-dir var/verify/verified-build --output var/verify/verify-mysql-isolated.json`。脚本仅操作全新临时库并在结束清理；测试 Redis 使用随机命名空间，不清空实例。它会启动两个临时 Java 实例、真实 HTTP、基础浏览器、最终矩阵与 M2 履约浏览器。Python执行 `cd ai-service && python -m pytest -q`。发布还须执行格式、API、边界和 schema 检查。
 
 Docker Compose与GitHub Actions需分别真实运行后记录证据。CI已加入Redis服务和测试；更新工作流不等于远程CI已经通过。

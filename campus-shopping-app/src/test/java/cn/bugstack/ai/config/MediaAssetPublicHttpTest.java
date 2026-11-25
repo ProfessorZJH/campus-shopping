@@ -13,6 +13,7 @@ import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageConfig;
 import cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy;
 import cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway;
+import cn.bugstack.ai.trigger.http.MediaAssetEndpoint;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -38,7 +39,7 @@ import org.springframework.test.web.servlet.MvcResult;
  * <p>profile 使用 {@code spring.profiles.default=dev}（不设 active），覆盖用户常见的本机启动方式。</p>
  */
 @WebMvcTest(
-    controllers = MediaAssetController.class,
+    controllers = MediaAssetEndpoint.class,
     excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class,
     properties = {
         "campus.security.rate-limit-enabled=false",

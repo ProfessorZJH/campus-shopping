@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 
 import pymysql
 
+from evidence import evidence_path
+
 ROOT=Path(__file__).resolve().parents[1]
 
 
@@ -22,7 +24,7 @@ def main():
     state=json.loads((ROOT/'var/local-live/shopping-accounts.json').read_text(encoding='utf-8'))
     report={'testType':'READ_ONLY_MYSQL_POST_BROWSER','database':database,'status':'RUNNING',
             'startedAt':datetime.now().astimezone().isoformat(),'checks':[]}
-    output=ROOT/'docs/testing/evidence/local-live/database-readback.json'
+    output=evidence_path('local-live','database-readback.json')
     def check(condition,name,**details):
         report['checks'].append({'name':name,'status':'PASS' if condition else 'FAILED',**details})
         if not condition:report['status']='FAILED'

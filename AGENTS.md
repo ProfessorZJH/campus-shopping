@@ -37,5 +37,7 @@
 - API/DTO修改后：`python scripts/generate-api-contract.py`、`python scripts/verify-api-contract.py`、`python scripts/verify-api-schemas.py`；响应字段同步 `scripts/api_response_rules.py`。
 - 新增迁移后：`python scripts/schema_contract.py`，审查生成结果并执行升级/重放检查。
 - 源码与DDD：`python scripts/verify-release.py`；Python：在 `ai-service/` 执行 `python -m pytest -q`。按实际影响补充真实 MySQL/Redis、HTTP、浏览器验证，命令与选择见开发流程。
+- 测试默认只写 `var/verify`；只有 CI 或明确发布证据时设置 `CAMPUS_EVIDENCE_DIR`，普通本地回归不得修改 `docs/testing/evidence/`。
+- 文档只保留最终决定、代码依据、可复现命令、测试结果和未验证范围；不提交 AI 内部推理、逐轮过程草稿或无引用的一次性思考记录。历史测试证据只追加，不把旧报告当作当前验收。
 - PR 使用仓库模板，交付说明修改、实际执行的命令/结果、风险及未验证事项；区分代码完成、测试通过和列明范围业务验收。合并与部署遵循用户授权和仓库门禁，不默认自动合并。
 - 报告统一保留在 [docs/testing](docs/testing/)，从 [文档索引](docs/README.md)查当前范围。不要向本文件追加历史测试数量、运行流水或阶段总结。

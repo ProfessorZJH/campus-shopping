@@ -21,7 +21,7 @@
 - [x] 2.5 在新组件及 API 类型试点 TypeScript，补 JS/TS 共存配置与独立类型检查；证明类型错误能够被检查拦截、现有 JS 页面仍可构建，记录推广条件而不全仓转换。
 - [x] 2.6 给 `Guide.js` 增加新对话入口并隔离请求代次、账号、会话和提案；验证旧响应晚到、切换历史和退出再登录不会污染当前页面，补相应浏览器回归。
 - [x] 2.7 当前回答的引用保留完整结构并展示标题/授权片段；验证空引用、展开摘要和不构造内部文档直链，历史引用缺失按旧契约处理，更新展示说明。
-- [x] 2.8 对本组最终差异执行格式、UI 生成及一致性检查、相关 Chromium 和真实后端页面验证；记录原始失败及修复范围，保证业务请求契约和已有图片能力无回退。（本地格式/UI 生成/Chromium/图片回归通过；M2 分支 CI 374 tests、0 skipped，`live_ui` 21 项真实 Spring/MySQL 页面检查通过，证据见 [M2 报告](../../../docs/testing/PRODUCTIZATION-M2-20261106.md)）
+- [x] 2.8 对本组最终差异执行格式、UI 生成及一致性检查、相关 Chromium 和真实后端页面验证；记录原始失败及修复范围，保证业务请求契约和已有图片能力无回退。（本地格式/UI 生成/Chromium/图片回归通过；M2 分支 CI 374 tests、0 skipped，`live_ui` 21 项真实 Spring/MySQL 页面检查通过，证据见 [M2 报告](../../../../docs/testing/PRODUCTIZATION-M2-20261106.md)）
 
 ## 3. M2：消费者商品、结算、履约与售后闭环
 
@@ -35,38 +35,38 @@
 - [x] 3.8 完善订单详情、自提地点与时间线，按实际凭证展示文本/适用二维码和有效期；验证旧订单、重签、过期、退款处理中及核销后的状态，二维码不外发给第三方服务。
 - [x] 3.9 完善消费者、商户及平台的售后详情与进度，复用同一真实历史读模型；验证商户拒绝后平台介入、原因可追溯、未发生阶段不伪造时间与模拟退款文案。
 - [x] 3.10 在隔离真实后端完成浏览→确认下单→模拟付款→备货→核销，以及另一笔未提货订单的退款/拒绝/介入分支；检查库存与历史一致，保存本阶段报告和适用 CI 结果。
-  - 证据：[M2 实施与验证报告](../../../docs/testing/PRODUCTIZATION-M2-20261106.md)；提交 `5c1579a`、PR #57；CI 374 tests / 0 skipped，真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项、`live_m2_fulfillment.py` 5 项通过；本地隔离基线证据 `docs/testing/evidence/productization-m2/isolated.json`。
+  - 证据：[M2 实施与验证报告](../../../../docs/testing/PRODUCTIZATION-M2-20261106.md)；提交 `5c1579a`、PR #57；CI 374 tests / 0 skipped，真实 HTTP 282 项、Redis 双实例 9 项、`live_ui` 21 项、`live_m2_fulfillment.py` 5 项通过；本地隔离基线证据 `docs/testing/evidence/productization-m2/isolated.json`。
 
 ## 4. M3：AI 会话、商品联动与流式体验
 
 - [x] 4.1 核对 PR #49 在实施时的实际差异、当前主干和有效审查意见，完成与提案/引用/检索改造的冲突处置记录；涉及代码整合时验证整合后的版本，不复用旧检查结论。
-  - 证据：[M3 提案商品身份与 PR #49 衔接记录](../../../docs/testing/PRODUCTIZATION-M3-PR49-RECONCILIATION-20261107.md)；未整体合并 PR #49，重叠文件与后续重放规则已登记。
+  - 证据：[M3 提案商品身份与 PR #49 衔接记录](../../../../docs/testing/PRODUCTIZATION-M3-PR49-RECONCILIATION-20261107.md)；未整体合并 PR #49，重叠文件与后续重放规则已登记。
 - [x] 4.2 为新提案提供可靠商品身份，批量兼容旧 `items_json`，消除首屏列表缓存依赖；验证首屏外商品、旧快照、失效 SKU、跨用户/商户及详情不可用语义，同步 DTO/响应规则和契约。
-  - 证据：[M3 提案商品身份与 PR #49 衔接记录](../../../docs/testing/PRODUCTIZATION-M3-PR49-RECONCILIATION-20261107.md)；定向 Java 23 项、API/Schema/Release 校验、前端契约与浏览器检查通过。
+  - 证据：[M3 提案商品身份与 PR #49 衔接记录](../../../../docs/testing/PRODUCTIZATION-M3-PR49-RECONCILIATION-20261107.md)；定向 Java 23 项、API/Schema/Release 校验、前端契约与浏览器检查通过。
 - [x] 4.3 增加最近活跃时间、受控摘要及稳定会话分页；验证旧会话新消息排序、时间相同的稳定顺序、权限遮蔽和无 N+1 查询，更新接口及会话说明。
-  - 证据：[M3 会话活动与稳定分页验证报告](../../../docs/testing/PRODUCTIZATION-M3-CONVERSATION-ACTIVITY-20261107.md)；定向 Java 27 项、API/Schema/Release 校验、前端格式/类型/UI 构建和浏览器 6/23/20/14 项检查通过；未执行全量或真实 MySQL/Redis 验收。
+  - 证据：[M3 会话活动与稳定分页验证报告](../../../../docs/testing/PRODUCTIZATION-M3-CONVERSATION-ACTIVITY-20261107.md)；定向 Java 27 项、API/Schema/Release 校验、前端格式/类型/UI 构建和浏览器 6/23/20/14 项检查通过；未执行全量或真实 MySQL/Redis 验收。
 - [x] 4.4 为新历史消息保存最小可授权引用信息并在读取时复验，旧消息明确无记录；验证撤稿、撤权、版本变化及受保护内容持久化限制，补相应迁移、契约和真实权限用例。
-  - 证据：[M3 历史消息最小引用快照与读取复验报告](../../../docs/testing/PRODUCTIZATION-M3-HISTORICAL-CITATIONS-20261107.md)；定向 Java、API/Schema/Release、前端构建与浏览器检查通过；真实 MySQL/Redis 和全量验收留待后续整合。
+  - 证据：[M3 历史消息最小引用快照与读取复验报告](../../../../docs/testing/PRODUCTIZATION-M3-HISTORICAL-CITATIONS-20261107.md)；定向 Java、API/Schema/Release、前端构建与浏览器检查通过；真实 MySQL/Redis 和全量验收留待后续整合。
 - [x] 4.5 完善提案选择、过期、变价、缺货与确认反馈；验证原子加购、同选择重放、失败恢复和迟到响应隔离，并更新浏览器验收与用户说明。
-  - 证据：[M3 提案确认与失败恢复实施记录](../../../docs/testing/PRODUCTIZATION-M3-PROPOSAL-CONFIRMATION-20261107.md)；定向 Java 12 项、前端格式/类型/UI 构建、导购浏览器 7 项及三页面 23 项通过；真实 MySQL/Redis 整合留待 4.9。
+  - 证据：[M3 提案确认与失败恢复实施记录](../../../../docs/testing/PRODUCTIZATION-M3-PROPOSAL-CONFIRMATION-20261107.md)；定向 Java 12 项、前端格式/类型/UI 构建、导购浏览器 7 项及三页面 23 项通过；真实 MySQL/Redis 整合留待 4.9。
 - [x] 4.6 落实独立 SSE 协议及安全的运行状态/取消契约，保留现有 JSON；审查事件类型、错误边界、CSRF、消息/提案提交与多实例取消状态，更新相关 SDD/ADR、API 及适用迁移设计。
-  - 证据：[M3 轮次运行状态与取消契约报告](../../../docs/testing/PRODUCTIZATION-M3-TURN-RUNTIME-20261107.md)；完成 MySQL 状态/取消迁移、状态与取消 API、协议/ADR，定向 Java 13 项、API/Schema 契约检查通过；实际 Python 增量、下游取消和浏览器流式消费留待 4.7/4.8。
+  - 证据：[M3 轮次运行状态与取消契约报告](../../../../docs/testing/PRODUCTIZATION-M3-TURN-RUNTIME-20261107.md)；完成 MySQL 状态/取消迁移、状态与取消 API、协议/ADR，定向 Java 13 项、API/Schema 契约检查通过；实际 Python 增量、下游取消和浏览器流式消费留待 4.7/4.8。
 - [x] 4.7 实现 Java/Python 实际增量、终态与取消协作，保持租约、短事务和实际运行期间的许可；验证有界缓冲、超时、迟到轮次、取消/完成竞争、下游不支持流式及不能立即取消的模式。
-  - 证据：[M3 流式供应商桥接阶段](../../../docs/testing/PRODUCTIZATION-M3-STREAMING-BRIDGE-20261107.md)；Java 定向编译/协议测试、Python 58 项流式/容量/服务测试通过，实际供应商网络效果留待 4.9。
+  - 证据：[M3 流式供应商桥接阶段](../../../../docs/testing/PRODUCTIZATION-M3-STREAMING-BRIDGE-20261107.md)；Java 定向编译/协议测试、Python 58 项流式/容量/服务测试通过，实际供应商网络效果留待 4.9。
 - [x] 4.8 接入导购流式界面和断线恢复，按实际事件显示进度；验证部分输出失败、停止等待与取消处理中区别、重连读取原会话结果且不重复发起生成，补页面说明。
-  - 证据：[M3 流式导购界面阶段](../../../docs/testing/PRODUCTIZATION-M3-STREAMING-UI-20261107.md)；前端构建、类型检查、SSE 解析 smoke 与定向浏览器检查通过，真实后端断线联调留待 4.9。
+  - 证据：[M3 流式导购界面阶段](../../../../docs/testing/PRODUCTIZATION-M3-STREAMING-UI-20261107.md)；前端构建、类型检查、SSE 解析 smoke 与定向浏览器检查通过，真实后端断线联调留待 4.9。
 - [x] 4.9 对本组执行适用 Java/Python、真实隔离 MySQL/Redis、HTTP 与浏览器回归及该版本 CI；证明完整 JSON 兼容，报告区分受控流式、实际供应商和未运行的真实效果/性能项。证据：`docs/testing/evidence/frontend-live-final/results.json`、PR #59 CI；Python 流式/容量定向 15 项、Java AI 协议/边界定向测试通过，最终隔离浏览器矩阵 26 项通过。受控本地 AI 流式和真实 Java/MySQL/Redis/HTTP 已验证；真实 NVIDIA/XFYUN/Milvus 供应商语义效果及性能未运行。
 
 ## 5. M4：商户与平台操作效率
 
 - [x] 5.1 完善商户待办、订单筛选、超时提醒与备货/核销反馈，保持列表条件与有效位置；验证待办条件一致、状态改变和失败重试，更新商户操作说明。
-  - 证据：[M4.1 商户订单待办与履约筛选实施记录](../../../docs/testing/PRODUCTIZATION-M4-ORDER-WORK-QUEUE-20261107.md)；服务端 `pickupState` 列表/COUNT 共用履约状态条件，定向 Java 5 项、前端构建/类型/契约检查通过；真实隔离后端联调留待 5.8。
+  - 证据：[M4.1 商户订单待办与履约筛选实施记录](../../../../docs/testing/PRODUCTIZATION-M4-ORDER-WORK-QUEUE-20261107.md)；服务端 `pickupState` 列表/COUNT 共用履约状态条件，定向 Java 5 项、前端构建/类型/契约检查通过；真实隔离后端联调留待 5.8。
 - [x] 5.2 增加低可售库存筛选、库存流水分页与业务单据定位；验证实物/预占/可售区别、阈值边界、跨商户和分页稳定，补查询契约及真实数据用例，不实现任意覆盖库存。
-  - 证据：[M4.2 低可售库存与流水定位实施记录](../../../docs/testing/PRODUCTIZATION-M4-INVENTORY-20261107.md)；服务端阈值/单据查询已贯通，定向 Java 14 项、前端构建/类型/格式、契约和 UI 产物检查通过；真实隔离数据用例留待 5.8。
+  - 证据：[M4.2 低可售库存与流水定位实施记录](../../../../docs/testing/PRODUCTIZATION-M4-INVENTORY-20261107.md)；服务端阈值/单据查询已贯通，定向 Java 14 项、前端构建/类型/格式、契约和 UI 产物检查通过；真实隔离数据用例留待 5.8。
 - [x] 5.3 改善商品/SKU/多图编辑、上下架与错误恢复，复用现有上传归属和交易版本规则；验证权限、逐文件失败、失效商品和列表保持，更新本批页面与回归记录。
-  - 证据：[M4.3 商品、SKU 与多图编辑实施记录](../../../docs/testing/PRODUCTIZATION-M4-CATALOG-20261107.md)；既有服务端版本/权限和前端逐文件错误恢复能力已定向回归，Java 5 项、Node 27 项通过；浏览器脚本另有既有 AI 推荐占位断言失败，未宣称通过。
+  - 证据：[M4.3 商品、SKU 与多图编辑实施记录](../../../../docs/testing/PRODUCTIZATION-M4-CATALOG-20261107.md)；既有服务端版本/权限和前端逐文件错误恢复能力已定向回归，Java 5 项、Node 27 项通过；浏览器脚本另有既有 AI 推荐占位断言失败，未宣称通过。
 - [x] 5.4 完善账号、入驻、成员、角色及门店工作区体验；验证登录/退出、邀请、撤权、禁用、跨商户与 Owner 独占能力，更新受影响的权限/页面说明，不靠隐藏按钮授权。
-  - 证据：[M4.4 账号、入驻、成员与角色工作区实施记录](../../../docs/testing/PRODUCTIZATION-M4-IDENTITY-20261107.md)；Java 身份/RBAC/会话定向 37 项、Node 身份竞态 5 项通过，浏览器权限脚本保留既有争议断言失败。
+  - 证据：[M4.4 账号、入驻、成员与角色工作区实施记录](../../../../docs/testing/PRODUCTIZATION-M4-IDENTITY-20261107.md)；Java 身份/RBAC/会话定向 37 项、Node 身份竞态 5 项通过，浏览器权限脚本保留既有争议断言失败。
 - [x] 5.5 按 Design D7 实现专用统计聚合与看板，覆盖期间、时区、截至时间、订单趋势、状态分布、商品表现和退款率；定向单测覆盖期间边界、非法期间、时间解析与商户权限；真实样本/执行计划留待隔离数据库验收。证据：`docs/testing/PRODUCTIZATION-M4.5-STATISTICS-20261107.md`。
 - [x] 5.6 为缺少事实来源的审核/监管动作补齐原子、幂等历史，已有可靠记录直接复用；定向单测覆盖重复审批、重复裁决、失败回滚与权限边界，真实 MySQL 用例留待整合验收。证据：`docs/testing/PRODUCTIZATION-M4.6-REVIEW-HISTORY-20261107.md`。
 - [x] 5.7 完善平台申请、商品监管、订单及争议筛选/详情/操作反馈，复用履约与售后历史；平台争议默认筛选已补齐并通过浏览器定向回归。证据：`docs/testing/PRODUCTIZATION-M4.7-PLATFORM-OPERATIONS-20261107.md`。

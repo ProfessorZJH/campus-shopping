@@ -12,5 +12,6 @@ docs/testing/evidence
 **/dist
 artifacts
 .idea
+.claude
 **/.venv
 **/venv

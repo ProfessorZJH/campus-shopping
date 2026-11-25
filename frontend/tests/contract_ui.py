@@ -15,12 +15,11 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 from types import SimpleNamespace
 from playwright.sync_api import sync_playwright, expect
-from browser_transport import track_bindings, close_browser
+from browser_transport import close_browser, evidence_dir, track_bindings
 
 ROOT=Path(__file__).resolve().parents[2]
 STATIC=ROOT/'campus-shopping-app/src/main/resources/static'
-EVIDENCE=ROOT/'docs/testing/evidence/frontend-contract'
-EVIDENCE.mkdir(parents=True,exist_ok=True)
+EVIDENCE=evidence_dir('frontend-contract')
 NOW=datetime.now(timezone.utc).isoformat()
 DEADLINE=(datetime.now(timezone.utc)+timedelta(minutes=15)).isoformat()
 
@@ -173,7 +172,7 @@ class BackendContractDouble:
         elif path.endswith('/stock-movements'):data=[{'skuId':'sku0','type':'REPLENISH','quantity':10,'createdAt':NOW}]
         elif path.endswith('/aftersales'):data=[]
         elif path=='/knowledge/bases':
-            if method=='POST':data={'id':'kb1',**body};self.bases.append(data)
+            if method=='POST':data={'id':'kb'+str(len(self.bases)+1),**body};self.bases.append(data)
             else:data=self.bases
         elif re.fullmatch('/knowledge/bases/[^/]+/documents',path):
             if method=='POST':

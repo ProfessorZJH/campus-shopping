@@ -12,12 +12,14 @@ import sys
 import tempfile
 import uuid
 
+from evidence import evidence_path
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/engineering/containers.json')
+    parser.add_argument('--output', type=Path, default=evidence_path('engineering', 'containers.json'))
     args = parser.parse_args()
     project = 'campus-check-' + uuid.uuid4().hex[:12]
     with socket.socket() as probe:

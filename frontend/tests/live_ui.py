@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from browser_transport import evidence_dir, evidence_path
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -267,8 +268,7 @@ def main():
     if not admin or not password:
         raise ValueError('缺少 ADMIN_USERNAME/ADMIN_PASSWORD')
 
-    directory = ROOT / 'docs/testing/evidence/frontend-live'
-    directory.mkdir(parents=True, exist_ok=True)
+    directory = evidence_dir('frontend-live')
     checks, errors, failure = [], [], None
     try:
         with sync_playwright() as p:
@@ -401,7 +401,7 @@ def main():
         check=False,
     )
     if final.returncode != 0:
-        evidence = ROOT / 'docs/testing/evidence/frontend-live-final/results.json'
+        evidence = evidence_path('frontend-live-final', 'results.json')
         detail = ''
         if evidence.is_file():
             try:

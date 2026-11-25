@@ -24,7 +24,7 @@ PR #63 对应的[远端真实验收记录](../testing/STRUCTURAL-REFACTOR-REMOTE
 
 | 阶段 | 已完成范围 | 当前证据与边界 |
 | --- | --- | --- |
-| M0 | 实施基线、设计规范、字段/接口来源和兼容方式冻结 | `docs/testing/PRODUCTIZATION-M0-BASELINE-20261107.md`；方案与任务见 `openspec/changes/productize-campus-shopping-experience/` |
+| M0 | 实施基线、设计规范、字段/接口来源和兼容方式冻结 | `docs/testing/PRODUCTIZATION-M0-BASELINE-20261107.md`；方案与任务见 `openspec/changes/archive/2026-11-21-productize-campus-shopping-experience/` |
 | M1 | 退款失败恢复、公共状态面板、`.vue` 试点、TypeScript API 类型、新会话入口、引用展示 | `docs/testing/PRODUCTIZATION-M1-20261105.md`；保留旧 JS 页面兼容，未进行全仓前端重写 |
 | M2 | 商品筛选和详情、店铺资料、结算确认、订单自提快照、履约事件、售后历史 | `docs/testing/PRODUCTIZATION-M2-20261106.md`；价格、库存、权限、幂等和同库事务不变量保持有效 |
 | M3 | 提案商品身份、会话活动与稳定分页、历史引用、提案确认恢复、AI 轮次状态、SSE 流式和断线恢复 | `docs/testing/PRODUCTIZATION-M3-*.md` 及最终整合证据；实际供应商语义效果仍单独验收 |
@@ -111,9 +111,9 @@ Agent v1.1 作为完成后的独立产品阶段，未来采用受控 Tool Gatewa
 
 ## 七、相关资料
 
-- [产品化 OpenSpec 提案](../../openspec/changes/productize-campus-shopping-experience/proposal.md)
-- [产品化技术设计](../../openspec/changes/productize-campus-shopping-experience/design.md)
-- [产品化任务与验收条件](../../openspec/changes/productize-campus-shopping-experience/tasks.md)
+- [产品化 OpenSpec 提案](../../openspec/changes/archive/2026-11-21-productize-campus-shopping-experience/proposal.md)
+- [产品化技术设计](../../openspec/changes/archive/2026-11-21-productize-campus-shopping-experience/design.md)
+- [产品化任务与验收条件](../../openspec/changes/archive/2026-11-21-productize-campus-shopping-experience/tasks.md)
 - [全链路产品化最终状态（2026-11-07）](../testing/PRODUCTIZATION-FINAL-STATUS-20261107.md)
 - [R1 状态路线](../ROADMAP.md)
 - [架构决策记录](decisions.md)

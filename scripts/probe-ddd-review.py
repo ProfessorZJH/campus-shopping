@@ -14,6 +14,8 @@ import re
 import subprocess
 import tempfile
 
+from evidence import evidence_path
+
 ROOT = Path(__file__).resolve().parents[1]
 DOMAIN = ROOT/'campus-shopping-domain/src/main/java/cn/bugstack/ai/domain'
 JAVA = r'''
@@ -162,7 +164,7 @@ def schema_observations():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/ddd-refactor-20261029/regression.json')
+    parser.add_argument('--output', type=Path, default=evidence_path('ddd-refactor-20261029', 'regression.json'))
     args = parser.parse_args()
     production = sources() + [DOMAIN/"shoppingai/service/policy/KnowledgePublicationPolicy.java"]
     with tempfile.TemporaryDirectory(prefix='campus-ddd-review-') as temporary:

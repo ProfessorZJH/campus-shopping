@@ -2,11 +2,12 @@
 """启动真实 Uvicorn 子进程进行 TCP/HTTP 检查；无模型密钥的检索演示，不是 Java 联调。"""
 import argparse,base64,datetime,json,os,secrets,shutil,socket,subprocess,sys,tempfile,time,urllib.error,urllib.request
 from pathlib import Path
+from evidence import evidence_path
 ROOT=Path(__file__).resolve().parents[1]
 
 def main():
     parser=argparse.ArgumentParser()
-    parser.add_argument('--output',type=Path,default=ROOT/'docs/testing/evidence/ai-http-local.json')
+    parser.add_argument('--output',type=Path,default=evidence_path('ai-http-local.json'))
     args=parser.parse_args()
     results=[];start=datetime.datetime.now(datetime.timezone.utc).isoformat()
     with tempfile.TemporaryDirectory(prefix='campus-ai-http-') as tmp:

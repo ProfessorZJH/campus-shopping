@@ -1,8 +1,8 @@
 # 系统总体技术架构与部署分工
 
-> **R1 对齐说明（2026-10-28）**：本文保留需求来源与历史设计；当前冻结规则以 [R1 实施规格](../specs/RELEASE-01.md) 为准，实际实现/验证状态见 [R1 交付清单](../DELIVERY-R1.md)。历史“下一批/待开发/已通过”描述不作为本次执行证据。
+> **当前对齐说明（2026-11-21）**：本文描述现行业务与技术边界；部署与外部依赖状态见[当前路线](../ROADMAP.md)，实现事实以源码和当前契约为准。
 
-> 版本 v1.0 · 2026-10-26 · **目标架构设计，未代表所有组件已部署**。  
+> 版本 v1.1 · 2026-11-21 · **主线架构已实现，生产部署仍单独验收**。
 > Java DDD 实现细节服从 `xfg-ddd-skills`；系统业务约束来自 [PRD](../requirements/PRD.md)、[业务架构](business-architecture.md)。
 
 ## 1. 总体系统边界
@@ -16,7 +16,7 @@ flowchart TB
     Java[Spring Boot JDK17 模块化单体]
     MySQL[(MySQL 8 业务主数据库)]
     Python[Python FastAPI AI 引擎]
-    Qdrant[(Qdrant 商品/知识检索)]
+    Vectors[(Milvus 商品投影 / Qdrant 知识投影，可选)]
     LLM[模型推理/Embedding 服务]
     FS[文件存储]
     Consumer --> Reverse
@@ -25,7 +25,7 @@ flowchart TB
     Reverse --> Java
     Java --> MySQL
     Java -->|有鉴权的 Port/Gateway| Python
-    Python --> Qdrant
+    Python --> Vectors
     Python --> LLM
     Java --> FS
     Python -.-> FS
@@ -33,18 +33,19 @@ flowchart TB
 
 **关键原则：** 交易权威在 Java + MySQL；AI 只读候选和生成建议；实际状态改变走可信 Java 应用入口。全站所有用户、商户权限在服务端判定，不因请求来自管理员前端就默认放行。
 
-## 2. Java 六模块（官方脚手架）
+## 2. Java 七模块
 
 | 模块 | 源码职责 | 典型类/目录 |
 |---|---|---|
 | `campus-shopping-api` | 对外 Java 接口、DTO 与 `Response<T>` | `IxxxApi`, `XxxRequestDTO`, `XxxResponseDTO` |
 | `campus-shopping-app` | Spring Boot 启动、配置、MyBatis XML | `Application`, `application-*.yml` |
+| `campus-shopping-case` | 跨域事务、锁序、幂等与用例编排 | `cases/{context}` |
 | `campus-shopping-domain` | 各领域聚合、VO、领域服务、Repository/Port 接口 | `domain/{context}/model/...`, `adapter/repository`, `adapter/port` |
 | `campus-shopping-infrastructure` | Repo/Port 实现、DAO、PO、HTTP Gateway | `adapter/repository`, `adapter/port`, `dao/po`, `gateway` |
 | `campus-shopping-trigger` | REST、定时任务、事件入口；HTTP Controller 实现 API 接口 | `trigger/http`, `trigger/job` |
 | `campus-shopping-types` | 必要公共异常、结果码、基础类型 | `exception`, `enums` |
 
-新增 `campus-shopping-case` **不是必选 P0 动作**。仅在审核开通、下单、核销、退款等真实跨域复杂流程开始时，按官方 Skill 建立 Case 编排并校验 POM 依赖无环。
+`campus-shopping-case` 已用于审核开通、结算/支付、核销、退款和 AI 提案确认等跨域流程；Case 只编排公开能力，不直接操作其他域的 DAO/PO。
 
 ## 3. 依赖倒置与六边形调用链
 
@@ -57,7 +58,7 @@ flowchart TB
     Repo[IRepository / IPort 领域接口]
     Adapter[Infrastructure Adapter]
     Dao[DAO / PO / Gateway]
-    Tech[(MySQL / HTTP / Qdrant)]
+    Tech[(MySQL / Redis / HTTP / 可选向量投影)]
     Trigger --> Case
     Case --> Service
     Service --> Aggregate
@@ -94,6 +95,6 @@ Python FastAPI 承担 Query 改写、关键词+向量检索、RRF、Rerank 和 L
 | 可观测性 | correlationId、审计、失败状态与必要 Trace | 故障注入/日志核对 |
 | 体验 | SSE、可解释推荐卡、明确确认/重试状态 | 前端 E2E 测试 |
 
-## 7. 重要限制与实施事实
+## 7. 当前实施事实
 
-本仓库当前只有官方脚手架和设计文件；此文档未声称 Spring Boot 已能构建、Python/Qdrant 已部署或全站业务功能可用。架构约束的可执行验证应在实现时通过测试与运行证据补足。
+七模块 Java、Python FastAPI、Vue 三端、MySQL 与 Redis 共享状态均已形成主线实现；Milvus/Qdrant 是可选投影，生产部署、持续负载和真实供应商质量仍按[当前路线](../ROADMAP.md)单独验收。

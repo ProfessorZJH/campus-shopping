@@ -6,16 +6,15 @@ import os
 import shutil
 from pathlib import Path
 from playwright.sync_api import sync_playwright, expect
-from browser_transport import add_campus_styles
+from browser_transport import add_campus_styles, evidence_dir
 from ui_rbac_regression import RoleBackend
 from ui_fix_regression import browser_page
 from ui_three_pages import UI
 
 ROOT=Path(__file__).resolve().parents[2]
-EVIDENCE=ROOT/'docs/testing/evidence/ui-polish'
+EVIDENCE=evidence_dir('ui-polish')
 
 def main():
-    EVIDENCE.mkdir(parents=True,exist_ok=True)
     checks=[]
     with sync_playwright() as p:
         browser=p.chromium.launch(headless=True,executable_path=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium'),args=['--no-sandbox'])

@@ -22,10 +22,12 @@ import uuid
 import httpx
 import pymysql
 
+from evidence import evidence_path
+
 ROOT = Path(__file__).resolve().parents[1]
 MYSQL_BIN = Path(r"D:/develop/mysql-8.0.31-winx64/bin")
 JAR = ROOT / "campus-shopping-app/target/campus-shopping-app.jar"
-OUTPUT = ROOT / "docs/testing/evidence/agent-v1.1-m1-e2e-20261110.json"
+OUTPUT = evidence_path("agent-v1.1-m1-e2e-20261110.json")
 
 
 def load_env(path: Path) -> None:

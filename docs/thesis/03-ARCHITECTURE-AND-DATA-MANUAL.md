@@ -13,9 +13,9 @@
 | `campus-shopping-case` | 55 | ~3,590 | 跨领域本地事务编排、确定性锁序控制、AI 无事务会话与提案确认编排 |
 | `campus-shopping-trigger` | 30 | ~3,040 | 12 个 REST Controller、独立 SSE 端点、安全限流过滤器、逾期关单与向量同步任务 |
 | `campus-shopping-api` | 85 | ~1,385 | HTTP 契约接口（`I...Api`）、请求/响应 DTO 与通用 `Response<T>` 信封 |
-| `campus-shopping-app`（主配置 + Mapper + SQL） | 27 | ~1,990 | Spring Boot 启动装配、Security/CSP/生产守卫、13 份 MyBatis XML、33 份版本迁移 |
+| `campus-shopping-app`（主配置 + Mapper + SQL） | 13 | ~506 | Spring Boot 启动装配、Security/CSP/生产守卫；另有 Mapper XML、schema 与 20 份版本迁移 |
 | `campus-shopping-types` | 7 | ~210 | 统一业务错误码枚举 `ResponseCode`、`AppException`、参数断言与指纹工具 |
-| **Java 测试套件（`src/test`）** | **77** | **~11,800** | 领域/用例单测、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例与评测桥接 |
+| **Java 测试套件（`src/test`）** | **78** | **~12,030** | 领域/用例单测、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例与评测桥接 |
 | **Python 智能导购（`ai-service/app`）** | **25** | **~3,420** | FastAPI 接入、BM25/本地哈希/Qdrant/Milvus REST 混合检索、规格状态机、Runtime Bridge |
 | **Python 测试与评测（`tests` + `evaluation`）** | **60** | **~6,580** | 408 项 pytest 回归套件 + Scorer v3 消融与硬约束评测框架 + 120 例数据集 |
 | **Vue 3 三端前端（`frontend/src`）** | **54** | **~11,780** | 13 个三端业务页面、16 个组件、Epoch 状态隔离、有界 SSE 解析与主题样式系统 |
@@ -124,7 +124,7 @@ flowchart TB
 |---|---|---|
 | `sys_audit` | `id` (PK) | 关键管理、审核、核销与外发操作安全审计表 |
 | `sys_schema_version` | `version` (PK) | 基础结构版本标识表 |
-| `sys_schema_migration` | `version` (PK) | 33 个不可变数据库迁移脚本的版本号与 SHA-256 校验和登记表 |
+| `sys_schema_migration` | `version` (PK) | 20 个不可变数据库迁移脚本的版本号与 SHA-256 校验和登记表 |
 | `sys_schema_migration_drift` | `id` (PK) | 历史库结构漂移人工准入责任人与原因审计表 |
 
 ---
@@ -147,7 +147,7 @@ flowchart TB
 | `InventoryController` | 5 | 商户 SKU 补货、库存余额列表、低可售库存筛选、库存变动流水查询 |
 | `CartController` | 4 | 购物车实时报价视图读取、新增/修改数量、移除单项、清空购物车 |
 | `FulfillmentController` | 4 | 商户开始备货、标记待取货、买家签发动态自提码、店员核销完成交易 |
-| *独立流式与媒体端点* | *+2 类* | `AiStreamEndpoint`（`POST /api/v1/ai/chat/stream` SSE 流式导购）、`MediaAssetController`（`/media/**` 本地与七牛受控重定向） |
+| *独立流式与媒体端点* | *+2 类* | `AiStreamEndpoint`（`POST /api/v1/ai/chat/stream` SSE 流式导购）、`MediaAssetEndpoint`（`/media/**` 本地与七牛受控重定向） |
 
 ---
 

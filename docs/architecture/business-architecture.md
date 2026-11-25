@@ -1,9 +1,9 @@
 # Campus Shopping — 业务架构与上下文映射
 
-> **R1 对齐说明（2026-10-28）**：本文保留需求来源与历史设计；当前冻结规则以 [R1 实施规格](../specs/RELEASE-01.md) 为准，实际实现/验证状态见 [R1 交付清单](../DELIVERY-R1.md)。历史“下一批/待开发/已通过”描述不作为本次执行证据。
+> **当前对齐说明（2026-11-21）**：本文描述现行业务边界；冻结规则以 [R1 实施规格](../specs/RELEASE-01.md)、后续 SDD/ADR 和当前契约为准，实现与验证范围见 [当前状态](../ROADMAP.md) 和 [R1 交付说明](../DELIVERY-R1.md)。
 
 > 版本：v1.0 · 2026-10-26  
-> 状态：**业务架构基线**，并非代码或数据库已经实现。  
+> 状态：**现行业务架构基线**；实现进度以源码和最新验收为准。
 > 依据：[PRD](../requirements/PRD.md)、[xfg-ddd-skills](https://github.com/fuzhengwei/xfg-ddd-skills)。  
 > 与 Skill 分工：本文件定义本项目**业务边界和约束**；DDD 包结构、Java 命名与注释遵循 Skill，不再复制一套重复的技术规范。
 
@@ -37,7 +37,7 @@
 | 红色 | 业务流程/政策判断 | 经营资格与审核状态校验 |
 | 绿色 | 只读模型 | 待审核申请列表、SKU 实时报价 |
 | 棕色 | 领域对象 | MerchantApplication、Order |
-| 粉色 | 外部系统 | Python LLM API、Qdrant、文件存储 |
+| 粉色 | 外部系统 | Python LLM API、Milvus/Qdrant 可选投影、文件存储 |
 
 > 事件风暴中的黄色节点只是用于分析业务事实，**不是要求每个节点都写 MQ 消息或 Outbox**。
 
@@ -55,6 +55,8 @@
 | S08 售后 | 退款申请、审核、平台介入 | 售后已申请、模拟退款已完成 | Trading | P4 |
 | S09 知识 | 上传文档、构建索引、发布版本 | 索引已构建、知识版本已发布 | ShoppingAI | P5 |
 | S10 员工权限 | 邀请、授权、撤销 | 成员已授权、授权已撤销 | Identity | P1 |
+
+表中的 P1～P5 是原实施批次，不代表当前仍待开发；当前三端与七域主链路已完成，剩余环境与质量边界见[状态路线](../ROADMAP.md)。
 
 ### 3.1 商户入驻流程
 
@@ -160,12 +162,12 @@ flowchart TB
 |---|---|---|
 | MerchantApplication | 待审申请一次且仅一次决定；审查人员不得是申请人；重复审核不重复开商户 | [P1 详细](../domains/merchant.md) |
 | MerchantMembership | 平台角色与商户角色分离；授权按 merchantId；撤销后不得继续操作 | [P1 详细](../domains/identity.md) |
-| ProductListing | 本商户管理 SKU、售价和上下架，SKU 规格组合不重复 | P2 前细化 |
-| StockBalance | `available = onHand-reserved >= 0`；预占/释放/出库按业务键幂等 | P2/P3 前细化 |
-| Order | 一笔订单一个商户；价格快照可信；模拟支付与关闭互斥 | P3 前细化 |
-| PickupTask | 已支付才可交付；同一凭证核销最多一次 | P4 前细化 |
-| RecommendationProposal | 建议所属用户、有效期、确认状态、推荐 SKU 不变 | P5 前细化 |
-| KnowledgeDocument | 生效版本与可见范围检查，不能引用已撤回内部资料 | P5 前细化 |
+| ProductListing | 本商户管理 SKU、售价和上下架，SKU 规格组合不重复 | 已实现 |
+| StockBalance | `available = onHand-reserved >= 0`；预占/释放/出库按业务键幂等 | 已实现 |
+| Order | 一笔订单一个商户；价格快照可信；模拟支付与关闭互斥 | 已实现 |
+| PickupTask | 已支付才可交付；同一凭证核销最多一次 | 已实现 |
+| RecommendationProposal | 建议所属用户、有效期、确认状态、推荐 SKU 不变 | 已实现 |
+| KnowledgeDocument | 生效版本与可见范围检查，不能引用已撤回内部资料 | 已实现 |
 
 ## 7. 一致性等级与事件策略
 
@@ -186,19 +188,19 @@ flowchart TB
 
 - Spring Boot：身份授权、商品权威查询、建议归属及状态、购物车、订单、库存、交易事务。
 - Python AI：Query 改写、意图抽取、Embedding、关键词/向量检索、融合排序、LLM 推理和评测。
-- Qdrant：向量/检索投影，不拥有权威价格、库存或付款事实。
+- Milvus/Qdrant：可选向量/检索投影，不拥有权威价格、库存或付款事实。
 - 用户写动作：AI 生成提案 → 显示确认 → Java 校验用户及提案 → Java 执行受控写操作。
 - 不允许把内部知识库全文、数据库凭证、跨商户后台查询权限直接交给 Python 模型执行器。
 - 无法获得足够可信资料时，应明确说明不确定，不能伪造商品、价格、库存或交易成功。
 
 ## 9. 本架构的决策边界
 
-**已确定**：多商户、单店首版、单商户订单、模拟支付、到店自提、同库交易强一致、AI 受控加购、Spring Boot + Python AI + Qdrant。
+**已确定**：多商户、单店首版、单商户订单、模拟支付、到店自提、同库交易强一致、AI 受控加购、Spring Boot + Python AI、可选 Milvus/Qdrant 投影。商户准入、停用、支付期限、售后状态机、知识权限等已由 R1/SDD/ADR 冻结。
 
-**仍需在相应迭代确认**：商户申请材料与重复申请策略、商户停用历史订单规则、支付超时时长、完整售后状态机、AI 评测集及指标。见 [PRD 待决策项](../requirements/PRD.md#10-待确认的具体规则不可偷偷视为已定稿)。
+当前仍需完成的是评测冻结与生产环境验收，不再保留“申请材料、支付超时、售后状态机待定”等已解决项；见[当前路线](../ROADMAP.md)。
 
 ## 10. 文档与代码的对应关系
 
-- P1：[Identity](../domains/identity.md)、[Merchant](../domains/merchant.md)、[P1 验收](../domains/P1-acceptance.md)
-- P2–P5：按 [路线图](../ROADMAP.md) 逐域详细建模后再落地。
-- DDD 技术规范：外部 [xfg-ddd-skills](https://github.com/fuzhengwei/xfg-ddd-skills)；项目特有偏差由 [ADR](decisions.md) 记录。
+- 身份与商户：[Identity](../domains/identity.md)、[Merchant](../domains/merchant.md)。
+- 七域实现：[领域设计目录](../domains/)；当前剩余工作见[状态路线](../ROADMAP.md)。
+- DDD 技术规范：[Java 规范](../development/JAVA-STYLE.md) 与外部 [xfg-ddd-skills](https://github.com/fuzhengwei/xfg-ddd-skills)；项目特有偏差由 [ADR](decisions.md) 记录。

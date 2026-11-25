@@ -21,7 +21,7 @@
 | R1 与行为契约规定完整 JSON；SDD-12 规定 600 秒租约、短事务提交和实际执行期间的容量许可 | SSE 单独增量交付，现有 JSON、租约和执行约束必须兼容 |
 | `schema.sql` 的 `uk_store_merchant` 限制一个商户一个门店 | 店铺装修与工作台不引入多门店经营语义 |
 
-源码依据主要为上述页面、`frontend/src/services/`、Java API DTO、`ShoppingAiCaseImpl`、`campus-shopping-app/src/main/resources/schema.sql`；迁移、行为和权限依据为 [R1](../../../docs/specs/RELEASE-01.md)、[HTTP 行为契约](../../../docs/api/behavior-v1.1.md)、[SDD-05](../../../docs/specs/SDD-RBAC-05.md)、[SDD-12](../../../docs/specs/SDD-REDIS-12.md)及[已接受 ADR](../../../docs/architecture/decisions.md)。
+源码依据主要为上述页面、`frontend/src/services/`、Java API DTO、`ShoppingAiCaseImpl`、`campus-shopping-app/src/main/resources/schema.sql`；迁移、行为和权限依据为 [R1](../../../../docs/specs/RELEASE-01.md)、[HTTP 行为契约](../../../../docs/api/behavior-v1.1.md)、[SDD-05](../../../../docs/specs/SDD-RBAC-05.md)、[SDD-12](../../../../docs/specs/SDD-REDIS-12.md)及[已接受 ADR](../../../../docs/architecture/decisions.md)。
 
 ### 原审查到交付任务的追踪
 
@@ -159,7 +159,7 @@ SSE 采用新增入口（拟为同源 `POST /ai/chat/stream`）与独立流式�
 
 新增专用调试请求/响应与权限判定，主体必须具有对应知识维护/读取能力；平台权限不自动获得任意商户私有内容。服务端产生当前可见版本白名单，消费者预览使用消费者范围，内部视图也在主体授权内。调用正式检索 Port，结果返回前再复验撤回、版本和权限；不引入可绕权的生产 debug 开关。
 
-输出文档/版本、可授权片段、排序与分数类型，区分 BM25、向量或融合结果，不把分数包装成正确率。回答预览按实际调用模式与当前配置明确展示，不默认启用真实外部模型；调试也占用真实容量并限流。新接口与 UI 不替代 [既有评测变更](../evaluate-shopping-retrieval-recommendations/proposal.md)的人工标注和真实实验。
+输出文档/版本、可授权片段、排序与分数类型，区分 BM25、向量或融合结果，不把分数包装成正确率。回答预览按实际调用模式与当前配置明确展示，不默认启用真实外部模型；调试也占用真实容量并限流。新接口与 UI 不替代 [既有评测变更](../../evaluate-shopping-retrieval-recommendations/proposal.md)的人工标注和真实实验。
 
 ### D9. 资料归属、测试和交付门禁
 

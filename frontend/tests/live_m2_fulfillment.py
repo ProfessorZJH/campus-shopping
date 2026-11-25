@@ -13,10 +13,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from browser_transport import evidence_dir
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-EVIDENCE = ROOT / 'docs/testing/evidence/frontend-live-m2'
+EVIDENCE = evidence_dir('frontend-live-m2')
 
 
 def credentials():

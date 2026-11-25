@@ -21,6 +21,8 @@ import sys
 import tempfile
 import time
 
+from evidence import evidence_path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "ai-service"))
 
@@ -353,7 +355,7 @@ def live_endpoint_safety(settings: Settings) -> dict[str, bool]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/testing/evidence/agent-v1.1.json")
+    parser.add_argument("--output", type=Path, default=evidence_path("agent-v1.1.json"))
     parser.add_argument("--require-live", action="store_true", help="真实必需检查未完成时返回非零")
     args = parser.parse_args()
     load_env(args.env_file)

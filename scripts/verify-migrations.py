@@ -8,12 +8,14 @@ from pathlib import Path
 
 import pymysql
 
+from evidence import evidence_path
+
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=3307)
-    parser.add_argument('--output', type=Path, default=Path('docs/testing/evidence/engineering/migrations.json'))
+    parser.add_argument('--output', type=Path, default=evidence_path('engineering', 'migrations.json'))
     args = parser.parse_args()
     spec = importlib.util.spec_from_file_location('isolated_verification', Path(__file__).with_name('verify-mysql-isolated.py'))
     module = importlib.util.module_from_spec(spec)

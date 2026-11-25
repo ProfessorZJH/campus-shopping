@@ -28,14 +28,19 @@ import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalItemVO;
 import cn.bugstack.ai.domain.shoppingai.model.valobj.ProposalVO;
 import cn.bugstack.ai.domain.shoppingai.service.IConversationService;
 import cn.bugstack.ai.domain.shoppingai.service.IProposalService;
+import cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy;
 import cn.bugstack.ai.domain.shoppingai.service.RecommendationPolicy;
 import cn.bugstack.ai.domain.shoppingai.service.ShoppingAnswerPolicy;
+import cn.bugstack.ai.domain.shoppingai.service.SkuConstraintPolicy;
+import cn.bugstack.ai.types.common.FailureDiagnostics;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import cn.bugstack.ai.types.exception.AppException;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.function.LongConsumer;
@@ -44,17 +49,17 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Java 负责复权、商品事实和用户确认；模型文本从不直接变成写命令。 */
 @Service
 public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
-    private final cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy egress;
-
     private static final Logger log = LoggerFactory.getLogger(ShoppingAiCaseImpl.class);
 
-    private final IConversationService state;
+    private final KnowledgeEgressPolicy egress;
+    private final IConversationService conversations;
     private final IProposalService proposals;
     private final IAiEnginePort engine;
     private final IKnowledgeCase knowledge;
@@ -71,7 +76,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     private long proposalMinutes = 10;
 
     public ShoppingAiCaseImpl(
-        IConversationService state,
+        IConversationService conversations,
         IProposalService proposals,
         IAiEnginePort engine,
         IKnowledgeCase knowledge,
@@ -81,10 +86,10 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         Clock clock,
         IConversationTurnCase turns,
         IProposalConfirmationCase confirmation,
-        cn.bugstack.ai.domain.shoppingai.service.KnowledgeEgressPolicy egress
+        KnowledgeEgressPolicy egress
     ) {
         this.egress = egress;
-        this.state = state;
+        this.conversations = conversations;
         this.proposals = proposals;
         this.engine = engine;
         this.knowledge = knowledge;
@@ -138,47 +143,39 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         );
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
+    @Transactional(propagation = Propagation.NEVER)
     public ChatResult chat(String actor, String conversationId, String question) {
         accounts.requireActive(actor);
-        String q = text(question, "问题", 2000);
-        var turn = state.beginTurn(actor, conversationId, q);
+        String normalizedQuestion = text(question, "问题", 2000);
+        var turn = conversations.beginTurn(actor, conversationId, normalizedQuestion);
         try {
-            return answer(actor, turn, q, null);
+            return answer(actor, turn, normalizedQuestion, null);
         } catch (RuntimeException failure) {
             // 成功提交已经在短事务中释放租约；失败才做 token 条件释放，不能误清除后继请求。
             try {
-                state.releaseTurn(turn);
+                conversations.releaseTurn(turn);
             } catch (RuntimeException releaseFailure) {
                 failure.addSuppressed(releaseFailure);
-                log.error(
-                    "会话租约释放失败 conversationId={} diagnostic={}",
-                    turn.conversationId(),
-                    cn.bugstack.ai.types.common.FailureDiagnostics.describe(releaseFailure)
-                );
+                log.error("会话租约释放失败 conversationId={} diagnostic={}", turn.conversationId(), FailureDiagnostics.describe(releaseFailure));
             }
             throw failure;
         }
     }
 
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NEVER)
+    @Transactional(propagation = Propagation.NEVER)
     public ChatResult chatStream(String actor, String conversationId, String question, Consumer<String> conversationReady, LongConsumer progress) {
         accounts.requireActive(actor);
-        String q = text(question, "问题", 2000);
-        var turn = state.beginTurn(actor, conversationId, q);
+        String normalizedQuestion = text(question, "问题", 2000);
+        var turn = conversations.beginTurn(actor, conversationId, normalizedQuestion);
         if (conversationReady != null) conversationReady.accept(turn.conversationId());
         try {
-            return answer(actor, turn, q, progress);
+            return answer(actor, turn, normalizedQuestion, progress);
         } catch (RuntimeException failure) {
             try {
-                state.releaseTurn(turn);
+                conversations.releaseTurn(turn);
             } catch (RuntimeException releaseFailure) {
                 failure.addSuppressed(releaseFailure);
-                log.error(
-                    "会话租约释放失败 conversationId={} diagnostic={}",
-                    turn.conversationId(),
-                    cn.bugstack.ai.types.common.FailureDiagnostics.describe(releaseFailure)
-                );
+                log.error("会话租约释放失败 conversationId={} diagnostic={}", turn.conversationId(), FailureDiagnostics.describe(releaseFailure));
             }
             throw failure;
         }
@@ -186,21 +183,21 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
     public ConversationTurnStatusVO turnStatus(String actor, String conversation) {
         accounts.requireActive(actor);
-        return state.turnStatus(actor, conversation);
+        return conversations.turnStatus(actor, conversation);
     }
 
     public ConversationTurnStatusVO requestTurnCancel(String actor, String conversation) {
         accounts.requireActive(actor);
-        return state.requestTurnCancel(actor, conversation);
+        return conversations.requestTurnCancel(actor, conversation);
     }
 
     private ChatResult answer(String actor, ConversationTurnVO turn, String question, LongConsumer progress) {
         String conversation = turn.conversationId();
         var documents = knowledge.readableScope(actor);
         String fingerprint = scope(documents);
-        List<MessageVO> history = evidenceAssembler.sanitizeHistory(actor, state.messages(actor, conversation, 12), fingerprint, documents);
+        List<MessageVO> history = evidenceAssembler.sanitizeHistory(actor, conversations.messages(actor, conversation, 12), fingerprint, documents);
         AiRecallVO recall = engine.recall(question, history);
-        var prior = java.util.Optional.ofNullable(proposals.proposals(actor, conversation)).orElse(List.of()).stream().findFirst().orElse(null);
+        var prior = Optional.ofNullable(proposals.proposals(actor, conversation)).orElse(List.of()).stream().findFirst().orElse(null);
         CandidateResolver.CandidateSnapshot candidateSnapshot = candidateResolver.resolve(question, recall, prior);
         var candidates = candidateSnapshot.candidates();
         var quotes = candidateSnapshot.quotes();
@@ -256,7 +253,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             .stream()
             .map(i -> new AiRecommendationVO(i.skuId(), i.quantity(), "规格：" + i.specKey() + "；以当前商品卡片为准"))
             .toList();
-        var specs = cn.bugstack.ai.domain.shoppingai.service.SkuConstraintPolicy.resolve(
+        var specs = SkuConstraintPolicy.resolve(
             question,
             history
                 .stream()
@@ -303,9 +300,9 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                 clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60),
                 fingerprint
             );
-        } catch (cn.bugstack.ai.types.exception.AppException failure) {
+        } catch (AppException failure) {
             // Cancellation can win between the final status check and finishTurn's conditional UPDATE.
-            var status = state.turnStatus(actor, conversation);
+            var status = conversations.turnStatus(actor, conversation);
             if (status != null && "CANCEL_REQUESTED".equals(status.status())) throw new AiTurnCancelledException();
             throw failure;
         }
@@ -313,7 +310,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     }
 
     private void ensureTurnActive(String actor, String conversation) {
-        var status = state.turnStatus(actor, conversation);
+        var status = conversations.turnStatus(actor, conversation);
         if (status != null && "CANCEL_REQUESTED".equals(status.status())) throw new AiTurnCancelledException();
     }
 
@@ -324,12 +321,12 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     public List<MessageVO> history(String actor, String conversation) {
         accounts.requireActive(actor);
         List<KnowledgeScopeVO> readable = knowledge.readableScope(actor);
-        return evidenceAssembler.sanitizeHistory(actor, state.messages(actor, conversation, 100), scope(readable), readable);
+        return evidenceAssembler.sanitizeHistory(actor, conversations.messages(actor, conversation, 100), scope(readable), readable);
     }
 
     public List<ConversationVO> conversations(String actor, int page, int size) {
         accounts.requireActive(actor);
-        return state.conversations(actor, page, size);
+        return conversations.conversations(actor, page, size);
     }
 
     public List<ProposalVO> proposals(String actor, String conversation) {

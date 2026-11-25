@@ -19,10 +19,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from browser_transport import evidence_dir
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parents[2]
-EVIDENCE = ROOT / 'docs/testing/evidence/frontend-live-final'
+EVIDENCE = evidence_dir('frontend-live-final')
 TINY_PNG = (
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk'
     '+A8AAQUBAScY42YAAAAASUVORK5CYII='

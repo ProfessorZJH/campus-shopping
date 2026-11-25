@@ -24,6 +24,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 import pymysql
+from evidence import evidence_path
 from schema_contract import (apply_migrations, validate_history, HEADER, FOOTER, schema_fingerprint,
                              migrations, SchemaAdmissionError, SchemaDriftError)
 
@@ -383,14 +384,29 @@ def http_smoke(args, workspace, build_root, connection, env, report):
         live = build_root/'frontend/tests/live_ui.py'
         live.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT/'frontend/tests/live_ui.py', live)
+        live_evidence = workspace/'browser-evidence'
+        live_env = env | {'CAMPUS_EVIDENCE_DIR': str(live_evidence)}
         completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(live), '--base-url', base],
-                                   cwd=build_root, env=env, creationflags=FLAGS, timeout=150)
-        source = build_root/'docs/testing/evidence/frontend-live'
+                                   cwd=build_root, env=live_env, creationflags=FLAGS, timeout=150)
+        source = live_evidence/'frontend-live'
         if source.exists():
             shutil.copytree(source, args.output.parent/'frontend-live', dirs_exist_ok=True)
         browser = json.loads((source/'results.json').read_text('utf-8'))
         report['browser'] = {'status': browser['status'], 'checks': len(browser['checks']), 'apiMockUsed': False}
         assert completed.returncode == 0 and browser['status'] == 'PASS', '真实浏览器验收失败'
+        final_source = live_evidence/'frontend-live-final'
+        final = json.loads((final_source/'results.json').read_text('utf-8'))
+        shutil.copytree(final_source, args.output.parent/'frontend-live-final', dirs_exist_ok=True)
+        report['browserFinal'] = {'status': final['status'], 'checks': len(final['checks']), 'apiMockUsed': False}
+        assert final['status'] == 'PASS', '最终隔离浏览器矩阵失败'
+        m2_script = build_root/'frontend/tests/live_m2_fulfillment.py'
+        completed = subprocess.run([sys.executable, '-X', 'utf8', '-B', str(m2_script), '--base-url', base],
+                                   cwd=build_root, env=live_env, creationflags=FLAGS, timeout=180)
+        m2_source = live_evidence/'frontend-live-m2'
+        m2 = json.loads((m2_source/'results.json').read_text('utf-8'))
+        shutil.copytree(m2_source, args.output.parent/'frontend-live-m2', dirs_exist_ok=True)
+        report['browserM2'] = {'status': m2['status'], 'checks': len(m2['checks']), 'apiMockUsed': False}
+        assert completed.returncode == 0 and m2['status'] == 'PASS', 'M2 真实浏览器验收失败'
     finally:
         for process in reversed(processes):
             process.terminate()
@@ -595,7 +611,7 @@ def main():
     parser.add_argument('--offline', action='store_true')
     parser.add_argument('--skip-maven', action='store_true')
     parser.add_argument('--http-smoke', action='store_true', help='额外启动隔离 Java/FastAPI 并执行真实 HTTP 与浏览器验收')
-    parser.add_argument('--output', type=Path, default=ROOT/'docs/testing/evidence/audit-20261029/mysql.json')
+    parser.add_argument('--output', type=Path, default=evidence_path('audit-20261029', 'mysql.json'))
     parser.add_argument('--artifact-dir', type=Path, help='隔离已测 JAR/清单的保留目录，默认 var/engineering/verified-build')
     parser.add_argument('--evaluation-input', type=Path, help='本次已生成的合成Java评测计划；默认controlled smoke')
     args = parser.parse_args()

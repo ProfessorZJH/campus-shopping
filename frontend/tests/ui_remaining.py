@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """扩展页面真实 Vue + Chromium 验证。明确区分演示与 Java 接口契约替身。"""
 import json
+import os
 from pathlib import Path
+import shutil
 from playwright.sync_api import sync_playwright,expect
+from browser_transport import evidence_dir
 from ui_three_pages import render,BackendContractDouble,ERRORS
 ROOT=Path(__file__).resolve().parents[2]
-OUT=ROOT/'docs/testing/evidence/ui-rest-pages'
-OUT.mkdir(parents=True,exist_ok=True)
+OUT=evidence_dir('ui-rest-pages')
 ROUTES=[
  ('/','home',430,932),('/ai','ai',430,932),('/product/preview-p1','product',430,932),('/cart','cart',430,932),('/orders','orders',430,932),('/orders/CS202610280001','pickup',430,932),('/account','account',430,932),('/apply','merchant-application',430,932),('/invitations','invitations',430,932),
  ('/merchant','merchant-overview',1448,1000),('/merchant/products','merchant-products',1448,1000),('/merchant/inventory','merchant-inventory',1448,1000),('/merchant/orders','merchant-orders',1448,1000),('/merchant/pickup','merchant-pickup',1448,1000),('/merchant/aftersales','merchant-after-sales',1448,1000),('/merchant/team','merchant-team',1448,1000),('/merchant/settings','merchant-settings',1448,1000),('/merchant/knowledge','merchant-knowledge',1448,1000),
@@ -14,7 +16,8 @@ ROUTES=[
 ]
 checks=[]
 with sync_playwright() as p:
-    browser=p.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+    executable=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium')
+    browser=p.chromium.launch(headless=True,executable_path=executable,args=['--no-sandbox'])
     for route,name,w,h in ROUTES:
         page=render(browser,route,True,(w,h))
         expect(page.locator('.application')).to_be_visible()

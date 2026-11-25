@@ -12,12 +12,14 @@ import secrets
 import sys
 import uuid
 
+from evidence import evidence_path
+
 ROOT=Path(__file__).resolve().parents[1]
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--base-url',default='http://127.0.0.1:8091')
 parser.add_argument('--secondary-base-url',default='http://127.0.0.1:8092')
 parser.add_argument('--env-file',type=Path,default=ROOT/'.env')
-parser.add_argument('--output',type=Path,default=ROOT/'docs/testing/evidence/redis-shared-http.json')
+parser.add_argument('--output',type=Path,default=evidence_path('redis-shared-http.json'))
 args=parser.parse_args()
 for url in [args.base_url,args.secondary_base_url]:
     if urlsplit(url).hostname not in {'127.0.0.1','localhost','::1'}:parser.error('Only local test services are allowed')

@@ -12,11 +12,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from playwright.sync_api import sync_playwright,expect
 from contract_ui import BackendContractDouble
-from browser_transport import add_campus_styles, track_bindings, close_page, close_browser
+from browser_transport import add_campus_styles, close_browser, close_page, evidence_dir, track_bindings
 ROOT=Path(__file__).resolve().parents[2]
 UI=ROOT/'frontend'
-EVIDENCE=ROOT/'docs/testing/evidence/ui-three-pages'
-EVIDENCE.mkdir(parents=True,exist_ok=True)
+EVIDENCE=evidence_dir('ui-three-pages')
 IMAGES={f.name:'data:image/webp;base64,'+base64.b64encode(f.read_bytes()).decode() for f in (UI/'images').glob('*.webp')}
 CHECKS=[]
 ERRORS=[]

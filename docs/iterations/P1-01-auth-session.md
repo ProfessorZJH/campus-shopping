@@ -115,7 +115,7 @@ mvn -B -ntp clean verify
 
 ## 9. 上游依据和验证
 
-- 项目工程规则：[工程对齐](../architecture/engineering-alignment.md)。
+- 项目工程规则：[Java 规范](../development/JAVA-STYLE.md)。
 - 本批验证记录：[验证报告](../testing/P1-01-verification.md)。
 - Spring Security 显式保存会话上下文：https://docs.spring.io/spring-security/reference/6.5/servlet/authentication/session-management.html
 - CSRF 与登录、退出后刷新令牌：https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html

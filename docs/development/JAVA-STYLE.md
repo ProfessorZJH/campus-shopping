@@ -15,11 +15,12 @@
 - 数据库事务必须覆盖同库一致性修改。AI 模型调用和文件解析/向量索引不应在持有交易行锁时执行。
 - **禁止把真实密钥、密码或内部用户资料写入注释、示例、日志或文档。**
 
-## 本批治理边界（PR4）
+## 当前治理边界
 
-先恢复压缩最严重、业务责任最关键的十个 Case/Domain Service 类排版，并补充关键中文业务注释。另将知识发布时的 **READY + 最新版本**判断迁至 `KnowledgePublicationPolicy`；Repository 用同事务的 `FOR UPDATE` 取发布快照再执行 DML。
-
-已有数百个 Java 文件，本 PR **不进行全仓盲目格式化**，因为那会掩盖交易/权限/索引规则的实质变化，并制造难以审查的大差异。新写的 Java 代码直接遵循本约定；后续只在涉及相应文件时渐进修正。
+- Controller 只做协议、可信主体、输入校验和响应映射；跨域事务由 Case 编排，业务规则留在 Domain。
+- 知识发布必须使用最新且 `READY` 的版本；Repository 在同事务内取发布快照并执行写入。
+- 不进行全仓盲目格式化或为“看起来 DDD”创建空接口。涉及热点文件时按实际业务变化渐进收敛。
+- 当类同时承担持久化、远程 I/O、业务规则或协议映射中的多项职责时，应先用测试固定行为，再按真实变化轴拆分。
 
 ## 可靠性检查
 
@@ -28,8 +29,8 @@ python scripts/verify-java-readability.py
 mvn -B -ntp clean verify
 ```
 
-GitHub Actions 继续执行原有 Java 领域规则、Python AI、真实 MySQL、173 项 HTTP 和 8 项浏览器检查。以上测试不代表生产已部署，也不代表 NVIDIA/讯飞/Milvus 外部联通验收完成。
+GitHub Actions 执行格式、领域/DDD、契约、真实 MySQL/Redis、HTTP、浏览器和镜像检查。具体数量与环境以对应提交的 CI/报告为准；自动化通过不代表生产已部署或外部 AI 已验收。
 
 ## 整合后的自动格式化
 
-本地/远端整合已将 Java 的 Prettier override 统一为 4 空格、160 列，前端仍为 2 空格、100 列。运行 `npm run format --prefix frontend`，CI 运行 `format:check`；原 11 个核心类可读性门禁继续保留。纯排版文件按 Java 语法树核对后单独提交。
+Java 的 Prettier override 统一为 4 空格、160 列，前端为 2 空格、100 列。运行 `npm run format --prefix frontend`，CI 运行 `format:check`；核心类可读性门禁继续保留。纯排版文件按 Java 语法树核对后单独提交。

@@ -26,6 +26,10 @@ import urllib.request
 import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+
+from evidence import evidence_path
 
 
 def loopback(url: str) -> str:
@@ -392,7 +396,7 @@ def main() -> int:
     parser.add_argument("--start-uvicorn", action="store_true", help="start an isolated temporary Uvicorn process; Java-owned entry still required for 4.2")
     parser.add_argument("--python", default="", help="Python interpreter for --start-uvicorn")
     parser.add_argument("--question", default="找可售的茶")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/testing/evidence/agent-v1.1-m2-runtime-bridge.json")
+    parser.add_argument("--output", type=Path, default=evidence_path("agent-v1.1-m2-runtime-bridge.json"))
     args = parser.parse_args()
     started = dt.datetime.now(dt.timezone.utc).isoformat()
     try:

@@ -6,7 +6,7 @@
 
 - **后端（Java 17 / Spring Boot 3.4.3 / MyBatis 3.0.4 / Redisson 4.8.0）**：
   - 遵循小傅哥 DDD 七模块分层：`campus-shopping-types`（公共类型与错误码）、`api`（契约接口与 DTO）、`domain`（7 大限界上下文业务规则、聚合、仓储与窄 Port）、`case`（跨领域事务编排与锁序控制）、`infrastructure`（MyBatis 数据访问、Redis 协调与外部 HTTP/七牛适配）、`trigger`（HTTP Controller、独立 SSE 端点与定时任务）、`app`（启动装配与生产安全守卫）。
-  - **数据与接口规模**：`44` 张 MySQL 业务与治理表、`33` 个不可变版本迁移脚本（启动只读校验结构指纹与校验和，显式维护窗口迁移）、`102` 条自动生成并双向校验的 JSON HTTP 路由 + 独立 AI SSE 流式路由（`/api/v1/ai/chat/stream`）。
+  - **数据与接口规模**：`44` 张 MySQL 业务与治理表、`20` 个不可变版本迁移脚本（启动只读校验结构指纹与校验和，显式维护窗口迁移）、`102` 条自动生成并双向校验的 JSON HTTP 路由 + 独立 AI SSE 流式路由（`/api/v1/ai/chat/stream`）。
 - **智能导购与检索服务（`ai-service/` · Python 3.11 / FastAPI）**：
   - **全量公开商品混合召回**：MySQL 全表上架商品词面加权召回（Top 200） + 可选 Milvus 全目录语义向量召回（Top 80，经 Java MySQL 实时复验状态） + 两级 RRF（$k=60$）融合 + 跨商品 SKU 轮询采样与规格/预算/数量硬约束过滤。
   - **四重知识安全护栏**：知识库可见性/外发双白名单（内部资料默认本地 256 维哈希向量入 SQLite，不外发外部模型）、PII 自动脱敏、Java 侧调用前后三次权限快照指纹复核（防 TOCTOU 越权泄漏）、基于 `turn_token` 600 秒会话租约与 `Propagation.NEVER` 的零数据库锁长调用。
@@ -26,7 +26,7 @@
 ## 3. 快速导航入口
 
 - **毕业设计与答辩专区**：[毕设全周期总控台](docs/thesis/README.md) · [开题答辩攻略与讲稿](docs/thesis/01-OPENING-DEFENSE-GUIDE.md) · [论文六章写作蓝图](docs/thesis/02-THESIS-CHAPTER-BLUEPRINT.md) · [系统图表与44表/102路由速查手册](docs/thesis/03-ARCHITECTURE-AND-DATA-MANUAL.md) · [评测实验SOP与终期答辩Q&A](docs/thesis/04-EXPERIMENT-AND-FINAL-DEFENSE-QA.md)
-- **权威工程与规格索引**：[全量文档唯一索引](docs/README.md) · [AI 协作与工程约束](AGENTS.md) · [开发与门禁流程](docs/development/AI-WORKFLOW.md) · [架构决策记录 ADR](docs/architecture/decisions.md)
+- **权威工程与规格索引**：[当前文档入口](docs/README.md) · [当前状态与剩余工作](docs/ROADMAP.md) · [AI 协作与工程约束](AGENTS.md) · [开发与门禁流程](docs/development/AI-WORKFLOW.md) · [架构决策记录 ADR](docs/architecture/decisions.md)
 - **接口、数据与运维手册**：[HTTP 接口文档](docs/api/http-api.md) · [OpenAPI 规范](docs/api/openapi.json) · [行为契约](docs/api/behavior-v1.1.md) · [AI 流式协议](docs/api/streaming.md) · [数据库模型](docs/database/logical-data-model.md) · [R1 运行手册](docs/operations/R1-runbook.md) · [Redis 运行手册](docs/operations/REDIS-12-runbook.md) · [智能导购评测说明](ai-service/evaluation/README.md)
 
 ## 4. 本地构建、启动与验证

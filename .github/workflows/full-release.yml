@@ -18,6 +18,9 @@ on:
 permissions:
   contents: read
 
+env:
+  CAMPUS_EVIDENCE_DIR: ${{ github.workspace }}/docs/testing/evidence
+
 concurrency:
   group: acceptance-${{ github.ref }}
   cancel-in-progress: true
@@ -60,7 +63,7 @@ jobs:
           python scripts/verify-api-schemas.py
           python scripts/verify-java-readability.py
           python scripts/verify-release.py
-          python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions
+          python -m unittest discover -s scripts/tests -p "test_*.py"
           python scripts/verify-mapper-scan.py
           python scripts/verify-fix-regressions.py
       - name: Python and Java deterministic regressions
@@ -120,7 +123,7 @@ jobs:
       - name: API / SDD / source safety checks
         run: |
           python scripts/verify-java-readability.py
-          python -m unittest scripts.tests.test_verify_mapper_scan scripts.tests.test_verify_fix_regressions
+          python -m unittest discover -s scripts/tests -p "test_*.py"
           python scripts/verify-mapper-scan.py
           python scripts/verify-api-contract.py
           python scripts/verify-api-schemas.py
@@ -310,7 +313,7 @@ jobs:
             var/ci/*.log
             var/evaluation/**
             var/supply-chain/**
-            var/verify/qiniu-phase2-csp-browser.json
+            var/verify/**
       - name: Stop isolated services
         if: always()
         shell: bash
@@ -355,7 +358,7 @@ jobs:
         shell: bash
         run: |
           status=0
-          for script in ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py ui_r1_correctness.py ui_product_images.py ui_remediation.py ui_review_regression.py ui_guide_conversation.py ui_refund_recovery.py ui_status_panel.py ui_shell_bundle.py ui_after_sale_history.py ui_checkout_confirmation.py ui_order_snapshot.py ui_price_filter.py ui_product_detail.py ui_storefront.py; do
+          for script in ui_copy_polish.py ui_three_pages.py ui_audit_contract.py ui_sdd_integration.py ui_contract_v11.py ui_fix_regression.py ui_rbac_regression.py ui_global_sort.py ui_list_pagination.py ui_r1_correctness.py ui_permission_correctness.py ui_product_images.py ui_remediation.py ui_review_regression.py ui_guide_conversation.py ui_refund_recovery.py ui_status_panel.py ui_shell_bundle.py ui_design_system.py ui_remaining.py ui_remaining_contract.py ui_after_sale_history.py ui_checkout_confirmation.py ui_order_snapshot.py ui_price_filter.py ui_product_detail.py ui_storefront.py; do
             python "frontend/tests/$script" || status=1
           done
           exit "$status"
