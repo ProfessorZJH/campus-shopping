@@ -45,6 +45,14 @@ final class ShoppingEvaluationFixture {
 
     void load(JsonNode data) {
         f.catalog.upsertCategory(f.admin, "evaluation", "合成评测", true);
+        Set<String> seenCategories = new LinkedHashSet<>();
+        seenCategories.add("evaluation");
+        for (JsonNode p : data.path("products")) {
+            String code = p.path("categoryCode").asText("evaluation");
+            if (seenCategories.add(code)) {
+                f.catalog.upsertCategory(f.admin, code, "评测类目-" + code, true);
+            }
+        }
         for (JsonNode m : data.path("merchants").path("merchants")) {
             String id = m.path("merchantId").asText();
             if (id.equals("m0")) {
@@ -101,7 +109,7 @@ final class ShoppingEvaluationFixture {
             .createProduct(
                 owner,
                 merchant.id(),
-                new ProductCreateCommandEntity(p.path("title").asText(), p.path("description").asText(), "evaluation", "", skus)
+                new ProductCreateCommandEntity(p.path("title").asText(), p.path("description").asText(), p.path("categoryCode").asText("evaluation"), "", skus)
             )
             .product();
         map(p.path("productId").asText(), created.getId());

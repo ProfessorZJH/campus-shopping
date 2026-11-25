@@ -81,6 +81,9 @@ def recommendation_metrics(data, case, result, grades, *, attempted=True):
         # 只有人工评审或数据集声明的拒绝要点才能证明语义正确。
         terms = expected.get("noMatchTerms", ["没有找到", "无法找到", "没有匹配"])
         correct = not items and any(w in result.get("answer", "") for w in terms)
+    elif action == "KNOWLEDGE_ONLY":
+        # 纯规则/政策问答不应强行推荐商品；结合下方 evidenceCoverage 联合判定请求成功。
+        correct = not items
     else:
         correct = coverage
     if case["relevantEvidenceIds"]:

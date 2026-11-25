@@ -43,6 +43,7 @@ UNCERTAIN=(r'(?:['+DIGITS+r'\d]*[几多来余]|['+DIGITS+r'\d]+\s*[到至~-]\s*[
            r'|(?<!['+DIGITS+r'\d])十['+SIMPLE+r']['+SIMPLE+r']'
            r'|(?<!['+DIGITS+r'\d])[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+(?!['+DIGITS+r'\d]))\s*')
 FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些')
+BUDGET_KEEP=re.compile(r'预算不变|原预算|按预算|看看预算|看预算|预算内')
 
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
@@ -97,9 +98,15 @@ def requested_quantity(question: str) -> int|None:
 
 def purchase_constraints(question: str,history: list[dict]) -> tuple[tuple[int|None,str],tuple[int|None,str]]:
     budget=budget_intent(question);quantity=quantity_intent(question)
+    keep_budget_ref=(budget[1]=='AMBIGUOUS' and bool(BUDGET_KEEP.search(question))
+                     and not re.search(UNCERTAIN+CURRENCY,question)
+                     and not re.search(NUMBER+r'\s*'+CURRENCY,question))
     if FOLLOWUP.search(question):
         for previous in reversed([h['content'] for h in history if h['role']=='user']):
             if budget[1]=='UNSPECIFIED':budget=budget_intent(previous)
+            elif keep_budget_ref and budget[1]=='AMBIGUOUS':
+                inherited=budget_intent(previous)
+                if inherited[1]=='VALID':budget=inherited
             if quantity[1]=='UNSPECIFIED':quantity=quantity_intent(previous)
             if not FOLLOWUP.search(previous):break
     return budget,quantity

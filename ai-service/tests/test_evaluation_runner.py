@@ -311,3 +311,43 @@ def test_cli_dev_results_are_reproducible_across_process_hash_seeds(tmp_path):
             r.get('result', {}).pop('latencyMs', None)
         results.append(rows)
     assert results[0] == results[1]
+
+
+def test_runner_does_not_truncate_tail_gold_skus_and_isolates_internal_knowledge_egress(tmp_path):
+    from evaluation.runner import offers_for
+    data = load()
+    last_case = next(c for c in data['cases'] if c['caseId'] == 'case-120')
+    offers = offers_for(data, last_case)
+    offer_ids = {o['skuId'] for o in offers}
+    assert len(offers) > 300
+    assert {'s119-0', 's239-0'} <= offer_ids
+
+    # 内部文档（MERCHANT_INTERNAL / PLATFORM_INTERNAL）在受控外部嵌入模式下绝不可外发。
+    external_embed_inputs = []
+    def spy_handler(request):
+        from evaluation.provenance import controlled_response
+        if request.url.path.endswith('/embeddings'):
+            body = json.loads(request.content)
+            external_embed_inputs.extend(body.get('input', []))
+        return controlled_response(request)
+
+    path = new_run(tmp_path / 'egress-isolation')
+    result = run(data, path, split='smoke', profile='controlled', experiments=('K-H', 'R-RULE'), handler=spy_handler)
+    assert result['exitCode'] == 0 and result['boundaryViolations'] == []
+    assert result['configuration']['fixtureOfferPool'] == 'ALL_ELIGIBLE'
+    assert result['configuration']['knowledgeEgressPolicy'] == 'PUBLIC_ONLY'
+    internal_docs = [d for d in data['knowledge'] if d['visibility'] != 'PUBLIC']
+    public_docs = [d for d in data['knowledge'] if d['visibility'] == 'PUBLIC']
+    assert external_embed_inputs
+    assert any(d['content'][:20] in text for d in public_docs for text in external_embed_inputs)
+    assert all('内部评测识别符' not in text and '不得向未授权者披露' not in text for text in external_embed_inputs)
+    assert all(d['content'] not in text for d in internal_docs for text in external_embed_inputs)
+    rows = [json.loads(line) for line in (path / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
+    pk_row = next(r for r in rows if r['caseId'] == 'case-071' and r['experiment'] == 'R-RULE')
+    assert pk_row['result']['recommendations'] == []
+    assert pk_row['scores']['requestSuccess']['value'] == 1
+    assert pk_row['scores']['evidenceCoverage']['value'] == 1
+    assert pk_row['scores']['recommendationCoverage']['value'] is None
+    followup_row = next(r for r in rows if r['caseId'] == 'case-101' and r['experiment'] == 'R-RULE')
+    assert followup_row['scores']['requestSuccess']['value'] == 1
+

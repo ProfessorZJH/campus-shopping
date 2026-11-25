@@ -179,3 +179,27 @@ def test_low_quality_and_empty_recommendations_are_not_hard_violations(sample):
     assert low_quality['recall']['value'] == 0 and not hard_violations(low_quality)
     with pytest.raises(ValueError, match='scorerVersion'):
         paired([], [], 'recall', metadata_left={'scorerVersion': '1'}, metadata_right={'scorerVersion': '2'})
+
+
+def test_knowledge_only_action_requires_no_recommendations_and_full_evidence_coverage():
+    data = load()
+    case = next(c for c in data['cases'] if c['caseId'] == 'case-071')
+    qr = next(q for q in data['qrels'] if q['caseId'] == 'case-071')
+    docs = {d['documentId']: d for d in data['knowledge']}
+    citations = [
+        {
+            'documentId': did,
+            'chunkId': str(uuid.uuid5(uuid.NAMESPACE_URL, did + ':0')),
+            'snippet': docs[did]['content'][:40],
+            'documentVersion': 1,
+            'ordinal': 0,
+            'contentHash': docs[did]['contentHash'],
+        }
+        for did in qr['document']
+    ]
+    ok = recommendation_metrics(data, case, {'answer': '自提规则说明', 'recommendations': [], 'citations': citations}, qr['sku'])
+    assert ok['requestSuccess']['value'] == 1
+    assert ok['recommendationCoverage']['status'] == 'N/A'
+    wrong = recommendation_metrics(data, case, {'answer': '自提规则说明', 'recommendations': [{'skuId': 's000-0', 'quantity': 1}], 'citations': citations}, qr['sku'])
+    assert wrong['requestSuccess']['value'] == 0
+

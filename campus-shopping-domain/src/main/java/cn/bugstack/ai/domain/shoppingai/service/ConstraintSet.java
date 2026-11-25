@@ -13,6 +13,7 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     private static final String CURRENCY = "(?:元|块钱|块)";
     private static final String UNIT = "[个件份瓶盒包本支杯袋斤条双把台张根套箱桶罐卷只副对]";
     private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
+    private static final Pattern BUDGET_KEEP = Pattern.compile("预算不变|原预算|按预算|看看预算|看预算|预算内");
     private static final Pattern QUANTITY = Pattern.compile("(?<![\\d." + DIGITS + "])(\\d+(?:\\.\\d+)?|[" + DIGITS + "]+)\\s*" + UNIT + "(?!装)");
     // 复合口语数词：二三 十、十二 三、一百二三 等区间；完整数词（如一百零二、二十三点五）不得误判。
     private static final String RANGE = "[" + DIGITS + "\\d]+\\s*[到至~-]\\s*[" + DIGITS + "\\d]+";
@@ -36,10 +37,23 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     public static ConstraintSet resolve(String question, List<String> history, List<ProposalItemVO> quotes) {
         Intent budget = budget(question),
             quantity = quantity(question);
+        boolean keepBudgetRef =
+            budget.invalid() &&
+            BUDGET_KEEP.matcher(question).find() &&
+            !Pattern.compile(UNCERTAIN + CURRENCY)
+                .matcher(question)
+                .find() &&
+            !Pattern.compile(NUMBER + "\\s*" + CURRENCY)
+                .matcher(question)
+                .find();
         if (FOLLOWUP.matcher(question).find()) {
             for (int i = history.size() - 1; i >= 0; i--) {
                 String previous = history.get(i);
                 if (!budget.specified()) budget = budget(previous);
+                else if (keepBudgetRef && budget.invalid()) {
+                    Intent inherited = budget(previous);
+                    if (inherited.specified() && !inherited.invalid()) budget = inherited;
+                }
                 if (!quantity.specified()) quantity = quantity(previous);
                 if (!FOLLOWUP.matcher(previous).find()) break;
             }

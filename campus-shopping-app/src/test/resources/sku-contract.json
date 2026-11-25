@@ -451,5 +451,12 @@
     "titles": ["校园卫衣"],
     "specs": ["S", "M", "L"],
     "accepted": ["M", "L"]
+  },
+  {
+    "question": "不要超过3元买笔记本",
+    "history": [],
+    "titles": ["笔记本"],
+    "specs": ["标准装", "家庭装"],
+    "accepted": ["标准装", "家庭装"]
   }
 ]

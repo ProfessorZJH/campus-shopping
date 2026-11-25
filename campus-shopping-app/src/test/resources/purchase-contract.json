@@ -43,5 +43,9 @@
   {"question":"买12支装中性笔","history":[],"budgetCent":null,"quantity":null,"clarify":false},
   {"question":"买一个12支装中性笔","history":[],"budgetCent":null,"quantity":1,"clarify":false},
   {"question":"买2条毛巾","history":[],"budgetCent":null,"quantity":2,"clarify":false},
-  {"question":"买3双袜子","history":[],"budgetCent":null,"quantity":3,"clarify":false}
+  {"question":"买3双袜子","history":[],"budgetCent":null,"quantity":3,"clarify":false},
+  {"question":"预算不变，帮我换一个便宜一些的选项","history":["预算20元买两件笔"],"budgetCent":2000,"quantity":2,"clarify":false},
+  {"question":"这个款式可以，换成3件看看预算","history":["预算20元买两件笔"],"budgetCent":2000,"quantity":3,"clarify":false},
+  {"question":"预算不变，帮我换一个便宜一些的选项","history":[],"budgetCent":null,"quantity":null,"clarify":true},
+  {"question":"这个预算二三十元，预算不变","history":["预算20元买两件笔"],"budgetCent":null,"quantity":2,"clarify":true}
 ]

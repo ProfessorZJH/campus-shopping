@@ -60,7 +60,7 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split dev --profile
 | SAFE | JUnit真实事务/ACL + 标明模型替身 | 撤权、撤稿、旧历史、陈旧确认、竞争、回滚 |
 | E4 / reranker | UNSUPPORTED | 当前没有独立reranker |
 
-旧E0→K-D、E1→K-D-R、E2→K-H、E3→K-H-R。知识向量库是SQLite（可选Qdrant不在本轮实验）；商品向量库才是Milvus。R-RULE的fixture候选上限300，不能把注入候选内排序当全语料召回。
+旧E0→K-D、E1→K-D-R、E2→K-H、E3→K-H-R。知识向量库是SQLite（可选Qdrant不在本轮实验）；商品向量库才是Milvus。离线 `R-RULE`/`R-LLM` 的 `offers_for` 注入当前快照全部符合上架/商户/SKU状态的候选报价（不再在 300 处截断后段商品），但仍不能把离线报价内排序冒充 Java/MySQL 全目录召回；同时知识建索引与搜索严格遵循生产默认外发策略（仅 `PUBLIC` 文档允许外发，`MERCHANT_INTERNAL` 与 `PLATFORM_INTERNAL` 仅走本地特征向量）。
 
 真实实验须单独获得本次授权，再显式设置私有进程环境、`--allow-external --max-provider-requests <预算>`；工具不主动加载私有文件。每个HTTP batch和Milvus操作均计预算，超时不自动重试。例：
 

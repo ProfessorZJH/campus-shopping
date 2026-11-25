@@ -19,13 +19,17 @@ EXPERIMENTS = ('K-B', 'K-D', 'K-H', 'K-D-R', 'K-H-R', 'R-RULE', 'R-LLM',
 
 
 def offers_for(data, case):
-    """fixture报价，不宣称执行过Java召回/权限。保持同案例R-RULE/R-LLM候选相同。"""
+    """fixture报价，不宣称执行过Java召回/权限。保持同案例R-RULE/R-LLM候选相同。
+
+    返回当前快照内全部符合商户/上架/SKU活跃条件的报价（不再在 300 处静默截断后段商品），
+    避免 p198..p239 的正例 SKU 在离线推荐评测中被盲目丢弃。
+    """
     merchants = {m['merchantId']: m['status'] for m in data['merchants']['merchants']}
     return [dict(skuId=s['skuId'], merchantId=p['merchantId'], productId=p['productId'], title=p['title'],
                  description=p['description'], specKey=s['specKey'], attributes=dict(s.get('attributes') or {}),
                  priceCent=s['priceCent'], available=s['onHand'] - s['reserved'])
             for p in data['products'] if p['status'] == 'PUBLISHED' and p['merchantId'] in case['allowedMerchantIds']
-            and merchants[p['merchantId']] == 'ACTIVE' for s in p['skus'] if s['status'] == 'ACTIVE'][:300]
+            and merchants[p['merchantId']] == 'ACTIVE' for s in p['skus'] if s['status'] == 'ACTIVE']
 
 
 def run(data, path, *, split='dev', profile='local', adapter='python', experiments=('K-B', 'K-D', 'K-H', 'R-RULE'),
@@ -52,13 +56,16 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
             except ValueError:
                 reason = 'UNSAFE_OR_INVALID_CONFIG'
         with transport_scope(settings, recorder, handler):
+            doc_visibility = {d['documentId']: d['visibility'] for d in data['knowledge']}
             try:
                 if reason is None and not importing:
                     store = KnowledgeStore(settings)
                     store.provider = RecordedProvider(store.provider, recorder)
-                    # 本评测仅使用冻结合成语料；真实网络仍受preflight显式授权和预算控制。
+                    # 本评测仅使用冻结合成语料；遵循生产默认外发边界：仅 PUBLIC 文档允许外部嵌入/外发，
+                    # MERCHANT_INTERNAL 与 PLATFORM_INTERNAL 始终走本地特征向量，禁止外发。
                     for d in data['knowledge']:
-                        store.index(d['documentId'], d['title'], d['content'], external_allowed=True)
+                        store.index(d['documentId'], d['title'], d['content'], version=d.get('version', 1),
+                                    external_allowed=(d['visibility'] == 'PUBLIC'))
                     if profile in ('real-milvus', 'live-full'):
                         owned = OwnedIndex(settings, store.provider, recorder)
                         products = [dict(productId=p['productId'], merchantId=p['merchantId'], title=p['title'],
@@ -67,8 +74,9 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                         index = owned.open(products)
                     # 预热同一种调用两次，不计质量/延迟；供应商预算仍计入。
                     warm = cases[0]
+                    warm_public = [did for did in warm['allowedDocumentIds'] if doc_visibility.get(did) == 'PUBLIC']
                     for _ in range(2):
-                        store.search(warm['originalQuery'], warm['allowedDocumentIds'], external_document_ids=warm['allowedDocumentIds'])
+                        store.search(warm['originalQuery'], warm['allowedDocumentIds'], external_document_ids=warm_public)
             except Exception as error:
                 reason = 'SETUP_' + type(error).__name__
             try:
@@ -101,10 +109,11 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                                     trace = {}
                                     original = case['originalQuery']
                                     history = case['conversationContext']
+                                    public_allowed = [did for did in case['allowedDocumentIds'] if doc_visibility.get(did) == 'PUBLIC']
                                     if task == 'knowledge':
                                         query = query_rewrite(original, history, store) if experiment.endswith('-R') else original
                                         hits, mode = store.search(query, case['allowedDocumentIds'], 6,
-                                            _strategy='sparse' if experiment == 'K-B' else 'dense' if experiment.startswith('K-D') else 'hybrid', _trace=trace, external_document_ids=case['allowedDocumentIds'])
+                                            _strategy='sparse' if experiment == 'K-B' else 'dense' if experiment.startswith('K-D') else 'hybrid', _trace=trace, external_document_ids=public_allowed)
                                         recorder.event('knowledgeVector', 'SQLITE', 'SUCCESS', 'search')
                                         r.update(result=dict(citations=hits, answer=''), stages={
                                             'knowledge.chunks': [h['chunkId'] for h in hits],
@@ -113,14 +122,15 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                                     else:
                                         offers = offers_for(data, case)
                                         old_settings = store.settings
-                                        # R-RULE和R-LLM保持同一query、offers、evidence及semantic输入。
+                                        # R-RULE和R-LLM保持同一确定性改写query、offers、evidence及semantic输入。
                                         # 只切换complete，禁止让LLM改写先改变候选。
-                                        if experiment == 'R-RULE':
-                                            store.settings = replace(old_settings, llm_key='', llm_url='', llm_model='')
                                         try:
-                                            query = original
+                                            store.settings = replace(old_settings, llm_key='', llm_url='', llm_model='')
+                                            query = query_rewrite(original, history, store)
+                                            if experiment != 'R-RULE':
+                                                store.settings = old_settings
                                             result = answer(store, original, case['allowedDocumentIds'], offers, history,
-                                                            retrieval_query=query, _trace=trace, external_document_ids=case['allowedDocumentIds'])
+                                                            retrieval_query=query, _trace=trace, external_document_ids=public_allowed)
                                         finally:
                                             store.settings = old_settings
                                         r.update(result=result, stages={'recommendations': trace['selected']}, trace=trace,
@@ -182,6 +192,7 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                     releaseStrict=release_strict, cleanupSuccessful=not cleanup_failed,
                     configuration=dict(pythonHashSeed=os.environ.get('PYTHONHASHSEED', 'UNCONTROLLED'),
                                        rrfConstant=60, knowledgeSelectionDepth=6, skuPoolLimit=300,
+                                       fixtureOfferPool='ALL_ELIGIBLE', knowledgeEgressPolicy='PUBLIC_ONLY',
                                        candidateLimit=12, recommendationLimit=3, llmRepetitions=3,
                                        indexHash=digest(data['products']), promptHash=prompt_hash()))
     if adapter == 'java-mysql' and java_rows is not None:
