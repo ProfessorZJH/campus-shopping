@@ -3,11 +3,37 @@ let csrf = null;
 let csrfPromise = null;
 let generation = 0;
 let unauthorized = () => {};
+let identityResolver = null;
+let identityMismatch = null;
 export function onUnauthorized(handler) {
   unauthorized = handler;
 }
+export function setIdentityGuard({ currentActor, onMismatch } = {}) {
+  identityResolver = currentActor || null;
+  identityMismatch = onMismatch || null;
+}
 function requireIdentity(stamp) {
   if (stamp !== generation) throw fail('登录身份已变化，请重试', 'IDENTITY_CHANGED', 0);
+}
+async function verifySessionBeforeRetry(expectedActor, stamp) {
+  if (!identityResolver || !expectedActor) return;
+  let live;
+  try {
+    live = await api('/auth/me', { retry: false });
+  } catch (err) {
+    if (err?.status === 401 || err?.code === 'A0004') {
+      requireIdentity(stamp);
+      identityMismatch?.(null);
+      throw fail('登录状态已在其他标签页失效，请重新登录', 'IDENTITY_CHANGED', 401);
+    }
+    throw err;
+  }
+  requireIdentity(stamp);
+  const liveActor = live?.userId || live?.id || live?.username || '';
+  if (liveActor !== expectedActor) {
+    identityMismatch?.(live || null);
+    throw fail('登录身份已在其他标签页切换，请确认后再操作', 'IDENTITY_CHANGED', 403);
+  }
 }
 function fail(message, code, status) {
   return Object.assign(new Error(message), { code, status });
@@ -54,6 +80,7 @@ export async function api(path, options = {}) {
 /** 读取独立 SSE 协议；事件数据始终是 JSON，断线由调用方决定是否恢复原会话。 */
 export async function stream(path, { body, signal, onEvent, retry = true } = {}) {
   const stamp = generation;
+  const expectedActor = identityResolver ? identityResolver() : '';
   const token = csrf || (await getCsrf());
   requireIdentity(stamp);
   const headers = {
@@ -75,24 +102,30 @@ export async function stream(path, { body, signal, onEvent, retry = true } = {})
     if (err.name === 'AbortError') throw err;
     throw fail('服务连接失败，请确认 Java 后端已启动', 'NETWORK', 0);
   }
-  if (response.status === 403 && retry) {
-    let payload = null;
-    try {
-      payload = await response.json();
-    } catch {}
-    if (payload?.code === 'A0005') {
-      csrf = null;
-      await getCsrf();
-      requireIdentity(stamp);
-      return stream(path, { body, signal, onEvent, retry: false });
-    }
-  }
   if (!response.ok) {
     let payload = null;
     try {
       payload = await response.json();
     } catch {}
+    requireIdentity(stamp);
+    if (response.status === 403 && payload?.code === 'A0005' && retry) {
+      await verifySessionBeforeRetry(expectedActor, stamp);
+      csrf = null;
+      await getCsrf();
+      requireIdentity(stamp);
+      return stream(path, { body, signal, onEvent, retry: false });
+    }
     if (response.status === 401 || payload?.code === 'A0004') unauthorized();
+    throw fail(payload?.info || '请求失败', payload?.code || 'HTTP', response.status);
+  }
+  const contentType = (response.headers?.get?.('content-type') || '').toLowerCase();
+  if (contentType.includes('application/json')) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {}
+    requireIdentity(stamp);
+    if (payload?.code === 'A0004') unauthorized();
     throw fail(payload?.info || '请求失败', payload?.code || 'HTTP', response.status);
   }
   if (!response.body) throw fail('服务器没有返回流式响应', 'RESPONSE', response.status);
@@ -127,28 +160,33 @@ export async function stream(path, { body, signal, onEvent, retry = true } = {})
         throw fail('流式响应超过大小限制', 'RESPONSE', response.status);
     }
   };
-  while (true) {
-    let chunk;
-    try {
-      chunk = await reader.read();
-    } catch (err) {
-      if (err?.name === 'AbortError') throw err;
-      throw fail('流式连接中断，请稍后重试', 'NETWORK', 0);
+  try {
+    while (true) {
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err;
+        throw fail('流式连接中断，请稍后重试', 'NETWORK', 0);
+      }
+      buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+      let end;
+      while ((end = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, end).replace(/\r$/, '');
+        buffer = buffer.slice(end + 1);
+        await consume(line);
+      }
+      if (chunk.done) break;
     }
-    buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
-    let end;
-    while ((end = buffer.indexOf('\n')) >= 0) {
-      const line = buffer.slice(0, end).replace(/\r$/, '');
-      buffer = buffer.slice(end + 1);
-      await consume(line);
-    }
-    if (chunk.done) break;
+    if (buffer) await consume(buffer.replace(/\r$/, ''));
+    await dispatch();
+  } finally {
+    await reader.cancel().catch(() => {});
   }
-  if (buffer) await consume(buffer.replace(/\r$/, ''));
-  await dispatch();
 }
 async function request(path, { method = 'GET', body, signal, key, retry = true } = {}) {
   const stamp = generation;
+  const expectedActor = method !== 'GET' && identityResolver ? identityResolver() : '';
   const payload = body === undefined ? undefined : JSON.stringify(body);
   const headers = { Accept: 'application/json' };
   if (method !== 'GET') {
@@ -182,6 +220,7 @@ async function request(path, { method = 'GET', body, signal, key, retry = true }
   requireIdentity(stamp);
   if (r.status === 401 || j.code === 'A0004') unauthorized();
   if (r.status === 403 && j.code === 'A0005' && retry) {
+    await verifySessionBeforeRetry(expectedActor, stamp);
     csrf = null;
     await getCsrf();
     requireIdentity(stamp);
@@ -206,4 +245,15 @@ export const query = (params) =>
   new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
   ).toString();
-export const idempotency = () => crypto.randomUUID();
+export const idempotency = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function')
+    crypto.getRandomValues(bytes);
+  else for (let i = 0; i < 16; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};

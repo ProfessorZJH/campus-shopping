@@ -55,8 +55,12 @@
   .merchant-brand .brand-word,
   .sidebar-caption,
   .merchant-nav span:not(.nav-left-bar),
-  .merchant-sidebar-bottom {
+  .sidebar-back span {
     display: none;
+  }
+  .sidebar-back {
+    justify-content: center;
+    padding: 0;
   }
   .merchant-nav {
     margin-top: 38px;
@@ -154,9 +158,15 @@
   }
   .merchant-page-heading {
     align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .head-actions {
+    flex-wrap: wrap;
+    gap: 6px;
   }
   .head-actions .outline-button {
-    display: none;
+    padding: 0 10px;
   }
   .head-actions .teal-button {
     padding: 0 10px;

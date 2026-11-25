@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +33,8 @@ import org.slf4j.LoggerFactory;
 final class CandidateResolver {
 
     private static final Logger log = LoggerFactory.getLogger(CandidateResolver.class);
+    private static final Pattern REPLACE_PATTERN = Pattern.compile("换一个|换一款|还有别的|类似的");
+    private static final Pattern CHEAPER_PATTERN = Pattern.compile("便宜点|便宜一些|更便宜");
 
     private final IAiEnginePort engine;
     private final ICatalogCandidateQuery catalog;
@@ -91,10 +94,10 @@ final class CandidateResolver {
 
         Set<String> excludedSkuIds = new HashSet<>();
         long cheaperThan = Long.MAX_VALUE;
-        if (prior != null && question.matches(".*(?:换一个|换一款|还有别的|类似的).*")) {
+        if (prior != null && REPLACE_PATTERN.matcher(question).find()) {
             prior.items().forEach(item -> excludedSkuIds.add(item.skuId()));
         }
-        if (prior != null && question.matches(".*(?:便宜点|便宜一些|更便宜).*")) {
+        if (prior != null && CHEAPER_PATTERN.matcher(question).find()) {
             for (ProposalItemVO item : prior.items()) cheaperThan = Math.min(cheaperThan, item.priceCent());
         }
         final long cheaperLimit = cheaperThan;

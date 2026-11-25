@@ -37,6 +37,10 @@ NEGATIVE = r'不要推荐|不想要|不想选|不想买|不需要|不要选|不�
 CUES = re.compile(r'(' + NEGATIVE + r'|只要|想要|规格为|规格是|要|选择|选|换成|改成|改为)')
 # 商户范围由服务端 merchant 白名单执行，不是SKU属性；不能因否定线索误判为未知规格。
 MERCHANT_SCOPE = re.compile(r'(?:商户|商家)')
+# 预算上限和主观价格偏好属于价格约束而非SKU规格，不能在“不要超过50元/不要太贵”中误判为未知规格。
+PRICE_CLAUSE = re.compile(r'^(?:(?:超过|高于|大于|多于|贵于)\s*[\d零〇一二两三四五六七八九十百千万点.]+\s*(?:元|块钱|块)?(?:的.*)?|(?:太|很|过|偏)?(?:贵|便宜|高价|低价)(?:的.*)?)$')
+SHOPPING_VERB = re.compile(r'^(?:买|购买|挑|挑选|找|看|看看|推荐|下单|加购|来)+')
+QTY_PREFIX = re.compile(r'^[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋|斤|条|双|把|台|张|根|套|箱|桶|罐|卷|只|副|对)(?!装)')
 
 
 @dataclass(frozen=True)
@@ -62,9 +66,14 @@ def extract(question, vocabulary, titles=()):
     terms.update(re.findall(r'(?<![a-z0-9.])\d+(?:\.\d+)?(?:ml|kg|cm|mm|l|g|码)(?![a-z0-9.])', text))
     # 显式属性前缀即使不在候选中也必须约束；数量/商品名称不当作属性。
     for match in re.finditer(r'(?<!需)(?:' + NEGATIVE + r'|只要|想要|规格为|规格是|换成|改成|改为|选择|要|选)([^,，。;；!?？]{1,40})', text):
+        cue = CUES.match(match.group()).group()
+        explicit_attribute = cue in ('规格为', '规格是')
+        explicit_negative = re.fullmatch(NEGATIVE, cue) is not None
         token = re.split(CUES, match.group(1))[0]
+        if not explicit_attribute and not explicit_negative:
+            token = SHOPPING_VERB.sub('', token)
         original_token = token
-        token = re.sub(r'^[0-9一二两三四五六七八九十]+(?:个|件|份|瓶|盒|包|本|支|杯|袋)', '', token)
+        token = QTY_PREFIX.sub('', token)
         starts_attribute = any(token.startswith(v) for v in vocabulary) or re.match(r'^.{1,2}?(?:装|色|码|杯|号|型)|^\d+(?:\.\d+)?(?:ml|kg|cm|mm|l|g)', token)
         if original_token != token and not starts_attribute: continue
         for title in sorted(titles, key=len, reverse=True):
@@ -80,12 +89,13 @@ def extract(question, vocabulary, titles=()):
             cursor = attribute.end()
         remainder = re.sub(r'^(?:和|及|与|并且|同时|的|也)+', '', token[cursor:])
         product_name = any(remainder and remainder in normalize(title) for title in titles)
-        # 否定线索直接复用 NEGATIVE 字典，新增线索不会只在部分调用点生效。
-        cue = CUES.match(match.group()).group()
-        explicit_attribute = cue in ('规格为', '规格是')
-        explicit_negative = re.fullmatch(NEGATIVE, cue) is not None
-        if remainder and not product_name and not MERCHANT_SCOPE.search(remainder) and (explicit_attribute or (
-                (explicit_negative or cue in ('只要', '要', '换成', '改成', '改为')) and len(remainder) <= 12)):
+        is_price = bool(remainder and PRICE_CLAUSE.match(remainder))
+        # 否定线索直接复用 NEGATIVE 字典，新增线索不会只在部分调用点生效；普通“我要买/我要宿舍用的...”不得误当规格。
+        allow_remainder = explicit_attribute or (
+            (explicit_negative or cue in ('只要', '换成', '改成', '改为') or (cue == '要' and cursor > 0))
+            and len(remainder) <= 12
+        )
+        if remainder and not product_name and not is_price and not MERCHANT_SCOPE.search(remainder) and allow_remainder:
             terms.add(remainder)
     if not terms: return SpecConstraints()
     pattern = '|'.join(re.escape(v) for v in sorted(terms, key=lambda v: (-len(v), v)))

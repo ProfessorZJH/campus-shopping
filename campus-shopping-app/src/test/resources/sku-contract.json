@@ -416,5 +416,40 @@
     "titles": ["考试黑色签字笔校园系列61"],
     "specs": ["标准装", "家庭装"],
     "accepted": ["标准装", "家庭装"]
+  },
+  {
+    "question": "我要买矿泉水",
+    "history": [],
+    "titles": ["农夫山泉矿泉水"],
+    "specs": ["500ml", "1500ml"],
+    "accepted": ["500ml", "1500ml"]
+  },
+  {
+    "question": "我要宿舍用的台灯",
+    "history": [],
+    "titles": ["护眼台灯"],
+    "specs": ["白色", "黑色"],
+    "accepted": ["白色", "黑色"]
+  },
+  {
+    "question": "不要超过50元",
+    "history": [],
+    "titles": ["护眼台灯"],
+    "specs": ["白色", "黑色"],
+    "accepted": ["白色", "黑色"]
+  },
+  {
+    "question": "不要太贵的台灯",
+    "history": [],
+    "titles": ["护眼台灯"],
+    "specs": ["白色", "黑色"],
+    "accepted": ["白色", "黑色"]
+  },
+  {
+    "question": "不要S",
+    "history": [],
+    "titles": ["校园卫衣"],
+    "specs": ["S", "M", "L"],
+    "accepted": ["M", "L"]
   }
 ]

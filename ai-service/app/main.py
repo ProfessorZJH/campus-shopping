@@ -188,7 +188,7 @@ def create_app(settings: Settings|None=None):
             def progress(size):
                 if stopped.is_set():return True
                 try:queue.put_nowait(('progress',{'bytes':size}))
-                except Full:return True
+                except Full:return False
                 return False
             def publish(name,payload):
                 while not stopped.is_set():
@@ -196,7 +196,7 @@ def create_app(settings: Settings|None=None):
                     except Full:continue
             def work():
                 try:
-                    result=answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds,_stream_progress=progress if settings.llm_key else None)
+                    result=answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds,_stream_progress=progress if settings.llm_key else None,answer_preview=request.answerPreview)
                     publish('completed',result)
                 except StreamCancelled:publish('failed',{'errorCode':'CANCELLED'})
                 except Exception as error:

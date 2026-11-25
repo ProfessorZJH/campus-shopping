@@ -64,7 +64,12 @@ public class AgentConsumerReadToolCaseImpl implements IAgentConsumerReadToolCase
         accounts.requireActive(user);
         long started = System.nanoTime();
 
-        List<KnowledgeScopeVO> readable = knowledge.readableScope(user);
+        // 消费者只读知识问答严格限定在 PUBLIC 可见范围，避免双角色用户的商户/平台内部文档进入消费者工具输出。
+        List<KnowledgeScopeVO> readable = knowledge
+            .readableScope(user)
+            .stream()
+            .filter(document -> "PUBLIC".equals(document.visibility()))
+            .toList();
         require(!readable.isEmpty(), ResponseCode.KNOWLEDGE_NOT_READY);
         String fingerprint = scope(readable);
         AiRecallVO recall = engine.recall(request.question(), List.of());
@@ -78,7 +83,11 @@ public class AgentConsumerReadToolCaseImpl implements IAgentConsumerReadToolCase
         AiAnswerVO answer = engine.query(query);
         require(answer != null, ResponseCode.AI_UNAVAILABLE);
 
-        List<KnowledgeScopeVO> current = knowledge.readableScope(user);
+        List<KnowledgeScopeVO> current = knowledge
+            .readableScope(user)
+            .stream()
+            .filter(document -> "PUBLIC".equals(document.visibility()))
+            .toList();
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
         List<AiCitationVO> verified = evidence.verifyOutput(user, answer.citations() == null ? List.of() : answer.citations(), current);
         List<AgentKnowledgeCitationVO> citations = verified.stream().map(this::citation).toList();

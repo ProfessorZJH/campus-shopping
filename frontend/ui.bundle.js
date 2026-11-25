@@ -11455,11 +11455,37 @@
   let generation = 0;
   let unauthorized = () => {
   };
+  let identityResolver = null;
+  let identityMismatch = null;
   function onUnauthorized(handler) {
     unauthorized = handler;
   }
+  function setIdentityGuard({ currentActor, onMismatch } = {}) {
+    identityResolver = currentActor || null;
+    identityMismatch = onMismatch || null;
+  }
   function requireIdentity(stamp) {
     if (stamp !== generation) throw fail("登录身份已变化，请重试", "IDENTITY_CHANGED", 0);
+  }
+  async function verifySessionBeforeRetry(expectedActor, stamp) {
+    if (!identityResolver || !expectedActor) return;
+    let live;
+    try {
+      live = await api("/auth/me", { retry: false });
+    } catch (err) {
+      if ((err == null ? void 0 : err.status) === 401 || (err == null ? void 0 : err.code) === "A0004") {
+        requireIdentity(stamp);
+        identityMismatch == null ? void 0 : identityMismatch(null);
+        throw fail("登录状态已在其他标签页失效，请重新登录", "IDENTITY_CHANGED", 401);
+      }
+      throw err;
+    }
+    requireIdentity(stamp);
+    const liveActor = (live == null ? void 0 : live.userId) || (live == null ? void 0 : live.id) || (live == null ? void 0 : live.username) || "";
+    if (liveActor !== expectedActor) {
+      identityMismatch == null ? void 0 : identityMismatch(live || null);
+      throw fail("登录身份已在其他标签页切换，请确认后再操作", "IDENTITY_CHANGED", 403);
+    }
   }
   function fail(message, code, status) {
     return Object.assign(new Error(message), { code, status });
@@ -11503,7 +11529,9 @@
     }
   }
   async function stream(path, { body, signal, onEvent, retry = true } = {}) {
+    var _a, _b;
     const stamp = generation;
+    const expectedActor = identityResolver ? identityResolver() : "";
     const token = csrf || await getCsrf();
     requireIdentity(stamp);
     const headers = {
@@ -11525,26 +11553,32 @@
       if (err.name === "AbortError") throw err;
       throw fail("服务连接失败，请确认 Java 后端已启动", "NETWORK", 0);
     }
-    if (response.status === 403 && retry) {
-      let payload = null;
-      try {
-        payload = await response.json();
-      } catch {
-      }
-      if ((payload == null ? void 0 : payload.code) === "A0005") {
-        csrf = null;
-        await getCsrf();
-        requireIdentity(stamp);
-        return stream(path, { body, signal, onEvent, retry: false });
-      }
-    }
     if (!response.ok) {
       let payload = null;
       try {
         payload = await response.json();
       } catch {
       }
+      requireIdentity(stamp);
+      if (response.status === 403 && (payload == null ? void 0 : payload.code) === "A0005" && retry) {
+        await verifySessionBeforeRetry(expectedActor, stamp);
+        csrf = null;
+        await getCsrf();
+        requireIdentity(stamp);
+        return stream(path, { body, signal, onEvent, retry: false });
+      }
       if (response.status === 401 || (payload == null ? void 0 : payload.code) === "A0004") unauthorized();
+      throw fail((payload == null ? void 0 : payload.info) || "请求失败", (payload == null ? void 0 : payload.code) || "HTTP", response.status);
+    }
+    const contentType = (((_b = (_a = response.headers) == null ? void 0 : _a.get) == null ? void 0 : _b.call(_a, "content-type")) || "").toLowerCase();
+    if (contentType.includes("application/json")) {
+      let payload = null;
+      try {
+        payload = await response.json();
+      } catch {
+      }
+      requireIdentity(stamp);
+      if ((payload == null ? void 0 : payload.code) === "A0004") unauthorized();
       throw fail((payload == null ? void 0 : payload.info) || "请求失败", (payload == null ? void 0 : payload.code) || "HTTP", response.status);
     }
     if (!response.body) throw fail("服务器没有返回流式响应", "RESPONSE", response.status);
@@ -11579,28 +11613,34 @@
           throw fail("流式响应超过大小限制", "RESPONSE", response.status);
       }
     };
-    while (true) {
-      let chunk;
-      try {
-        chunk = await reader.read();
-      } catch (err) {
-        if ((err == null ? void 0 : err.name) === "AbortError") throw err;
-        throw fail("流式连接中断，请稍后重试", "NETWORK", 0);
+    try {
+      while (true) {
+        let chunk;
+        try {
+          chunk = await reader.read();
+        } catch (err) {
+          if ((err == null ? void 0 : err.name) === "AbortError") throw err;
+          throw fail("流式连接中断，请稍后重试", "NETWORK", 0);
+        }
+        buffer2 += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+        let end;
+        while ((end = buffer2.indexOf("\n")) >= 0) {
+          const line = buffer2.slice(0, end).replace(/\r$/, "");
+          buffer2 = buffer2.slice(end + 1);
+          await consume(line);
+        }
+        if (chunk.done) break;
       }
-      buffer2 += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
-      let end;
-      while ((end = buffer2.indexOf("\n")) >= 0) {
-        const line = buffer2.slice(0, end).replace(/\r$/, "");
-        buffer2 = buffer2.slice(end + 1);
-        await consume(line);
-      }
-      if (chunk.done) break;
+      if (buffer2) await consume(buffer2.replace(/\r$/, ""));
+      await dispatch();
+    } finally {
+      await reader.cancel().catch(() => {
+      });
     }
-    if (buffer2) await consume(buffer2.replace(/\r$/, ""));
-    await dispatch();
   }
   async function request(path, { method = "GET", body, signal, key, retry = true } = {}) {
     const stamp = generation;
+    const expectedActor = method !== "GET" && identityResolver ? identityResolver() : "";
     const payload = body === void 0 ? void 0 : JSON.stringify(body);
     const headers = { Accept: "application/json" };
     if (method !== "GET") {
@@ -11634,6 +11674,7 @@
     requireIdentity(stamp);
     if (r.status === 401 || j.code === "A0004") unauthorized();
     if (r.status === 403 && j.code === "A0005" && retry) {
+      await verifySessionBeforeRetry(expectedActor, stamp);
       csrf = null;
       await getCsrf();
       requireIdentity(stamp);
@@ -11656,7 +11697,18 @@
   const query = (params) => "?" + new URLSearchParams(
     Object.entries(params).filter(([, v]) => v !== void 0 && v !== null && v !== "")
   ).toString();
-  const idempotency = () => crypto.randomUUID();
+  const idempotency = () => {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+      return crypto.randomUUID();
+    const bytes = new Uint8Array(16);
+    if (typeof crypto !== "undefined" && typeof crypto.getRandomValues === "function")
+      crypto.getRandomValues(bytes);
+    else for (let i = 0; i < 16; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+    bytes[6] = bytes[6] & 15 | 64;
+    bytes[8] = bytes[8] & 63 | 128;
+    const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+  };
   const modal = {
     mounted(element, binding) {
       const previous = document.activeElement;
@@ -12108,6 +12160,15 @@
   onUnauthorized(() => {
     if (store.user || store.workspace || store.merchantId || store.messages.length || store.proposal || store.photo || store.cartCount)
       replaceSession(null);
+  });
+  setIdentityGuard({
+    currentActor: () => actorId(store.user),
+    onMismatch: (liveUser) => {
+      replaceSession(liveUser || null);
+      notify(
+        liveUser ? "检测到其他标签页已切换账号，请重新确认后再操作" : "登录状态已失效，请重新登录"
+      );
+    }
   });
   function switchMerchantContext(id) {
     if (id === store.merchantId) return;
@@ -12880,16 +12941,18 @@
         if (preview) return;
         if (hasActiveSearch.value) {
           if (!store.categories.length || !store.merchants.length) {
+            const request2 = initialScope.begin();
             await Promise.all([
-              api("/categories").then((c) => {
-                store.categories = c || [];
+              api("/categories", { signal: request2.signal }).then((c) => {
+                if (request2.current()) store.categories = c || [];
               }).catch(() => {
               }),
-              api("/merchants").then((m) => {
-                store.merchants = m || [];
+              api("/merchants/public", { signal: request2.signal }).then((m) => {
+                if (request2.current()) store.merchants = m || [];
               }).catch(() => {
               })
             ]);
+            if (!request2.current()) return;
           }
           return loadSearch();
         }
@@ -13703,7 +13766,7 @@
     key: 1,
     class: "chat-row is-assistant"
   };
-  const _hoisted_15 = { class: "typing-bubble" };
+  const _hoisted_15$1 = { class: "typing-bubble" };
   const _hoisted_16 = { key: 0 };
   const _hoisted_17 = { key: 1 };
   const _hoisted_18 = { key: 2 };
@@ -13840,7 +13903,7 @@
                 alt: "AI"
               })
             ]),
-            createBaseVNode("div", _hoisted_15, [
+            createBaseVNode("div", _hoisted_15$1, [
               _cache[2] || (_cache[2] = createBaseVNode(
                 "i",
                 null,
@@ -14002,8 +14065,8 @@
   const _hoisted_1$4 = { class: "recommendation-panel" };
   const _hoisted_2$4 = { class: "recommendation-header" };
   const _hoisted_3$4 = { class: "rec-cards" };
-  const _hoisted_4$4 = ["aria-label", "aria-pressed", "onClick"];
-  const _hoisted_5$3 = ["aria-label", "aria-pressed", "onClick"];
+  const _hoisted_4$4 = ["aria-label", "aria-pressed", "disabled", "onClick"];
+  const _hoisted_5$3 = ["aria-label", "aria-pressed", "disabled", "onClick"];
   const _hoisted_6$3 = { class: "rec-card-content" };
   const _hoisted_7$3 = { class: "rec-item-tag" };
   const _hoisted_8$2 = ["disabled", "onClick"];
@@ -14017,6 +14080,7 @@
   const _hoisted_12$1 = { class: "proposal-total" };
   const _hoisted_13 = { class: "proposal-actions" };
   const _hoisted_14 = ["disabled"];
+  const _hoisted_15 = ["disabled"];
   const _sfc_main$4 = /* @__PURE__ */ defineComponent({
     __name: "GuideRecommendations",
     props: {
@@ -14027,6 +14091,7 @@
       preview: { type: Boolean },
       thinking: { type: Boolean },
       confirming: { type: Boolean },
+      rejecting: { type: Boolean },
       proposalStatus: {}
     },
     emits: ["toggle", "detail", "reject", "confirm", "cart"],
@@ -14079,6 +14144,7 @@
                     class: normalizeClass(["rec-check", { checked: __props.selectedIds.includes(item.skuId) }]),
                     "aria-label": "选择" + item.title,
                     "aria-pressed": __props.selectedIds.includes(item.skuId),
+                    disabled: __props.thinking || __props.confirming || __props.rejecting || !__props.preview && __props.proposalStatus !== "PENDING",
                     onClick: ($event) => _ctx.$emit("toggle", item.skuId)
                   }, [
                     createVNode(_component_Icon, {
@@ -14091,6 +14157,7 @@
                     class: "rec-photo",
                     "aria-label": "切换勾选" + item.title,
                     "aria-pressed": __props.selectedIds.includes(item.skuId),
+                    disabled: __props.thinking || __props.confirming || __props.rejecting || !__props.preview && __props.proposalStatus !== "PENDING",
                     onClick: ($event) => _ctx.$emit("toggle", item.skuId)
                   }, [
                     createVNode(unref(ProductImage), {
@@ -14184,8 +14251,9 @@
                 key: 0,
                 type: "button",
                 class: "ghost-decline",
+                disabled: __props.thinking || __props.confirming || __props.rejecting,
                 onClick: _cache[0] || (_cache[0] = ($event) => _ctx.$emit("reject"))
-              }, " 放弃 ")) : createCommentVNode("v-if", true),
+              }, toDisplayString(__props.rejecting ? "处理中…" : "放弃"), 9, _hoisted_14)) : createCommentVNode("v-if", true),
               __props.proposalStatus === "CONFIRMED" ? (openBlock(), createElementBlock("button", {
                 key: 1,
                 type: "button",
@@ -14194,7 +14262,7 @@
               }, " 去购物车 ")) : createCommentVNode("v-if", true),
               createBaseVNode("button", {
                 class: "confirm-button",
-                disabled: __props.preview || __props.thinking || !__props.selectedIds.length || !__props.preview && __props.proposalStatus !== "PENDING",
+                disabled: __props.preview || __props.thinking || __props.confirming || __props.rejecting || !__props.selectedIds.length || !__props.preview && __props.proposalStatus !== "PENDING",
                 onClick: _cache[2] || (_cache[2] = ($event) => _ctx.$emit("confirm"))
               }, [
                 createVNode(_component_Icon, {
@@ -14206,7 +14274,7 @@
                   1
                   /* TEXT */
                 )
-              ], 8, _hoisted_14)
+              ], 8, _hoisted_15)
             ])
           ])
         ]);
@@ -14222,11 +14290,20 @@
   }
   const conversationPath = (id, suffix) => "/ai/conversations/" + encodeURIComponent(id) + suffix;
   const wait = (milliseconds) => new Promise((resolve2) => setTimeout(resolve2, milliseconds));
-  function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage) {
+  function hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage, knownCount = null) {
     if (!expectedQuestion) return true;
     const lastQuestion = messageHistory.length - 2;
     const tailQuestion = messageHistory[lastQuestion];
     const tailAnswer = messageHistory[messageHistory.length - 1];
+    if (lastQuestion < 0 || (tailQuestion == null ? void 0 : tailQuestion.role) !== "user" || tailQuestion.content !== expectedQuestion || (tailAnswer == null ? void 0 : tailAnswer.role) !== "assistant") {
+      return false;
+    }
+    if (typeof knownCount === "number" && knownCount >= 0) {
+      return messageHistory.length >= knownCount + 2;
+    }
+    if ((knownLastMessage == null ? void 0 : knownLastMessage.id) && (tailAnswer == null ? void 0 : tailAnswer.id)) {
+      return tailAnswer.id !== knownLastMessage.id;
+    }
     let knownLastIndex = -1;
     if (knownLastMessage) {
       for (let index = messageHistory.length - 1; index >= 0; index -= 1) {
@@ -14237,7 +14314,7 @@
         }
       }
     }
-    return lastQuestion >= 0 && (tailQuestion == null ? void 0 : tailQuestion.role) === "user" && tailQuestion.content === expectedQuestion && (tailAnswer == null ? void 0 : tailAnswer.role) === "assistant" && (knownLastIndex < 0 || knownLastIndex < lastQuestion);
+    return knownLastIndex < 0 || knownLastIndex < lastQuestion;
   }
   function failedEventError(payload) {
     var _a;
@@ -14255,13 +14332,14 @@
     async function loadHistory(page, size = 20) {
       return request2("/ai/conversations" + query({ page, size }));
     }
-    async function loadSnapshot(id, { expectedQuestion = null, knownLastMessage = null } = {}) {
+    async function loadSnapshot(id, { expectedQuestion = null, knownLastMessage = null, knownCount = null } = {}) {
       const [history, proposals] = await Promise.all([
         request2(conversationPath(id, "/messages")),
         request2(conversationPath(id, "/proposals"))
       ]);
       const messageHistory = history || [];
-      if (!hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage)) return false;
+      if (!hasExpectedAnswer(messageHistory, expectedQuestion, knownLastMessage, knownCount))
+        return false;
       return {
         id,
         messages: messageHistory,
@@ -14273,6 +14351,7 @@
       isCurrent = () => true,
       expectedQuestion = null,
       knownLastMessage = null,
+      knownCount = null,
       onCancelRequested
     }) {
       if (!id) return false;
@@ -14294,7 +14373,7 @@
         }
         if ((status == null ? void 0 : status.status) === "IDLE") {
           try {
-            return await loadSnapshot(id, { expectedQuestion, knownLastMessage });
+            return await loadSnapshot(id, { expectedQuestion, knownLastMessage, knownCount });
           } catch (error) {
             if (!["NETWORK", "TIMEOUT"].includes(error == null ? void 0 : error.code)) return false;
             await sleep(500);
@@ -14376,6 +14455,8 @@
       const loadingHistory = ref$e(false);
       const openingConversation = ref$e(false);
       const confirmingProposal = ref$e(false);
+      const rejectingProposal = ref$e(false);
+      const proposalBusy = computed$e(() => confirmingProposal.value || rejectingProposal.value);
       const proposalFeedback = ref$e("");
       const streamProgress = ref$e(0);
       const reconnecting = ref$e(false);
@@ -14440,6 +14521,10 @@
           input.value = "";
           thinking.value = false;
           confirmingProposal.value = false;
+          rejectingProposal.value = false;
+          reconnecting.value = false;
+          cancelRequested.value = false;
+          streamProgress.value = 0;
           openingConversation.value = false;
           loadingHistory.value = false;
           historyOpen.value = false;
@@ -14499,7 +14584,7 @@
         selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
         return true;
       }
-      async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage) {
+      async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage, knownCount) {
         var _a;
         if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
         reconnecting.value = true;
@@ -14512,8 +14597,9 @@
             },
             expectedQuestion,
             knownLastMessage,
+            knownCount,
             onCancelRequested: () => {
-              cancelRequested.value = true;
+              if (stamp === conversationEpoch) cancelRequested.value = true;
             }
           });
           if (recovered && recovered !== true) applyConversationSnapshot(recovered, id, stamp);
@@ -14521,7 +14607,7 @@
             notify("后台仍在生成回答，稍后可重新打开当前会话查看结果");
           return recovered;
         } finally {
-          reconnecting.value = false;
+          if (stamp === conversationEpoch) reconnecting.value = false;
         }
       }
       async function cancelTurn() {
@@ -14538,12 +14624,13 @@
       async function ask(question = input.value) {
         var _a;
         const text = String(question || "").trim();
-        if (!text || thinking.value || openingConversation.value) return;
+        if (!text || thinking.value || openingConversation.value || proposalBusy.value) return;
         if (text.length > 500) {
           notify("问题不能超过500字");
           return;
         }
         const stamp = ++conversationEpoch;
+        const knownCount = messages.value.length;
         const knownLastMessage = messages.value[messages.value.length - 1] || null;
         input.value = "";
         error.value = "";
@@ -14593,6 +14680,11 @@
           });
           completed = result.completed;
           cancelled = result.cancelled;
+          if (cancelled && !completed && stamp === conversationEpoch) {
+            messages.value.pop();
+            input.value = text;
+            notify("已停止本次生成");
+          }
         } catch (err) {
           if ((err == null ? void 0 : err.name) === "AbortError" && (cancelRequested.value || stamp !== conversationEpoch))
             return;
@@ -14602,7 +14694,8 @@
               actor,
               streamConversationId,
               text,
-              knownLastMessage
+              knownLastMessage,
+              knownCount
             );
             if (recovered) return;
           }
@@ -14613,7 +14706,10 @@
           }
         } finally {
           if (activeStreamController === controller) activeStreamController = null;
-          if (stamp === conversationEpoch) thinking.value = false;
+          if (stamp === conversationEpoch) {
+            thinking.value = false;
+            cancelRequested.value = false;
+          }
         }
       }
       async function loadHistory(reset = true) {
@@ -14636,13 +14732,16 @@
         }
       }
       async function openConversation(c) {
-        if (preview || thinking.value || !(c == null ? void 0 : c.id)) return;
+        if (preview || thinking.value || proposalBusy.value || !(c == null ? void 0 : c.id)) return;
         const stamp = ++conversationEpoch;
         openingConversation.value = true;
         try {
           await loadConversationSnapshot(c.id, stamp);
-          proposalFeedback.value = "";
-          historyOpen.value = false;
+          if (stamp === conversationEpoch) {
+            error.value = "";
+            proposalFeedback.value = "";
+            historyOpen.value = false;
+          }
         } catch (e) {
           if (stamp === conversationEpoch) notify(e.message);
         } finally {
@@ -14650,7 +14749,7 @@
         }
       }
       function newConversation() {
-        if (confirmingProposal.value) return;
+        if (proposalBusy.value) return;
         stopActiveStream();
         ++conversationEpoch;
         store.conversationId = "";
@@ -14662,6 +14761,9 @@
         error.value = "";
         input.value = "";
         thinking.value = false;
+        reconnecting.value = false;
+        cancelRequested.value = false;
+        streamProgress.value = 0;
         openingConversation.value = false;
         historyOpen.value = false;
       }
@@ -14709,14 +14811,13 @@
       }
       async function confirm() {
         var _a, _b;
-        if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
+        if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value || proposalBusy.value) return;
         const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id, chosen = [...selectedIds.value];
         if (!selectedIds.value.length) {
           notify("至少选择一件商品");
           return;
         }
         proposalFeedback.value = "";
-        thinking.value = true;
         confirmingProposal.value = true;
         try {
           const updated = await api("/ai/proposals/" + encodeURIComponent(proposalId) + "/confirm", {
@@ -14734,18 +14835,15 @@
             notify(proposalFeedback.value);
           }
         } finally {
-          if (currentProposal(stamp, actor, proposalId)) {
-            thinking.value = false;
-            confirmingProposal.value = false;
-          }
+          if (currentProposal(stamp, actor, proposalId)) confirmingProposal.value = false;
         }
       }
       async function reject() {
         var _a, _b;
-        if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value) return;
+        if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value || proposalBusy.value) return;
         const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id;
         proposalFeedback.value = "";
-        thinking.value = true;
+        rejectingProposal.value = true;
         try {
           await api("/ai/proposals/" + encodeURIComponent(proposalId) + "/reject", {
             method: "POST"
@@ -14760,7 +14858,7 @@
             notify(proposalFeedback.value);
           }
         } finally {
-          if (currentRequest(stamp, actor)) thinking.value = false;
+          if (currentRequest(stamp, actor)) rejectingProposal.value = false;
         }
       }
       return {
@@ -14792,6 +14890,8 @@
         loadingHistory,
         openingConversation,
         confirmingProposal,
+        rejectingProposal,
+        proposalBusy,
         proposalFeedback,
         streamProgress,
         reconnecting,
@@ -14834,7 +14934,7 @@
                 conversations: _ctx.conversations,
                 thinking: _ctx.thinking,
                 "opening-conversation": _ctx.openingConversation,
-                "confirming-proposal": _ctx.confirmingProposal,
+                "confirming-proposal": _ctx.proposalBusy,
                 "has-more": _ctx.historyHasMore,
                 loading: _ctx.loadingHistory,
                 "format-time": _ctx.formatHistoryTime,
@@ -14857,7 +14957,7 @@
                     return _openBlock(), _createElementBlock("button", {
                       key: p2.label,
                       onClick: ($event) => _ctx.ask(p2.query),
-                      disabled: _ctx.thinking || _ctx.openingConversation
+                      disabled: _ctx.thinking || _ctx.openingConversation || _ctx.proposalBusy
                     }, [
                       _createVNode2(_component_Icon, {
                         name: p2.icon,
@@ -14891,13 +14991,14 @@
                 preview: _ctx.preview,
                 thinking: _ctx.thinking,
                 confirming: _ctx.confirmingProposal,
+                rejecting: _ctx.rejectingProposal,
                 "proposal-status": (_a = _ctx.proposal) == null ? void 0 : _a.status,
                 onToggle: _ctx.toggle,
                 onDetail: _ctx.openDetail,
                 onReject: _ctx.reject,
                 onConfirm: _ctx.confirm,
                 onCart: ($event) => _ctx.go("/cart")
-              }, null, 8, ["items", "selected-ids", "total", "feedback", "preview", "thinking", "confirming", "proposal-status", "onToggle", "onDetail", "onReject", "onConfirm", "onCart"])) : _createCommentVNode("v-if", true),
+              }, null, 8, ["items", "selected-ids", "total", "feedback", "preview", "thinking", "confirming", "rejecting", "proposal-status", "onToggle", "onDetail", "onReject", "onConfirm", "onCart"])) : _createCommentVNode("v-if", true),
               _createElementVNode("div", {
                 class: "chat-composer-placeholder",
                 "aria-hidden": "true"
@@ -14908,7 +15009,7 @@
               }, [
                 _withDirectives(_createElementVNode("input", {
                   "onUpdate:modelValue": ($event) => _ctx.input = $event,
-                  disabled: _ctx.thinking || _ctx.openingConversation,
+                  disabled: _ctx.thinking || _ctx.openingConversation || _ctx.proposalBusy,
                   "aria-label": "输入问题",
                   maxlength: "500",
                   placeholder: "例如：30元内适合复习吃的零食…"
@@ -14924,7 +15025,7 @@
                 }, _toDisplayString(_ctx.cancelRequested ? "停止中…" : "停止生成"), 9, ["onClick", "disabled"])) : (_openBlock(), _createElementBlock("button", {
                   key: 1,
                   type: "submit",
-                  disabled: _ctx.openingConversation || !_ctx.input.trim(),
+                  disabled: _ctx.openingConversation || _ctx.proposalBusy || !_ctx.input.trim(),
                   "aria-label": "发送问题"
                 }, [
                   _createVNode2(_component_Icon, {
@@ -15860,6 +15961,8 @@
                 _renderList(_ctx.role === "admin" ? _ctx.adminNav : _ctx.visibleMerchantNav, ([ico, label, path]) => {
                   return _openBlock(), _createElementBlock("button", {
                     key: path,
+                    title: label,
+                    "aria-label": label,
                     class: _normalizeClass({ active: _ctx.store.route === path || path.endsWith("/knowledge") && _ctx.store.route === path + "/debug" }),
                     onClick: ($event) => _ctx.go(path)
                   }, [
@@ -15878,7 +15981,7 @@
                       key: 0,
                       class: "nav-left-bar"
                     })) : _createCommentVNode("v-if", true)
-                  ], 10, ["onClick"]);
+                  ], 10, ["title", "aria-label", "onClick"]);
                 }),
                 128
                 /* KEYED_FRAGMENT */
@@ -15887,13 +15990,15 @@
             _createElementVNode("div", { class: "merchant-sidebar-bottom" }, [
               _createElementVNode("button", {
                 class: "sidebar-back",
-                onClick: ($event) => _ctx.go("/")
+                onClick: ($event) => _ctx.go("/"),
+                title: "返回购物端",
+                "aria-label": "返回购物端"
               }, [
                 _createVNode2(_component_Icon, {
                   name: "arrowLeft",
                   size: 16
                 }),
-                _createTextVNode(" 返回购物端")
+                _createElementVNode("span", null, " 返回购物端")
               ], 8, ["onClick"])
             ])
           ]),
@@ -15979,6 +16084,17 @@
                 "aria-label": "工作台导航"
               },
               [
+                _createElementVNode("button", {
+                  type: "button",
+                  onClick: ($event) => _ctx.go("/"),
+                  "aria-label": "返回购物端"
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "arrowLeft",
+                    size: 16
+                  }),
+                  _createTextVNode("购物端")
+                ], 8, ["onClick"]),
                 (_openBlock(true), _createElementBlock(
                   _Fragment,
                   null,
@@ -17537,11 +17653,15 @@
     setup() {
       const scope = requestScope();
       const product = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null);
+      const defaultSku = (p2) => {
+        var _a;
+        return ((_a = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available || 0) > 0)) || skuOf(p2);
+      };
       const id = computed$9(() => safeDecodeId(store.route.split("/")[2] || ""));
       const sku2 = computed$9(
         () => {
           var _a, _b;
-          return ((_b = (_a = product.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosen.value)) || skuOf(product.value);
+          return ((_b = (_a = product.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosen.value)) || defaultSku(product.value);
         }
       );
       const merchant = computed$9(
@@ -17587,7 +17707,7 @@
           if (request2.current()) loading.value = false;
         }
         if (!request2.current()) return;
-        chosen.value = skuOf(product.value).skuId || "";
+        chosen.value = defaultSku(product.value).skuId || "";
         imageIndex.value = 0;
         count.value = 1;
       }
@@ -19322,14 +19442,14 @@
                         _createElementVNode(
                           "h1",
                           null,
-                          _toDisplayString(((_a = _ctx.detail.pickup) == null ? void 0 : _a.status) === "READY" ? "待自提" : _ctx.orderStatusLabel(_ctx.detail.status)),
+                          _toDisplayString(_ctx.detail.status === "PAID" && _ctx.refundPending ? "退款处理中" : _ctx.detail.status === "PAID" && ((_a = _ctx.detail.pickup) == null ? void 0 : _a.status) === "READY" ? "待自提" : _ctx.orderStatusLabel(_ctx.detail.status)),
                           1
                           /* TEXT */
                         ),
                         _createElementVNode(
                           "p",
                           null,
-                          _toDisplayString(_ctx.detail.status === "COMPLETED" ? "已取货完成" : ((_b = _ctx.detail.pickup) == null ? void 0 : _b.status) === "READY" ? "请前往门店出示自提凭证取货" : _ctx.detail.status === "PAID" ? "门店正在备货，请稍候" : _ctx.detail.status === "PENDING_PAYMENT" ? "请在截止时间前完成模拟支付" : "查看订单记录"),
+                          _toDisplayString(_ctx.detail.status === "COMPLETED" ? "已取货完成" : _ctx.detail.status === "PAID" && _ctx.refundPending ? "自提凭证暂停使用，请以退款进度为准" : _ctx.detail.status === "PAID" && ((_b = _ctx.detail.pickup) == null ? void 0 : _b.status) === "READY" ? "请前往门店出示自提凭证取货" : _ctx.detail.status === "PAID" ? "门店正在备货，请稍候" : _ctx.detail.status === "PENDING_PAYMENT" ? "请在截止时间前完成模拟支付" : "查看订单记录"),
                           1
                           /* TEXT */
                         )
@@ -20825,8 +20945,8 @@
         const file = (_a = input.files) == null ? void 0 : _a[0];
         input.value = "";
         if (!file) return;
-        if (!file.type.startsWith("image/") || file.size > 2e6) {
-          notify("请选择 2MB 以内的图片");
+        if (!["image/jpeg", "image/png"].includes(file.type) || !file.size || file.size > 2e6) {
+          notify("请选择 2MB 以内的 JPG 或 PNG 图片");
           return;
         }
         const current = scope.capture();
@@ -20844,7 +20964,10 @@
             body: { filename: file.name, contentType: file.type, base64 }
           });
           if (!current()) return;
-          profile.value.imageUrl = uploaded.url;
+          const url = typeof (uploaded == null ? void 0 : uploaded.url) === "string" ? uploaded.url.trim() : "";
+          if (!url || !url.startsWith("/") && !/^https?:\/\//i.test(url))
+            throw new Error("门店图片上传返回地址无效");
+          profile.value.imageUrl = url;
           notify("门店图片已上传，保存设置后生效");
         } catch (e) {
           if (current()) notify(e.message);
@@ -22083,17 +22206,18 @@
                     }, null, 8, ["src"]),
                     _createElementVNode("input", {
                       type: "file",
-                      accept: "image/png,image/jpeg,image/webp",
+                      accept: "image/png,image/jpeg",
                       onChange: _ctx.uploadStoreImage,
                       disabled: !_ctx.canAct || !_ctx.canOwner || _ctx.busy
                     }, null, 40, ["onChange", "disabled"]),
-                    _createElementVNode("small", null, "支持 JPG、PNG、WebP，不超过 2MB"),
+                    _createElementVNode("small", null, "支持 JPG、PNG，不超过 2MB"),
                     _ctx.profile.imageUrl ? (_openBlock(), _createElementBlock("button", {
                       key: 0,
                       type: "button",
                       class: "outline-button",
+                      disabled: !_ctx.canAct || !_ctx.canOwner || _ctx.busy,
                       onClick: ($event) => _ctx.profile.imageUrl = ""
-                    }, "移除图片", 8, ["onClick"])) : _createCommentVNode("v-if", true)
+                    }, "移除图片", 8, ["disabled", "onClick"])) : _createCommentVNode("v-if", true)
                   ]),
                   _createElementVNode("button", {
                     class: "teal-button",

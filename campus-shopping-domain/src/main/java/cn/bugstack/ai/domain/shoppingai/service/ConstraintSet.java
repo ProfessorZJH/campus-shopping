@@ -10,9 +10,10 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     private static final String DIGITS = "零〇一二两三四五六七八九十百千万";
     private static final String SIMPLE = "一二两三四五六七八九";
     private static final String NUMBER = "[\\d" + DIGITS + "点.]+";
-    private static final String UNIT = "[个件份瓶盒包本支杯袋斤]";
+    private static final String CURRENCY = "(?:元|块钱|块)";
+    private static final String UNIT = "[个件份瓶盒包本支杯袋斤条双把台张根套箱桶罐卷只副对]";
     private static final Pattern FOLLOWUP = Pattern.compile("这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些");
-    private static final Pattern QUANTITY = Pattern.compile("(?<![\\d." + DIGITS + "])(\\d+(?:\\.\\d+)?|[" + DIGITS + "]+)\\s*" + UNIT);
+    private static final Pattern QUANTITY = Pattern.compile("(?<![\\d." + DIGITS + "])(\\d+(?:\\.\\d+)?|[" + DIGITS + "]+)\\s*" + UNIT + "(?!装)");
     // 复合口语数词：二三 十、十二 三、一百二三 等区间；完整数词（如一百零二、二十三点五）不得误判。
     private static final String RANGE = "[" + DIGITS + "\\d]+\\s*[到至~-]\\s*[" + DIGITS + "\\d]+";
     private static final String COMPOUND = "[" + SIMPLE + "][" + SIMPLE + "][十百千万]|[百千万][" + SIMPLE + "][" + SIMPLE + "]";
@@ -59,21 +60,28 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
 
     private static Intent budget(String text) {
         boolean marker = Pattern.compile(
-            "预算|不超过|最多|不到|上限|(?:元|块)\\s*(?:以内|以下|左右)|(?:\\d+|[" + DIGITS + "]+)\\s*[到至~-]\\s*(?:\\d+|[" + DIGITS + "]+)\\s*(?:元|块)"
+            "预算|不要超过|不超过|最多|不到|低于|少于|上限|" +
+                CURRENCY +
+                "\\s*(?:以内|以下|之内|左右)|(?:\\d+|[" +
+                DIGITS +
+                "]+)\\s*[到至~-]\\s*(?:\\d+|[" +
+                DIGITS +
+                "]+)\\s*" +
+                CURRENCY
         )
             .matcher(text)
             .find();
         if (
             marker &&
-            Pattern.compile(UNCERTAIN + "(?:元|块)")
+            Pattern.compile(UNCERTAIN + CURRENCY)
                 .matcher(text)
                 .find()
         ) return new Intent(null, true, true);
         Set<Long> amounts = new HashSet<>();
         for (String expression : new String[] {
-            "(?:预算|上限)\\s*(" + NUMBER + ")\\s*(?:元|块)?",
-            "(?:不超过|最多|不到)\\s*(" + NUMBER + ")\\s*(?:元|块)",
-            "(" + NUMBER + ")\\s*(?:元|块)\\s*(?:以内|以下|左右)",
+            "(?:预算|上限)(?:\\s*(?:是|为|在|控制在|大概|大约))?\\s*(" + NUMBER + ")\\s*" + CURRENCY + "?",
+            "(?:不要超过|不超过|最多|不到|低于|少于)\\s*(" + NUMBER + ")\\s*" + CURRENCY,
+            "(" + NUMBER + ")\\s*" + CURRENCY + "\\s*(?:以内|以下|之内|左右)",
         }) {
             var matches = Pattern.compile(expression).matcher(text);
             while (matches.find()) {
@@ -101,14 +109,22 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     private static long integer(String raw) {
         long total = 0,
             section = 0,
-            number = 0;
+            number = 0,
+            lastUnit = 0;
+        boolean sawZero = false;
         String digits = "零一二三四五六七八九";
         for (char c : raw.replace('〇', '零').replace('两', '二').toCharArray()) {
             int digit = digits.indexOf(c);
-            if (digit >= 0) number = digit;
-            else if (c == '万') {
+            if (digit >= 0) {
+                if (digit == 0) {
+                    sawZero = true;
+                    number = 0;
+                } else number = digit;
+            } else if (c == '万') {
                 total = Math.addExact(total, Math.multiplyExact(Math.addExact(section, number), 10000));
                 section = number = 0;
+                lastUnit = 10000;
+                sawZero = false;
             } else {
                 long unit = switch (c) {
                     case '十' -> 10;
@@ -118,7 +134,12 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
                 };
                 section = Math.addExact(section, Math.multiplyExact(number == 0 ? 1 : number, unit));
                 number = 0;
+                lastUnit = unit;
+                sawZero = false;
             }
+        }
+        if (number > 0 && lastUnit >= 100 && !sawZero) {
+            number = Math.multiplyExact(number, lastUnit / 10);
         }
         return Math.addExact(total, Math.addExact(section, number));
     }
@@ -126,7 +147,7 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
     private static Intent quantity(String text) {
         text = text.replaceAll("换一个|换一款|还有一个选择", "");
         if (
-            Pattern.compile(UNCERTAIN + UNIT)
+            Pattern.compile(UNCERTAIN + UNIT + "(?!装)")
                 .matcher(text)
                 .find()
         ) return new Intent(null, true, true);

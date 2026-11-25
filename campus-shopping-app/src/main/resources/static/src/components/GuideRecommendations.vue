@@ -23,6 +23,7 @@ defineProps<{
   preview: boolean;
   thinking: boolean;
   confirming: boolean;
+  rejecting?: boolean;
   proposalStatus?: string;
 }>();
 defineEmits<{
@@ -52,6 +53,9 @@ defineEmits<{
           :class="{ checked: selectedIds.includes(item.skuId) }"
           :aria-label="'选择' + item.title"
           :aria-pressed="selectedIds.includes(item.skuId)"
+          :disabled="
+            thinking || confirming || rejecting || (!preview && proposalStatus !== 'PENDING')
+          "
           @click="$emit('toggle', item.skuId)"
         >
           <Icon name="check" :size="13" />
@@ -61,6 +65,9 @@ defineEmits<{
           class="rec-photo"
           :aria-label="'切换勾选' + item.title"
           :aria-pressed="selectedIds.includes(item.skuId)"
+          :disabled="
+            thinking || confirming || rejecting || (!preview && proposalStatus !== 'PENDING')
+          "
           @click="$emit('toggle', item.skuId)"
         >
           <ProductImage :src="item.imageUrl || item.product?.imageUrl" :alt="item.title" />
@@ -98,9 +105,10 @@ defineEmits<{
           v-if="!preview && proposalStatus === 'PENDING'"
           type="button"
           class="ghost-decline"
+          :disabled="thinking || confirming || rejecting"
           @click="$emit('reject')"
         >
-          放弃
+          {{ rejecting ? '处理中…' : '放弃' }}
         </button>
         <button
           v-if="proposalStatus === 'CONFIRMED'"
@@ -113,7 +121,12 @@ defineEmits<{
         <button
           class="confirm-button"
           :disabled="
-            preview || thinking || !selectedIds.length || (!preview && proposalStatus !== 'PENDING')
+            preview ||
+            thinking ||
+            confirming ||
+            rejecting ||
+            !selectedIds.length ||
+            (!preview && proposalStatus !== 'PENDING')
           "
           @click="$emit('confirm')"
         >

@@ -1,5 +1,5 @@
 import { DEMO_MERCHANTS, DEMO_CATEGORIES, DEMO_PRODUCTS, DEMO_STOCKS } from './demo.js';
-import { api, query, resetCsrf, onUnauthorized } from './api.js';
+import { api, query, resetCsrf, onUnauthorized, setIdentityGuard } from './api.js';
 const { reactive } = Vue;
 export const preview =
   window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get('demo') === '1';
@@ -76,6 +76,15 @@ onUnauthorized(() => {
     store.cartCount
   )
     replaceSession(null);
+});
+setIdentityGuard({
+  currentActor: () => actorId(store.user),
+  onMismatch: (liveUser) => {
+    replaceSession(liveUser || null);
+    notify(
+      liveUser ? '检测到其他标签页已切换账号，请重新确认后再操作' : '登录状态已失效，请重新登录',
+    );
+  },
 });
 export function switchMerchantContext(id) {
   if (id === store.merchantId) return;
