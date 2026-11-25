@@ -122,6 +122,8 @@ def create_app(settings: Settings|None=None):
         x_agent_capability_digest: Annotated[str | None, Header(alias="X-Agent-Capability-Digest")] = None,
         x_request_id: Annotated[str | None, Header(alias="X-Request-ID")] = None,
     ):
+        if not x_service_key or not secrets.compare_digest(x_service_key, settings.api_key):
+            return JSONResponse(status_code=401, content={"errorCode": "AUTH_INVALID"})
         if not x_request_id or x_request_id != request.requestId:
             return JSONResponse(status_code=422, content={"errorCode": "REQUEST_ID_INVALID"})
         if not gate.acquire(blocking=False):

@@ -92,11 +92,12 @@ public class AccessServiceImpl implements IAccessService {
         require(actor.equals(i.targetUserId()), ResponseCode.AUTH_FORBIDDEN);
         if (i.state() == InvitationStatusEnumVO.ACCEPTED) return;
         require(i.state() == InvitationStatusEnumVO.PENDING && clock.instant().isBefore(i.expiresAt()), ResponseCode.STATE_CONFLICT);
+        // 与 revoke 保持同一写锁顺序（iam_invitation -> iam_merchant_membership），避免并发接受/撤销死锁；异常由事务回滚。
+        repository.accept(i.id());
+        repository.cancelPendingInvitations(i.merchantId(), actor);
         MembershipVO m = repository.member(actor, i.merchantId(), true);
         require(m == null || m.state() != MembershipStatusEnumVO.ACTIVE, ResponseCode.STATE_CONFLICT);
         repository.grantClerk(i.merchantId(), actor);
-        repository.accept(i.id());
-        repository.cancelPendingInvitations(i.merchantId(), actor);
         audit(actor, "INVITATION_ACCEPTED", i.id(), i.merchantId(), "接受店员邀请");
     }
 

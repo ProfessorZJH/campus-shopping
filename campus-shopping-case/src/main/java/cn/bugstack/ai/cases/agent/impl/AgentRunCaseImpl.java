@@ -16,6 +16,8 @@ import cn.bugstack.ai.domain.shoppingai.model.agent.AgentScopeVO;
 import cn.bugstack.ai.domain.shoppingai.model.agent.AgentToolRegistry;
 import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Set;
@@ -137,10 +139,21 @@ public class AgentRunCaseImpl implements IAgentRunCase {
         accounts.requireActive(user);
         AgentRunVO run = repository.find(text(runId, "Run", 64));
         require(run != null && user.equals(run.userId()), ResponseCode.NOT_FOUND);
-        require(capabilityToken != null && Fingerprints.sha256(capabilityToken).equals(run.capabilityTokenHash()), ResponseCode.AUTH_FORBIDDEN);
+        require(
+            capabilityToken != null &&
+                run.capabilityTokenHash() != null &&
+                MessageDigest.isEqual(
+                    Fingerprints.sha256(capabilityToken).getBytes(StandardCharsets.UTF_8),
+                    run.capabilityTokenHash().getBytes(StandardCharsets.UTF_8)
+                ),
+            ResponseCode.AUTH_FORBIDDEN
+        );
         require(run.usable(clock), ResponseCode.STATE_CONFLICT);
         Instant activeExpiry = repository.activeTurnExpiry(user, run.scope().conversationId(), run.scope().turnToken());
         require(activeExpiry != null && activeExpiry.isAfter(clock.instant()), ResponseCode.STATE_CONFLICT);
+        if (AgentScopeVO.MERCHANT.equals(run.scope().identityKind()) && run.scope().identityId() != null) {
+            access.requirePermission(user, run.scope().identityId(), "product.read");
+        }
         return run;
     }
 

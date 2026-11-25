@@ -51,7 +51,7 @@
   - Java 7 模块职责划分、双 Redis 实例隔离设计（安全会话/限流 `noeviction` vs 公开展示缓存 `allkeys-lru`）、Java ↔ Python 内部共享密钥与有界 HTTP/SSE 通信协议。
   - *参考文档*：[decisions.md](../architecture/decisions.md)、[SDD-REDIS-12.md](../specs/SDD-REDIS-12.md)、[streaming.md](../api/streaming.md)。
 - **3.5 数据库总体设计与版本迁移治理**
-  - 8 大表前缀共 **44 张表**的逻辑划分；不可变迁移脚本（20 个版本）与历史发布基线结构指纹准入机制（[schema_contract.py](../../scripts/schema_contract.py)）。
+  - 8 大表前缀共 **44 张表**的逻辑划分；不可变迁移脚本（21 个版本）与历史发布基线结构指纹准入机制（[schema_contract.py](../../scripts/schema_contract.py)）。
 
 ---
 

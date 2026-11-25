@@ -39,12 +39,13 @@ public final class AfterSaleAggregate {
         return true;
     }
 
-    public void appeal(OrderAggregate order, String buyer) {
+    public boolean appeal(OrderAggregate order, String buyer) {
         order.requireBuyer(buyer);
         order.requirePaidForRefund();
-        if (status == AfterSaleStatusEnumVO.DISPUTED) return;
+        if (status == AfterSaleStatusEnumVO.DISPUTED) return false;
         require(status == AfterSaleStatusEnumVO.REJECTED, ResponseCode.REFUND_STATE_INVALID);
         status = AfterSaleStatusEnumVO.DISPUTED;
+        return true;
     }
 
     public void approve(String reason) {

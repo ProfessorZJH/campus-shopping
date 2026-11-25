@@ -57,13 +57,7 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     @Override
     public void requireDebugAccess(String actor) {
         accounts.requireActive(actor);
-        boolean allowed =
-            access.isAdmin(actor) ||
-            access
-                .memberships(actor)
-                .stream()
-                .map(m -> m.merchantId())
-                .anyMatch(id -> access.permissions(actor, id).contains("knowledge.read"));
+        boolean allowed = access.isAdmin(actor) || !knowledgeReadMerchants(actor).isEmpty();
         require(allowed, ResponseCode.AUTH_FORBIDDEN);
     }
 
@@ -82,17 +76,24 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     public List<KnowledgeBaseVO> managedBases(String actor) {
         accounts.requireActive(actor);
         boolean admin = access.isAdmin(actor);
-        Set<String> managed = access
-            .memberships(actor)
-            .stream()
-            .map(m -> m.merchantId())
-            .filter(id -> access.permissions(actor, id).contains("knowledge.read"))
-            .collect(Collectors.toSet());
+        Set<String> managed = knowledgeReadMerchants(actor);
         return state
             .bases()
             .stream()
             .filter(b -> b.merchantId() == null ? admin : managed.contains(b.merchantId()))
             .toList();
+    }
+
+    private Set<String> knowledgeReadMerchants(String actor) {
+        var memberships = access.memberships(actor);
+        if (memberships.isEmpty()) return Set.of();
+        return access
+            .workspacePermissions(actor, memberships)
+            .entrySet()
+            .stream()
+            .filter(entry -> entry.getValue().contains("knowledge.read"))
+            .map(Map.Entry::getKey)
+            .collect(Collectors.toSet());
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -143,18 +144,25 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
         var d = document(actor, id);
         manage(actor, d.baseId(), "knowledge.manage");
         var attempt = state.beginIndex(id);
+        boolean indexed = false;
         try {
             boolean external = egress.allows(d.visibility(), d.baseId(), d.merchantId());
             if (external) access.audit(actor, "AI_EXTERNAL_INDEX_REQUESTED", id, d.merchantId(), "知识嵌入范围：已批准知识版本；不记录正文");
             engine.index(id, d.title(), d.content(), d.version(), external);
-            require(state.completeIndex(attempt, true, ""), ResponseCode.STATE_CONFLICT);
+            indexed = true;
         } catch (AppException e) {
-            if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) throw e;
+            if (!ResponseCode.AI_UNAVAILABLE.getCode().equals(e.getCode())) {
+                state.completeIndex(attempt, false, "索引构建中断，请重试");
+                throw e;
+            }
             require(state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试"), ResponseCode.STATE_CONFLICT);
             log.error("知识索引构建失败 documentId={} diagnostic={}", id, cn.bugstack.ai.types.common.FailureDiagnostics.describe(e));
         } catch (RuntimeException e) {
             require(state.completeIndex(attempt, false, "索引构建失败，可检查服务配置后重试"), ResponseCode.STATE_CONFLICT);
             throw e;
+        }
+        if (indexed) {
+            require(state.completeIndex(attempt, true, ""), ResponseCode.STATE_CONFLICT);
         }
         return state.document(id);
     }
@@ -181,17 +189,23 @@ public class KnowledgeCaseImpl implements IKnowledgeCase {
     public List<KnowledgeScopeVO> readableScope(String actor) {
         accounts.requireActive(actor);
         boolean admin = access.isAdmin(actor);
-        Set<String> member = access
-            .memberships(actor)
+        Set<String> member = knowledgeReadMerchants(actor);
+        List<KnowledgeBaseVO> bases = state.bases();
+        List<String> publicMerchantIds = bases
             .stream()
-            .map(m -> m.merchantId())
-            .filter(id -> access.permissions(actor, id).contains("knowledge.read"))
-            .collect(Collectors.toSet());
+            .filter(b -> "PUBLIC".equals(b.visibility()) && b.merchantId() != null)
+            .map(KnowledgeBaseVO::merchantId)
+            .distinct()
+            .toList();
         Map<String, Boolean> active = new HashMap<>();
+        for (int start = 0; start < publicMerchantIds.size(); start += 100) {
+            List<String> batch = publicMerchantIds.subList(start, Math.min(start + 100, publicMerchantIds.size()));
+            merchants.findAll(batch).forEach(m -> active.put(m.id(), "ACTIVE".equals(m.status())));
+        }
         List<String> allowed = new ArrayList<>();
-        for (KnowledgeBaseVO b : state.bases()) {
+        for (KnowledgeBaseVO b : bases) {
             boolean readable = switch (b.visibility()) {
-                case "PUBLIC" -> b.merchantId() == null || active.computeIfAbsent(b.merchantId(), m -> "ACTIVE".equals(merchants.find(m).status()));
+                case "PUBLIC" -> b.merchantId() == null || active.getOrDefault(b.merchantId(), false);
                 case "MERCHANT_INTERNAL" -> member.contains(b.merchantId());
                 case "PLATFORM_INTERNAL" -> admin;
                 default -> false;

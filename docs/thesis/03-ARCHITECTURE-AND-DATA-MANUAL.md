@@ -13,7 +13,7 @@
 | `campus-shopping-case` | 55 | ~3,590 | 跨领域本地事务编排、确定性锁序控制、AI 无事务会话与提案确认编排 |
 | `campus-shopping-trigger` | 31 | ~3,440 | 12 个 REST Controller、独立 SSE 与媒体端点、安全限流过滤器、逾期关单与向量同步任务 |
 | `campus-shopping-api` | 85 | ~1,385 | HTTP 契约接口（`I...Api`）、请求/响应 DTO 与通用 `Response<T>` 信封 |
-| `campus-shopping-app`（主配置 + Mapper + SQL） | 12 | ~502 | Spring Boot 启动装配、Security/CSP/生产守卫；另有 Mapper XML、schema 与 20 份版本迁移 |
+| `campus-shopping-app`（主配置 + Mapper + SQL） | 12 | ~502 | Spring Boot 启动装配、Security/CSP/生产守卫；另有 Mapper XML、schema 与 21 份版本迁移 |
 | `campus-shopping-types` | 7 | ~210 | 统一业务错误码枚举 `ResponseCode`、`AppException`、参数断言与指纹工具 |
 | **Java 测试套件（`src/test`）** | **78** | **~13,200** | 领域/用例单测、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例与评测桥接 |
 | **Python 智能导购（`ai-service/app`）** | **25** | **~3,450** | FastAPI 接入、BM25/本地哈希/Qdrant/Milvus REST 混合检索、规格状态机、Runtime Bridge |
@@ -124,7 +124,7 @@ flowchart TB
 |---|---|---|
 | `sys_audit` | `id` (PK) | 关键管理、审核、核销与外发操作安全审计表 |
 | `sys_schema_version` | `version` (PK) | 基础结构版本标识表 |
-| `sys_schema_migration` | `version` (PK) | 20 个不可变数据库迁移脚本的版本号与 SHA-256 校验和登记表 |
+| `sys_schema_migration` | `version` (PK) | 21 个不可变数据库迁移脚本的版本号与 SHA-256 校验和登记表 |
 | `sys_schema_migration_drift` | `id` (PK) | 历史库结构漂移人工准入责任人与原因审计表 |
 
 ---

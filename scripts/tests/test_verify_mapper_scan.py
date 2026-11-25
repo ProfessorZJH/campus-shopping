@@ -58,6 +58,19 @@ class MapperScanTest(unittest.TestCase):
         )
         self.assertTrue(findings[0]["narrowed"])
 
+    def test_unconditional_time_window_narrows_but_optional_window_does_not(self):
+        unconditional = self.scan(
+            '<mapper><select id="orders">SELECT * FROM trd_order o '
+            'WHERE o.created_at &gt;= #{since} <if test="q != null">AND LOCATE(#{q}, o.id) &gt; 0</if></select></mapper>'
+        )
+        self.assertTrue(unconditional[0]["narrowed"])
+        optional = self.scan(
+            '<mapper><select id="orders">SELECT * FROM trd_order o '
+            'WHERE 1=1 <if test="since != null">AND o.created_at &gt;= #{since}</if> '
+            '<if test="q != null">AND LOCATE(#{q}, o.id) &gt; 0</if></select></mapper>'
+        )
+        self.assertFalse(optional[0]["narrowed"])
+
     def test_narrowing_must_apply_to_every_or_branch(self):
         cases = (
             ('WHERE LOCATE(#{q}, p.title) &gt; 0 OR p.merchant_id=#{merchantId}', False),

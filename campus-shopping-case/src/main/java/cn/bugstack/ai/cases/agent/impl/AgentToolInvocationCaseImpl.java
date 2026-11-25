@@ -244,12 +244,16 @@ public class AgentToolInvocationCaseImpl implements IAgentToolInvocationCase {
             .stream()
             .collect(Collectors.toMap(StockVO::skuId, Function.identity(), (left, right) -> left));
         List<SkuOfferVO> offers = catalog.availableOffers(skuIds);
-        Set<String> merchantIds = offers.stream().map(SkuOfferVO::merchantId).collect(Collectors.toSet());
-        Map<String, MerchantVO> activeMerchants = merchants
-            .findAll(List.copyOf(merchantIds))
-            .stream()
-            .filter(merchant -> "ACTIVE".equals(merchant.status()))
-            .collect(Collectors.toMap(MerchantVO::id, Function.identity(), (left, right) -> left));
+        List<String> merchantIds = offers.stream().map(SkuOfferVO::merchantId).distinct().toList();
+        Map<String, MerchantVO> activeMerchants = new LinkedHashMap<>();
+        for (int from = 0; from < merchantIds.size(); from += 100) {
+            List<String> batch = merchantIds.subList(from, Math.min(merchantIds.size(), from + 100));
+            for (MerchantVO merchant : merchants.findAll(batch)) {
+                if ("ACTIVE".equals(merchant.status())) {
+                    activeMerchants.putIfAbsent(merchant.id(), merchant);
+                }
+            }
+        }
 
         Map<String, List<SkuOfferVO>> byProduct = new LinkedHashMap<>();
         for (SkuOfferVO offer : offers) {
