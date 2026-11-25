@@ -8,9 +8,12 @@
 
 仓库已在 `ai-service/evaluation/` 内置了完整的防作弊评测引擎（固定 `PYTHONHASHSEED=20261031`、物理断网沙箱、Scorer v3）。为了让论文第 5 章具备极高说服力，按以下三步完成实验：
 
-### 步骤 1：消除合成查询“标题直拼偏差”并冻结 Gold 数据集
-1. **为什么要改写部分查询**：当前 `ai-service/evaluation/datasets/campus-shopping-v1/cases.jsonl` 初稿由脚本生成，部分模糊需求问句中直接嵌入了完整商品标题（如“校园活动需要无糖乌龙茶校园系列2”），这会让纯字面匹配（BM25 / SQL `LOCATE`）得分虚高，拉不开与语义向量检索的差距。
-2. **优化动作**：挑选其中约 40～50 条属于 `fuzzy-use`（模糊场景）、`synonym`（同义表达）、`multi-turn`（多轮指代）的样本，将其 `originalQuery` 改写为**不含商品原名但语义明确的真实校园口语**（例如：“期末通宵复习想喝点不长胖的茶饮”、“宿舍桌面看书不刺眼的照明工具”），校对 `qrels` 后按 [ai-service/evaluation/README.md](../../ai-service/evaluation/README.md) 运行 `python -m evaluation.review_validation` 验证并将数据集状态升级为 `ACCEPTED`。
+### 步骤 1：消除合成查询偏差、修复评测器截断并冻结 Gold 数据集
+1. **当前数据集诚实状态**：现有 `ai-service/evaluation/datasets/campus-shopping-v1/` 处于 `DRAFT` 状态（`0/120` 人工复核），**不能直接作为论文第 5 章正式数据引用**，必须在正式出表前完成以下 3 项整改：
+   - **消除标题词面泄漏**：当前 `generate.py` 生成的查询中普遍直接嵌入完整商品标题及序号（如“无糖乌龙茶校园系列12”），会导致纯字面匹配（BM25 / SQL `LOCATE`）虚高。需挑选约 40～50 条 `fuzzy-use`、`synonym`、`multi-turn` 样本，改写为**不含商品原名但语义明确的真实校园口语**（例如：“期末通宵复习想喝点不长胖的茶饮”、“宿舍桌面看书不刺眼的照明工具”）；
+   - **修正金标逻辑冲突**：校准 `public-knowledge`（`case-071..080`，生产策略对规则问答不推荐商品）、清理无关的邻号 grade-1 文档标注，并为 `attributes-negation` 补齐真实 `forbiddenAttributes` 字段；
+   - **修复评测器截断与隔离策略**：解除 `evaluation/runner.py` 中对 342 个在售 SKU 硬截断到 `[:300]` 的限制（避免丢弃后段金标 SKU），并使内部文档建索引遵循生产默认的 `external_allowed=False` 隔离规则。
+2. **人工复核与冻结**：完成上述校对后，按 [ai-service/evaluation/README.md](../../ai-service/evaluation/README.md) 运行 `python -m evaluation.review_validation` 验证并将数据集状态升级为 `ACCEPTED`。
 
 ### 步骤 2：运行知识库与商品召回消融实验（一键生成论文三线表数据）
 

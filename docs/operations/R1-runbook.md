@@ -115,7 +115,7 @@ Java真实并发测试连接**独立**`campus_shopping_it`库，设置`MYSQL_TES
 
 ## 6. 上线前仍需做
 
-针对实际部署版本与环境重新执行 Maven/MySQL/浏览器验收，并完成依赖漏洞检查、HTTPS反代与Secure Cookie、数据库备份/恢复演练、日志脱敏、实际压测和真实模型评测。`prod` 不解析客户端转发头，认证限流按实际连接对端计数；部署反向代理时应仅允许可信代理连接应用，由代理清洗转发头，并在 HTTPS 入口显式设置 `SESSION_COOKIE_SECURE=true`。多客户端共用代理地址时，还需在可信入口配置统一限流。当前默认单实例内存会话，应用重启会退出登录；需要多副本时另行引入共享会话，而不是临时添加JWT。
+针对实际部署版本与环境重新执行 Maven/MySQL/Redis/浏览器验收，并完成依赖漏洞检查、HTTPS反代与Secure Cookie、数据库备份/恢复演练、日志脱敏、实际压测和真实模型评测。`prod` 默认不解析未受信任客户端转发头，认证限流按实际连接对端计数；部署反向代理时应仅允许可信代理连接应用，由代理清洗转发头，并在 HTTPS 入口显式设置 `SESSION_COOKIE_SECURE=true`。多客户端共用代理地址时，还需在可信入口配置统一限流。多 Java 实例共享会话、限流与 AI 准入已通过双 Redis 架构（`redis-security` + `redis-cache`，见 [SDD-12](../specs/SDD-REDIS-12.md)）实现；不通过临时引入无状态 JWT 绕过即时撤权，且 Python `ai-service` 当前仍为单实例 SQLite WAL 架构。
 
 不要执行`docker compose down -v`删除已有数据库卷。普通停止只使用`docker compose down`。
 

@@ -66,15 +66,15 @@
 | **4.3 强一致交易结算、模拟支付、自提核销与售后裁决** | 全局固定锁序防死锁；`Idempotency-Key` 请求指纹幂等闸门；`on_hand / reserved` 分离库存模型；付款与自提任务同事务创建；动态令牌 SHA-256 摘要核销；退款申请—商户审核—平台争议三级裁决 + 15 分钟游标逾期关单 | [CheckoutCaseImpl.java](../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java)<br>[OrderLifecycleCaseImpl.java](../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/OrderLifecycleCaseImpl.java)<br>[OrderExpiryJob.java](../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/OrderExpiryJob.java) |
 | **4.4 全量商品两级混合召回与口语规格硬约束引擎** | 游标增量同步商品向量索引；MySQL 全表词面打分 Top 200 + Milvus 语义 Top 80 实时反查 + 商品级 RRF + 跨商品 Round-Robin SKU 采样 300 项；Python 中文预算/数量状态机与正负向规格过滤 + 二次 RRF | [CandidateResolver.java](../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/CandidateResolver.java)<br>[ProductVectorSyncJob.java](../../campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/job/ProductVectorSyncJob.java)<br>[engine.py](../../ai-service/app/engine.py) · [sku_constraints.py](../../ai-service/app/sku_constraints.py) |
 | **4.5 权限感知知识库检索与零锁流式会话提案机制** | 不可变文档版本与 `index_attempt` 租约；内部知识本地哈希特征 vs 外发双白名单 + PII 脱敏；AI 调用前后三次权限快照指纹比对（防 TOCTOU）与 UUIDv5/SHA-256 分块校验；`turn_token` 600s 租约 + `Propagation.NEVER` + 独立 SSE 断线恢复 + 提案同事务确认加购 | [ShoppingAiCaseImpl.java](../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java)<br>[EvidenceAssembler.java](../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/EvidenceAssembler.java)<br>[ProposalConfirmationCaseImpl.java](../../campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ProposalConfirmationCaseImpl.java)<br>[retrieval.py](../../ai-service/app/retrieval.py) |
-| **4.6 同源三端前端状态隔离与自动化契约工程门禁** | 五维代次（Epoch Fencing）阻断切号/切店异步串号；有界流式帧解析；Controller → OpenAPI 102 路由自动生成与 SQL 全表扫描到期熔断门禁 | [store.js](../../frontend/src/services/store.js) · [api.js](../../frontend/src/services/api.js)<br>[guide-conversation.js](../../frontend/src/services/guide-conversation.js)<br>[verify-api-contract.py](../../scripts/verify-api-contract.py) |
+| **4.6 同源三端前端状态隔离与自动化契约工程门禁** | 五维代次（Epoch Fencing）与冷/热 CSRF 双校验阻断切号/切店异步串号；有界流式帧解析；Controller → OpenAPI 102 路由自动生成与 SQL 全表扫描门禁（订单大表 4 项豁免已收窄清零） | [store.js](../../frontend/src/services/store.js) · [api.js](../../frontend/src/services/api.js)<br>[guide-conversation.js](../../frontend/src/services/guide-conversation.js)<br>[verify-api-contract.py](../../scripts/verify-api-contract.py) |
 
 ---
 
 ## 第 5 章 智能导购评测实验与系统测试（约 4,000～5,000 字，冲优核心章）
 
 - **5.1 系统测试环境与多层次自动化门禁验证**
-  - 单元测试（Java 领域规则 56 项 + 5000 步随机库存不变量序列、JUnit 套件、Python 408 项 pytest、前端 35 项 Node 单测）；
-  - 数据库真实迁移校验（空库初始化、3 个历史发布基线升级、重放幂等与结构漂移拒绝）；
+  - 单元测试（Java 领域规则 56 项 + 5000 步随机库存不变量序列、JUnit 451+ 项测试套件、Python 419+ 项 pytest、前端 39+ 项 Node 单测、42 项门禁脚本单测）；
+  - 数据库真实迁移校验（空库初始化、3 个历史发布基线升级至 21 份迁移、重放幂等与结构指纹漂移拒绝）；
   - 跨服务真实 HTTP 端到端与 Chromium 浏览器契约/全栈验证。
 - **5.2 智能导购评测数据集构建与评价指标定义**
   - 数据集划分（`campus-shopping-v1`：240 商品 / 360 SKU / 24 篇多可见性知识文档 / 120 条覆盖多轮指代、模糊需求、预算数量、规格排除与越权探测的测试案例）。

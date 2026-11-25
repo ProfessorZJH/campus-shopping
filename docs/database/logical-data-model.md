@@ -1,6 +1,6 @@
 # R1 数据模型与迁移说明
 
-> 当前 MySQL DDL 共有 44 张表（含 20 份已发布迁移）。迁移入口使用 `sys_schema_migration`；`sys_schema_version` 仅为历史保留表。2026-10-29 已在隔离 MySQL 8.0.31 验证建库、旧库升级、重复迁移与脏数据拒绝；证据见 [SDD-09 专项审查](../testing/CONTRACT-DATABASE-API-AUDIT-09.md)，最新全量 44 表与迁移升级基线见 [全栈隔离验收](../testing/FULL-STACK-ISOLATION-20261121.md)。
+> 当前 MySQL DDL 共有 44 张表（含 21 份已发布不可变迁移，最新至 `V20261125_01__stage2_query_and_lock_indexes.sql`）。迁移入口使用 `sys_schema_migration`；`sys_schema_version` 仅为历史保留表。已在隔离 MySQL 8.0.31 验证空库初始化、3 个历史发布基线升级、重复迁移幂等与脏数据/漂移拒绝；证据见 [SDD-09 专项审查](../testing/CONTRACT-DATABASE-API-AUDIT-09.md) 与 [全栈隔离验收](../testing/FULL-STACK-ISOLATION-20261121.md)。
 > 权威建表源：[`schema.sql`](../../campus-shopping-app/src/main/resources/schema.sql)。分类初始数据：[`data.sql`](../../campus-shopping-app/src/main/resources/data.sql)。
 
 ## 执行前必须确认

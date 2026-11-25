@@ -15,9 +15,9 @@
 | `campus-shopping-api` | 85 | ~1,385 | HTTP 契约接口（`I...Api`）、请求/响应 DTO 与通用 `Response<T>` 信封 |
 | `campus-shopping-app`（主配置 + Mapper + SQL） | 12 | ~502 | Spring Boot 启动装配、Security/CSP/生产守卫；另有 Mapper XML、schema 与 21 份版本迁移 |
 | `campus-shopping-types` | 7 | ~210 | 统一业务错误码枚举 `ResponseCode`、`AppException`、参数断言与指纹工具 |
-| **Java 测试套件（`src/test`）** | **78** | **~13,200** | 领域/用例单测、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例与评测桥接 |
+| **Java 测试套件（`src/test`）** | **79** | **~13,400** | 领域/用例单测、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例与评测桥接 |
 | **Python 智能导购（`ai-service/app`）** | **25** | **~3,450** | FastAPI 接入、BM25/本地哈希/Qdrant/Milvus REST 混合检索、规格状态机、Runtime Bridge |
-| **Python 测试与评测（`tests` + `evaluation`）** | **72** | **~8,100** | 414+ 项 pytest 回归套件 + Scorer v3 消融与硬约束评测框架 + 120 例数据集 |
+| **Python 测试与评测（`tests` + `evaluation`）** | **72** | **~8,150** | 419+ 项 pytest 回归套件 + Scorer v3 消融与硬约束评测框架 + 120 例数据集 |
 | **Vue 3 三端前端（`frontend/src`）** | **54** | **~11,900** | 13 个三端业务页面、16 个组件、Epoch 状态隔离、有界 SSE 解析与主题样式系统 |
 | **前端与工程化门禁（`frontend/tests` + `scripts`）** | **100** | **~15,900** | 39+ 项 Node 单测、32 个 Playwright 浏览器脚本、契约/DDL/Mapper/DDD 自动化门禁 |
 
