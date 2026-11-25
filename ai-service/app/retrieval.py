@@ -57,7 +57,7 @@ from .provider import Provider
 
 class KnowledgeStore:
     def __init__(self,settings: Settings):
-        self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock()
+        self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock();self._delete_epoch: dict[str,int]={};self._deleting: dict[str,int]={}
         db_path = Path(settings.db_path)
         fresh = not db_path.exists()
         self.db=sqlite3.connect(settings.db_path,check_same_thread=False,isolation_level=None)
@@ -87,13 +87,21 @@ class KnowledgeStore:
             if e.response.status_code!=404:raise
             self._qdrant('PUT','/collections/'+s.collection,{'vectors':{'size':size,'distance':'Cosine'}})
             self._qdrant('PUT','/collections/'+s.collection+'/index',{'field_name':'document_id','field_schema':'keyword'})
+    def _delete_qdrant_doc(self,doc_id: str):
+        try:
+            self._qdrant('POST','/collections/'+self.settings.collection+'/points/delete?wait=true',{'filter':{'must':[{'key':'document_id','match':{'value':doc_id}}]}})
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code!=404:raise
     @observed('knowledge.index')
     def index(self,doc_id: str,title: str,text: str,version: int=1,external_allowed: bool=False) -> int:
         if version < 1: raise ValueError('文档版本无效')
         pieces=chunks(text);fingerprint=hashlib.sha256((title+'\0'+text).encode()).hexdigest()
         with self.lock:
+            if self._deleting.get(doc_id,0)>0:raise ValueError('文档正在删除，无法重新索引')
+            epoch=self._delete_epoch.get(doc_id,0)
             prior=self.db.execute('SELECT fingerprint,model FROM docs WHERE id=?',(doc_id,)).fetchone()
             if prior and prior['fingerprint']!=fingerprint:raise ValueError('文档版本内容不可变；请使用新版本ID')
+            prior_model=prior['model'] if prior else None
         model=self.provider.model_tag if external_allowed else 'local-char-ngram-v1'
         vectors=self.provider.embed(pieces) if external_allowed else [local_vector(t) for t in pieces]
         rows=[(str(uuid.uuid5(uuid.NAMESPACE_URL,doc_id+':'+str(i))),doc_id,title,body,i,json.dumps(vectors[i]),model) for i,body in enumerate(pieces)]
@@ -102,22 +110,43 @@ class KnowledgeStore:
             self._ensure_collection(len(vectors[0]))
             points=[{'id':row[0],'vector':vectors[i],'payload':{'document_id':doc_id,'ordinal':i,'model':model}} for i,row in enumerate(rows)]
             self._qdrant('PUT','/collections/'+self.settings.collection+'/points?wait=true',{'points':points})
+        elif self.settings.qdrant_url and not external_allowed and prior_model and prior_model!='local-char-ngram-v1':
+            self._delete_qdrant_doc(doc_id)
+        deleted_during_index=False
         with self.lock:
-            self.db.execute('BEGIN IMMEDIATE')
-            try:
-                self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,))
-                self.db.executemany('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)',rows)
-                self.db.execute('INSERT INTO docs VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated,version=excluded.version,version_known=1',(doc_id,fingerprint,model,time.time(),version,1))
-                self.db.execute('COMMIT')
-            except Exception:self.db.execute('ROLLBACK');raise
+            if self._deleting.get(doc_id,0)>0 or self._delete_epoch.get(doc_id,0)!=epoch:
+                deleted_during_index=True
+            else:
+                self.db.execute('BEGIN IMMEDIATE')
+                try:
+                    self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,))
+                    self.db.executemany('INSERT INTO chunks VALUES(?,?,?,?,?,?,?)',rows)
+                    self.db.execute('INSERT INTO docs VALUES(?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET model=excluded.model,updated=excluded.updated,version=excluded.version,version_known=1',(doc_id,fingerprint,model,time.time(),version,1))
+                    self.db.execute('COMMIT')
+                except Exception:self.db.execute('ROLLBACK');raise
+        if deleted_during_index:
+            if self.settings.qdrant_url and external_allowed:
+                try:self._delete_qdrant_doc(doc_id)
+                except Exception as error:failure('knowledge.delete_race_cleanup',error)
+            raise ValueError('文档在索引期间已被删除')
         return len(rows)
     def delete(self,doc_id: str):
-        if self.settings.qdrant_url:self._qdrant('POST','/collections/'+self.settings.collection+'/points/delete?wait=true',{'filter':{'must':[{'key':'document_id','match':{'value':doc_id}}]}})
         with self.lock:
-            self.db.execute('BEGIN IMMEDIATE')
-            try:
-                self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,));self.db.execute('DELETE FROM docs WHERE id=?',(doc_id,));self.db.execute('COMMIT')
-            except Exception:self.db.execute('ROLLBACK');raise
+            self._deleting[doc_id]=self._deleting.get(doc_id,0)+1
+            self._delete_epoch[doc_id]=self._delete_epoch.get(doc_id,0)+1
+        try:
+            if self.settings.qdrant_url:self._delete_qdrant_doc(doc_id)
+            with self.lock:
+                self.db.execute('BEGIN IMMEDIATE')
+                try:
+                    self.db.execute('DELETE FROM chunks WHERE doc_id=?',(doc_id,));self.db.execute('DELETE FROM docs WHERE id=?',(doc_id,));self.db.execute('COMMIT')
+                except Exception:self.db.execute('ROLLBACK');raise
+        finally:
+            with self.lock:
+                self._delete_epoch[doc_id]=self._delete_epoch.get(doc_id,0)+1
+                remaining=self._deleting.get(doc_id,1)-1
+                if remaining<=0:self._deleting.pop(doc_id,None)
+                else:self._deleting[doc_id]=remaining
     @observed('knowledge.search')
     def search(self,query: str,allowed: list[str],top_k: int=6,*,_strategy: str='hybrid',_trace: dict|None=None,external_document_ids: list[str]|None=None) -> tuple[list[dict],str]:
         # 私有评测接缝；生产HTTP不接受策略或trace参数，默认排序保持不变。

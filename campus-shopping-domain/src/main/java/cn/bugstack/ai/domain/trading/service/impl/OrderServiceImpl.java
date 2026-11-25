@@ -90,6 +90,11 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
         return repository.orders(buyer, merchant, OrderStatusEnumVO.filter(status), offset(page, size), size, optional(q, 100));
     }
 
+    @Override
+    public List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size, String q, Instant since) {
+        return repository.orders(buyer, merchant, OrderStatusEnumVO.filter(status), offset(page, size), size, optional(q, 100), since);
+    }
+
     public long countOrders(String buyer, String merchant, String status) {
         return countOrders(buyer, merchant, status, "");
     }
@@ -99,10 +104,16 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
     }
 
     @Override
+    public long countOrders(String buyer, String merchant, String status, String q, Instant since) {
+        return repository.countOrders(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100), since);
+    }
+
+    @Override
     public List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int page, int size, String q, String pickupState) {
+        String requiredMerchant = text(merchant, "商户编号", 64);
         return repository.ordersByPickupState(
             buyer,
-            merchant,
+            requiredMerchant,
             OrderStatusEnumVO.filter(status),
             offset(page, size),
             size,
@@ -113,7 +124,8 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService {
 
     @Override
     public long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState) {
-        return repository.countOrdersByPickupState(buyer, merchant, OrderStatusEnumVO.filter(status), optional(q, 100), pickupStateFilter(pickupState));
+        String requiredMerchant = text(merchant, "商户编号", 64);
+        return repository.countOrdersByPickupState(buyer, requiredMerchant, OrderStatusEnumVO.filter(status), optional(q, 100), pickupStateFilter(pickupState));
     }
 
     private String pickupStateFilter(String value) {

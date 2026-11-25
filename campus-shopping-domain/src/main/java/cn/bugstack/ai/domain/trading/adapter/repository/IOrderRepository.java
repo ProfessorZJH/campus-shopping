@@ -15,8 +15,18 @@ public interface IOrderRepository {
     void save(OrderAggregate order);
     long countOrders(String buyer, String merchant, String status);
     long countOrders(String buyer, String merchant, String status, String q);
+
+    default long countOrders(String buyer, String merchant, String status, String q, Instant since) {
+        return countOrders(buyer, merchant, status, q);
+    }
+
     List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size);
     List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q);
+
+    default List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size, String q, Instant since) {
+        return orders(buyer, merchant, status, offset, size, q);
+    }
+
     List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int offset, int size, String q, String pickupState);
     long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState);
     List<String> expired(Instant now);

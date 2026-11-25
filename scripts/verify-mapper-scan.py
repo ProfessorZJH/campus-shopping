@@ -33,7 +33,8 @@ LEADING_WILDCARD = re.compile(r'''\blike\b\s*\(?\s*(?:['"]%|concat\s*\(\s*['"]%)
 NARROWING_TERM = re.compile(
     r'\s*(?:[a-z_]\w*\s*\.\s*)?(?:merchant_id|store_id|product_id|category_code)\s*=\s*#\{[^}]+\}\s*'
     r'|\s*(?:[a-z_]\w*\s*\.\s*)?(?:id|sku_id|product_id)\s+in\s*\('
-    r'\s*(?:#\{[^}]+\}|\d+)(?:\s*,\s*(?:#\{[^}]+\}|\d+))*\s*\)\s*',
+    r'\s*(?:#\{[^}]+\}|\d+)(?:\s*,\s*(?:#\{[^}]+\}|\d+))*\s*\)\s*'
+    r'|\s*(?:[a-z_]\w*\s*\.\s*)?created_at\s*(?:>=|>)\s*#\{[^}]+\}\s*',
     re.IGNORECASE,
 )
 
@@ -64,24 +65,8 @@ ALLOW = {
         'reason': 'AI 召回需对全量公开商品打分；整改方向是把打分移出 SQL、只保留有界候选召回。',
         'until': '2027-03-31',
     },
-    # 平台后台的全量列表：调用方 /admin/orders、/admin/merchant-applications、/admin/merchants
-    # 均把过滤参数声明为可选，不传就没有任何收窄条件。订单表是最大表，优先级最高。
-    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#orders': {
-        'reason': '平台后台订单列表，state/q 均可选，不传时全表扫描且 countOrders 同形；整改=强制时间窗或游标。',
-        'until': '2026-12-31',
-    },
-    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#countOrders': {
-        'reason': '与 orders 共用同一过滤条件，必须与二者同批整改。',
-        'until': '2026-12-31',
-    },
-    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#ordersByPickupState': {
-        'reason': '平台工作台按履约状态筛订单，buyer/merchant 均为空；整改随 orders 同批。',
-        'until': '2026-12-31',
-    },
-    f'{APP_MAPPER_DIR}/itradingdao_mapper.xml#countOrdersByPickupState': {
-        'reason': '与 ordersByPickupState 共用条件，必须同批整改。',
-        'until': '2026-12-31',
-    },
+    # 平台后台的小表列表：调用方 /admin/merchant-applications、/admin/merchants
+    # 均把过滤参数声明为可选；订单表已收窄（时间窗 + 商户等值），不再需要豁免。
     f'{APP_MAPPER_DIR}/imerchantapplicationdao_mapper.xml#list': {
         'reason': '平台审核列表 state 可选；表行数与入驻申请量同级（百量级），分页可接受；整改=待审默认 state=SUBMITTED。',
         'until': '2027-03-31',

@@ -7,8 +7,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -39,6 +41,7 @@ import cn.bugstack.ai.types.exception.AppException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -218,6 +221,78 @@ class AgentGatewayTest {
         );
         assertEquals(1, result.candidates().size());
         assertEquals("product-lamp", result.candidates().get(0).productId());
+    }
+
+    @Test
+    void merchantRunUsableReverifiesRevokedMerchantPermission() {
+        IAgentRunRepository repository = mock(IAgentRunRepository.class);
+        IUserAccountService accounts = mock(IUserAccountService.class);
+        IAccessService access = mock(IAccessService.class);
+        AgentRunVO run = run("clerk", AgentScopeVO.MERCHANT, "merchant-1", Set.of("merchant-1"), "capability");
+        when(repository.find("run-1")).thenReturn(run);
+        when(repository.activeTurnExpiry("clerk", "conversation", "turn-token")).thenReturn(NOW.plusSeconds(600));
+        doThrow(new AppException(ResponseCode.AUTH_FORBIDDEN)).when(access).requirePermission("clerk", "merchant-1", "product.read");
+
+        AgentRunCaseImpl runs = new AgentRunCaseImpl(repository, accounts, access, clock);
+        AppException error = assertThrows(AppException.class, () -> runs.usable("clerk", "run-1", "capability"));
+        assertEquals(ResponseCode.AUTH_FORBIDDEN.getCode(), error.getCode());
+        verify(access).requirePermission("clerk", "merchant-1", "product.read");
+    }
+
+    @Test
+    void searchProductsChunksMoreThanHundredMerchantsIntoBoundedBatches() {
+        IAgentRunRepository repository = mock(IAgentRunRepository.class);
+        IUserAccountService accounts = mock(IUserAccountService.class);
+        AgentRunVO run = run("buyer", AgentScopeVO.CONSUMER, null, Set.of(), "capability");
+        when(repository.find("run-1")).thenReturn(run);
+        when(repository.activeTurnExpiry("buyer", "conversation", "turn-token")).thenReturn(NOW.plusSeconds(600));
+        when(repository.invocation("run-1", "call-batch")).thenReturn(null);
+        when(repository.claimInvocation(any())).thenReturn(true);
+        when(repository.completeInvocation(eq("run-1"), eq("call-batch"), anyString(), any(), any())).thenReturn(true);
+
+        List<ProductCandidateSnapshot> snapshots = new ArrayList<>();
+        List<String> skuIds = new ArrayList<>();
+        List<SkuOfferVO> offers = new ArrayList<>();
+        List<StockVO> stocks = new ArrayList<>();
+        for (int i = 0; i < 120; i++) {
+            String m = "m-" + i;
+            String p = "p-" + i;
+            String s = "sku-" + i;
+            snapshots.add(new ProductCandidateSnapshot(p, List.of(s)));
+            skuIds.add(s);
+            offers.add(offer(s, p, m, "store-" + i, "笔记本", 1000));
+            stocks.add(new StockVO(m, "store-" + i, s, 5, 0, 1));
+        }
+
+        ICatalogCandidateQuery catalog = mock(ICatalogCandidateQuery.class);
+        when(catalog.candidateRecall(List.of("笔记本"), 50)).thenReturn(snapshots);
+        when(catalog.availableOffers(skuIds)).thenReturn(offers);
+        IInventoryService inventory = mock(IInventoryService.class);
+        when(inventory.stocks(skuIds)).thenReturn(stocks);
+        IMerchantService merchants = mock(IMerchantService.class);
+        when(merchants.findAll(anyList())).thenAnswer(invocation -> {
+            List<String> batch = invocation.getArgument(0);
+            if (batch.size() > 100) throw new AppException(ResponseCode.ILLEGAL_PARAMETER);
+            return batch
+                .stream()
+                .map(id -> merchant(id, "ACTIVE"))
+                .toList();
+        });
+
+        AgentToolInvocationCaseImpl tools = new AgentToolInvocationCaseImpl(
+            repository,
+            mockRuns(repository, accounts),
+            catalog,
+            inventory,
+            merchants,
+            accounts,
+            clock
+        );
+        AgentToolResultVO result = tools.invoke(
+            new AgentToolInvocationCommand("buyer", "run-1", "capability", "call-batch", "search_products", "笔记本", 5, null)
+        );
+        assertEquals(5, result.candidates().size());
+        verify(merchants, times(2)).findAll(anyList());
     }
 
     private AgentRunCaseImpl mockRuns(IAgentRunRepository repository, IUserAccountService accounts) {

@@ -164,8 +164,11 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
     public void appeal(String buyer, String id) {
         accounts.requireActive(buyer);
         OrderAggregate o = trading.orderForUpdate(id);
+        AfterSaleVO before = afterSales.afterSaleForUpdate(id);
         AfterSaleVO result = afterSales.appeal(o, buyer);
-        events.record(id, result.id(), "REFUND_DISPUTED", buyer, "BUYER", "");
+        if (before == null || before.state() != AfterSaleStatusEnumVO.DISPUTED) {
+            events.record(id, result.id(), "REFUND_DISPUTED", buyer, "BUYER", "");
+        }
     }
 
     @Transactional(rollbackFor = Exception.class)

@@ -5,6 +5,7 @@
 SELECT turn_expires_at
 FROM ai_conversation
 WHERE id=#{conversationId} AND user_id=#{actor} AND turn_token=#{turnToken}
+  AND turn_status='RUNNING'
   AND turn_expires_at &gt; CURRENT_TIMESTAMP(3)
     </select>
 

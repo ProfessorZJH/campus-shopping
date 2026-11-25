@@ -338,3 +338,71 @@ def test_execution_capacity_is_held_until_work_finishes(tmp_path,monkeypatch):
 def test_execution_capacity_configuration_rejects_invalid_value(tmp_path):
     with pytest.raises(ValueError):
         Settings(api_key=KEY,db_path=str(tmp_path/'invalid.db'),max_concurrent_requests=0).validate()
+
+
+def test_knowledge_delete_ignores_qdrant_404_and_removes_sqlite_rows(tmp_path,monkeypatch):
+    import httpx
+    from app.retrieval import KnowledgeStore
+    settings=Settings(api_key=KEY,db_path=str(tmp_path/'q404.db'),qdrant_url='http://127.0.0.1:6333')
+    store=KnowledgeStore(settings)
+    try:
+        store.index('doc-404','测试','这是一段用于验证 Qdrant 404 删除容错的文档正文',version=1,external_allowed=False)
+        def fake_qdrant(method,path,body=None):
+            req=httpx.Request(method,'http://127.0.0.1:6333'+path)
+            raise httpx.HTTPStatusError('not found',request=req,response=httpx.Response(404,request=req))
+        monkeypatch.setattr(store,'_qdrant',fake_qdrant)
+        store.delete('doc-404')
+        assert store.db.execute('SELECT COUNT(*) FROM docs WHERE id=?',('doc-404',)).fetchone()[0]==0
+        assert store.db.execute('SELECT COUNT(*) FROM chunks WHERE doc_id=?',('doc-404',)).fetchone()[0]==0
+    finally:
+        store.close()
+
+
+def test_knowledge_index_downgrade_cleans_stale_qdrant_and_blocks_delete_race(tmp_path,monkeypatch):
+    from app.retrieval import KnowledgeStore
+    settings=Settings(api_key=KEY,db_path=str(tmp_path/'qrace.db'),qdrant_url='http://127.0.0.1:6333',embedding_url='https://emb.test/v1',embedding_key='k',embedding_model='m')
+    store=KnowledgeStore(settings)
+    qdrant_calls=[]
+    try:
+        monkeypatch.setattr(store.provider,'embed',lambda texts,input_type='passage':[[0.5,0.5] for _ in texts])
+        def fake_qdrant(method,path,body=None):
+            qdrant_calls.append((method,path,body))
+            if method=='GET':return {'config':{'params':{'vectors':{'size':2}}}}
+            return {'status':'ok'}
+        monkeypatch.setattr(store,'_qdrant',fake_qdrant)
+        store.index('doc-down','标题','内容用于测试外发降级清理远端向量点',version=1,external_allowed=True)
+        store.index('doc-down','标题','内容用于测试外发降级清理远端向量点',version=1,external_allowed=False)
+        assert any(method=='POST' and path.endswith('/points/delete?wait=true') for method,path,_ in qdrant_calls)
+
+        def embed_while_deleted(texts,input_type='passage'):
+            store.delete('doc-race')
+            return [[0.5,0.5] for _ in texts]
+        monkeypatch.setattr(store.provider,'embed',embed_while_deleted)
+        with pytest.raises(ValueError,match='已删除|已被删除'):
+            store.index('doc-race','竞态','在索引期间被删除后不得复活本地文档',version=1,external_allowed=True)
+        assert store.db.execute('SELECT COUNT(*) FROM docs WHERE id=?',('doc-race',)).fetchone()[0]==0
+
+        # Active delete in progress must block an overlapping index started mid-delete.
+        import threading
+        from concurrent.futures import ThreadPoolExecutor
+        entered,release=threading.Event(),threading.Event()
+        store.index('doc-overlap','重叠','验证删除进行中启动索引被拒绝',version=1,external_allowed=False)
+        def slow_qdrant(method,path,body=None):
+            if method=='POST' and path.endswith('/points/delete?wait=true'):
+                entered.set()
+                assert release.wait(5)
+            return {'status':'ok'}
+        monkeypatch.setattr(store,'_qdrant',slow_qdrant)
+        with ThreadPoolExecutor(1) as pool:
+            fut=pool.submit(store.delete,'doc-overlap')
+            try:
+                assert entered.wait(3)
+                with pytest.raises(ValueError,match='正在删除'):
+                    store.index('doc-overlap','重叠','验证删除进行中启动索引被拒绝',version=1,external_allowed=False)
+            finally:
+                release.set()
+            fut.result(timeout=5)
+        assert store.db.execute('SELECT COUNT(*) FROM docs WHERE id=?',('doc-overlap',)).fetchone()[0]==0
+    finally:
+        store.close()
+

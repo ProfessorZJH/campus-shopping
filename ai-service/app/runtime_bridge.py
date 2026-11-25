@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import math
 import threading
 import time
 from dataclasses import dataclass
@@ -54,7 +55,7 @@ class RuntimeScope(StrictModel):
     @field_validator("turnExpiresAt")
     @classmethod
     def finite_expiry(cls, value: float) -> float:
-        if value <= 0:
+        if not math.isfinite(value) or value <= 0:
             raise ValueError("invalid expiry")
         return value
 
@@ -259,17 +260,28 @@ class RuntimeBridge:
         evidence_status = self._evidence_status()
         try:
             raw = self.model.complete(messages=candidate_messages, tools=tools, metadata={"runId": request.runId, "phase": request.phase})
-            message = raw.get("choices", [{}])[0].get("message", {}) if isinstance(raw, Mapping) else {}
+            choices = raw.get("choices") if isinstance(raw, Mapping) else None
+            choice = choices[0] if isinstance(choices, list) and choices and isinstance(choices[0], Mapping) else {}
+            if choice.get("finish_reason") == "length":
+                raise RuntimeBridgeError("UPSTREAM_TRUNCATED", 502)
+            message = choice.get("message", {}) if isinstance(choice.get("message"), Mapping) else {}
             calls = message.get("tool_calls") or []
             usage = raw.get("usage", {}) if isinstance(raw, Mapping) and isinstance(raw.get("usage"), Mapping) else {}
             safe_usage = {key_name: value for key_name, value in usage.items() if key_name in ("prompt_tokens", "completion_tokens", "total_tokens") and isinstance(value, int) and value >= 0}
             if calls:
                 parsed: list[RuntimeToolCall] = []
+                prior_call_ids: set[str] = {
+                    tc.get("id")
+                    for msg in candidate_messages
+                    if msg.get("role") == "assistant"
+                    for tc in (msg.get("tool_calls") or [])
+                    if isinstance(tc, Mapping) and isinstance(tc.get("id"), str)
+                }
                 seen_call_ids: set[str] = set()
                 for call in calls:
                     fn = call.get("function", {}) if isinstance(call, Mapping) else {}
                     name, arguments, call_id = fn.get("name"), fn.get("arguments", {}), call.get("id") if isinstance(call, Mapping) else None
-                    if name not in ("search_products",) or not isinstance(call_id, str) or not call_id or call_id in seen_call_ids:
+                    if name not in ("search_products",) or not isinstance(call_id, str) or not call_id or call_id in seen_call_ids or call_id in prior_call_ids:
                         raise RuntimeBridgeError("INVALID_TOOL_CALL", 422)
                     seen_call_ids.add(call_id)
                     if isinstance(arguments, str):

@@ -18,7 +18,10 @@ import cn.bugstack.ai.infrastructure.dao.ITradingDao;
 import cn.bugstack.ai.infrastructure.dao.po.*;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -74,7 +77,7 @@ class OrderBatchQueryTest {
                     .build()
             );
         }
-        when(dao.orders("buyer", null, "", 0, 100, "")).thenReturn(rows);
+        when(dao.orders("buyer", null, "", Instant.EPOCH, 0, 100, "")).thenReturn(rows);
         when(dao.itemsByOrders(anyList())).thenReturn(items);
         var result = repository.orders("buyer", null, "", 0, 100, "");
         assertEquals(100, result.size());
@@ -85,7 +88,7 @@ class OrderBatchQueryTest {
     }
 
     private void verifyNoMoreInteractionsAfterRead(ITradingDao dao) {
-        verify(dao).orders("buyer", null, "", 0, 100, "");
+        verify(dao).orders("buyer", null, "", Instant.EPOCH, 0, 100, "");
         verifyNoMoreInteractions(dao);
     }
 
@@ -172,9 +175,51 @@ class OrderBatchQueryTest {
         var dao = mock(ITradingDao.class);
         var repository = new OrderRepository();
         ReflectionTestUtils.setField(repository, "dao", dao);
-        when(dao.orders("buyer", null, "", 0, 100, "")).thenReturn(List.of());
+        when(dao.orders("buyer", null, "", Instant.EPOCH, 0, 100, "")).thenReturn(List.of());
         assertTrue(repository.orders("buyer", null, "", 0, 100, "").isEmpty());
         verify(dao, never()).itemsByOrders(anyList());
         verify(dao, never()).items(anyString(), anyBoolean());
+    }
+
+    @Test
+    void platformOrderQueriesApplyBoundedTimeWindowWhileScopedQueriesKeepFullHistory() {
+        var dao = mock(ITradingDao.class);
+        var repository = new OrderRepository();
+        ReflectionTestUtils.setField(repository, "dao", dao);
+        ReflectionTestUtils.setField(repository, "clock", Clock.fixed(now, ZoneOffset.UTC));
+        Instant expectedWindowStart = now.minus(Duration.ofDays(365));
+        when(dao.orders(null, null, "", expectedWindowStart, 0, 20, "")).thenReturn(List.of());
+        when(dao.countOrders(null, null, "", expectedWindowStart, "")).thenReturn(0L);
+        when(dao.countOrders(null, "m", "", Instant.EPOCH, "")).thenReturn(3L);
+
+        assertTrue(repository.orders(null, null, "", 0, 20, "").isEmpty());
+        assertEquals(0L, repository.countOrders(null, null, "", ""));
+        assertEquals(3L, repository.countOrders(null, "m", "", ""));
+
+        verify(dao).orders(null, null, "", expectedWindowStart, 0, 20, "");
+        verify(dao).countOrders(null, null, "", expectedWindowStart, "");
+        verify(dao).countOrders(null, "m", "", Instant.EPOCH, "");
+    }
+
+    @Test
+    void platformPageReusesSingleCutoffInstantForRowsAndCount() {
+        var orders = mock(IOrderQueryService.class);
+        var refunds = mock(IAfterSaleQueryService.class);
+        var pickup = mock(IFulfillmentService.class);
+        var events = mock(IOrderEventService.class);
+        var merchants = mock(IMerchantService.class);
+        var access = mock(IAccessService.class);
+        var accounts = mock(IUserAccountService.class);
+        var useCase = new OrderQueryCaseImpl(orders, refunds, pickup, events, merchants, access, accounts);
+        when(orders.orders(isNull(), isNull(), eq("PAID"), eq(1), eq(20), eq(""), any(Instant.class))).thenReturn(List.of());
+        when(orders.countOrders(isNull(), isNull(), eq("PAID"), eq(""), any(Instant.class))).thenReturn(0L);
+
+        useCase.platform("admin", "PAID", 1, 20, "");
+
+        var listCutoff = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        var countCutoff = org.mockito.ArgumentCaptor.forClass(Instant.class);
+        verify(orders).orders(isNull(), isNull(), eq("PAID"), eq(1), eq(20), eq(""), listCutoff.capture());
+        verify(orders).countOrders(isNull(), isNull(), eq("PAID"), eq(""), countCutoff.capture());
+        assertEquals(listCutoff.getValue(), countCutoff.getValue());
     }
 }

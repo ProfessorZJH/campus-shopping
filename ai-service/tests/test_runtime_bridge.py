@@ -156,7 +156,7 @@ def test_runtime_enforces_tool_call_and_round_trip_limits():
     with pytest.raises(RuntimeBridgeError, match="TOOL_CALL_LIMIT"):
         runtime.turn(follow, service_key=KEY, capability="cap", signature=signed(follow, "cap"), capability_digest=digest("cap"))
 
-    repeated = bridge(FakeModel(tool_response(), tool_response(), tool_response(), tool_response()))
+    repeated = bridge(FakeModel(tool_response("call-r1"), tool_response("call-r2"), tool_response("call-r3"), tool_response("call-r4")))
     start = request(request_id="req-round-start")
     result = repeated.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
     for index in range(1, 4):
@@ -165,7 +165,7 @@ def test_runtime_enforces_tool_call_and_round_trip_limits():
             request_id=f"req-round-{index}",
             continuation_id=result.continuationId,
             current_scope=start.scope,
-            results=[{"callId": "call-1", "name": "search_products", "result": {}}],
+            results=[{"callId": f"call-r{index}", "name": "search_products", "result": {}}],
         )
         result = repeated.turn(follow, service_key=KEY, capability="cap", signature=signed(follow, "cap"), capability_digest=digest("cap"))
     follow = request(
@@ -173,7 +173,7 @@ def test_runtime_enforces_tool_call_and_round_trip_limits():
         request_id="req-round-4",
         continuation_id=result.continuationId,
         current_scope=start.scope,
-        results=[{"callId": "call-1", "name": "search_products", "result": {}}],
+        results=[{"callId": "call-r4", "name": "search_products", "result": {}}],
     )
     with pytest.raises(RuntimeBridgeError, match="ROUND_TRIP_LIMIT"):
         repeated.turn(follow, service_key=KEY, capability="cap", signature=signed(follow, "cap"), capability_digest=digest("cap"))
@@ -503,4 +503,52 @@ def test_unexpired_continuations_are_preserved_and_capacity_rejects_excess_start
     )
     done2 = runtime.turn(c2, service_key=KEY, capability="cap", signature=signed(c2, "cap"), capability_digest=digest("cap"))
     assert done2.status == "FINAL" and done2.answer == "第二个续接保持有效"
+
+
+def test_runtime_rejects_duplicate_call_id_across_rounds():
+    runtime = bridge(FakeModel(tool_response("call-dup"), tool_response("call-dup")))
+    start = request(request_id="req-dup-start")
+    first = runtime.turn(start, service_key=KEY, capability="cap", signature=signed(start, "cap"), capability_digest=digest("cap"))
+    follow = request(
+        phase="CONTINUE",
+        request_id="req-dup-cont",
+        continuation_id=first.continuationId,
+        current_scope=start.scope,
+        results=[{"callId": "call-dup", "name": "search_products", "result": {}}],
+    )
+    with pytest.raises(RuntimeBridgeError) as err:
+        runtime.turn(follow, service_key=KEY, capability="cap", signature=signed(follow, "cap"), capability_digest=digest("cap"))
+    assert err.value.code == "INVALID_TOOL_CALL" and err.value.status == 422
+
+
+def test_runtime_rejects_non_finite_expiry_and_length_truncation():
+    for bad in (float("inf"), float("-inf"), float("nan")):
+        with pytest.raises(Exception):
+            scope(bad)
+    truncated = {"choices": [{"finish_reason": "length", "message": {"content": "截断内容"}}]}
+    req = request(request_id="req-trunc")
+    with pytest.raises(RuntimeBridgeError) as err:
+        bridge(FakeModel(truncated)).turn(req, service_key=KEY, capability="cap", signature=signed(req, "cap"), capability_digest=digest("cap"))
+    assert err.value.code == "UPSTREAM_TRUNCATED" and err.value.status == 502
+
+
+def test_runtime_route_checks_service_key_before_acquiring_execution_gate(tmp_path):
+    settings = Settings(api_key=KEY, db_path=str(tmp_path / "gate-auth.db"), max_concurrent_requests=1)
+    app = create_app(settings)
+    assert app.state.gate.acquire(blocking=False)
+    try:
+        with TestClient(app) as client:
+            req = request(request_id="req-unauth")
+            payload = req.model_dump(by_alias=True, exclude_none=True)
+            response = client.post(
+                "/internal/v1/agent/runtime/turn",
+                json=payload,
+                headers={"X-Service-Key": "wrong-key", "X-Request-ID": req.requestId},
+            )
+            assert response.status_code == 401
+            assert response.json() == {"errorCode": "AUTH_INVALID"}
+    finally:
+        app.state.gate.release()
+        app.state.store.close()
+
 

@@ -11,8 +11,18 @@ public interface IOrderQueryService {
     OrderAggregate order(String id);
     List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size);
     List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size, String q);
+
+    default List<OrderAggregate> orders(String buyer, String merchant, String status, int page, int size, String q, Instant since) {
+        return orders(buyer, merchant, status, page, size, q);
+    }
+
     long countOrders(String buyer, String merchant, String status);
     long countOrders(String buyer, String merchant, String status, String q);
+
+    default long countOrders(String buyer, String merchant, String status, String q, Instant since) {
+        return countOrders(buyer, merchant, status, q);
+    }
+
     List<OrderAggregate> ordersByPickupState(String buyer, String merchant, String status, int page, int size, String q, String pickupState);
     long countOrdersByPickupState(String buyer, String merchant, String status, String q, String pickupState);
     List<String> expired();

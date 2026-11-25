@@ -8,7 +8,7 @@ SELECT COUNT(*) FROM iam_platform_role WHERE user_id=#{userId} AND role='PLATFOR
 INSERT INTO iam_platform_role(user_id,role) VALUES(#{userId},'PLATFORM_ADMIN') ON DUPLICATE KEY UPDATE user_id=user_id
     </insert>
     <select id="member" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
-SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND merchant_id=#{merchantId}<if test="lock"> FOR SHARE</if>
+SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND merchant_id=#{merchantId}<if test="lock"> FOR UPDATE</if>
     </select>
     <select id="memberships" resultType="cn.bugstack.ai.infrastructure.dao.po.MembershipPO">
 SELECT merchant_id,user_id,role,status FROM iam_merchant_membership WHERE user_id=#{userId} AND status='ACTIVE' ORDER BY merchant_id
@@ -77,7 +77,7 @@ INSERT INTO iam_merchant_role_permission(merchant_id,role_code,permission) VALUE
 <foreach collection="permissions" item="p" separator=",">(#{merchantId},#{code},#{p})</foreach>
     </insert>
     <select id="countRoleMembers" resultType="int">
-SELECT COUNT(*) FROM iam_merchant_membership WHERE merchant_id=#{merchantId} AND role=#{code} AND status='ACTIVE'
+SELECT COUNT(*) FROM iam_merchant_membership WHERE merchant_id=#{merchantId} AND role=#{code} AND status='ACTIVE' FOR SHARE
     </select>
     <update id="assignRole">
 UPDATE iam_merchant_membership SET role=#{code},version=version+1 WHERE merchant_id=#{merchantId} AND user_id=#{userId} AND status='ACTIVE' AND role&lt;&gt;'OWNER'

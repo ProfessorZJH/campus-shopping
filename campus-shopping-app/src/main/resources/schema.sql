@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS mer_application (
 
 CREATE TABLE IF NOT EXISTS mer_merchant (
  id VARCHAR(36) PRIMARY KEY, source_application_id VARCHAR(64) NOT NULL, name VARCHAR(100) NOT NULL, category VARCHAR(50) NOT NULL,
- status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', version BIGINT NOT NULL DEFAULT 0, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_merchant_application(source_application_id)
+ status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE', version BIGINT NOT NULL DEFAULT 0, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_merchant_application(source_application_id), KEY ix_merchant_status_created(status,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS mer_store (
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS trd_order (
  id VARCHAR(36) PRIMARY KEY, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
  pickup_store_name VARCHAR(100) NOT NULL DEFAULT '', pickup_location VARCHAR(200) NOT NULL DEFAULT '',
  total_cent BIGINT NOT NULL, status VARCHAR(24) NOT NULL, deadline DATETIME(3) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_buyer_page(buyer_id,status,created_at DESC,id), KEY ix_order_merchant(merchant_id,status), KEY ix_order_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_order_expiry(status,deadline), KEY ix_order_created(created_at,id), CONSTRAINT ck_order_total CHECK(total_cent>0)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_buyer_page(buyer_id,status,created_at DESC,id), KEY ix_order_merchant(merchant_id,status), KEY ix_order_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_order_merchant_created(merchant_id,created_at DESC,id), KEY ix_order_expiry(status,deadline), KEY ix_order_created(created_at,id), CONSTRAINT ck_order_total CHECK(total_cent>0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_order_event (
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS trd_payment (
 
 CREATE TABLE IF NOT EXISTS trd_after_sale (
  id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL,
- status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id), KEY ix_after_sale_merchant_page(merchant_id,status,created_at DESC,id)
+ status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id), KEY ix_after_sale_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_after_sale_status_created(status,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_refund (
@@ -154,7 +154,7 @@ CREATE TABLE IF NOT EXISTS ful_pickup_verification (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_base (
- id VARCHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL, merchant_id VARCHAR(36), visibility VARCHAR(32) NOT NULL, created_by VARCHAR(36) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_knowledge_base_created(created_at DESC,id)
+ id VARCHAR(36) PRIMARY KEY, name VARCHAR(100) NOT NULL, merchant_id VARCHAR(36), visibility VARCHAR(32) NOT NULL, created_by VARCHAR(36) NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_knowledge_base_created(created_at DESC,id), KEY ix_knowledge_base_merchant(merchant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_knowledge_quota (id VARCHAR(16) PRIMARY KEY, used_count INT NOT NULL) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS ai_knowledge_usage (
 CREATE TABLE IF NOT EXISTS ai_document (
  id VARCHAR(36) PRIMARY KEY, root_id VARCHAR(36) NOT NULL, base_id VARCHAR(36) NOT NULL, version INT NOT NULL, title VARCHAR(120) NOT NULL,
  status VARCHAR(20) NOT NULL, index_status VARCHAR(20) NOT NULL, index_attempt VARCHAR(36) NULL, index_expires_at DATETIME(3) NULL, index_version INT NULL, content LONGTEXT NOT NULL, error VARCHAR(500) NOT NULL DEFAULT '',
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_doc_version(root_id,version), KEY ix_document_base(base_id,created_at DESC,id)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_doc_version(root_id,version), KEY ix_document_base(base_id,created_at DESC,id), KEY ix_document_base_index_lease(base_id,index_expires_at,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ai_conversation (
@@ -274,3 +274,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_03','464e87
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_04','49329ea5ef7e101eeb25cc300aaf8b9cf67aa20e9dd014c4df8521bf7dbc6ebe' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_05','2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261109_01','6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261125_01','1daa37ca27629dd1ed662abb1c6f3026fd0c9df90920eb02f4b6e1866d02659a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
