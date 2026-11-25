@@ -8,6 +8,8 @@ from pathlib import Path
 import secrets, sys, time, urllib.error, urllib.parse, urllib.request, uuid
 import hashlib, re
 
+from evidence import evidence_path
+
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = []
 CONTRACT = None
@@ -379,7 +381,7 @@ def main():
     parser.add_argument('--env-file',type=Path,default=ROOT/'.env')
     parser.add_argument('--skip-ai',action='store_true',help='只测交易，会在结果中明确标为部分通过')
     parser.add_argument('--check-contract',action='store_true',help='使用 jsonschema 逐条核对真实响应与当前 OpenAPI')
-    parser.add_argument('--output',type=Path,default=ROOT/'docs/testing/evidence/full-http.json')
+    parser.add_argument('--output',type=Path,default=evidence_path('full-http.json'))
     args=parser.parse_args();started=datetime.datetime.now(datetime.timezone.utc).isoformat();error=None
     global CONTRACT
     if args.check_contract:

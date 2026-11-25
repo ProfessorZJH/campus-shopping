@@ -6,7 +6,7 @@
 
 当前工程有真实的分层基础，但领域内部的类型约束、规则归属、服务职责与查询边界仍有明显欠账。上一轮修复的协议错误、参数边界和联调问题不代表架构已经收敛；本轮还复现了响应契约过宽的遗漏，应修正此前对响应校验完整性的理解。
 
-审查依据包括当前源码、[本仓库工程对齐约定](engineering-alignment.md)、[上下文设计](context-map.md)及小傅哥公开的 [EnumVO 规范](https://github.com/fuzhengwei/xfg-ddd-skills/blob/main/references/value-object.md)、[领域服务规范](https://github.com/fuzhengwei/xfg-ddd-skills/blob/main/references/domain-service.md)、[Case 规范](https://github.com/fuzhengwei/xfg-ddd-skills/blob/main/references/case-layer.md)。原 `group-buy-market.zip` 的对照采用仓库已有的[历史源码对照记录](../tutorial/05-group-buy-market-reference-alignment.md)；本轮未取得该归档重新逐文件比对。公开参考资料仅作设计依据，不能覆盖本项目已接受的业务规则。
+审查依据包括当前源码、[Java 规范](../development/JAVA-STYLE.md)、[上下文设计](context-map.md)及小傅哥公开的 [EnumVO 规范](https://github.com/fuzhengwei/xfg-ddd-skills/blob/main/references/value-object.md)、[领域服务规范](https://github.com/fuzhengwei/xfg-ddd-skills/blob/main/references/domain-service.md)、[Case 规范](https://github.com/fuzhengwei/xfg-ddd-skills/blob/main/references/case-layer.md)。原 `group-buy-market.zip` 的对照采用仓库已有的[历史源码对照记录](../tutorial/05-group-buy-market-reference-alignment.md)；本轮未取得该归档重新逐文件比对。公开参考资料仅作设计依据，不能覆盖本项目已接受的业务规则。
 
 当前已成立的边界也应保留：
 

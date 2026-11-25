@@ -14,6 +14,8 @@ import sys
 import time
 import uuid
 
+from evidence import evidence_dir
+
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('full_smoke', ROOT/'scripts/smoke-full.py')
 smoke = importlib.util.module_from_spec(spec)
@@ -26,8 +28,7 @@ def main():
     args = parser.parse_args()
     config = smoke.env_file(ROOT/'.env')
     directory = ROOT/'var/local-live'
-    evidence = ROOT/'docs/testing/evidence/local-live'
-    evidence.mkdir(parents=True, exist_ok=True)
+    evidence = evidence_dir('local-live')
     state_path = directory/'shopping-accounts.json'
     admin = smoke.Client('http://127.0.0.1:8091')
     admin.login(config['ADMIN_USERNAME'], config['ADMIN_PASSWORD'])

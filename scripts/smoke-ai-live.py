@@ -28,6 +28,8 @@ import tempfile
 import time
 from urllib.parse import urlparse
 
+from evidence import evidence_path
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'ai-service'))
 
@@ -386,7 +388,7 @@ def product_tests(report, settings, tmp, allow_plaintext=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--env-file', type=Path, default=ROOT / '.env')
-    parser.add_argument('--output', type=Path, default=ROOT / 'docs/testing/evidence/ai-live.json')
+    parser.add_argument('--output', type=Path, default=evidence_path('ai-live.json'))
     parser.add_argument('--products', action='store_true', help='在安全 Milvus 上写入并清理本次专用临时集合')
     parser.add_argument('--only-products', action='store_true', help='仅执行真实商品向量索引验收')
     parser.add_argument('--http-check', action='append', default=[],

@@ -1,38 +1,45 @@
-# R1 开发与验收状态
+# 当前状态与剩余工作
 
-## 2026-11-08 产品化与结构重构完成状态
+> 更新日期：2026-11-21。本页替代早期“下一批/已完成阶段”流水账；历史验收仍见 `docs/testing/`。
 
-截至 2026 年 11 月 8 日，`main` / `origin/main` `f1ba856` 已包含 `productize-campus-shopping-experience` 的 M0～M6 实现，OpenSpec 46 项任务全部完成。全链路产品化的实现与证据见[沉淀版架构路线](architecture/PRODUCTIZATION-REFACTOR-BASELINE-20261108.md)和[最终状态报告](testing/PRODUCTIZATION-FINAL-STATUS-20261107.md)。
+## 已完成的主线能力
 
-本阶段已覆盖消费者、AI 导购、商户、店员、平台和知识库的主要产品链路。随后约定的结构重构也已在独立分支 `codex/shoppingai-structure-refactor` 完成，整体进度为 **100%**；实施、验证和边界说明见[结构重构分支记录](testing/STRUCTURAL-REFACTOR-20261108.md)。完成范围包括 ShoppingAI 候选/证据职责、Catalog 快照与候选查询、后台 Shell 元数据、Guide transport、Python Provider 和检索融合。
+- Java 七模块模块化单体：身份、商户、商品、库存、交易、履约、购物 AI 七个上下文及跨域 Case。
+- 消费者、商户、店员和平台管理员主链路：注册会话、CSRF、入驻审核、RBAC、商品与 SKU、购物车、幂等下单、模拟支付、备货、自提核销、未提货退款与争议。
+- Redis/Redisson 共享会话、限流、展示缓存和资源准入；支持多个 Java 实例共享同一 MySQL/Redis，Python 服务当前按单实例设计。
+- 商品全量词面召回、可选 Milvus 语义投影、Java 实时事实复验、知识引用白名单、完整 JSON 与独立 SSE 导购入口。
+- 自动生成 API、数据库指纹、供应链、Mapper、DDD 边界、UI 可复现构建、Java/Python/浏览器与隔离 MySQL/Redis 门禁。
 
-结构重构已通过 PR #63 合入 `main`，合并提交为 `89e2981`。对应的[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)显示 workflow #325 已通过；真实外部供应商 smoke、生产部署和性能仍属于完成后的独立验收范围，不改变本次结构重构完成结论。
+最近一次记录在案的全栈范围见[答辩前综合修复](testing/DEFENSE-REVIEW-FIXES-20261118.md)与[全链路 UI/UX 验收](testing/UX-CONVERGENCE-POLISH-20261118.md)。这些结果只代表对应提交和环境。
 
-AnswerFlow 规则树、Agent v1.1 公开入口收口和 Trading/Repository P2 是完成后的独立演进边界：前者在出现稳定的第二回答分支时再扩展，Agent v1.1 已完成 M0～M3 底座契约与受控网关但默认保持关闭（等待公开入口与真实联调决策），Trading/Repository 仅在出现可量化的 SQL、并发或审计收益时继续优化。
+## 尚未完成或仍需单独验收
 
-PR #63 的远端验收已完成并通过；命令、版本、环境和结果见[远端真实验收记录](testing/STRUCTURAL-REFACTOR-REMOTE-ACCEPTANCE-20261109.md)，原始日志由 GitHub Actions run #325 保留。真实供应商语义效果、生产部署、生产数据和性能压测仍保持独立验收范围。
+### P0：正式 AI 质量结论
 
-原始规划资料仍保留在以下 OpenSpec 文件中：
+- 120 例数据集仍是 `DRAFT`，需人工复核 case/qrels、裁决争议并冻结 `ACCEPTED` 数据。
+- 需人工复核回答断言、推荐解释和语义泄漏，再基于保存结果重算正式配对报告。
+- 真实 Embedding、LLM、Milvus 和 Java/MySQL 组合已有一次实际执行证据；稳定质量、成本和多轮效果尚未形成可重复发布结论。
 
-- [整体方案、范围和交付阶段](../openspec/changes/productize-campus-shopping-experience/proposal.md)
-- [技术设计、审查条目追踪、数据兼容与依赖](../openspec/changes/productize-campus-shopping-experience/design.md)
-- [可执行任务与逐项验收条件](../openspec/changes/productize-campus-shopping-experience/tasks.md)
+对应入口：[评测说明](../ai-service/evaluation/README.md)、[未完成评测变更](../openspec/changes/evaluate-shopping-retrieval-recommendations/tasks.md)。
 
-## R1 历史交付记录（2026-10-31）
+### P1：生产化与运行治理
 
-本节记录截至 2026-10-31 的范围。Redis 交付与主线整合见[SDD-12验收](testing/REDIS-MAIN-INTEGRATION-20261031.md)及[运行手册](operations/REDIS-12-runbook.md)；前序领域整改见[2026-10-30报告](testing/DDD-DOC-CLOSURE-20261030.md)，历史真实模型及浏览器交易见[本机验收](testing/LOCAL-LIVE-20261029.md)。各日期报告仅代表当时版本与环境。
+- 生产 HTTPS/可信反向代理、网络策略、密钥轮换、备份恢复演练和灾备。
+- 持续负载、容量上限、SLO、故障注入和生产级可观测性；现有 80 请求测试与隔离容器验收不等同生产压测。
+- 多 Python 副本及其共享状态/幂等协调；当前仅支持单 Python 服务。
+- 七牛正式 HTTPS 域名、浏览器展示与备案边界仍需按实际环境验收。
+- 平台/商户审计目前只有写入，没有产品查询与导出入口；若需要，应作为新增 API/权限能力立项。
 
-| 范围 | 当前实现 | 验证状态 |
-| --- | --- | --- |
-| 工程基线 | Maven Wrapper、UI 源码构建、迁移校验、自动清单 | 已有隔离 clean verify；源快照与结果见本轮报告 |
-| 身份商户 | 会话、CSRF、实时权限、入驻、角色、邀请 | Java/MySQL、HTTP 与列明浏览器用例已覆盖；邀请支持翻页 |
-| Redis 基础设施 | 共享Session、共享限流、公开展示缓存、AI准入与索引锁 | 真实Redis与双Java/MySQL HTTP回归已通过；支持多Java连接同一MySQL/Redis和单Python，生产HA未验收 |
-| 商品库存 | 富商品模型、多 SKU、全局搜索排序、并发库存 | Java/MySQL 锁竞争和真实 HTTP 已覆盖 |
-| 交易履约售后 | 单商户事务、模拟支付、核销、退款 | 真实库事务测试和 HTTP 已覆盖；响应读模型在写事务内组装 |
-| AI 知识 | 版本/ACL/索引、词面和可选商品 Milvus、会话/提案 | 当前本地检索与模型替身通过；讯飞/NVIDIA/Milvus 有历史联调证据；Qdrant 尚未验收 |
-| 三端产品 | Vue 源码、权限导航与列表分页 | 真实后台浏览器及契约替身分别记录，不能互相代替 |
-| 部署 | Dockerfile/Compose/CI 配置 | SDD-12整合提交的[远端CI与实际镜像验收](https://github.com/ProfessorZJH/campus-shopping/actions/runs/41161066987)通过；本机未启动Docker，生产部署未验收。新修改仍须对应提交的CI |
+### P2：可选产品演进，不阻塞当前交付
 
-后续专项工作为论文级检索数据集、真实模型回归、生产安全与可信代理拓扑、备份恢复及压力测试。上线时对实际版本和环境重新执行验收。独立 AI SSE 协议已随产品化 M3 交付（见 [streaming.md](api/streaming.md)）；会话删除、多Python副本、真实支付/分账仍不属于当前已交付能力。
+- Agent v1.1 基础协议与只读工具已实现，公开入口和产品化策略仍默认关闭。
+- 可将大页面热点继续拆为 Vue SFC/TypeScript，仅为可量化维护收益，不做全仓重写。
+- 可继续收窄 `ICatalogService` 等宽接口，但应先有查询成本、并发或职责变更证据。
 
-2026-10-28 的 87 路由、93 路由与 NOT_RUN 记录已归为历史；现行 102 条 API 以[生成接口](api/http-api.md)、[OpenAPI](api/openapi.json)和[行为契约](api/behavior-v1.1.md)为准。
+## 明确不在当前范围
+
+真实资金支付与清结算、物流配送、跨商户合并支付、优惠券/秒杀/积分、评价社区、买卖双方即时聊天、扫描 PDF OCR、已提货退货、部分退款和自动合并/部署。
+
+## 交付判定
+
+“代码完成”“自动/自动化测试通过”“列明范围业务验收通过”是不同状态。当前项目只能按最新提交、实际环境和证据逐项声明；CI 绿色、旧报告或生成文档都不能自动扩大验收范围。

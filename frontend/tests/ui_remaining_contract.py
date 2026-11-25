@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """新增页面前端请求契约测试，后端为明确的测试替身，非真实 Java/MySQL。"""
 import json
+import os
+import shutil
 from playwright.sync_api import sync_playwright,expect
 from ui_three_pages import render,BackendContractDouble,ERRORS
 checks=[]
@@ -8,10 +10,14 @@ f=BackendContractDouble();f.logged=True
 # 供应商订单与购物车有真实请求结构样例
 p=f.products[0];s=p['skus'][0];f.cart=[{'merchantId':p['merchantId'],'skuId':s['skuId'],'title':p['title'],'specKey':s['specKey'],'priceCent':s['priceCent'],'quoteVersion':s['quoteVersion'],'quantity':2,'available':30,'sellable':True}]
 with sync_playwright() as x:
- browser=x.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+ executable=os.environ.get('CHROMIUM_PATH') or shutil.which('chromium')
+ browser=x.chromium.launch(headless=True,executable_path=executable,args=['--no-sandbox'])
  page=render(browser,'/cart',False,(430,932),f)
  expect(page.locator('.cart-line')).to_have_count(1)
  page.get_by_role('button',name='提交订单').click()
+ expect(page.locator('.checkout-confirm')).to_contain_text('确认下单（模拟支付）')
+ page.get_by_role('button',name='确认下单（模拟支付）').click()
+ page.wait_for_function("location.hash.includes('/orders/')")
  expect(page.locator('.pickup-hero')).to_be_visible()
  assert f.writes[-1]['path']=='/orders' and f.writes[-1]['hasIdempotency'],f.writes[-1]
  checks.append('cart checkout creates order with idempotency');page.close()
@@ -53,6 +59,7 @@ with sync_playwright() as x:
  checks.append('merchant replenishment contract');page.close()
  page=render(browser,'/admin/products',False,(1448,1000),f)
  expect(page.locator('.ops-table tbody tr')).to_have_count(6)
+ page.once('dialog',lambda dialog:dialog.accept())
  page.get_by_role('button',name='强制下架').first.click()
  expect(page.locator('.toast')).to_contain_text('操作成功')
  assert any(w['path'].endswith('/unpublish') for w in f.writes)
@@ -62,7 +69,7 @@ with sync_playwright() as x:
   page.get_by_role('button',name='新建知识库').click()
   page.locator('.kb-forms input').first.fill('测试知识库')
   page.get_by_role('button',name='创建',exact=True).click()
-  expect(page.locator('.kb-base')).to_have_count(1 if route.startswith('/merchant') else 2)
+  expect(page.locator('.kb-base')).to_have_count(1)
   checks.append(route+' create knowledge base');page.close()
  assert not ERRORS,ERRORS
  browser.close()

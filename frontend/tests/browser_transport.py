@@ -1,6 +1,14 @@
 """等待契约替身的绑定回调完成后关闭页面，避免测试退出时遗留异步通道任务。"""
 
 import re
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'scripts'))
+
+from evidence import evidence_dir, evidence_path
 
 
 def add_campus_styles(page, ui):

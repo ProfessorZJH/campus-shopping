@@ -19,8 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-/** 只负责引用授权、版本和脱敏组装，不负责回答文本或会话编排。 */
-/** Knowledge citation verifier shared by read-only AI cases; it never writes conversation state. */
+/** 只负责引用授权、版本和脱敏组装，不负责回答文本或会话编排，也不写会话状态。 */
 public final class EvidenceAssembler {
 
     private final IKnowledgeCase knowledge;

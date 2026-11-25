@@ -14,11 +14,12 @@ from playwright.sync_api import sync_playwright, expect
 
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/'frontend/tests'))
+from browser_transport import evidence_dir
 from live_ui import login, env_credentials
 
 BASE='http://127.0.0.1:8091'
 STATE=ROOT/'var/local-live/shopping-accounts.json'
-OUT=ROOT/'docs/testing/evidence/local-live/browser'
+OUT=evidence_dir('local-live','browser')
 
 
 def main():

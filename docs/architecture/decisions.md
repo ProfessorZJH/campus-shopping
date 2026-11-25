@@ -33,7 +33,7 @@
 
 ## ADR-005：P1 身份会话方案
 
-- **状态**：Proposed，P1 编码前需确认
+- **状态**：Superseded by ADR-014；后续共享会话由 SDD-12 增强
 - **建议**：首版使用 Spring Security 的服务端 Session + HttpOnly Cookie；前端统一经同源反向代理访问 API。单实例演示可用默认会话存储；跨实例或持久会话需求出现后再引入共享 Session 存储。
 - **原因**：无需提前引入 Redis/JWT 撤销列表，退出登录、失效会话和 CSRF 保护已有成熟框架支持。
 - **边界**：如果采用 Cookie 会话，启用 CSRF 防护、Secure（HTTPS 时）、SameSite、合理失效时间；每次敏感写操作仍重新验证账号状态和商户成员权限。
@@ -96,7 +96,8 @@
 - **背景**：先前将进程内的 BCrypt 密码哈希误放入 `IPasswordHasherPort → BCryptPasswordHasherPort`，与本套 Skill 使用 Port 表示远程服务的分类不符。问题出在工程分类，而非 Spring 的依赖注入能力。
 - **决策**：Repository 负责本地数据访问；Port 负责远程 HTTP、RPC、WebSocket 调用。IAM-01 由 Domain 校验用户名、密码并创建不含密码字段的账号聚合，再调用 `IUserAccountRepository.save(account, rawPassword)`。Infrastructure 的 `UserAccountRepository` 在构造 `UserAccountPO` 前使用 BCrypt 生成密码摘要，只将摘要写入 `iam_user.password_hash`。
 - **实现边界**：`infrastructure/config/PasswordEncoderConfig` 统一声明 `PasswordEncoder` 的 Spring Bean，供注册流程和开发环境的 HTTP Basic 测试账号复用。不新增 Case 或远程 Gateway；Domain 不依赖 Spring Security Crypto 或 MyBatis。
-- **安全约束**：原始密码只作临时参数，不允许写入聚合、字段、日志、缓存、消息队列或接口响应。Domain 在持久化前校验 BCrypt 的 72 字节输入上限；MySQL 唯一索引防止并发创建重复用户名。IAM-02 登录、正式权限体系与生产安全控制仍未实现。
+- **安全约束**：原始密码只作临时参数，不允许写入聚合、字段、日志、缓存、消息队列或接口响应。Domain 在持久化前校验 BCrypt 的 72 字节输入上限；MySQL 唯一索引防止并发创建重复用户名。
+- **后续演进**：ADR-014 已补齐数据库登录与 Cookie Session，SDD-12 已补齐 Redis 共享会话、限流与实时权限；本段保留当时的实现边界，不再表示当前缺口。
 - **权衡**：本方案将密码安全存储与本地仓储适配器放在一起，是本项目的明确选择；其他六边形架构可以用更宽泛的 Port 抽象表达密码技术能力，但我们不把这种选择强加到小傅哥的具体命名规范上。
 
 ## ADR-014：P1-01 数据库认证与 Cookie Session
@@ -178,6 +179,14 @@
 - **背景**：仅检查 `iam_user` 会让缺少 `trd_cart_item`、`ful_pickup_task` 等对象的残缺库被登记为已升级；从当前 schema 正则变造夹具也不能证明真实历史库可升级。
 - **决定**：迁移前只读计算结构指纹，并与 `docs/database/baselines/manifest.json` 的真实发布快照及已登记历史共同判定准入。未知漂移和历史不匹配在任何 DDL 前拒绝；人工例外必须显式提供发布名或指纹、原因和责任人，并写入 `sys_schema_migration_drift`。迁移完成后再次断言目标指纹，漂移只记录审计，不自动回滚或删除历史。
 - **后果**：历史发布快照和指纹成为可追溯构建产物；手工改库需维护窗口和人工核对。
+
+## ADR-023：现行文档与历史证据分层
+
+- **状态**：Accepted（2026-11-21）
+- **决定**：`docs/README.md` 只维护当前事实源和任务入口；`docs/testing/` 保留不可重建的执行证据，按任务只追加。教程、迭代流水和带日期的审查文档仅作历史追溯，不再进入当前开发清单。OpenSpec 已完成变更及时归档；除非明确承担能力基线，增量规格不复制到 `openspec/specs/`，避免与 SDD/ADR 形成双重权威。
+- **过程记录**：仓库不保存 AI 内部推理、逐轮对话草稿、被否决方案的完整推演或临时日志。必须保留的是最终决策、可复现命令、实际结果、风险和未验证范围。
+- **清理边界**：可删除无引用的废弃草案、重复构建入口、可再生成缓存和本地过程目录；不可删除发布迁移、ADR、数据库基线指纹、历史失败/跳过证据及其引用关系。
+- **后果**：当前导航更短，AI 不会把历史完成项误当待办；代价是历史资料仍占用仓库体积，并有明确“非现行”标识。
 
 ## 决策维护要求
 

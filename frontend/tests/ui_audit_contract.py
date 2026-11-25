@@ -1,4 +1,3 @@
-from browser_transport import track_bindings, close_page, close_browser
 #!/usr/bin/env python3
 """真实 Chromium + Vue 表单限制回归；后端为显式接口替身，非全栈验收。"""
 import json
@@ -9,11 +8,12 @@ import subprocess
 import sys
 
 from playwright.sync_api import sync_playwright, expect
+from browser_transport import track_bindings, close_page, close_browser, evidence_path
 from ui_three_pages import render, BackendContractDouble, ERRORS
 
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS = json.loads((ROOT/'docs/api/openapi.json').read_text('utf-8'))['components']['schemas']
-OUTPUT = ROOT/'docs/testing/evidence/audit-20261029/frontend.json'
+OUTPUT = evidence_path('audit-20261029', 'frontend.json')
 
 
 def main():

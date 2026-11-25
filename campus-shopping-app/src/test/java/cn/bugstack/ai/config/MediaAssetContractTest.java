@@ -16,6 +16,7 @@ import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageConfig;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.infrastructure.gateway.QiniuObjectGateway;
+import cn.bugstack.ai.trigger.http.MediaAssetEndpoint;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,7 +50,7 @@ import org.springframework.test.web.servlet.MvcResult;
  */
 // 排除默认内存用户自动配置：媒体资产只做匿名 GET，不需要 UserDetailsService，也避免测试启动时生成并打印随机口令。
 @WebMvcTest(
-    controllers = MediaAssetController.class,
+    controllers = MediaAssetEndpoint.class,
     excludeAutoConfiguration = UserDetailsServiceAutoConfiguration.class,
     properties = {
         "campus.security.rate-limit-enabled=false",

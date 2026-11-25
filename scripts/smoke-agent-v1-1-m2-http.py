@@ -26,6 +26,10 @@ import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+
+from evidence import evidence_path
 LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 
@@ -233,7 +237,7 @@ def main() -> int:
     parser.add_argument("--query", default="")
     parser.add_argument("--page-size", type=int, default=20)
     parser.add_argument("--python", default="")
-    parser.add_argument("--output", type=Path, default=ROOT / "docs/testing/evidence/agent-v1.1-m2-http.json")
+    parser.add_argument("--output", type=Path, default=evidence_path("agent-v1.1-m2-http.json"))
     args = parser.parse_args()
     try:
         report = run(args)

@@ -24,7 +24,12 @@ import urllib.parse
 import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "ai-service"))
+if str(ROOT / "scripts") not in sys.path:
+    sys.path.insert(0, str(ROOT / "scripts"))
+if str(ROOT / "ai-service") not in sys.path:
+    sys.path.insert(0, str(ROOT / "ai-service"))
+
+from evidence import evidence_path
 
 from app.agent_contract import AgentScope
 from app.agent_evidence import assert_isolated_collection, isolated_collection_name, safe_exception_code
@@ -431,7 +436,7 @@ def main() -> int:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "docs/testing/evidence/agent-v1.1-m1-milvus-java-fact-revalidation.json",
+        default=evidence_path("agent-v1.1-m1-milvus-java-fact-revalidation.json"),
     )
     args = parser.parse_args()
     load_env(args.env_file)

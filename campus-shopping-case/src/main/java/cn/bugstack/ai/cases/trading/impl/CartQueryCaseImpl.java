@@ -5,7 +5,7 @@ import cn.bugstack.ai.cases.trading.model.CartItemReadModel;
 import cn.bugstack.ai.domain.catalog.model.valobj.ProductStatusEnumVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuOfferVO;
 import cn.bugstack.ai.domain.catalog.model.valobj.SkuStatusEnumVO;
-import cn.bugstack.ai.domain.catalog.service.ICatalogService;
+import cn.bugstack.ai.domain.catalog.service.ICatalogReadService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.model.valobj.StockVO;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
@@ -27,14 +27,14 @@ public class CartQueryCaseImpl implements ICartQueryCase {
 
     private final ICartService cart;
     private final IUserAccountService accounts;
-    private final ICatalogService catalogService;
+    private final ICatalogReadService catalogService;
     private final IInventoryService inventoryService;
     private final IMerchantService merchantService;
 
     public CartQueryCaseImpl(
         ICartService cart,
         IUserAccountService accounts,
-        ICatalogService catalogService,
+        ICatalogReadService catalogService,
         IInventoryService inventoryService,
         IMerchantService merchantService
     ) {

@@ -1,4 +1,4 @@
-package cn.bugstack.ai.config;
+package cn.bugstack.ai.trigger.http;
 
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -18,13 +18,13 @@ import org.springframework.web.bind.annotation.RestController;
  * 日志只记录业务码或异常类型，不输出 URL、签名、凭据或下游异常正文。
  */
 @RestController
-public class MediaAssetController {
+public class MediaAssetEndpoint {
 
-    private static final Logger log = LoggerFactory.getLogger(MediaAssetController.class);
+    private static final Logger log = LoggerFactory.getLogger(MediaAssetEndpoint.class);
 
     private final ICatalogService catalog;
 
-    public MediaAssetController(ICatalogService catalog) {
+    public MediaAssetEndpoint(ICatalogService catalog) {
         this.catalog = catalog;
     }
 

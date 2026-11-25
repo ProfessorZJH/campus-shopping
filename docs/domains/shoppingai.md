@@ -1,9 +1,8 @@
 # ShoppingAI 智能导购与知识领域详细设计
 
-> **R1 对齐说明（2026-10-28）**：本文保留需求来源与历史设计；当前冻结规则以 [R1 实施规格](../specs/RELEASE-01.md) 为准，实际实现/验证状态见 [R1 交付清单](../DELIVERY-R1.md)。历史“下一批/待开发/已通过”描述不作为本次执行证据。
+> **当前对齐说明（2026-11-21）**：本文描述已有导购能力与边界；完整 JSON 和独立 SSE 均已实现，具体协议见 [HTTP API](../api/http-api.md) 与 [流式协议](../api/streaming.md)。
 
-> 版本 v1.0 · 2026-10-26 · **设计稿，不代表 AI 服务已联通或评测已完成**  
-> 范围：PRD FR-019~023；开发批次 P5；详见 [AI/RAG 技术设计](../ai/rag-design.md) 与 [评测计划](../ai/evaluation-plan.md)。
+> 范围：PRD FR-019～023。部署环境和真实模型效果按[当前路线](../ROADMAP.md)单独验收。
 
 ## 1. 领域定位与所有权
 
@@ -15,11 +14,11 @@ ShoppingAI 拥有**用户导购会话、结构化购物意图、推荐建议 Pro
 
 | Actor | 命令（蓝） | 决策流程（红） | 事件（黄） | 只读模型（绿） | 领域对象（棕） | 外部（粉） |
 |---|---|---|---|---|---|---|
-| 消费者 | `AskShoppingAssistant` | 会话授权→解析需求→检索→复核→推荐 | `RecommendationGenerated` | 商品报价、库存 | ShoppingConversation, Proposal | Python AI/LLM/Qdrant |
+| 消费者 | `AskShoppingAssistant` | 会话授权→解析需求→检索→复核→推荐 | `RecommendationGenerated` | 商品报价、库存 | ShoppingConversation, Proposal | Python AI/LLM、Milvus/Qdrant 可选 |
 | 消费者 | `ConfirmRecommendation` | 校验本人/有效期/一次性确认→重验 SKU→加购 | `RecommendationConfirmed`, `CartItemAdded` | 商品状态、购物车 | Proposal | 无直接外部写 |
 | 消费者 | `RejectRecommendation` | 拒绝未完成建议 | `RecommendationRejected` | 会话本人建议 | Proposal | 无 |
 | 知识管理员 | `UploadKnowledge` | 商户归属/可见性验证→文件解析 | `KnowledgeUploaded` | 自己知识库 | KnowledgeDocument | 文件存储 |
-| 索引任务 | `BuildIndex` | 解析、切块、Embedding、混检索引 | `IndexBuilt` | 版本状态 | IndexJob | Python/Qdrant |
+| 索引任务 | `BuildIndex` | 解析、切块、Embedding、混检索引 | `IndexBuilt` | 版本状态 | IndexJob | Python、本地向量/可选 Qdrant |
 | 知识管理员 | `PublishKnowledgeVersion` | 校验索引已可用、原子切换生效版本 | `KnowledgeVersionPublished` | 有效版本 | KnowledgeDocument | 无 |
 
 ## 3. 聚合和核心行为
@@ -55,7 +54,7 @@ sequenceDiagram
   participant T as Chat Trigger
   participant J as Java ShoppingAI
   participant P as Python AI 引擎
-  participant Q as Qdrant
+  participant Q as 本地向量或可选 Qdrant
   participant C as Catalog/Inventory
   participant R as Proposal Repository
   U->>T: 自然语言请求
@@ -69,7 +68,7 @@ sequenceDiagram
   J->>P: 可信商品摘要，请求生成推荐说明
   P-->>J: 可解释推荐文本
   J->>R: 保存 PENDING Proposal
-  J-->>U: JSON 回答 + 推荐卡 + 待确认提案（首版不支持 SSE）
+  J-->>U: 完整 JSON 或独立 SSE + 推荐卡 + 待确认提案
   U->>J: 明确确认 proposalId
   J->>C: 再次校验 SKU/经营资格
   J->>J: 原子协调 Proposal + Cart
@@ -80,7 +79,7 @@ sequenceDiagram
 
 ## 5. 公开业务契约与 Port
 
-- `IShoppingAssistantService.ask(AskCommand)`：验证会话所有者，返回一次性 JSON 回答及 Proposal；首版不实现 SSE，模型输出不触发购物车写入。
+- `IShoppingAssistantService.ask(AskCommand)`：验证会话所有者，返回完整 JSON 回答及 Proposal；流式入口使用独立 SSE 协议，模型输出不触发购物车写入。
 - `IRecommendationService.confirm(proposalId, currentUserId, requestKey)`：负责 Proposal 状态，跨 Trading 使用 `IConfirmRecommendationCase`。
 - `IKnowledgeService.upload/publish/retire`：版本管理业务。
 - `IShoppingIntentPort`、`IProductRetrievalPort`、`IKnowledgeRetrievalPort` 由 Domain 定义，在 Infrastructure `adapter/port/` 实现，通过 `gateway/` 调用 Python HTTP/RAG。
@@ -106,10 +105,13 @@ sequenceDiagram
 
 | 方法 | 当前 URI | 权限 |
 |---|---|---|
-| POST | `/api/v1/ai/chat` | 本人会话，返回完整 JSON，不是 SSE |
+| POST | `/api/v1/ai/chat` | 本人会话，返回完整 JSON |
+| POST | `/api/v1/ai/chat/stream` | 本人会话，独立 SSE；鉴权、CSRF、限流与租约规则相同 |
 | GET | `/api/v1/ai/conversations` | 本人历史会话 |
 | GET | `/api/v1/ai/conversations/{conversationId}/messages` | 本人消息 |
 | GET | `/api/v1/ai/conversations/{conversationId}/proposals` | 本人待确认提案 |
+| GET | `/api/v1/ai/conversations/{conversationId}/turn/status` | 本人轮次状态与恢复 |
+| POST | `/api/v1/ai/conversations/{conversationId}/turn/cancel` | 请求取消当前轮次 |
 | POST | `/api/v1/ai/proposals/{proposalId}/confirm` | 本人确认，Java 二次校验和幂等加购 |
 | POST | `/api/v1/ai/proposals/{proposalId}/reject` | 本人拒绝 |
 | POST | `/api/v1/knowledge/bases/{baseId}/documents` | 授权知识库上传者 |
@@ -117,8 +119,8 @@ sequenceDiagram
 
 当前错误码：`AI_UNAVAILABLE`、`PROPOSAL_EXPIRED`、`KNOWLEDGE_NOT_READY`、`UPLOAD_INVALID`，另有共享的 `AUTH_FORBIDDEN`、`STATE_CONFLICT`、`PRODUCT_UNAVAILABLE` 等。以 [错误码表](../api/error-codes.md) 为准。
 
-验收：过期提案拒绝；他人提案无权限；重复确认不重复加购；商品变价/下架后拒绝过时提案；内部知识按权限过滤；仅引用已授权已发布版本。真正大模型与 MySQL 的端到端验收仍须执行。**SSE、断线重连属于未来可选设计，不是当前支持能力。**
+验收：过期提案拒绝；他人提案无权限；重复确认不重复加购；商品变价/下架后拒绝过时提案；内部知识按权限过滤；仅引用已授权已发布版本；SSE 断线通过轮次状态与历史结果恢复。真实供应商质量与生产容量仍须单独验收。
 
-## 9. 待决策
+## 9. 当前边界
 
-`AI-OPEN-01` Proposal 有效期建议 5–15 分钟（最终配置）；`AI-OPEN-02` 推荐时是否允许多个商户混合方案（允许推荐跨商户，但结算仍分商户）；`AI-OPEN-03` 会话历史与证据保留期限；`KB-OPEN-01` 知识文件的格式及上传上限；`KB-OPEN-02` 首版是否开放商户内部知识录入（若开放必须有授权 UI）；`AI-OPEN-04` SSE 断线重连与会话回放策略（未来增强，未实现）。
+Proposal 默认 10 分钟；允许跨商户推荐，但结算仍按单商户；知识支持 TXT、Markdown 与文本 PDF，上传/文本上限由领域校验；商户内部知识已开放但必须经过授权 UI 与 Java 白名单。会话删除、长期留存策略、多 Python 和正式模型质量不在当前完成范围，见[状态路线](../ROADMAP.md)。
