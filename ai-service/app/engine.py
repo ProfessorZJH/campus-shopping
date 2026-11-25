@@ -47,14 +47,15 @@ FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一�
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
     patterns=[
-        r'(?:预算|上限)(?:\s*(?:是|为|在|控制在|大概|大约))?\s*('+NUMBER+r')\s*'+CURRENCY+r'?',
-        r'(?:不要超过|不超过|最多|不到|低于|少于)\s*('+NUMBER+r')\s*'+CURRENCY,
-        r'('+NUMBER+r')\s*'+CURRENCY+r'\s*(?:以内|以下|之内|左右)',
+        (r'(?:预算|上限)(?:\s*(?:是|为|在|控制在|大概|大约))?\s*('+NUMBER+r')\s*'+CURRENCY+r'?', False),
+        (r'(?:不要超过|不超过|最多|不到)\s*('+NUMBER+r')\s*'+CURRENCY, False),
+        (r'(?:低于|少于)\s*('+NUMBER+r')\s*'+CURRENCY, True),
+        (r'('+NUMBER+r')\s*'+CURRENCY+r'\s*(?:以内|以下|之内|左右)', False),
     ]
     marker=bool(re.search(r'预算|不要超过|不超过|最多|不到|低于|少于|上限|'+CURRENCY+r'\s*(?:以内|以下|之内|左右)|(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*[到至~-]\s*(?:\d+|[零〇一二两三四五六七八九十百千万]+)\s*'+CURRENCY,question))
     if marker and re.search(UNCERTAIN+CURRENCY,question):return None,'AMBIGUOUS'
     amounts=[]
-    for pattern in patterns:
+    for pattern,strict_upper in patterns:
         for raw in re.findall(pattern,question):
             try:
                 if re.fullmatch(r'\d+(?:\.\d{1,2})?',raw):amount=Decimal(raw)
@@ -64,7 +65,10 @@ def budget_intent(question: str) -> tuple[int|None,str]:
                     amount=Decimal(chinese_integer(whole))+Decimal('0.'+digits if digits else '0')
                 else:return None,'INVALID'
                 cents=int(amount*100)
-                if not 0<=cents<=100000000:return None,'INVALID'
+                if strict_upper:
+                    if not 0<cents<=100000000:return None,'INVALID'
+                    cents-=1
+                elif not 0<=cents<=100000000:return None,'INVALID'
                 amounts.append(cents)
             except (InvalidOperation,ValueError):return None,'INVALID'
     if not amounts:return None,'AMBIGUOUS' if marker else 'UNSPECIFIED'

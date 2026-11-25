@@ -90,10 +90,11 @@ test('waiting for CSRF cannot change the captured write body', async () => {
   assert.deepEqual(JSON.parse(received), { skuId: 'first', quantity: 1 });
 });
 
-test('cross-tab account switch blocks silent CSRF retry under the new account', async () => {
+test('cross-tab account switch blocks initial mutation before CSRF fetch and blocks silent retry', async () => {
   resetCsrf();
   let mismatchUser = null;
   let writes = 0;
+  let liveActor = 'user-b';
   setIdentityGuard({
     currentActor: () => 'user-a',
     onMismatch: (user) => {
@@ -103,14 +104,38 @@ test('cross-tab account switch blocks silent CSRF retry under the new account', 
   try {
     globalThis.fetch = async (url) => {
       if (url.endsWith('/auth/csrf')) return response({ headerName: 'X-CSRF-TOKEN', token: 't1' });
-      if (url.endsWith('/auth/me')) return response({ userId: 'user-b', username: 'bob' });
+      if (url.endsWith('/auth/me')) return response({ userId: liveActor, username: liveActor });
       writes += 1;
       return response(null, 403, 'A0005');
     };
+    // Case 1: cold CSRF cache — actor switch must be rejected before the first mutation leaves the tab.
     await assert.rejects(api('/orders', { method: 'POST', body: { merchantId: 'm1' } }), {
       code: 'IDENTITY_CHANGED',
     });
-    assert.equal(writes, 1);
+    assert.equal(writes, 0);
+    assert.equal(mismatchUser?.userId, 'user-b');
+
+    // Case 2: warm CSRF cache — account switches after CSRF is cached, server rejects with A0005, retry must not execute under user-b.
+    resetCsrf();
+    mismatchUser = null;
+    liveActor = 'user-a';
+    let step = 0;
+    globalThis.fetch = async (url) => {
+      if (url.endsWith('/auth/csrf')) return response({ headerName: 'X-CSRF-TOKEN', token: 't1' });
+      if (url.endsWith('/auth/me')) return response({ userId: liveActor, username: liveActor });
+      writes += 1;
+      step += 1;
+      if (step === 1) {
+        liveActor = 'user-b';
+        return response({ ok: true });
+      }
+      return response(null, 403, 'A0005');
+    };
+    await api('/cart/items', { method: 'POST', body: { skuId: 's1', quantity: 1 } });
+    await assert.rejects(api('/orders', { method: 'POST', body: { merchantId: 'm1' } }), {
+      code: 'IDENTITY_CHANGED',
+    });
+    assert.equal(writes, 2);
     assert.equal(mismatchUser?.userId, 'user-b');
   } finally {
     setIdentityGuard();

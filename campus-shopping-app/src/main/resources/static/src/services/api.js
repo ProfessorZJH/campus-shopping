@@ -54,6 +54,9 @@ async function getCsrf() {
     if (csrfPromise === pending) csrfPromise = null;
   }
 }
+export function warmCsrf() {
+  if (!csrf) getCsrf().catch(() => {});
+}
 /** 校验业务code，不能把HTTP 200当成执行成功。 */
 export async function api(path, options = {}) {
   if ((options.method || 'GET') !== 'GET') return request(path, options);
@@ -81,6 +84,9 @@ export async function api(path, options = {}) {
 export async function stream(path, { body, signal, onEvent, retry = true } = {}) {
   const stamp = generation;
   const expectedActor = identityResolver ? identityResolver() : '';
+  if (!csrf && expectedActor) {
+    await verifySessionBeforeRetry(expectedActor, stamp);
+  }
   const token = csrf || (await getCsrf());
   requireIdentity(stamp);
   const headers = {
@@ -190,6 +196,9 @@ async function request(path, { method = 'GET', body, signal, key, retry = true }
   const payload = body === undefined ? undefined : JSON.stringify(body);
   const headers = { Accept: 'application/json' };
   if (method !== 'GET') {
+    if (!csrf && expectedActor) {
+      await verifySessionBeforeRetry(expectedActor, stamp);
+    }
     const token = csrf || (await getCsrf());
     requireIdentity(stamp);
     headers[token.headerName] = token.token;

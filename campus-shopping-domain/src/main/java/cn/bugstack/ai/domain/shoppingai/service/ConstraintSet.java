@@ -80,7 +80,7 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
         Set<Long> amounts = new HashSet<>();
         for (String expression : new String[] {
             "(?:预算|上限)(?:\\s*(?:是|为|在|控制在|大概|大约))?\\s*(" + NUMBER + ")\\s*" + CURRENCY + "?",
-            "(?:不要超过|不超过|最多|不到|低于|少于)\\s*(" + NUMBER + ")\\s*" + CURRENCY,
+            "(?:不要超过|不超过|最多|不到)\\s*(" + NUMBER + ")\\s*" + CURRENCY,
             "(" + NUMBER + ")\\s*" + CURRENCY + "\\s*(?:以内|以下|之内|左右)",
         }) {
             var matches = Pattern.compile(expression).matcher(text);
@@ -92,6 +92,16 @@ public record ConstraintSet(SkuConstraintPolicy.Constraints specs, Long budgetCe
                 } catch (ArithmeticException | IllegalArgumentException error) {
                     return new Intent(null, true, true);
                 }
+            }
+        }
+        var strictMatches = Pattern.compile("(?:低于|少于)\\s*(" + NUMBER + ")\\s*" + CURRENCY).matcher(text);
+        while (strictMatches.find()) {
+            try {
+                long cents = amount(strictMatches.group(1)).movePointRight(2).longValueExact();
+                if (cents <= 0 || cents > 100000000) return new Intent(null, true, true);
+                amounts.add(cents - 1);
+            } catch (ArithmeticException | IllegalArgumentException error) {
+                return new Intent(null, true, true);
             }
         }
         return amounts.size() == 1 ? new Intent(amounts.iterator().next(), true, false) : new Intent(null, marker, marker);

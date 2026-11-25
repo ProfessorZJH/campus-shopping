@@ -11506,6 +11506,10 @@
       if (csrfPromise === pending) csrfPromise = null;
     }
   }
+  function warmCsrf() {
+    if (!csrf) getCsrf().catch(() => {
+    });
+  }
   async function api(path, options = {}) {
     var _a, _b, _c;
     if ((options.method || "GET") !== "GET") return request(path, options);
@@ -11532,6 +11536,9 @@
     var _a, _b;
     const stamp = generation;
     const expectedActor = identityResolver ? identityResolver() : "";
+    if (!csrf && expectedActor) {
+      await verifySessionBeforeRetry(expectedActor, stamp);
+    }
     const token = csrf || await getCsrf();
     requireIdentity(stamp);
     const headers = {
@@ -11644,6 +11651,9 @@
     const payload = body === void 0 ? void 0 : JSON.stringify(body);
     const headers = { Accept: "application/json" };
     if (method !== "GET") {
+      if (!csrf && expectedActor) {
+        await verifySessionBeforeRetry(expectedActor, stamp);
+      }
       const token = csrf || await getCsrf();
       requireIdentity(stamp);
       headers[token.headerName] = token.token;
@@ -12156,6 +12166,7 @@
     clearTimeout(toastTimer);
     store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
     store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
+    if (user && !preview) warmCsrf();
   }
   onUnauthorized(() => {
     if (store.user || store.workspace || store.merchantId || store.messages.length || store.proposal || store.photo || store.cartCount)
@@ -12292,6 +12303,7 @@
       const options = (workspace == null ? void 0 : workspace.merchants) || [];
       const next = ((_a = options.find((m) => m.merchantId === requested)) == null ? void 0 : _a.merchantId) || ((_b = options[0]) == null ? void 0 : _b.merchantId) || "";
       store.user = user;
+      if (user) warmCsrf();
       store.workspace = workspace;
       store.categories = categories || [];
       store.merchants = options;
@@ -12335,7 +12347,10 @@
     const stamp = sessionEpoch, original = actorId(store.user);
     try {
       const user = await api("/auth/me");
-      if (stamp === sessionEpoch && actorId(store.user) === original) store.user = user;
+      if (stamp === sessionEpoch && actorId(store.user) === original) {
+        store.user = user;
+        if (user) warmCsrf();
+      }
     } catch (err) {
       if (err.status !== 401 && err.code !== "A0004") throw err;
       if (stamp === sessionEpoch && actorId(store.user) === original && store.user && (err.status === 401 || err.code === "A0004"))
