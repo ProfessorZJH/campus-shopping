@@ -16,7 +16,7 @@ COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
 COPY --from=frontend /workspace/frontend/dist /workspace/campus-shopping-app/target/generated-ui
 RUN mvn -B -ntp verify -Dfrontend.skip=true
 
-FROM eclipse-temurin:17-jre-jammy@sha256:c35794d1348777e6bc310b9b7f420098ef8f37e988199549b545fded79a895a2
+FROM eclipse-temurin:17-jre-jammy@sha256:c6a5dd70fb24f4e07ef88cbda8efb613a5a649a1af071a41de8eaabd1ee6b5da
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --gid 10001 campus && useradd --uid 10001 --gid campus --no-create-home campus
