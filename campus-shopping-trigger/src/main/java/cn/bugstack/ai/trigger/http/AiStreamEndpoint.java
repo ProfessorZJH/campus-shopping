@@ -99,6 +99,7 @@ public class AiStreamEndpoint {
                     activeConversationId.set(conversationId);
                     send(emitter, clientGone, "started", envelope(conversationId, "FULL_RESPONSE", null, null));
                 },
+                stage -> send(emitter, clientGone, "stage", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("stage", stage), null)),
                 bytes -> send(emitter, clientGone, "progress", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
             );
             send(emitter, clientGone, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));

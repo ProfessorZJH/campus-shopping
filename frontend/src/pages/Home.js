@@ -23,9 +23,11 @@ const { ref, computed, onMounted } = Vue;
 const staticCategoryArt = {
   food: './images/category-snacks.webp',
   drink: './images/category-drinks.webp',
+  beverage: './images/category-drinks.webp',
   fruit: './images/category-fruit.webp',
   stationery: './images/category-stationery.webp',
   daily: './images/category-daily.webp',
+  dormitory: './images/category-daily.webp',
   digital: './images/category-digital.webp',
 };
 export default {
@@ -49,8 +51,8 @@ export default {
     const chosenSku = ref('');
     const count = ref(1);
     const saving = ref(false);
-    const categories = computed(() => store.categories.filter((c) => c.active).slice(0, 5));
-    const shops = computed(() => store.merchants.filter((m) => m.status === 'ACTIVE').slice(0, 3));
+    const categories = computed(() => store.categories.filter((c) => c.active));
+    const shops = computed(() => store.merchants.filter((m) => m.status === 'ACTIVE').slice(0, 6));
     const shown = computed(() => {
       let arr = store.products.filter((p) => p.status === 'PUBLISHED');
       if (preview) {
@@ -256,6 +258,7 @@ export default {
         if (!valid()) return;
         await api('/cart', { method: 'POST', body: { skuId: real.skuId, quantity: requested } });
         if (!valid()) return;
+        store.cartCount = Number(store.cartCount || 0) + requested;
         selected.value = null;
         notify('已加入购物车');
       } catch (err) {
@@ -312,27 +315,44 @@ export default {
   },
   template: `
   <ConsumerShell active="home">
-    <section class="search-section">
-      <div class="big-search"><Icon name="search" :size="20"/><input v-model="search" placeholder="搜零食、饮料、文具或店名" aria-label="搜索校园商品" @keydown.enter="page=1;loadSearch()"/><button @click="page=1;loadSearch()">搜索</button></div>
-      <div class="popular-tags"><button v-for="k in keywords" :key="k" @click="applyKeyword(k)" :class="{active:search===k}">{{k}}</button></div>
-    </section>
-    <button class="hero-shopping" @click="go('/ai')" aria-label="进入 AI 导购">
-      <div class="hero-lines"><div class="hero-title"><span>AI</span> 导购</div><h1>按预算和口味，跨店挑现货</h1><span class="hero-cta">去提问 <Icon name="arrowUpRight" :size="15" /></span></div>
-      <div class="hero-robot-wrap"><img src="./images/robot.webp" alt="AI 导购助手"/></div>
-    </button>
+    <div class="home-bento">
+      <section class="home-discovery-card">
+        <div>
+          <span class="home-discovery-eyebrow"><Icon name="sparkles" :size="13"/> 校内现货 · 实时库存核验</span>
+          <div class="home-discovery-title">把校园便利店装进浏览器</div>
+          <div class="home-discovery-sub">跨店比价、按预算筛选，下单后凭动态码到店即取</div>
+        </div>
+        <div class="search-section">
+          <div class="big-search"><Icon name="search" :size="19"/><input v-model="search" placeholder="搜零食、饮料、文具、台灯或校内门店" aria-label="搜索校园商品" @keydown.enter="page=1;loadSearch()"/><button @click="page=1;loadSearch()">搜索</button></div>
+          <div class="popular-tags"><button v-for="k in keywords" :key="k" @click="applyKeyword(k)" :class="{active:search===k}">{{k}}</button></div>
+        </div>
+        <div class="home-trust-strip">
+          <span><Icon name="check" :size="13"/> 真实校内门店</span>
+          <span><Icon name="shield" :size="13"/> 价格库存实时复验</span>
+          <span><Icon name="clock" :size="13"/> 凭动态码快速自提</span>
+        </div>
+      </section>
+      <button class="hero-shopping" @click="go('/ai')" aria-label="进入 AI 导购">
+        <div class="hero-lines"><div class="hero-title"><span>AI</span> 导购</div><h1>按预算、口味与使用场景，跨店核验现货并生成可确认加购方案</h1><span class="hero-cta">立即对话 <Icon name="arrowUpRight" :size="15" /></span></div>
+        <div class="hero-robot-wrap"><img src="./images/robot.webp" alt="AI 导购助手"/></div>
+      </button>
+    </div>
     <section class="category-section" aria-label="商品分类">
       <button v-for="c in categories" :key="c.code" class="category-item" @click="setCategory(c.code)" :class="{categoryActive:category===c.code}"><span class="category-picture"><img :src="staticCategoryArt[c.code]||'./images/category-snacks.webp'" :alt="c.name"/></span><strong>{{c.name}}</strong></button>
     </section>
     <section class="merchant-section">
-      <div class="section-head"><div class="section-title"><span class="head-accent mint"><Icon name="store" :size="20"/></span><h2>校内门店</h2></div><span class="tiny-note">点选门店筛选现货</span></div>
+      <div class="section-head"><div class="section-title"><span class="head-accent mint"><Icon name="store" :size="18"/></span><h2>校内门店</h2></div><span class="tiny-note">点选门店筛选现货，或进店浏览</span></div>
       <div class="merchant-cards"><button class="merchant-card" v-for="(m,idx) in shops" :key="m.merchantId" @click="merchant=merchant===m.merchantId?'':m.merchantId;page=1;loadSearch()" :class="{active:merchant===m.merchantId}">
-        <span class="merchant-logo" :class="'store-'+idx"><img v-if="m.imageUrl" :src="m.imageUrl" :alt="m.name"/><Icon v-else name="store" :size="21"/></span>
-        <strong>{{m.name}}</strong><small>{{m.storeName||m.location||'校内门店'}}</small><span class="merchant-chip"><span class="merchant-chip-dot"></span> 可自提</span>
+        <div class="merchant-card-top">
+          <span class="merchant-logo" :class="'store-'+idx"><img v-if="m.imageUrl" :src="m.imageUrl" :alt="m.name"/><Icon v-else name="store" :size="20"/></span>
+          <div class="merchant-card-meta"><strong>{{m.name}}</strong><small>{{m.storeName||m.location||'校内自提点'}}</small></div>
+        </div>
+        <span class="merchant-chip"><span class="merchant-chip-dot"></span> {{m.businessHours?m.businessHours.slice(0,18):'到店可自提'}}</span>
       </button></div>
       <div v-if="merchant" class="merchant-filter-bar"><span>已选门店：{{shopName(merchant)}}</span><div class="merchant-filter-actions"><button type="button" class="shop-visit-link" @click="go('/shops/'+pathId(merchant))">进店逛逛 <Icon name="chevronRight" :size="13"/></button><button type="button" @click="merchant='';page=1;loadSearch()">清除筛选 <Icon name="x" :size="13" /></button></div></div>
     </section>
     <section class="reco-section">
-      <div class="section-head reco-heading"><div class="section-title"><span class="head-accent mint"><Icon name="sparkles" :size="19"/></span><h2>在售好物</h2></div><div class="sort-tabs"><button :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button><button :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">库存</button><button :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">价格</button></div></div>
+      <div class="section-head reco-heading"><div class="section-title"><span class="head-accent mint"><Icon name="sparkles" :size="18"/></span><h2>在售好物</h2></div><div class="sort-tabs"><button :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button><button :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">库存</button><button :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">价格</button></div></div>
       <div class="price-filter" aria-label="价格筛选"><span class="price-filter-label">价格区间</span><input v-model="priceMin" inputmode="decimal" placeholder="最低" aria-label="最低价（元）" @keydown.enter="applyPrice"/><span>—</span><input v-model="priceMax" inputmode="decimal" placeholder="最高" aria-label="最高价（元）" @keydown.enter="applyPrice"/><button class="outline-button" @click="applyPrice">应用</button><button v-if="priceActive" @click="clearPrice">清除价格</button><button class="price-filter-reset" @click="resetFilters">重置筛选</button></div>
       <div v-if="priceError" class="inline-error price-filter-error" role="alert"><Icon name="alert" :size="16"/>{{priceError}}</div>
       <StatusPanel v-if="store.loading" state="loading" message="正在加载"/>
@@ -341,7 +361,7 @@ export default {
       <div class="home-product-grid">
         <article class="home-product" v-for="p in shown" :key="p.productId" @click="showDetail(p)">
           <div class="home-product-photo"><ProductImage :src="p.imageUrl" :alt="p.title"/><span v-if="p.tag" class="corner-tag">{{p.tag}}</span><span class="floating-pickup">可自提</span></div>
-          <div class="home-product-info"><button class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button><div class="product-minor"><span>{{cardSku(p)?.specKey||'暂无规格'}}</span><span>{{available(p)>0?'有现货':'已售罄'}}</span></div><div class="product-price-row"><span class="price-main">{{money(cardSku(p)?.priceCent)}} 起</span><button @click.stop="showDetail(p)" :aria-label="'查看'+p.title"><Icon name="plus" :size="18" /></button></div></div>
+          <div class="home-product-info"><button class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button><div v-if="p.merchantStoreName||p.merchantName" class="product-store-meta"><Icon name="store" :size="12"/><span>{{p.merchantStoreName||p.merchantName}}</span></div><div class="product-minor"><span>{{cardSku(p)?.specKey||'暂无规格'}}</span><span>{{available(p)>0?'有现货':'已售罄'}}</span></div><div class="product-price-row"><span class="price-main">{{money(cardSku(p)?.priceCent)}} 起</span><button @click.stop="showDetail(p)" :aria-label="'查看'+p.title"><Icon name="plus" :size="17" /></button></div></div>
         </article>
       </div>
       <UiPagination v-if="!preview && pageInfo.total>0" :page="page" :has-next="pageInfo.hasNext" :busy="store.loading" @previous="page--;loadSearch()" @next="page++;loadSearch()">共 {{pageInfo.total}} 件</UiPagination>

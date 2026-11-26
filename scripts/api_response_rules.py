@@ -31,7 +31,7 @@ FIELDS = {
     'PermissionResponseDTO': ('code label grantable', ''),
     'PickupResponseDTO': ('status', 'expiresAt'),
     'ProductImageUploadDTO': ('url', ''),
-    'ProductResponseDTO': ('productId merchantId merchantName storeId title description categoryCode imageUrl status version skus images', ''),
+    'ProductResponseDTO': ('productId merchantId merchantName merchantStoreName merchantLocation storeId title description categoryCode imageUrl status version skus images', ''),
     'ProposalItemResponseDTO': ('skuId merchantId title specKey imageUrl priceCent quoteVersion quantity detailAvailable', 'productId detailUnavailableReason'),
     'ProposalResponseDTO': ('id status items expiresAt', ''),
     'RegisterResponseDTO': ('userId', ''),

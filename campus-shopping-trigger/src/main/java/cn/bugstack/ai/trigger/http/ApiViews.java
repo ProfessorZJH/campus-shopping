@@ -86,6 +86,8 @@ public final class ApiViews {
         return ProductResponseDTO.builder()
             .productId(p.getId())
             .merchantName(model.merchantName())
+            .merchantStoreName(model.merchantStoreName())
+            .merchantLocation(model.merchantLocation())
             .merchantId(p.getMerchantId())
             .storeId(p.getStoreId())
             .title(p.getTitle())

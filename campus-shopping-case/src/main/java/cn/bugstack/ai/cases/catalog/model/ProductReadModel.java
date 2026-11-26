@@ -7,16 +7,29 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-/** 商品展示所需的完整快照；商户名和各 SKU 库存由用例统一取得。 */
-public record ProductReadModel(ProductSnapshot product, String merchantName, Map<String, Long> availableBySku, java.util.List<ProductImageVO> images) {
+/** 商品展示所需的完整快照；商户名、自提门店信息与各 SKU 库存由用例统一取得。 */
+public record ProductReadModel(
+    ProductSnapshot product,
+    String merchantName,
+    String merchantStoreName,
+    String merchantLocation,
+    Map<String, Long> availableBySku,
+    java.util.List<ProductImageVO> images
+) {
+    public ProductReadModel(ProductSnapshot product, String merchantName, Map<String, Long> availableBySku, java.util.List<ProductImageVO> images) {
+        this(product, merchantName, "", "", availableBySku, images);
+    }
+
     public ProductReadModel(ProductAggregate product, String merchantName, Map<String, Long> availableBySku, java.util.List<ProductImageVO> images) {
-        this(ProductSnapshot.from(product), merchantName, availableBySku, images);
+        this(ProductSnapshot.from(product), merchantName, "", "", availableBySku, images);
     }
 
     public ProductReadModel {
         Objects.requireNonNull(product);
         Objects.requireNonNull(merchantName);
         if (merchantName.isBlank()) throw new IllegalArgumentException("商品所属商户名称不能为空");
+        merchantStoreName = merchantStoreName == null ? "" : merchantStoreName;
+        merchantLocation = merchantLocation == null ? "" : merchantLocation;
         availableBySku = Map.copyOf(availableBySku);
         images = java.util.List.copyOf(images);
         for (var sku : product.getSkus()) {
@@ -25,6 +38,17 @@ public record ProductReadModel(ProductSnapshot product, String merchantName, Map
     }
 
     public static ProductReadModel from(ProductAggregate product, String merchantName, Map<String, StockVO> stocks, java.util.List<ProductImageVO> images) {
+        return from(product, merchantName, "", "", stocks, images);
+    }
+
+    public static ProductReadModel from(
+        ProductAggregate product,
+        String merchantName,
+        String merchantStoreName,
+        String merchantLocation,
+        Map<String, StockVO> stocks,
+        java.util.List<ProductImageVO> images
+    ) {
         Map<String, Long> available = product
             .getSkus()
             .stream()
@@ -37,6 +61,6 @@ public record ProductReadModel(ProductSnapshot product, String merchantName, Map
                     }
                 )
             );
-        return new ProductReadModel(ProductSnapshot.from(product), merchantName, available, images);
+        return new ProductReadModel(ProductSnapshot.from(product), merchantName, merchantStoreName, merchantLocation, available, images);
     }
 }

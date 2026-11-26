@@ -171,12 +171,25 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
     @Transactional(propagation = Propagation.NEVER)
     public ChatResult chatStream(String actor, String conversationId, String question, Consumer<String> conversationReady, LongConsumer progress) {
+        return chatStream(actor, conversationId, question, conversationReady, null, progress);
+    }
+
+    @Transactional(propagation = Propagation.NEVER)
+    @Override
+    public ChatResult chatStream(
+        String actor,
+        String conversationId,
+        String question,
+        Consumer<String> conversationReady,
+        Consumer<String> stageListener,
+        LongConsumer progress
+    ) {
         accounts.requireActive(actor);
         String normalizedQuestion = text(question, "问题", 2000);
         var turn = conversations.beginTurn(actor, conversationId, normalizedQuestion);
         try {
             if (conversationReady != null) conversationReady.accept(turn.conversationId());
-            return answer(actor, turn, normalizedQuestion, progress);
+            return answer(actor, turn, normalizedQuestion, stageListener, progress);
         } catch (RuntimeException failure) {
             try {
                 conversations.releaseTurn(turn);
@@ -199,7 +212,12 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     }
 
     private ChatResult answer(String actor, ConversationTurnVO turn, String question, LongConsumer progress) {
+        return answer(actor, turn, question, null, progress);
+    }
+
+    private ChatResult answer(String actor, ConversationTurnVO turn, String question, Consumer<String> stageListener, LongConsumer progress) {
         String conversation = turn.conversationId();
+        if (stageListener != null) stageListener.accept("recall");
         var documents = knowledge.readableScope(actor);
         String fingerprint = scope(documents);
         List<MessageVO> history = evidenceAssembler.sanitizeHistory(actor, conversations.messages(actor, conversation, 12), fingerprint, documents);
@@ -235,8 +253,10 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                       }
                       progress.accept(bytes);
                   };
+        if (stageListener != null) stageListener.accept("generating");
         AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, guardedProgress);
         if (progress != null) ensureTurnActive(actor, conversation);
+        if (stageListener != null) stageListener.accept("verifying");
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
         var current = knowledge.readableScope(actor);
         require(fingerprint.equals(scope(current)), ResponseCode.KNOWLEDGE_NOT_READY);
@@ -273,7 +293,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         String safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
         boolean replacementRequest = REPLACEMENT_PATTERN.matcher(question).find();
         if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
-            safeText = items.isEmpty()
+            String recommendationText = items.isEmpty()
                 ? replacementRequest
                     ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。"
                     : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
@@ -283,6 +303,8 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                       .map(i -> i.title() + "（" + i.specKey() + "）×" + i.quantity())
                       .collect(Collectors.joining("；")) +
                   "。确认后只加入购物车，不会自动下单或付款。";
+            boolean appendKnowledge = !items.isEmpty() && !citations.isEmpty() && !specs.active() && ShoppingAnswerPolicy.hasServiceInquiry(question);
+            safeText = appendKnowledge ? ShoppingAnswerPolicy.evidenceBrief(citations) + "\n" + recommendationText : recommendationText;
         }
         AiAnswerVO safe = new AiAnswerVO(
             safeText,

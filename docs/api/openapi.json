@@ -20460,6 +20460,12 @@
           "merchantName": {
             "type": "string"
           },
+          "merchantStoreName": {
+            "type": "string"
+          },
+          "merchantLocation": {
+            "type": "string"
+          },
           "storeId": {
             "type": "string"
           },
@@ -20507,6 +20513,8 @@
           "productId",
           "merchantId",
           "merchantName",
+          "merchantStoreName",
+          "merchantLocation",
           "storeId",
           "title",
           "description",

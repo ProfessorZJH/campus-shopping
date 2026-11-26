@@ -16,6 +16,18 @@ public interface IShoppingAiCase {
     ChatResult chat(String actor, String conversation, String question);
     KnowledgeDebugResult debugRetrieval(String actor, String question, boolean answerPreview);
     ChatResult chatStream(String actor, String conversation, String question, Consumer<String> conversationReady, LongConsumer progress);
+
+    default ChatResult chatStream(
+        String actor,
+        String conversation,
+        String question,
+        Consumer<String> conversationReady,
+        Consumer<String> stageListener,
+        LongConsumer progress
+    ) {
+        return chatStream(actor, conversation, question, conversationReady, progress);
+    }
+
     List<MessageVO> history(String actor, String conversation);
     List<ConversationVO> conversations(String actor, int page, int size);
     ConversationTurnStatusVO turnStatus(String actor, String conversation);

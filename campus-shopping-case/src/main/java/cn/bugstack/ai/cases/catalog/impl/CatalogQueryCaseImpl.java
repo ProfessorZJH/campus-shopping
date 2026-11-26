@@ -170,19 +170,26 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
         for (int start = 0; start < skuIds.size(); start += 500) {
             inventoryService.stocks(skuIds.subList(start, Math.min(start + 500, skuIds.size()))).forEach(stock -> stocks.put(stock.skuId(), stock));
         }
-        Map<String, String> names = merchantService
+        Map<String, MerchantVO> merchants = merchantService
             .findAll(products.stream().map(ProductAggregate::getMerchantId).distinct().toList())
             .stream()
-            .collect(Collectors.toMap(MerchantVO::id, MerchantVO::name));
+            .collect(Collectors.toMap(MerchantVO::id, merchant -> merchant));
         Map<String, java.util.List<cn.bugstack.ai.domain.catalog.model.valobj.ProductImageVO>> imageMap = images.findAll(
             products.stream().map(ProductAggregate::getId).toList()
         );
         return products
             .stream()
             .map(product -> {
-                String name = names.get(product.getMerchantId());
-                if (name == null) throw new IllegalStateException("商品所属商户丢失");
-                return ProductReadModel.from(product, name, stocks, imageMap.getOrDefault(product.getId(), java.util.List.of()));
+                MerchantVO merchant = merchants.get(product.getMerchantId());
+                if (merchant == null) throw new IllegalStateException("商品所属商户丢失");
+                return ProductReadModel.from(
+                    product,
+                    merchant.name(),
+                    merchant.storeName(),
+                    merchant.location(),
+                    stocks,
+                    imageMap.getOrDefault(product.getId(), java.util.List.of())
+                );
             })
             .toList();
     }

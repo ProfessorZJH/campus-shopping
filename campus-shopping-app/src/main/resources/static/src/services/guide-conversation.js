@@ -127,6 +127,7 @@ export function createGuideConversationTransport({
     signal,
     isCurrent = () => true,
     onConversationId,
+    onStage,
     onProgress,
     onCompleted,
     onCancelled,
@@ -144,7 +145,9 @@ export function createGuideConversationTransport({
           activeConversationId = id;
           onConversationId?.(id);
         }
-        if (event === 'progress') {
+        if (event === 'stage') {
+          onStage?.(String(payload?.data?.stage || payload?.stage || ''));
+        } else if (event === 'progress') {
           onProgress?.(Number(payload?.data?.bytes || payload?.bytes || 0));
         } else if (event === 'completed') {
           completed = true;

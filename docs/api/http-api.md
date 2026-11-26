@@ -302,7 +302,7 @@
 
 ### `ProductResponseDTO`
 
-`productId`、`merchantId`、`merchantName`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`images`、`status`、`version`、`skus`
+`productId`、`merchantId`、`merchantName`、`merchantStoreName`、`merchantLocation`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`images`、`status`、`version`、`skus`
 
 ### `ProposalItemResponseDTO`
 
