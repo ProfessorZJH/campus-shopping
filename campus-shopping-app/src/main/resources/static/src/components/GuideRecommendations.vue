@@ -34,17 +34,20 @@ defineEmits<{
   confirm: [];
   cart: [];
 }>();
+
+function meaningfulReason(raw?: string): string {
+  const text = String(raw || '').trim();
+  if (!text || text.includes('数量、库存和预算已校验')) return '';
+  return text;
+}
 </script>
 
 <template>
   <section class="recommendation-panel">
     <div class="recommendation-header">
-      <div>
-        <h2>
-          为你挑了 <em>{{ items.length }}</em> 件好物
-        </h2>
-        <p>勾选想要的商品，确认后加入购物车</p>
-      </div>
+      <h2>
+        推荐搭配 <em>{{ items.length }}</em>
+      </h2>
     </div>
     <div class="rec-cards">
       <article v-for="item in items" :key="item.skuId" class="rec-item">
@@ -75,21 +78,23 @@ defineEmits<{
         </button>
         <div class="rec-card-content">
           <div class="rec-item-tag">
-            {{ item.merchantName || (item.merchantId ? shopName(item.merchantId) : '校内自提') }}
+            {{ item.merchantName || (item.merchantId ? shopName(item.merchantId) : '校内门店') }}
           </div>
           <strong>{{ item.title }}</strong>
           <small
             >{{ item.specKey
             }}<template v-if="(item.quantity || 1) > 1"> × {{ item.quantity }}</template></small
           >
-          <div v-if="item.reason" class="rec-item-reason">{{ item.reason }}</div>
+          <div v-if="meaningfulReason(item.reason)" class="rec-item-reason">
+            {{ meaningfulReason(item.reason) }}
+          </div>
           <button
             class="rec-detail-link"
             type="button"
             :disabled="!item.detailAvailable || !item.productId"
             @click="$emit('detail', item)"
           >
-            {{ item.detailAvailable ? '查看详情' : '详情暂不可用' }}
+            {{ item.detailAvailable ? '查看详情' : '暂无详情' }}
           </button>
           <div class="rec-price">
             <span>{{ money(item.priceCent) }}</span>
@@ -115,12 +120,13 @@ defineEmits<{
         <button
           v-if="proposalStatus === 'CONFIRMED'"
           type="button"
-          class="outline-button small"
+          class="confirm-button"
           @click="$emit('cart')"
         >
-          去购物车
+          去购物车结算 →
         </button>
         <button
+          v-else
           class="confirm-button"
           :disabled="
             preview ||
@@ -132,9 +138,7 @@ defineEmits<{
           "
           @click="$emit('confirm')"
         >
-          <Icon name="check" :size="17" />{{
-            proposalStatus === 'CONFIRMED' ? '已确认' : confirming ? '确认中…' : '确认加购'
-          }}
+          <Icon name="check" :size="16" />{{ confirming ? '加入中…' : '确认加购' }}
         </button>
       </div>
     </div>

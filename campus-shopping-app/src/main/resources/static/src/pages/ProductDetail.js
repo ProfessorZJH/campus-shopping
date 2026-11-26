@@ -32,7 +32,6 @@ export default {
       lightboxOpen = ref(false),
       favorited = ref(false),
       favBusy = ref(false),
-      detailTab = ref('all'),
       reviewSummary = ref(null),
       recommendations = ref({ boughtTogether: [], sameStoreHot: [] });
     const defaultSku = (p) =>
@@ -47,7 +46,7 @@ export default {
     );
     const categoryName = computed(
       () =>
-        store.categories.find((c) => c.code === product.value?.categoryCode)?.name || '校内优选',
+        store.categories.find((c) => c.code === product.value?.categoryCode)?.name || '商品分类',
     );
     const detailImages = computed(() =>
       product.value?.images?.length
@@ -65,7 +64,7 @@ export default {
           if (!item?.productId || seen.has(item.productId)) continue;
           seen.add(item.productId);
           combined.push(item);
-          if (combined.length >= 5) return combined;
+          if (combined.length >= 4) return combined;
         }
       }
       return combined;
@@ -87,7 +86,6 @@ export default {
       recommendations.value = { boughtTogether: [], sameStoreHot: [] };
       favorited.value = false;
       lightboxOpen.value = false;
-      detailTab.value = 'all';
       error.value = '';
       errorCode.value = '';
       loading.value = true;
@@ -191,7 +189,7 @@ export default {
         });
         if (!current()) return;
         favorited.value = res?.favorited ?? !was;
-        notify(favorited.value ? '已加入收藏' : '已取消收藏');
+        notify(favorited.value ? '已收藏' : '已取消收藏');
       } catch (e) {
         if (current()) notify(e.message);
       } finally {
@@ -250,7 +248,6 @@ export default {
       lightboxOpen,
       favorited,
       favBusy,
-      detailTab,
       toggleFavorite,
       reviewSummary,
       relatedProducts,
@@ -263,7 +260,7 @@ export default {
     };
   },
   template: `<ConsumerShell active="home">
-    <div class="mobile-page-top"><button @click="go('/')" aria-label="返回首页"><Icon name="arrowLeft"/></button><b>商品详情</b><button @click="go('/cart')" aria-label="购物车"><Icon name="cart"/></button></div>
+    <div class="mobile-page-top"><button @click="go('/')" aria-label="返回首页"><Icon name="arrowLeft"/></button><b>商品详情</b><span></span></div>
     <StatusPanel v-if="loading" state="loading" message="正在加载商品…"/>
     <StatusPanel v-else-if="error" state="error" :message="errorText" action-label="重新加载" :busy="loading" @retry="load"/>
     <template v-else-if="product">
@@ -283,11 +280,9 @@ export default {
             <div class="detail-art" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
               <button type="button" class="detail-art-trigger" aria-label="查看大图" @click="lightboxOpen=true">
                 <ProductImage :src="detailImages[imageIndex].url" :alt="product.title" loading="eager"/>
-                <span class="zoom-lens-hint"><Icon name="search" :size="13"/> 点击放大</span>
               </button>
               <button v-if="detailImages.length>1" class="detail-image-prev" aria-label="上一张" @click="prevImage">‹</button>
               <button v-if="detailImages.length>1" class="detail-image-next" aria-label="下一张" @click="nextImage">›</button>
-              <span v-if="product.status==='PUBLISHED'" class="corner-tag">⚡ 校内现货自提</span>
             </div>
             <div v-if="detailImages.length>1" class="detail-image-thumbs">
               <button v-for="(img,i) in detailImages" :key="img.imageId||img.url" :class="{active:i===imageIndex}" @click="imageIndex=i">
@@ -298,134 +293,88 @@ export default {
 
           <div class="detail-buy-col">
             <div class="detail-info">
-              <div class="detail-title-badges">
-                <span class="tmall-self-tag">校内优选</span>
-                <h1>{{product.title}}</h1>
-              </div>
+              <h1>{{product.title}}</h1>
               <p v-if="product.description" class="muted-short detail-desc-text">{{product.description}}</p>
             </div>
 
             <div class="tmall-price-banner">
-              <div class="tmall-price-left">
-                <div class="tmall-price-eyebrow">校园闪购价 <span class="tmall-free-pack">免打包费 · 下单锁库存</span></div>
-                <div class="detail-price rtl-price">
-                  <em class="yen">¥</em><b class="int">{{splitPrice(sku.priceCent).int}}</b><i v-if="splitPrice(sku.priceCent).dec" class="dec">{{splitPrice(sku.priceCent).dec}}</i>
-                </div>
+              <div class="detail-price rtl-price">
+                <em class="yen">¥</em><b class="int">{{splitPrice(sku.priceCent).int}}</b><i v-if="splitPrice(sku.priceCent).dec" class="dec">{{splitPrice(sku.priceCent).dec}}</i>
               </div>
-              <div class="tmall-price-right">
-                <div>
-                  <strong>{{reviewSummary?.totalCount ? reviewSummary.averageRating.toFixed(1) + ' ★' : '5.0 ★'}}</strong>
-                  <small>{{reviewSummary?.totalCount ? reviewSummary.totalCount + ' 条评价' : '校内口碑好物'}}</small>
-                </div>
-                <button type="button" class="fav-toggle-btn" :class="{active:favorited}" :disabled="preview||favBusy" :aria-pressed="favorited" @click="toggleFavorite">
-                  <Icon name="heart" :size="15"/><span>{{favorited?'已收藏':'收藏'}}</span>
-                </button>
-              </div>
+              <button type="button" class="fav-toggle-btn" :class="{active:favorited}" :disabled="preview||favBusy" :aria-pressed="favorited" @click="toggleFavorite">
+                <Icon name="heart" :size="15"/><span>{{favorited?'已收藏':'收藏'}}</span>
+              </button>
             </div>
 
             <div class="tmall-meta-rows">
               <div class="tmall-meta-row">
-                <span class="meta-label">履约自提</span>
+                <span class="meta-label">取货门店</span>
                 <div class="meta-val">
-                  <strong>{{product.merchantStoreName||merchant.storeName||product.merchantName||merchant.name||'校内自提门店'}}</strong>
-                  <span class="meta-sep">·</span>
-                  <span>{{product.merchantLocation||merchant.location||'校园生活区自提点'}}</span>
-                  <em class="meta-eta">最快8分钟凭6位码免排队取货</em>
+                  <strong>{{product.merchantStoreName||merchant.storeName||product.merchantName||merchant.name||'校内门店'}}</strong>
+                  <span>· {{product.merchantLocation||merchant.location||'校园自提点'}}</span>
+                  <em class="meta-eta">约8分钟备好</em>
                 </div>
               </div>
               <div class="tmall-meta-row">
-                <span class="meta-label">服务保障</span>
-                <div class="meta-val guarantees-inline">
-                  <span><Icon name="check" :size="13"/> 实时库存复验</span>
-                  <span><Icon name="shield" :size="13"/> 动态码防冒领</span>
-                  <span><Icon name="clock" :size="13"/> 未核销随时极速退</span>
+                <span class="meta-label">营业时间</span>
+                <div class="meta-val">
+                  <span>{{merchant.businessHours||'正常营业 · 未取货支持随时退款'}}</span>
                 </div>
               </div>
             </div>
 
             <div class="tmall-sku-panel">
               <div class="tmall-sku-row">
-                <span class="meta-label">选择规格</span>
+                <span class="meta-label">规格</span>
                 <div class="sku-picker tmall-sku-picker">
                   <button v-for="s in product.skus" :key="s.skuId" :class="{active:sku.skuId===s.skuId}" :aria-pressed="sku.skuId===s.skuId" :disabled="busy||s.status!=='ACTIVE'||Number(s.available)<=0" @click="chosen=s.skuId;count=1">
                     <span>{{s.specKey}}</span>
-                    <em class="sku-price-hint">{{money(s.priceCent)}}</em>
                     <small v-if="s.status!=='ACTIVE'" class="sku-state">已下架</small>
                     <small v-else-if="Number(s.available)<=0" class="sku-state">无货</small>
-                    <i v-if="sku.skuId===s.skuId" class="sku-corner-check" aria-hidden="true">✓</i>
                   </button>
                 </div>
               </div>
 
               <div class="tmall-sku-row qty-row">
-                <span class="meta-label">购买数量</span>
+                <span class="meta-label">数量</span>
                 <div class="quantity-picker tmall-qty-picker">
                   <div>
                     <button aria-label="减少" :disabled="busy" @click="count=Math.max(1,count-1)"><Icon name="minus" :size="16"/></button>
                     <b>{{count}}</b>
                     <button aria-label="增加" :disabled="busy||count>=Math.min(99,Number(sku.available||0))" @click="count++"><Icon name="plus" :size="16"/></button>
                   </div>
-                  <span class="stock-live-text">实时可售 <strong>{{sku.available||0}}</strong> 件</span>
+                  <span class="stock-live-text">库存 {{sku.available||0}} 件</span>
                 </div>
               </div>
             </div>
 
             <div class="detail-fixed tmall-action-bar">
-              <button class="outline-button icon-action-btn" @click="go('/shops/'+pathId(product.merchantId))"><Icon name="store" :size="17"/><span>店铺</span></button>
-              <button class="outline-button icon-action-btn" @click="go('/cart')"><Icon name="cart" :size="17"/><span>购物车</span></button>
-              <button class="buy-now-button" :disabled="preview||busy||sku.status!=='ACTIVE'||Number(sku.available||0)<=0||product.status!=='PUBLISHED'" @click="add(true)">立即购买</button>
               <button class="teal-button" :disabled="preview||busy||sku.status!=='ACTIVE'||Number(sku.available||0)<=0||product.status!=='PUBLISHED'" @click="add(false)">{{busy?'加入中…':'加入购物车'}}</button>
+              <button class="buy-now-button" :disabled="preview||busy||sku.status!=='ACTIVE'||Number(sku.available||0)<=0||product.status!=='PUBLISHED'" @click="add(true)">立即购买</button>
             </div>
 
-            <div class="tmall-store-card">
-              <button class="detail-merchant" @click="go('/shops/'+pathId(product.merchantId))">
-                <span class="merchant-logo"><img v-if="merchant.imageUrl||merchant.image" :src="merchant.imageUrl||merchant.image" :alt="merchant.name||'门店'"/><Icon v-else name="store"/></span>
-                <div class="store-dsr-main">
-                  <div class="store-dsr-title">
-                    <strong>{{product.merchantName||merchant.name||'校园认证商户'}}</strong>
-                    <span class="cert-pill">校内实名店</span>
-                  </div>
-                  <span>{{product.merchantStoreName||merchant.storeName||product.merchantLocation||merchant.location||'校内自提门店'}}</span>
-                </div>
-                <div class="store-dsr-scores">
-                  <div><small>商品体验</small><b>4.9 <em>高</em></b></div>
-                  <div><small>备餐速度</small><b>4.9 <em>高</em></b></div>
-                  <div><small>自提服务</small><b>5.0 <em>高</em></b></div>
-                </div>
-                <span class="shop-enter-label">进店逛逛 <Icon name="chevronRight" :size="13"/></span>
-              </button>
-            </div>
+            <button class="detail-merchant" @click="go('/shops/'+pathId(product.merchantId))">
+              <span class="merchant-logo"><img v-if="merchant.imageUrl||merchant.image" :src="merchant.imageUrl||merchant.image" :alt="merchant.name||'门店'"/><Icon v-else name="store"/></span>
+              <div class="store-dsr-main">
+                <strong>{{product.merchantName||merchant.name||'校内门店'}}</strong>
+                <span>{{product.merchantStoreName||merchant.storeName||product.merchantLocation||merchant.location||'支持到店自提'}}</span>
+              </div>
+              <span class="shop-enter-label">进店 <Icon name="chevronRight" :size="13"/></span>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="detail-tabs-bar" role="tablist" aria-label="详情分区切换">
-        <button type="button" :class="{active:detailTab==='all'||detailTab==='spec'}" @click="detailTab='all'">商品规格与履约档案</button>
-        <button type="button" :class="{active:detailTab==='reviews'}" @click="detailTab=detailTab==='reviews'?'all':'reviews'">同学真实评价 <span>({{reviewSummary?.totalCount||0}})</span></button>
-        <button v-if="relatedProducts.length" type="button" :class="{active:detailTab==='reco'}" @click="detailTab=detailTab==='reco'?'all':'reco'">同学常一起买</button>
-      </div>
-
       <div class="detail-sections">
-        <section v-show="detailTab==='all'||detailTab==='spec'" class="detail-card detail-archive-card">
-          <div class="detail-section-head"><h2>商品规格参数与自提档案</h2><span class="tiny-note">校内门店现货 · 结算前实时核验价格与库存</span></div>
-          <div class="archive-meta-grid">
-            <div><span>自提门店</span><strong>{{product.merchantStoreName||merchant.storeName||product.merchantName||merchant.name||'校内自提门店'}}</strong></div>
-            <div><span>具体位置</span><strong>{{product.merchantLocation||merchant.location||'校园生活区自提点'}}</strong></div>
-            <div><span>营业时段</span><strong>{{merchant.businessHours||'正常营业 · 支持预约大课间/夜宵时段自提'}}</strong></div>
-            <div><span>取货凭证</span><strong>支付后生成排队取餐号 (A-xxx) 与 6 位动态取件码</strong></div>
-          </div>
-          <div class="archive-sku-table-wrap"><table class="archive-sku-table"><thead><tr><th>规格名称</th><th>闪购单价</th><th>实时可售库存</th><th>销售状态</th></tr></thead><tbody><tr v-for="s in product.skus" :key="s.skuId"><td>{{s.specKey}}</td><td><b class="red-text">{{money(s.priceCent)}}</b></td><td>{{s.available||0}} 件</td><td><span class="status-tag" :class="s.status==='ACTIVE'&&Number(s.available)>0?'published':'draft'">{{s.status!=='ACTIVE'?'已下架':Number(s.available)>0?'现货可售':'已售罄'}}</span></td></tr></tbody></table></div>
-        </section>
-
-        <section v-show="detailTab==='all'||detailTab==='reviews'" class="detail-card detail-reviews-card">
+        <section class="detail-card detail-reviews-card">
           <div class="detail-section-head">
-            <div><h2>宝贝评价</h2></div>
-            <div v-if="reviewSummary?.totalCount" class="review-summary-pill"><b>{{reviewSummary.averageRating.toFixed(1)}}</b><span>★ · {{reviewSummary.totalCount}} 条真实购买评价 · 100% 好评</span></div>
+            <h2>评价 ({{reviewSummary?.totalCount||0}})</h2>
+            <div v-if="reviewSummary?.totalCount" class="review-summary-pill"><b>{{reviewSummary.averageRating.toFixed(1)}} ★</b></div>
           </div>
           <div v-if="reviewSummary?.items?.length" class="review-list">
             <article v-for="r in reviewSummary.items" :key="r.id" class="review-item">
               <div class="review-item-head">
-                <span class="review-buyer"><span class="buyer-mini-avatar">{{(r.buyerDisplayName||'同').slice(0,1)}}</span> {{r.buyerDisplayName||'校内实名同学'}}</span>
+                <span class="review-buyer"><span class="buyer-mini-avatar">{{(r.buyerDisplayName||'同').slice(0,1)}}</span> {{r.buyerDisplayName||'同学'}}</span>
                 <span class="review-stars-static">{{'★'.repeat(Math.max(1,Math.min(5,r.rating||5)))}}</span>
                 <small>{{dateTime(r.createdAt)}}</small>
               </div>
@@ -433,11 +382,11 @@ export default {
               <p class="review-body">{{r.content}}</p>
             </article>
           </div>
-          <p v-else class="muted-short">暂未收到评价，自提核销完成后可在「我的订单」发布首条晒单评价</p>
+          <p v-else class="muted-short">暂无评价，取货完成后可在订单页写评价</p>
         </section>
 
-        <section v-if="relatedProducts.length" v-show="detailTab==='all'||detailTab==='reco'" class="detail-card detail-reco-card">
-          <div class="detail-section-head"><h2>同学常一起买 · 本店热销搭配</h2><span class="tiny-note">顺手凑单免排队一次取齐</span></div>
+        <section v-if="relatedProducts.length" class="detail-card detail-reco-card">
+          <div class="detail-section-head"><h2>店内热销</h2></div>
           <div class="detail-reco-grid">
             <button type="button" v-for="rp in relatedProducts" :key="rp.productId" class="detail-reco-item" @click="go('/product/'+pathId(rp.productId))">
               <div class="detail-reco-photo"><ProductImage :src="rp.imageUrl" :alt="rp.title"/></div>

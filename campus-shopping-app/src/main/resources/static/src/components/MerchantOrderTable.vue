@@ -17,8 +17,13 @@ defineProps<{
   orders: OrderRow[];
   selectedOrder: OrderRow | null;
   orderReminder: (order: OrderRow) => string;
+  canPrepare?: boolean;
+  busy?: boolean;
 }>();
-defineEmits<{ select: [orderId: string] }>();
+defineEmits<{
+  select: [orderId: string];
+  quickPrepare: [payload: { order: OrderRow; ready: boolean }];
+}>();
 </script>
 
 <template>
@@ -66,7 +71,7 @@ defineEmits<{ select: [orderId: string] }>();
                 {{ order.pickupSlot }}
               </span>
               <span v-if="order.buyerRemark" class="remark-chip">
-                备注：{{ order.buyerRemark }}
+                {{ order.buyerRemark }}
               </span>
             </div>
           </td>
@@ -78,7 +83,33 @@ defineEmits<{ select: [orderId: string] }>();
             <small v-if="order.pickup">{{ pickupStatusLabel(order.pickup.status) }}</small>
             <small v-if="orderReminder(order)" class="red-text">{{ orderReminder(order) }}</small>
           </td>
-          <td><Icon name="chevronRight" :size="16" /></td>
+          <td>
+            <div class="row-inline-actions">
+              <button
+                v-if="canPrepare && order.status === 'PAID' && order.pickup?.status === 'WAIT_PREP'"
+                type="button"
+                class="row-quick-btn"
+                :disabled="busy"
+                aria-label="快捷备货"
+                @click.stop="$emit('quickPrepare', { order, ready: false })"
+              >
+                备货
+              </button>
+              <button
+                v-else-if="
+                  canPrepare && order.status === 'PAID' && order.pickup?.status === 'PREPARING'
+                "
+                type="button"
+                class="row-quick-btn"
+                :disabled="busy"
+                aria-label="快捷出餐"
+                @click.stop="$emit('quickPrepare', { order, ready: true })"
+              >
+                出餐
+              </button>
+              <Icon name="chevronRight" :size="15" />
+            </div>
+          </td>
         </tr>
       </tbody>
     </table>

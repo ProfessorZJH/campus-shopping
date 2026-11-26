@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-
 interface Citation {
   documentId?: string;
   title?: string;
@@ -18,7 +16,7 @@ interface Message {
 
 const robotImage = './images/robot.webp';
 
-const props = defineProps<{
+defineProps<{
   messages: Message[];
   thinking: boolean;
   reconnecting: boolean;
@@ -29,35 +27,31 @@ const props = defineProps<{
   error: string;
 }>();
 
-const STAGES = [
-  { key: 'recall', label: '① 召回现货与规则' },
-  { key: 'generating', label: '② 模型匹配方案' },
-  { key: 'verifying', label: '③ 复核库存价格' },
-];
-
-const stageRank = computed(() => {
-  if (props.streamStage === 'verifying') return 2;
-  if (props.streamStage === 'generating' || props.streamProgress > 0) return 1;
-  return 0;
-});
-
-function splitRichLines(content: string): { kind: 'knowledge' | 'note' | 'text'; text: string }[] {
-  const lines = String(content || '')
+function splitRichLines(content: string): { kind: 'knowledge' | 'text'; text: string }[] {
+  const rawLines = String(content || '')
     .split('\n')
-    .filter((line) => line.trim().length > 0);
-  return lines.map((line) => {
-    if (line.startsWith('《')) return { kind: 'knowledge', text: line };
-    if (line.startsWith('确认后只加入购物车') || line.startsWith('根据当前允许访问的知识资料')) {
-      return { kind: 'note', text: line };
-    }
-    return { kind: 'text', text: line };
-  });
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const cleaned = rawLines.filter(
+    (line) =>
+      !line.startsWith('确认后只加入购物车') && !line.startsWith('根据当前允许访问的知识资料'),
+  );
+  const lines = cleaned.length > 0 ? cleaned : rawLines;
+  return lines.map((line) => ({
+    kind: line.startsWith('《') ? 'knowledge' : 'text',
+    text: line,
+  }));
 }
+
 function friendlyWarning(raw?: string): string {
   const text = String(raw || '').trim();
   if (!text) return '';
-  if (text.includes('远程模型不可用')) {
-    return '✨ 已通过校内现货检索引擎为您匹配商品与门店规则（库存价格实时核验）';
+  if (
+    text.includes('远程模型不可用') ||
+    text.includes('未调用大语言模型') ||
+    text.includes('本地检索演示')
+  ) {
+    return '';
   }
   return text;
 }
@@ -67,21 +61,21 @@ function friendlyWarning(raw?: string): string {
   <section class="chat-thread" aria-label="AI对话">
     <div v-if="!messages.length" class="chat-welcome wenwen-welcome">
       <div class="wenwen-welcome-head">
-        <span class="chat-welcome-icon"><Icon name="sparkles" :size="20" /></span>
+        <span class="chat-welcome-icon"><Icon name="sparkles" :size="19" /></span>
         <div>
-          <h2>Hi 同学，今天想喝点或买点什么？</h2>
-          <p>支持跨店预算凑单、无糖/低卡筛选、门店营业时间咨询与个人自提进度秒查</p>
+          <h2>今天想买点什么？</h2>
+          <p>说出预算、口味或场景，直接帮你挑好商品</p>
         </div>
       </div>
       <div class="wenwen-scene-grid">
         <div class="wenwen-scene-card">
-          <strong>🍜 深夜复习夜宵</strong><small>30元配齐热汤泡面+零食+冰饮</small>
+          <strong>深夜夜宵</strong><small>30元内搭配泡面与冰饮</small>
         </div>
         <div class="wenwen-scene-card">
-          <strong>☕ 早八课间提神</strong><small>生椰冰拿铁 / 巴氏鲜奶顺路取</small>
+          <strong>课间咖啡</strong><small>生椰冰拿铁或鲜牛奶</small>
         </div>
         <div class="wenwen-scene-card">
-          <strong>🎫 实时取餐查询</strong><small>直接问“我的订单备好货了吗”</small>
+          <strong>查订单进度</strong><small>直接问“我的餐备好了吗”</small>
         </div>
       </div>
     </div>
@@ -101,18 +95,12 @@ function friendlyWarning(raw?: string): string {
             v-for="(part, pi) in splitRichLines(message.content)"
             :key="pi"
             class="chat-rich-line"
-            :class="
-              part.kind === 'knowledge'
-                ? 'chat-rich-knowledge'
-                : part.kind === 'note'
-                  ? 'chat-rich-note'
-                  : ''
-            "
+            :class="part.kind === 'knowledge' ? 'chat-rich-knowledge' : ''"
           >
             {{ part.text }}
           </p>
         </div>
-        <div v-if="message.warning" class="message-warning">
+        <div v-if="friendlyWarning(message.warning)" class="message-warning">
           {{ friendlyWarning(message.warning) }}
         </div>
         <div v-if="message.citations?.length" class="citation-chips">
@@ -121,7 +109,7 @@ function friendlyWarning(raw?: string): string {
             :key="citation.documentId || ci"
             class="citation-chip"
           >
-            <summary><Icon name="book" :size="12" />{{ citation.title || '参考资料' }}</summary>
+            <summary><Icon name="book" :size="12" />{{ citation.title || '参考说明' }}</summary>
             <p v-if="citation.snippet">{{ citation.snippet }}</p>
           </details>
         </div>
@@ -138,7 +126,7 @@ function friendlyWarning(raw?: string): string {
           当前无法核验这条历史引用，来源已隐藏
         </div>
         <span class="chat-timestamp"
-          >{{ message.time || '刚刚' }} <span v-if="message.demo">· 示例回答</span></span
+          >{{ message.time || '刚刚' }} <span v-if="message.demo">· 示例</span></span
         >
       </div>
     </div>
@@ -150,13 +138,7 @@ function friendlyWarning(raw?: string): string {
             v-for="(part, pi) in splitRichLines(streamingText)"
             :key="pi"
             class="chat-rich-line"
-            :class="
-              part.kind === 'knowledge'
-                ? 'chat-rich-knowledge'
-                : part.kind === 'note'
-                  ? 'chat-rich-note'
-                  : ''
-            "
+            :class="part.kind === 'knowledge' ? 'chat-rich-knowledge' : ''"
           >
             {{ part.text
             }}<span
@@ -169,21 +151,9 @@ function friendlyWarning(raw?: string): string {
         <div class="typing-bubble">
           <div class="typing-head">
             <i></i><i></i><i></i>
-            <small v-if="reconnecting">网络波动，正在恢复对话…</small>
+            <small v-if="reconnecting">网络波动，正在恢复…</small>
             <small v-else-if="cancelRequested">正在停止…</small>
-            <small v-else-if="streamingText">正在实时输出回复…</small>
-            <small v-else-if="streamProgress">正在为你挑选合适商品…</small>
-            <small v-else>正在分析你的需求…</small>
-          </div>
-          <div v-if="!reconnecting && !cancelRequested" class="typing-stages">
-            <span
-              v-for="(stage, idx) in STAGES"
-              :key="stage.key"
-              class="typing-stage-pill"
-              :class="{ done: idx < stageRank, active: idx === stageRank }"
-            >
-              {{ stage.label }}
-            </span>
+            <small v-else>正在为你挑选商品…</small>
           </div>
         </div>
       </div>

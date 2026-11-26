@@ -27,11 +27,11 @@ const props = defineProps<{
   orderStatusLabel: (status: string) => string;
 }>();
 
-const SLICE_COLORS = ['#00b578', '#1677ff', '#ff8f1f', '#ff4400', '#94a3b8'];
+const SLICE_COLORS = ['#00a870', '#3b82f6', '#f59e0b', '#64748b', '#e11d48'];
 
 const trendModel = computed(() => {
   const raw = props.stats?.trend || [];
-  if (!raw.length) return { bars: [], linePath: '', areaPath: '', maxVal: 0, midVal: 0 };
+  if (!raw.length) return { bars: [], maxVal: 0, midVal: 0 };
   const byDay = new Map<string, number>();
   for (const item of raw) {
     byDay.set(String(item.day || '').slice(0, 10), Number(item.orderCount || 0));
@@ -55,16 +55,15 @@ const trendModel = computed(() => {
   const plotW = 308;
   const startX = 36;
   const baseY = 122;
-  const plotH = 90;
+  const plotH = 88;
   const step = plotW / count;
-  const barW = Math.min(20, Math.max(10, step * 0.46));
+  const barW = Math.min(22, Math.max(10, step * 0.48));
   const bars = days.map((day, idx) => {
     const val = byDay.get(day) || 0;
     const h = val > 0 ? Math.max(8, Math.round((val / maxVal) * plotH)) : 3;
     const x = startX + idx * step + (step - barW) / 2;
     const y = baseY - h;
     const cx = Math.round((x + barW / 2) * 10) / 10;
-    const ly = Math.round((baseY - (val / maxVal) * plotH) * 10) / 10;
     return {
       day,
       shortDay: day.slice(5),
@@ -74,14 +73,9 @@ const trendModel = computed(() => {
       w: Math.round(barW * 10) / 10,
       h,
       cx,
-      ly,
     };
   });
-  const linePath = bars.map((b, idx) => `${idx === 0 ? 'M' : 'L'} ${b.cx} ${b.ly}`).join(' ');
-  const areaPath = bars.length
-    ? `${linePath} L ${bars[bars.length - 1].cx} ${baseY} L ${bars[0].cx} ${baseY} Z`
-    : '';
-  return { bars, linePath, areaPath, maxVal, midVal };
+  return { bars, maxVal, midVal };
 });
 
 const topProducts = computed(() => {
@@ -123,24 +117,10 @@ const donutModel = computed(() => {
   <div class="ops-grid stats-three-col echarts-pro-grid">
     <section class="ops-card">
       <div class="ops-card-header">
-        <div>
-          <h2>近 {{ trendModel.bars.length || 7 }} 日订单趋势</h2>
-          <small class="chart-sub-hint">柱状成交单量 · 折线日度走势</small>
-        </div>
-        <span class="chart-unit-pill">单位：单</span>
+        <h2>近 {{ trendModel.bars.length || 7 }} 日订单趋势</h2>
       </div>
       <div v-if="trendModel.bars.length" class="chart-svg-wrap">
-        <svg class="chart-svg" viewBox="0 0 360 154" role="img" aria-label="每日订单量趋势图">
-          <defs>
-            <linearGradient id="campusBarGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#00c282" stop-opacity="0.88" />
-              <stop offset="100%" stop-color="#00a870" stop-opacity="0.35" />
-            </linearGradient>
-            <linearGradient id="campusAreaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#1677ff" stop-opacity="0.22" />
-              <stop offset="100%" stop-color="#1677ff" stop-opacity="0.0" />
-            </linearGradient>
-          </defs>
+        <svg class="chart-svg" viewBox="0 0 360 150" role="img" aria-label="每日订单量趋势图">
           <text class="chart-axis-text" x="28" y="34" text-anchor="end">
             {{ trendModel.maxVal }}
           </text>
@@ -148,10 +128,9 @@ const donutModel = computed(() => {
             {{ trendModel.midVal }}
           </text>
           <text class="chart-axis-text" x="28" y="124" text-anchor="end">0</text>
-          <line x1="34" y1="32" x2="348" y2="32" stroke="#ebedf0" stroke-dasharray="3 3" />
-          <line x1="34" y1="77" x2="348" y2="77" stroke="#ebedf0" stroke-dasharray="3 3" />
-          <line x1="34" y1="122" x2="348" y2="122" stroke="#dcdfe6" />
-          <path v-if="trendModel.areaPath" :d="trendModel.areaPath" fill="url(#campusAreaGrad)" />
+          <line x1="34" y1="32" x2="348" y2="32" stroke="#f1f5f9" stroke-dasharray="3 3" />
+          <line x1="34" y1="77" x2="348" y2="77" stroke="#f1f5f9" stroke-dasharray="3 3" />
+          <line x1="34" y1="122" x2="348" y2="122" stroke="#e2e8f0" />
           <g v-for="bar in trendModel.bars" :key="bar.day">
             <rect
               class="chart-bar-rect"
@@ -159,52 +138,29 @@ const donutModel = computed(() => {
               :y="bar.y"
               :width="bar.w"
               :height="bar.h"
-              rx="4"
-            />
-            <text class="chart-axis-text" :x="bar.cx" y="142" text-anchor="middle">
-              {{ bar.shortDay }}
-            </text>
-          </g>
-          <path
-            v-if="trendModel.linePath"
-            :d="trendModel.linePath"
-            fill="none"
-            stroke="#1677ff"
-            stroke-width="2.2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          />
-          <g v-for="bar in trendModel.bars" :key="'pt-' + bar.day">
-            <circle
-              :cx="bar.cx"
-              :cy="bar.ly"
-              r="3.4"
-              fill="#ffffff"
-              stroke="#1677ff"
-              stroke-width="2"
+              rx="5"
             />
             <text
               v-if="bar.val > 0"
               class="chart-val-text"
               :x="bar.cx"
-              :y="bar.ly - 7"
+              :y="bar.y - 6"
               text-anchor="middle"
             >
               {{ bar.val }}
             </text>
+            <text class="chart-axis-text" :x="bar.cx" y="140" text-anchor="middle">
+              {{ bar.shortDay }}
+            </text>
           </g>
         </svg>
       </div>
-      <div v-else class="admin-empty">期间暂无订单</div>
+      <div v-else class="admin-empty">暂无订单数据</div>
     </section>
 
     <section class="ops-card">
       <div class="ops-card-header">
-        <div>
-          <h2>热销商品 TOP 榜</h2>
-          <small class="chart-sub-hint">按已成交核销件数排行</small>
-        </div>
-        <span class="chart-unit-pill">热卖单品</span>
+        <h2>热销商品排行</h2>
       </div>
       <div v-if="topProducts.length" class="hbar-list">
         <div v-for="item in topProducts" :key="item.productId" class="hbar-item">
@@ -215,34 +171,30 @@ const donutModel = computed(() => {
             </div>
             <b>{{ item.quantity }} 件</b>
           </div>
-          <svg class="hbar-svg" viewBox="0 0 100 7" preserveAspectRatio="none" aria-hidden="true">
-            <rect x="0" y="0" width="100" height="7" rx="3.5" fill="#f0f2f5" />
+          <svg class="hbar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+            <rect x="0" y="0" width="100" height="6" rx="3" fill="#f1f5f9" />
             <rect
               x="0"
               y="0"
               :width="item.pct"
-              height="7"
-              rx="3.5"
-              :fill="item.rank === 1 ? '#ff4400' : item.rank === 2 ? '#ff8f1f' : '#00b578'"
+              height="6"
+              rx="3"
+              :fill="item.rank === 1 ? '#00a870' : item.rank === 2 ? '#10b981' : '#34d399'"
             />
           </svg>
         </div>
       </div>
-      <div v-else class="admin-empty">期间暂无成交商品</div>
+      <div v-else class="admin-empty">暂无成交商品</div>
     </section>
 
     <section class="ops-card">
       <div class="ops-card-header">
-        <div>
-          <h2>订单履约状态占比</h2>
-          <small class="chart-sub-hint">单量结构与实收金额分布</small>
-        </div>
-        <span class="chart-unit-pill">环形分布</span>
+        <h2>订单状态分布</h2>
       </div>
       <div v-if="donutModel.slices.length" class="donut-chart-layout">
         <div class="donut-svg-box">
           <svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="订单状态环形图">
-            <circle cx="60" cy="60" r="38" fill="none" stroke="#f0f2f5" stroke-width="14" />
+            <circle cx="60" cy="60" r="38" fill="none" stroke="#f1f5f9" stroke-width="14" />
             <circle
               v-for="s in donutModel.slices"
               :key="s.status"
@@ -256,24 +208,21 @@ const donutModel = computed(() => {
               :stroke-dashoffset="s.dashOffset"
               transform="rotate(-90 60 60)"
             />
-            <text x="60" y="56" text-anchor="middle" class="donut-center-num">
-              {{ donutModel.totalOrders }}
-            </text>
-            <text x="60" y="72" text-anchor="middle" class="donut-center-label">总单数</text>
           </svg>
+          <div class="donut-center-label">
+            <strong>{{ donutModel.totalOrders }}</strong>
+            <small>总单量</small>
+          </div>
         </div>
-        <div class="donut-legend-col">
-          <div v-for="item in donutModel.slices" :key="item.status" class="donut-legend-row">
-            <span class="legend-dot" :class="'dot-' + item.status.toLowerCase()"></span>
-            <div class="legend-meta">
-              <strong>{{ orderStatusLabel(item.status) }}</strong>
-              <small>{{ item.orderCount }}单 · {{ item.pct }}%</small>
-            </div>
-            <b>{{ money(item.amountCent) }}</b>
+        <div class="donut-legend">
+          <div v-for="s in donutModel.slices" :key="'lg-' + s.status" class="donut-legend-row">
+            <span class="legend-dot" :style="{ background: s.color }"></span>
+            <span class="legend-name">{{ orderStatusLabel(s.status) }}</span>
+            <b>{{ s.orderCount }}单</b>
           </div>
         </div>
       </div>
-      <div v-else class="admin-empty">期间暂无订单</div>
+      <div v-else class="admin-empty">暂无状态统计</div>
     </section>
   </div>
 </template>
