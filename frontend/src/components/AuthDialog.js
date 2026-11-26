@@ -99,6 +99,9 @@ export default {
           <div class="auth-field">
             <label class="sr-only" for="login-name">账号</label>
             <div class="auth-input-wrap">
+              <span class="auth-input-icon" aria-hidden="true">
+                <Icon name="user" :size="16" />
+              </span>
               <input
                 id="login-name"
                 v-model="username"
@@ -114,6 +117,9 @@ export default {
           <div class="auth-field">
             <label class="sr-only" for="login-password">密码</label>
             <div class="auth-input-wrap">
+              <span class="auth-input-icon" aria-hidden="true">
+                <Icon name="lock" :size="16" />
+              </span>
               <input
                 id="login-password"
                 v-model="password"
@@ -138,6 +144,9 @@ export default {
           <div v-if="mode === 'register'" class="auth-field">
             <label class="sr-only" for="login-display">昵称</label>
             <div class="auth-input-wrap">
+              <span class="auth-input-icon" aria-hidden="true">
+                <Icon name="smile" :size="16" />
+              </span>
               <input
                 id="login-display"
                 v-model="displayName"

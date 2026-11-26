@@ -33,21 +33,25 @@ const sceneCards = [
   {
     title: '深夜复习夜宵',
     desc: '30元内搭配泡面、零食与冰饮',
+    icon: 'flame',
     query: '30元内配一套熬夜复习泡面零食加饮料',
   },
   {
     title: '课间低糖提神',
     desc: '20元内无糖茶饮与门店营业时间',
+    icon: 'leaf',
     query: '预算20元推荐无糖饮料，顺便问自提几点关门？',
   },
   {
     title: '宿舍常备补给',
     desc: '高性价比抽纸与纯牛奶组合挑好',
+    icon: 'package',
     query: '推荐宿舍常备抽纸和牛奶',
   },
   {
     title: '实时取餐进度',
     desc: '直接查询我的订单是否备好可取',
+    icon: 'clock',
     query: '帮我看看我的订单备好货了吗？',
   },
 ];
@@ -95,15 +99,17 @@ function friendlyWarning(raw?: string): string {
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M11.5 3L13.4 8.1L18.5 10L13.4 11.9L11.5 17L9.6 11.9L4.5 10L9.6 8.1L11.5 3Z"
+              d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z"
+              fill="currentColor"
+              fill-opacity="0.22"
               stroke="currentColor"
               stroke-width="1.8"
               stroke-linejoin="round"
             />
             <path
-              d="M19.5 14.5C19.5 18.1 16.6 21 13 21C13 17.4 15.9 14.5 19.5 14.5Z"
+              d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z"
               fill="currentColor"
-              fill-opacity="0.18"
+              fill-opacity="0.34"
               stroke="currentColor"
               stroke-width="1.6"
               stroke-linejoin="round"
@@ -124,6 +130,10 @@ function friendlyWarning(raw?: string): string {
           :disabled="thinking"
           @click="$emit('prompt', scene.query)"
         >
+          <span class="wenwen-scene-top" aria-hidden="true">
+            <span class="wenwen-scene-ico"><Icon :name="scene.icon" :size="15" /></span>
+            <span class="wenwen-scene-arrow"><Icon name="arrowUpRight" :size="14" /></span>
+          </span>
           <strong>{{ scene.title }}</strong>
           <small>{{ scene.desc }}</small>
         </button>
@@ -137,22 +147,24 @@ function friendlyWarning(raw?: string): string {
     >
       <span v-if="message.role !== 'user'" class="chat-avatar" aria-hidden="true">
         <svg
-          width="17"
-          height="17"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M11.5 3L13.4 8.1L18.5 10L13.4 11.9L11.5 17L9.6 11.9L4.5 10L9.6 8.1L11.5 3Z"
+            d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z"
+            fill="currentColor"
+            fill-opacity="0.22"
             stroke="currentColor"
             stroke-width="1.9"
             stroke-linejoin="round"
           />
           <path
-            d="M19.5 14.5C19.5 18.1 16.6 21 13 21C13 17.4 15.9 14.5 19.5 14.5Z"
+            d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z"
             fill="currentColor"
-            fill-opacity="0.2"
+            fill-opacity="0.34"
             stroke="currentColor"
             stroke-width="1.6"
             stroke-linejoin="round"
@@ -168,7 +180,17 @@ function friendlyWarning(raw?: string): string {
             class="chat-rich-line"
             :class="part.kind === 'knowledge' ? 'chat-rich-knowledge' : ''"
           >
-            {{ part.text }}
+            <span
+              v-if="part.kind === 'knowledge'"
+              class="knowledge-source-badge"
+              aria-hidden="true"
+            >
+              <Icon name="book" :size="13" />
+            </span>
+            <span v-if="part.kind === 'knowledge'" class="knowledge-source-text">{{
+              part.text
+            }}</span>
+            <template v-else>{{ part.text }}</template>
           </p>
         </div>
         <div v-if="friendlyWarning(message.warning)" class="message-warning">
@@ -180,7 +202,15 @@ function friendlyWarning(raw?: string): string {
             :key="citation.documentId || ci"
             class="citation-chip"
           >
-            <summary><Icon name="book" :size="13" />{{ citation.title || '参考说明' }}</summary>
+            <summary>
+              <span class="citation-book-badge" aria-hidden="true">
+                <Icon name="book" :size="13" />
+              </span>
+              <span class="citation-title-text">{{ citation.title || '参考说明' }}</span>
+              <span class="citation-chevron" aria-hidden="true">
+                <Icon name="chevronDown" :size="13" />
+              </span>
+            </summary>
             <p v-if="citation.snippet">{{ citation.snippet }}</p>
           </details>
         </div>
@@ -204,22 +234,24 @@ function friendlyWarning(raw?: string): string {
     <div v-if="thinking" class="chat-row is-assistant">
       <span class="chat-avatar" aria-hidden="true">
         <svg
-          width="17"
-          height="17"
+          width="16"
+          height="16"
           viewBox="0 0 24 24"
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M11.5 3L13.4 8.1L18.5 10L13.4 11.9L11.5 17L9.6 11.9L4.5 10L9.6 8.1L11.5 3Z"
+            d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z"
+            fill="currentColor"
+            fill-opacity="0.22"
             stroke="currentColor"
             stroke-width="1.9"
             stroke-linejoin="round"
           />
           <path
-            d="M19.5 14.5C19.5 18.1 16.6 21 13 21C13 17.4 15.9 14.5 19.5 14.5Z"
+            d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z"
             fill="currentColor"
-            fill-opacity="0.2"
+            fill-opacity="0.34"
             stroke="currentColor"
             stroke-width="1.6"
             stroke-linejoin="round"
@@ -234,11 +266,20 @@ function friendlyWarning(raw?: string): string {
             class="chat-rich-line"
             :class="part.kind === 'knowledge' ? 'chat-rich-knowledge' : ''"
           >
-            {{ part.text
-            }}<span
-              v-if="pi === splitRichLines(streamingText).length - 1"
-              class="stream-cursor"
+            <span
+              v-if="part.kind === 'knowledge'"
+              class="knowledge-source-badge"
               aria-hidden="true"
+            >
+              <Icon name="book" :size="13" />
+            </span>
+            <span class="streaming-line-text"
+              >{{ part.text
+              }}<span
+                v-if="pi === splitRichLines(streamingText).length - 1"
+                class="stream-cursor"
+                aria-hidden="true"
+              ></span
             ></span>
           </p>
         </div>

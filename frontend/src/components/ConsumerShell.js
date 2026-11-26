@@ -93,9 +93,9 @@ export default {
               </div>
             </button>
             <button type="button" class="header-zone-pill" @click="cycleZone" aria-label="切换取货区域">
-              <Icon name="pin" :size="13" />
+              <Icon name="pin" :size="13" class="zone-pin-icon" />
               <span>{{ currentZone }}</span>
-              <Icon name="chevronDown" :size="12" />
+              <Icon name="chevronDown" :size="12" class="zone-chevron-icon" />
             </button>
           </div>
           <nav class="desktop-consumer-nav mobile-tabbar" aria-label="主导航">

@@ -69,8 +69,9 @@ export default {
     <template v-if="merchant">
       <section class="shop-hero meituan-shop-banner">
         <ProductImage v-if="merchant.imageUrl" class="shop-hero-image" :src="merchant.imageUrl" :alt="merchant.name+'门店图片'"/>
-        <span v-else class="merchant-logo"><Icon name="store" :size="26"/></span>
+        <span v-else class="merchant-logo shop-hero-fallback"><Icon name="store" :size="28"/></span>
         <div class="meituan-shop-main">
+          <span class="shop-verified-pill"><Icon name="shield" :size="12"/>校内自提门店</span>
           <h1>{{merchant.name}}</h1>
           <p><Icon name="pin" :size="14"/> {{merchant.storeName}} · {{merchant.location}}</p>
         </div>

@@ -1,5 +1,5 @@
 /* ==========================================================================
-   基础重置、无障碍焦点、公共按钮与通用反馈组件
+   基础重置、无障碍焦点、公共按钮与通用反馈组件 (V6 Botanical Jade Studio)
    ========================================================================== */
 
 *,
@@ -129,12 +129,14 @@ button:disabled {
   font-size: 14px;
   font-weight: 600;
   line-height: 1.25;
-  box-shadow: 0 1px 2px rgba(21, 128, 61, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.24),
+    0 4px 12px rgba(10, 123, 86, 0.22);
   transition:
-    filter 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease,
-    opacity 0.15s ease;
+    filter 0.18s var(--ease-out-expo),
+    box-shadow 0.18s var(--ease-out-expo),
+    transform 0.18s var(--ease-out-expo),
+    opacity 0.18s ease;
 }
 
 .primary-wide {
@@ -146,7 +148,10 @@ button:disabled {
 .teal-button:hover:not(:disabled),
 .primary-wide:hover:not(:disabled) {
   filter: brightness(1.05);
-  box-shadow: 0 4px 12px rgba(21, 128, 61, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 8px 20px rgba(10, 123, 86, 0.28);
+  transform: translateY(-1px);
 }
 
 .teal-button:active:not(:disabled),
@@ -177,21 +182,25 @@ button:disabled {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.25;
+  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.03);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
+    background-color 0.18s var(--ease-out-expo),
+    border-color 0.18s var(--ease-out-expo),
+    box-shadow 0.18s var(--ease-out-expo),
+    color 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .outline-button:hover:not(:disabled) {
   background: var(--bg-subtle);
-  border-color: #b8b8b0;
+  border-color: #9fb0a7;
   color: var(--ink-primary);
+  box-shadow: 0 2px 6px rgba(15, 23, 20, 0.05);
 }
 
 .outline-button:disabled {
   opacity: 0.45;
+  box-shadow: none;
 }
 
 .ghost-button {
@@ -209,9 +218,9 @@ button:disabled {
   font-weight: 500;
   line-height: 1.25;
   transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
+    background-color 0.18s var(--ease-out-expo),
+    color 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .ghost-button:hover:not(:disabled) {
@@ -238,10 +247,10 @@ button:disabled {
   font-weight: 600;
   line-height: 1.25;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
+    background-color 0.18s var(--ease-out-expo),
+    border-color 0.18s var(--ease-out-expo),
+    color 0.18s ease,
+    opacity 0.18s ease;
 }
 
 .danger-button:hover:not(:disabled) {
@@ -269,14 +278,16 @@ button:disabled {
   font-weight: 600;
   line-height: 1.25;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    opacity 0.15s ease;
+    background-color 0.18s var(--ease-out-expo),
+    border-color 0.18s var(--ease-out-expo),
+    box-shadow 0.18s var(--ease-out-expo),
+    opacity 0.18s ease;
 }
 
 .soft-brand-button:hover:not(:disabled) {
-  background: #e3f4e8;
-  border-color: #a7dbb8;
+  background: #d1fae5;
+  border-color: #6ee7b7;
+  box-shadow: 0 2px 8px rgba(10, 123, 86, 0.1);
 }
 
 .soft-brand-button:disabled {
@@ -302,6 +313,7 @@ button:disabled {
   box-shadow: var(--shadow-card);
 }
 
+/* 注意：严禁使用 shorthand background:，防止覆盖 select.admin-input 的右侧箭头图标 */
 .admin-input {
   width: 100%;
   min-height: 38px;
@@ -313,9 +325,9 @@ button:disabled {
   font-size: 13.5px;
   line-height: 1.4;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background-color 0.15s ease;
+    border-color 0.18s var(--ease-out-expo),
+    box-shadow 0.18s var(--ease-out-expo),
+    background-color 0.18s var(--ease-out-expo);
 }
 
 .admin-input::placeholder {
@@ -323,12 +335,12 @@ button:disabled {
 }
 
 .admin-input:hover:not(:disabled) {
-  border-color: #b8b8b0;
+  border-color: #9fb0a7;
 }
 
 .admin-input:focus {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  box-shadow: 0 0 0 3px rgba(10, 123, 86, 0.13);
 }
 
 .admin-input:focus:not(:focus-visible) {
@@ -356,9 +368,9 @@ textarea.admin-input {
   justify-content: center;
   padding: 16px;
   overflow-y: auto;
-  background: rgba(24, 24, 27, 0.42);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(10, 28, 21, 0.46);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 
 .toast,
@@ -370,14 +382,16 @@ textarea.admin-input {
   left: 50%;
   transform: translateX(-50%);
   max-width: min(90vw, 460px);
-  padding: 10px 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 20px;
+  border: 1px solid rgba(200, 249, 99, 0.28);
   border-radius: var(--radius-pill);
-  background: rgba(24, 24, 27, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(10, 41, 30, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #ffffff;
-  box-shadow: var(--shadow-elevated);
+  box-shadow:
+    0 18px 40px -8px rgba(10, 41, 30, 0.34),
+    0 0 0 1px rgba(10, 41, 30, 0.22);
   font-size: 13.5px;
   font-weight: 500;
   line-height: 1.4;
@@ -409,6 +423,7 @@ textarea.admin-input {
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
   color: var(--ink-secondary);
   text-align: center;
 }
@@ -456,6 +471,7 @@ textarea.admin-input {
   background: var(--bg-surface);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-card);
   color: var(--ink-secondary);
   text-align: center;
 }
@@ -528,19 +544,21 @@ textarea.admin-input {
   color: var(--ink-primary);
   font-size: 13px;
   font-weight: 500;
+  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.03);
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    opacity 0.15s ease;
+    background-color 0.18s var(--ease-out-expo),
+    border-color 0.18s var(--ease-out-expo),
+    opacity 0.18s ease;
 }
 
 .sdd-pager button:hover:not(:disabled) {
   background: var(--bg-subtle);
-  border-color: #b8b8b0;
+  border-color: #9fb0a7;
 }
 
 .sdd-pager button:disabled {
   opacity: 0.42;
+  box-shadow: none;
 }
 
 .sdd-pager.shop-pagination {
@@ -580,7 +598,7 @@ textarea.admin-input {
   position: absolute;
   inset: auto 0 0;
   padding: 4px 6px;
-  background: rgba(24, 24, 27, 0.78);
+  background: rgba(10, 41, 30, 0.82);
   color: #ffffff;
   font-size: 11px;
   text-align: center;
@@ -610,13 +628,13 @@ textarea.admin-input {
   cursor: pointer;
   white-space: nowrap;
   transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease;
+    background-color 0.18s var(--ease-out-expo),
+    border-color 0.18s var(--ease-out-expo);
 }
 
 .image-upload-button:hover:not(.disabled) {
-  background: #e3f4e8;
-  border-color: #a7dbb8;
+  background: #d1fae5;
+  border-color: #6ee7b7;
 }
 
 .image-upload-button.disabled {
@@ -794,7 +812,7 @@ select.inspector-select,
   border: 1px solid var(--border-control);
   border-radius: var(--radius-sm);
   background-color: var(--bg-surface);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2347544F' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px 14px;
@@ -804,15 +822,15 @@ select.inspector-select,
   line-height: 34px;
   cursor: pointer;
   transition:
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    background-color 0.15s ease;
+    border-color 0.18s var(--ease-out-expo),
+    box-shadow 0.18s var(--ease-out-expo),
+    background-color 0.18s var(--ease-out-expo);
 }
 
 select:hover:not(:disabled),
 select.admin-input:hover:not(:disabled),
 .cs-select-enhanced:hover:not(:disabled) {
-  border-color: #b8b8b0;
+  border-color: #9fb0a7;
   background-color: var(--bg-surface);
 }
 
@@ -820,7 +838,7 @@ select.cs-select-open,
 select:focus {
   border-color: var(--color-brand);
   background-color: var(--bg-surface);
-  box-shadow: 0 0 0 3px rgba(21, 128, 61, 0.12);
+  box-shadow: 0 0 0 3px rgba(10, 123, 86, 0.13);
 }
 
 select:focus:not(:focus-visible) {
@@ -830,7 +848,7 @@ select:focus:not(:focus-visible) {
 select.cs-select-open,
 select.admin-input.cs-select-open,
 select.inspector-select.cs-select-open {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2315803D' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='18 15 12 9 6 15'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%230A7B56' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='18 15 12 9 6 15'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 14px 14px;
@@ -848,10 +866,10 @@ select:disabled {
   z-index: 960;
   padding: 5px;
   border: 1px solid var(--border-default);
-  border-radius: 12px;
+  border-radius: 13px;
   background: var(--bg-surface);
   box-shadow: var(--shadow-elevated);
-  animation: csPopoverIn 0.13s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: csPopoverIn 0.15s var(--ease-out-expo);
 }
 
 .cs-select-search-wrap,
@@ -867,7 +885,7 @@ select:disabled {
   height: 32px;
   padding: 0 10px;
   border: 1px solid var(--border-control);
-  border-radius: 7px;
+  border-radius: 8px;
   background: var(--bg-canvas);
   color: var(--ink-primary);
   font-size: 12.5px;
@@ -909,8 +927,8 @@ select:disabled {
   gap: 10px;
   cursor: pointer;
   transition:
-    background-color 0.1s ease,
-    color 0.1s ease;
+    background-color 0.12s ease,
+    color 0.12s ease;
 }
 
 .cs-select-option.is-highlighted:not(:disabled),

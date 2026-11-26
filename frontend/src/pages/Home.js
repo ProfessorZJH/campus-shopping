@@ -32,6 +32,12 @@ const staticCategoryArt = {
   dormitory: './images/category-daily.webp',
   digital: './images/category-digital.webp',
 };
+const STORE_PHOTOS = [
+  './images/store-campus-hub.jpg',
+  './images/store-library-cafe.jpg',
+  './images/store-dorm-mart.jpg',
+  './images/store-fruit-bar.jpg',
+];
 
 function splitPrice(cent) {
   const formatted = money(cent).replace(/^¥/, '');
@@ -498,6 +504,7 @@ export default {
       hasMultipleActiveSkus,
       currentShop,
       staticCategoryArt,
+      STORE_PHOTOS,
       loadPublic,
       loadSearch,
       submitSearch,
@@ -517,13 +524,15 @@ export default {
     <section class="home-search-strip" aria-label="商品搜索">
       <div class="home-search-bar-row">
         <div class="big-search">
-          <Icon name="search" :size="17"/>
+          <Icon name="search" :size="18" class="big-search-icon"/>
           <input v-model="search" placeholder="搜索饮品、零食、水果、文具…" aria-label="搜索校园商品" @keydown.enter="submitSearch"/>
-          <button @click="submitSearch">搜索</button>
+          <button type="button" @click="submitSearch">搜索</button>
         </div>
       </div>
       <div class="popular-tags">
-        <button v-for="k in keywords" :key="k" @click="applyKeyword(k)" :class="{active:search===k}">{{k}}</button>
+        <button v-for="(k, ki) in keywords" :key="k" type="button" @click="applyKeyword(k)" :class="{active:search===k, 'is-hot-lead': ki===0}">
+          <Icon v-if="ki===0" name="flame" :size="12" class="hot-lead-icon"/><span>{{k}}</span>
+        </button>
         <template v-if="searchHistory.length">
           <span class="search-history-sep">·</span>
           <span class="search-history-label">历史</span>
@@ -536,7 +545,7 @@ export default {
     <section class="home-hero-row" aria-label="精选场景与导购">
       <div class="home-scene-banner">
         <div class="scene-banner-copy">
-          <span class="carousel-scene-tag">{{banners[bannerIdx].tag}}</span>
+          <span class="carousel-scene-tag"><span class="scene-live-dot" aria-hidden="true"></span>{{banners[bannerIdx].tag}}</span>
           <h2>{{banners[bannerIdx].title}}</h2>
           <p>{{banners[bannerIdx].sub}}</p>
           <div class="carousel-actions">
@@ -561,7 +570,7 @@ export default {
         </div>
       </div>
 
-      <button class="hero-shopping cabin-ai-card" @click="go('/ai')" aria-label="进入 AI 导购">
+      <button type="button" class="hero-shopping cabin-ai-card" @click="go('/ai')" aria-label="进入 AI 导购">
         <div class="cabin-ai-top">
           <span class="cabin-ai-avatar cabin-ai-emblem" aria-hidden="true">
             <Icon name="sparkles" :size="20"/>
@@ -573,20 +582,25 @@ export default {
           <span class="cabin-ai-go">去试试 <Icon name="chevronRight" :size="12"/></span>
         </div>
         <p class="cabin-ai-desc">不知道买什么？说声“30元夜宵”或“无糖冰饮”，直接配好加购方案</p>
+        <div class="cabin-ai-tags" aria-hidden="true">
+          <span class="cabin-ai-tag">20元无糖冰饮</span>
+          <span class="cabin-ai-tag">30元深夜夜宵</span>
+        </div>
       </button>
     </section>
 
     <section class="home-browse-panel" aria-label="分类与门店筛选">
       <div class="category-section" aria-label="商品分类">
-        <button v-for="c in categories" :key="c.code" class="category-item" @click="setCategory(c.code)" :class="{categoryActive:category===c.code}">
+        <button v-for="c in categories" :key="c.code" type="button" class="category-item" @click="setCategory(c.code)" :class="{categoryActive:category===c.code}">
           <span class="category-picture"><img :src="staticCategoryArt[c.code]||'./images/category-snacks.webp'" :alt="c.name"/></span>
           <span>{{c.name}}</span>
         </button>
       </div>
       <div v-if="shops.length" class="store-pills-row" aria-label="校内门店">
-        <span class="store-pills-label">门店</span>
+        <span class="store-pills-label"><Icon name="store" :size="13"/><span>门店</span></span>
         <button type="button" class="store-pill-chip" :class="{active:!merchant}" @click="merchant='';page=1;loadSearch()">全部门店</button>
-        <button type="button" v-for="m in shops" :key="m.merchantId" class="store-pill-chip merchant-card" :class="{active:merchant===m.merchantId}" @click="merchant=merchant===m.merchantId?'':m.merchantId;page=1;loadSearch()">
+        <button type="button" v-for="(m, idx) in shops" :key="m.merchantId" class="store-pill-chip merchant-card" :class="{active:merchant===m.merchantId}" @click="merchant=merchant===m.merchantId?'':m.merchantId;page=1;loadSearch()">
+          <ProductImage class="store-pill-avatar" :src="m.imageUrl || m.image || STORE_PHOTOS[idx % STORE_PHOTOS.length]" alt=""/>
           <span>{{m.name}}</span>
         </button>
         <button v-if="merchant" type="button" class="store-enter-inline" @click="go('/shops/'+pathId(merchant))">进店主页 <Icon name="chevronRight" :size="12"/></button>
@@ -596,20 +610,20 @@ export default {
     <section class="reco-section">
       <div class="feed-sticky-bar">
         <div class="sort-tabs">
-          <button :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button>
-          <button :class="{active:sort==='sales'}" @click="sort='sales';page=1;loadSearch()">热销</button>
-          <button :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">价格</button>
-          <button :class="{active:sort==='priceDesc'}" @click="sort='priceDesc';page=1;loadSearch()">价格降序</button>
-          <button :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">库存</button>
+          <button type="button" :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button>
+          <button type="button" :class="{active:sort==='sales'}" @click="sort='sales';page=1;loadSearch()">热销</button>
+          <button type="button" :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">价格</button>
+          <button type="button" :class="{active:sort==='priceDesc'}" @click="sort='priceDesc';page=1;loadSearch()">价格降序</button>
+          <button type="button" :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">库存</button>
         </div>
         <div class="price-filter" aria-label="价格筛选">
           <span class="price-filter-label">价格</span>
           <input v-model="priceMin" inputmode="decimal" placeholder="¥最低" aria-label="最低价（元）" @keydown.enter="applyPrice"/>
           <span>—</span>
           <input v-model="priceMax" inputmode="decimal" placeholder="¥最高" aria-label="最高价（元）" @keydown.enter="applyPrice"/>
-          <button class="outline-button" @click="applyPrice">应用</button>
-          <button v-if="priceActive" class="outline-button" @click="clearPrice">清除价格</button>
-          <button class="price-filter-reset" @click="resetFilters">重置筛选</button>
+          <button type="button" class="outline-button" @click="applyPrice">应用</button>
+          <button v-if="priceActive" type="button" class="outline-button" @click="clearPrice">清除价格</button>
+          <button type="button" class="price-filter-reset" @click="resetFilters">重置筛选</button>
         </div>
       </div>
 
@@ -622,15 +636,14 @@ export default {
         <article class="home-product" v-for="p in shown" :key="p.productId" @click="showDetail(p)">
           <div class="home-product-photo">
             <ProductImage :src="p.imageUrl" :alt="p.title"/>
+            <span v-if="p.tag || available(p)<=10" class="product-photo-badge" :class="{'is-soldout': available(p)<=0, 'is-scarce': !p.tag && available(p)>0 && available(p)<=10}">{{available(p)<=0 ? '暂时售罄' : p.tag ? p.tag : '仅剩 '+available(p)+' 件'}}</span>
           </div>
           <div class="home-product-info">
-            <button class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button>
+            <button type="button" class="home-product-open" @click.stop="showDetail(p)">{{p.title}}</button>
             <div class="product-store-meta">
               <span>{{p.merchantStoreName||p.merchantName||shopName(p.merchantId)}}</span>
               <span class="product-meta-dot">·</span>
               <span>{{cardSku(p)?.specKey||'标准装'}}</span>
-              <em v-if="available(p)>0 && available(p)<=10" class="product-scarce-note">仅剩{{available(p)}}件</em>
-              <em v-else-if="available(p)<=0" class="product-scarce-note">售罄</em>
             </div>
             <div class="product-price-row">
               <span class="price-main rtl-price">

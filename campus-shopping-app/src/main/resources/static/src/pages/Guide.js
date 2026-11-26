@@ -530,13 +530,16 @@ export default {
           <div class="wenwen-brand">
             <span class="wenwen-avatar" aria-hidden="true">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M11.5 3L13.4 8.1L18.5 10L13.4 11.9L11.5 17L9.6 11.9L4.5 10L9.6 8.1L11.5 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
-                <path d="M19.5 14.5C19.5 18.1 16.6 21 13 21C13 17.4 15.9 14.5 19.5 14.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <path d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z" fill="currentColor" fill-opacity="0.34" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
               </svg>
             </span>
-            <div>
-              <h1><span>AI</span> 导购助手</h1>
-              <p>说出预算、口味或场景，直接挑好校内现货</p>
+            <div class="wenwen-brand-copy">
+              <div class="wenwen-title-row">
+                <h1><span>AI</span> 导购助手</h1>
+                <span class="wenwen-live-pill"><i class="wenwen-live-dot" aria-hidden="true"></i>现货实时核验</span>
+              </div>
+              <p>说出预算、口味或场景，直接挑好校内现货并核验门店规则</p>
             </div>
           </div>
           <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
@@ -549,6 +552,7 @@ export default {
             <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :streaming-text="streamingText" :error="error" @prompt="ask"/>
             <div class="chat-composer-placeholder" aria-hidden="true"></div>
             <form class="chat-composer" @submit.prevent="ask()">
+              <span class="composer-spark-icon" aria-hidden="true"><Icon name="sparkles" :size="16"/></span>
               <input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：预算20元推荐无糖饮料，或查一下我的订单进度…"/>
               <button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止'}}</button>
               <button v-else type="submit" class="wenwen-send-btn" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="16"/></button>

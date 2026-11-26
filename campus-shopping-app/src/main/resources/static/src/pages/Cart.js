@@ -344,7 +344,10 @@ export default {
 
       <aside class="cart-summary-col">
         <div class="mobile-summary tmall-cart-summary">
-          <h3>结算</h3>
+          <div class="summary-studio-head">
+            <h3>结算</h3>
+            <span class="summary-verified-pill"><Icon name="shield" :size="12"/>免配送费</span>
+          </div>
           <div class="summary-row"><span>取货门店</span><strong>{{merchantName(merchantId)}}</strong></div>
           <div class="summary-row"><span>已选商品</span><strong>{{selectedQty}} 件</strong></div>
           <div class="summary-row"><span>打包费</span><strong>免费</strong></div>

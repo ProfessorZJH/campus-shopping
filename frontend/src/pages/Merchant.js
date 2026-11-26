@@ -571,7 +571,7 @@ export default {
           <div class="summary-piece"><span class="summary-icon green"><Icon name="check" :size="20"/></span><div><span>当前页在售</span><strong>{{count.published}}</strong></div></div>
           <div class="summary-piece"><span class="summary-icon orange"><Icon name="box" :size="20"/></span><div><span>当前页未上架</span><strong>{{count.unpublished}}</strong></div></div>
           <div class="summary-piece"><span class="summary-icon red"><Icon name="alert" :size="20"/></span><div><span>低库存预警</span><strong>{{count.low}}</strong></div></div>
-          <div class="summary-stockbar"><span>当前页在售占比</span><div class="summary-stockbar-track"><svg class="progress-bar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="100" height="6" rx="3" class="progress-track-bg"/><rect x="0" y="0" :width="count.all?Math.round(count.published/count.all*100):0" height="6" rx="3" class="progress-track-fill"/></svg></div><strong>{{count.all?Math.round(count.published/count.all*100):0}}%</strong></div>
+          <div class="summary-stockbar"><div class="summary-stockbar-head"><span>当前页在售占比</span><strong>{{count.all?Math.round(count.published/count.all*100):0}}%</strong></div><div class="summary-stockbar-track"><svg class="progress-bar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="100" height="6" rx="3" class="progress-track-bg"/><rect x="0" y="0" :width="count.all?Math.round(count.published/count.all*100):0" height="6" rx="3" class="progress-track-fill"/></svg></div></div>
         </section>
         <section class="product-workspace">
           <div class="product-list-panel">

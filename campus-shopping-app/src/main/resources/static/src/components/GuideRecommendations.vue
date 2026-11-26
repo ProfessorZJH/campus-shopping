@@ -45,10 +45,13 @@ function meaningfulReason(raw?: string): string {
 <template>
   <section class="recommendation-panel">
     <div class="recommendation-header">
-      <h2>
-        推荐搭配 <em>{{ items.length }}</em>
-      </h2>
-      <span class="rec-header-sub">价格与库存实时复验</span>
+      <div class="rec-header-copy">
+        <h2>
+          推荐搭配 <em>{{ items.length }}</em>
+        </h2>
+        <small class="rec-header-caption">勾选心仪单品，一键加入购物车</small>
+      </div>
+      <span class="rec-header-sub"><Icon name="shield" :size="12" />实时复验</span>
     </div>
     <div class="rec-cards">
       <article

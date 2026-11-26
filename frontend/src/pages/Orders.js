@@ -381,7 +381,10 @@ export default {
             </div>
             <div class="cashier-channels">
               <button type="button" v-for="ch in PAYMENT_CHANNELS" :key="ch.code" class="cashier-channel" :class="{active:selectedChannel===ch.code}" :aria-pressed="selectedChannel===ch.code" @click="selectedChannel=ch.code">
-                <strong>{{ch.name}}</strong>
+                <span class="channel-title-group">
+                  <span class="channel-radio-dot" aria-hidden="true"><Icon name="check" :size="11"/></span>
+                  <strong>{{ch.name}}</strong>
+                </span>
                 <span v-if="ch.badge" class="channel-badge">{{ch.badge}}</span>
               </button>
             </div>
@@ -399,18 +402,19 @@ export default {
             <div class="pickup-code boarding-pass luckin-stub pickup-ticket" v-if="token">
               <div class="luckin-stub-top">
                 <div>
-                  <span class="stub-eyebrow">取餐号</span>
+                  <span class="stub-eyebrow">取餐号 · PICKUP NO.</span>
                   <strong class="boarding-queue-code">{{token.pickupCode||detail.pickup?.pickupCode||'A-101'}}</strong>
                 </div>
                 <div v-if="token.pinCode" class="boarding-pin-block">
-                  <span class="boarding-pin-label">取件码</span>
+                  <span class="boarding-pin-label">6 位取件码</span>
                   <strong class="boarding-pin-value">{{formatPin(token.pinCode)}}</strong>
                 </div>
               </div>
+              <div class="luckin-perforation" aria-hidden="true"></div>
               <div class="boarding-pass-body">
                 <div class="boarding-qr-box"><QrCodeSvg :value="token.qrPayload||token.token" label="到店自提二维码"/></div>
                 <div class="boarding-pin-col">
-                  <p class="boarding-pass-tip">到店出示二维码或报 6 位取件码即可取货</p>
+                  <p class="boarding-pass-tip">到店向店员出示二维码或报 6 位取件码即可取货</p>
                   <button type="button" class="outline-button small copy-token-btn" @click="copyToken">复制取件码</button>
                 </div>
               </div>
