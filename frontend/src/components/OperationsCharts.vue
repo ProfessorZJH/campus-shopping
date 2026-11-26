@@ -27,11 +27,11 @@ const props = defineProps<{
   orderStatusLabel: (status: string) => string;
 }>();
 
-const SLICE_COLORS = ['#0f766e', '#10b981', '#f59e0b', '#ef4444', '#94a3b8'];
+const SLICE_COLORS = ['#00b578', '#1677ff', '#ff8f1f', '#ff4400', '#94a3b8'];
 
-const trendBars = computed(() => {
+const trendModel = computed(() => {
   const raw = props.stats?.trend || [];
-  if (!raw.length) return [];
+  if (!raw.length) return { bars: [], linePath: '', areaPath: '', maxVal: 0, midVal: 0 };
   const byDay = new Map<string, number>();
   for (const item of raw) {
     byDay.set(String(item.day || '').slice(0, 10), Number(item.orderCount || 0));
@@ -49,17 +49,22 @@ const trendBars = computed(() => {
       days = padded;
     }
   }
-  const maxVal = Math.max(1, ...days.map((d) => byDay.get(d) || 0));
+  const maxVal = Math.max(2, ...days.map((d) => byDay.get(d) || 0));
+  const midVal = Math.round(maxVal / 2);
   const count = Math.max(1, days.length);
-  const plotW = 320;
-  const startX = 24;
+  const plotW = 308;
+  const startX = 36;
+  const baseY = 122;
+  const plotH = 90;
   const step = plotW / count;
-  const barW = Math.min(24, Math.max(10, step * 0.54));
-  return days.map((day, idx) => {
+  const barW = Math.min(20, Math.max(10, step * 0.46));
+  const bars = days.map((day, idx) => {
     const val = byDay.get(day) || 0;
-    const h = val > 0 ? Math.max(8, Math.round((val / maxVal) * 92)) : 3;
+    const h = val > 0 ? Math.max(8, Math.round((val / maxVal) * plotH)) : 3;
     const x = startX + idx * step + (step - barW) / 2;
-    const y = 116 - h;
+    const y = baseY - h;
+    const cx = Math.round((x + barW / 2) * 10) / 10;
+    const ly = Math.round((baseY - (val / maxVal) * plotH) * 10) / 10;
     return {
       day,
       shortDay: day.slice(5),
@@ -68,74 +73,124 @@ const trendBars = computed(() => {
       y,
       w: Math.round(barW * 10) / 10,
       h,
-      cx: Math.round((x + barW / 2) * 10) / 10,
+      cx,
+      ly,
     };
   });
+  const linePath = bars.map((b, idx) => `${idx === 0 ? 'M' : 'L'} ${b.cx} ${b.ly}`).join(' ');
+  const areaPath = bars.length
+    ? `${linePath} L ${bars[bars.length - 1].cx} ${baseY} L ${bars[0].cx} ${baseY} Z`
+    : '';
+  return { bars, linePath, areaPath, maxVal, midVal };
 });
 
 const topProducts = computed(() => {
   const list = props.stats?.products || [];
   const maxQty = Math.max(1, ...list.map((p) => Number(p.quantity || 0)));
-  return list.map((p) => ({
+  return list.slice(0, 6).map((p, idx) => ({
     ...p,
-    pct: Math.max(8, Math.round((Number(p.quantity || 0) / maxQty) * 100)),
+    rank: idx + 1,
+    pct: Math.max(10, Math.round((Number(p.quantity || 0) / maxQty) * 100)),
   }));
 });
 
-const statusSlices = computed(() => {
+const donutModel = computed(() => {
   const list = props.stats?.statuses || [];
-  const totalCount = Math.max(
-    1,
-    list.reduce((sum, item) => sum + Number(item.orderCount || 0), 0),
-  );
-  let cursor = 0;
-  return list.map((item, idx) => {
-    const pct = Math.max(4, Math.round((Number(item.orderCount || 0) / totalCount) * 100));
-    const width = Math.min(100 - cursor, pct);
-    const slice = {
+  const totalOrders = list.reduce((sum, item) => sum + Number(item.orderCount || 0), 0);
+  const safeTotal = Math.max(1, totalOrders);
+  const circumference = 2 * Math.PI * 38;
+  let offsetAcc = 0;
+  const slices = list.map((item, idx) => {
+    const count = Number(item.orderCount || 0);
+    const ratio = count / safeTotal;
+    const len = Math.max(count > 0 ? 4 : 0, ratio * circumference);
+    const pct = Math.round(ratio * 100);
+    const entry = {
       ...item,
       pct,
-      offset: cursor,
-      width: Math.max(2, width),
       color: SLICE_COLORS[idx % SLICE_COLORS.length],
+      dashArray: `${len.toFixed(1)} ${circumference.toFixed(1)}`,
+      dashOffset: (-offsetAcc).toFixed(1),
     };
-    cursor = Math.min(100, cursor + width);
-    return slice;
+    offsetAcc += len;
+    return entry;
   });
+  return { totalOrders, slices };
 });
 </script>
 
 <template>
-  <div class="ops-grid stats-three-col">
+  <div class="ops-grid stats-three-col echarts-pro-grid">
     <section class="ops-card">
       <div class="ops-card-header">
-        <h2>每日订单量</h2>
-        <span>近 {{ trendBars.length }} 日笔数</span>
+        <div>
+          <h2>近 {{ trendModel.bars.length || 7 }} 日订单趋势</h2>
+          <small class="chart-sub-hint">柱状成交单量 · 折线日度走势</small>
+        </div>
+        <span class="chart-unit-pill">单位：单</span>
       </div>
-      <div v-if="trendBars.length" class="chart-svg-wrap">
-        <svg class="chart-svg" viewBox="0 0 360 150" role="img" aria-label="每日订单量趋势图">
+      <div v-if="trendModel.bars.length" class="chart-svg-wrap">
+        <svg class="chart-svg" viewBox="0 0 360 154" role="img" aria-label="每日订单量趋势图">
           <defs>
             <linearGradient id="campusBarGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#10b981" />
-              <stop offset="100%" stop-color="#0f766e" />
+              <stop offset="0%" stop-color="#00c282" stop-opacity="0.88" />
+              <stop offset="100%" stop-color="#00a870" stop-opacity="0.35" />
+            </linearGradient>
+            <linearGradient id="campusAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#1677ff" stop-opacity="0.22" />
+              <stop offset="100%" stop-color="#1677ff" stop-opacity="0.0" />
             </linearGradient>
           </defs>
-          <line x1="20" y1="20" x2="346" y2="20" stroke="#efede6" stroke-dasharray="3 3" />
-          <line x1="20" y1="68" x2="346" y2="68" stroke="#efede6" stroke-dasharray="3 3" />
-          <line x1="20" y1="116" x2="346" y2="116" stroke="#e6e4dc" />
-          <g v-for="bar in trendBars" :key="bar.day">
-            <rect class="chart-bar-rect" :x="bar.x" :y="bar.y" :width="bar.w" :height="bar.h" />
+          <text class="chart-axis-text" x="28" y="34" text-anchor="end">
+            {{ trendModel.maxVal }}
+          </text>
+          <text class="chart-axis-text" x="28" y="78" text-anchor="end">
+            {{ trendModel.midVal }}
+          </text>
+          <text class="chart-axis-text" x="28" y="124" text-anchor="end">0</text>
+          <line x1="34" y1="32" x2="348" y2="32" stroke="#ebedf0" stroke-dasharray="3 3" />
+          <line x1="34" y1="77" x2="348" y2="77" stroke="#ebedf0" stroke-dasharray="3 3" />
+          <line x1="34" y1="122" x2="348" y2="122" stroke="#dcdfe6" />
+          <path v-if="trendModel.areaPath" :d="trendModel.areaPath" fill="url(#campusAreaGrad)" />
+          <g v-for="bar in trendModel.bars" :key="bar.day">
+            <rect
+              class="chart-bar-rect"
+              :x="bar.x"
+              :y="bar.y"
+              :width="bar.w"
+              :height="bar.h"
+              rx="4"
+            />
+            <text class="chart-axis-text" :x="bar.cx" y="142" text-anchor="middle">
+              {{ bar.shortDay }}
+            </text>
+          </g>
+          <path
+            v-if="trendModel.linePath"
+            :d="trendModel.linePath"
+            fill="none"
+            stroke="#1677ff"
+            stroke-width="2.2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <g v-for="bar in trendModel.bars" :key="'pt-' + bar.day">
+            <circle
+              :cx="bar.cx"
+              :cy="bar.ly"
+              r="3.4"
+              fill="#ffffff"
+              stroke="#1677ff"
+              stroke-width="2"
+            />
             <text
               v-if="bar.val > 0"
               class="chart-val-text"
               :x="bar.cx"
-              :y="bar.y - 5"
+              :y="bar.ly - 7"
               text-anchor="middle"
             >
               {{ bar.val }}
-            </text>
-            <text class="chart-axis-text" :x="bar.cx" y="136" text-anchor="middle">
-              {{ bar.shortDay }}
             </text>
           </g>
         </svg>
@@ -145,18 +200,31 @@ const statusSlices = computed(() => {
 
     <section class="ops-card">
       <div class="ops-card-header">
-        <h2>热销商品</h2>
-        <span>已成交件数</span>
+        <div>
+          <h2>热销商品 TOP 榜</h2>
+          <small class="chart-sub-hint">按已成交核销件数排行</small>
+        </div>
+        <span class="chart-unit-pill">热卖单品</span>
       </div>
       <div v-if="topProducts.length" class="hbar-list">
         <div v-for="item in topProducts" :key="item.productId" class="hbar-item">
           <div class="hbar-head">
-            <strong>{{ item.title || item.productId }}</strong>
+            <div class="hbar-rank-title">
+              <span class="rank-medal" :class="'medal-' + item.rank">{{ item.rank }}</span>
+              <strong>{{ item.title || item.productId }}</strong>
+            </div>
             <b>{{ item.quantity }} 件</b>
           </div>
-          <svg class="hbar-svg" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true">
-            <rect x="0" y="0" width="100" height="8" rx="4" fill="#efede6" />
-            <rect x="0" y="0" :width="item.pct" height="8" rx="4" fill="#0f766e" />
+          <svg class="hbar-svg" viewBox="0 0 100 7" preserveAspectRatio="none" aria-hidden="true">
+            <rect x="0" y="0" width="100" height="7" rx="3.5" fill="#f0f2f5" />
+            <rect
+              x="0"
+              y="0"
+              :width="item.pct"
+              height="7"
+              rx="3.5"
+              :fill="item.rank === 1 ? '#ff4400' : item.rank === 2 ? '#ff8f1f' : '#00b578'"
+            />
           </svg>
         </div>
       </div>
@@ -165,30 +233,46 @@ const statusSlices = computed(() => {
 
     <section class="ops-card">
       <div class="ops-card-header">
-        <h2>订单状态分布</h2>
-        <span>金额占比</span>
-      </div>
-      <template v-if="statusSlices.length">
-        <svg class="seg-svg" viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true">
-          <rect x="0" y="0" width="100" height="10" rx="5" fill="#efede6" />
-          <rect
-            v-for="s in statusSlices"
-            :key="s.status"
-            :x="s.offset"
-            y="0"
-            :width="s.width"
-            height="10"
-            :fill="s.color"
-          />
-        </svg>
-        <div v-for="item in statusSlices" :key="item.status" class="ops-list-line">
-          <div>
-            <strong>{{ orderStatusLabel(item.status) }}</strong>
-            <small>{{ item.orderCount }} 单 · {{ item.pct }}%</small>
-          </div>
-          <b>{{ money(item.amountCent) }}</b>
+        <div>
+          <h2>订单履约状态占比</h2>
+          <small class="chart-sub-hint">单量结构与实收金额分布</small>
         </div>
-      </template>
+        <span class="chart-unit-pill">环形分布</span>
+      </div>
+      <div v-if="donutModel.slices.length" class="donut-chart-layout">
+        <div class="donut-svg-box">
+          <svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="订单状态环形图">
+            <circle cx="60" cy="60" r="38" fill="none" stroke="#f0f2f5" stroke-width="14" />
+            <circle
+              v-for="s in donutModel.slices"
+              :key="s.status"
+              cx="60"
+              cy="60"
+              r="38"
+              fill="none"
+              :stroke="s.color"
+              stroke-width="14"
+              :stroke-dasharray="s.dashArray"
+              :stroke-dashoffset="s.dashOffset"
+              transform="rotate(-90 60 60)"
+            />
+            <text x="60" y="56" text-anchor="middle" class="donut-center-num">
+              {{ donutModel.totalOrders }}
+            </text>
+            <text x="60" y="72" text-anchor="middle" class="donut-center-label">总单数</text>
+          </svg>
+        </div>
+        <div class="donut-legend-col">
+          <div v-for="item in donutModel.slices" :key="item.status" class="donut-legend-row">
+            <span class="legend-dot" :class="'dot-' + item.status.toLowerCase()"></span>
+            <div class="legend-meta">
+              <strong>{{ orderStatusLabel(item.status) }}</strong>
+              <small>{{ item.orderCount }}单 · {{ item.pct }}%</small>
+            </div>
+            <b>{{ money(item.amountCent) }}</b>
+          </div>
+        </div>
+      </div>
       <div v-else class="admin-empty">期间暂无订单</div>
     </section>
   </div>

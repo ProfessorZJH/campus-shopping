@@ -59,6 +59,9 @@ export default {
         (i) => i.merchantId === merchantId.value && checkedSkus.value.includes(i.skuId),
       ),
     );
+    const selectedQty = computed(() =>
+      selected.value.reduce((n, i) => n + Number(i.quantity || 0), 0),
+    );
     const total = computed(() =>
       selected.value.reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity), 0),
     );
@@ -221,7 +224,6 @@ export default {
         })),
       };
       const next = JSON.stringify(body);
-      // 同一内容的结果未知重试沿用原幂等键；内容变化后必须重新确认并使用新键。
       if (!orderKey.value || fingerprint.value !== next) {
         orderKey.value = idempotency();
         fingerprint.value = next;
@@ -242,7 +244,6 @@ export default {
         go('/orders/' + pathId(created.orderId));
       } catch (e) {
         if (current()) {
-          // 网络/响应丢失或 5xx 时服务端可能已提交；保留同一 body 和幂等键供直接重试。
           const indeterminate =
             ['NETWORK', 'TIMEOUT', 'RESPONSE'].includes(e.code) || Number(e.status) >= 500;
           confirmRetryable.value = indeterminate;
@@ -266,6 +267,7 @@ export default {
       error,
       groups,
       selected,
+      selectedQty,
       total,
       preview,
       go,
@@ -291,11 +293,128 @@ export default {
       load,
     };
   },
-  template: `<ConsumerShell active="cart"><div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>购物车</b><button :disabled="busy||loading" @click="load" aria-label="刷新"><Icon name="refresh"/></button></div><StatusPanel v-if="loading" state="loading" message="正在加载购物车…"/><StatusPanel v-if="error" state="error" :message="error" action-label="重新加载" :busy="loading" @retry="load"/><div v-if="!loading&&!items.length&&!error" class="mobile-empty"><Icon name="cart" :size="36"/><strong>购物车空空的</strong><button class="teal-button" @click="go('/')">去逛逛</button></div><div v-if="items.length" class="cart-layout"><div class="cart-stores-col"><template v-for="g in groups" :key="g.id"><section class="cart-store" :class="{selected:merchantId===g.id}"><button class="cart-store-head" :disabled="busy||loading" :aria-pressed="merchantId===g.id" @click="selectStore(g.id)"><span class="radio-circle" :class="{active:merchantId===g.id}"><Icon name="check" :size="12"/></span><Icon name="store"/><strong>{{merchantName(g.id)}}</strong><span class="cart-store-total">{{money(g.total)}}</span></button><div class="cart-line" v-for="i in g.rows" :key="i.skuId"><button type="button" class="sku-check-btn" :class="{checked:merchantId===g.id&&checkedSkus.includes(i.skuId)}" :aria-label="'勾选'+i.title" :aria-pressed="merchantId===g.id&&checkedSkus.includes(i.skuId)" :disabled="busy||loading" @click="toggleSku(i)"><Icon name="check" :size="12"/></button><ProductImage :src="i.imageUrl" :alt="i.title"/><div class="cart-line-info"><div class="cart-line-top"><strong>{{i.title}}</strong><button class="cart-remove" :disabled="busy||preview" :aria-label="'移除'+i.title" @click="remove(i)">移除</button></div><small>{{i.specKey}} <span v-if="!i.sellable||i.available<i.quantity" class="red-text">库存不足或已下架</span></small><div class="cart-line-bottom"><b>{{money(i.priceCent)}}</b><div class="mini-qty"><button :disabled="busy||preview" :aria-label="'减少'+i.title" @click="quantity(i,-1)"><Icon name="minus" :size="15"/></button><span>{{i.quantity}}</span><button :disabled="busy||preview||!i.sellable||i.quantity>=99||i.quantity>=i.available" :aria-label="'增加'+i.title" @click="quantity(i,1)"><Icon name="plus" :size="15"/></button></div></div></div></div></section></template><div v-if="groups.length>1" class="mobile-hint">每次结算一家门店，点击店名可切换下单店铺，可自由勾选本单规格</div></div><aside class="cart-summary-col"><div class="mobile-summary"><div>已选商品 <strong>{{selected.length}} 种</strong></div><div>商品金额 <strong>{{money(total)}}</strong></div><div>取货方式 <strong>校内门店自提</strong></div><div class="mobile-summary-total">应付合计 <b>{{money(total)}}</b></div></div><div class="mobile-checkout-bar"><div><small>本单合计</small><b>{{money(total)}}</b></div><button class="teal-button" :disabled="preview||busy||loading||!selected.length" @click="checkout">{{busy?'提交中':'提交订单'}}</button></div></aside></div>
-  <div v-if="confirmOpen" v-modal="closeConfirm" class="ui-overlay" @click.self="closeConfirm"><section class="product-sheet checkout-confirm" role="dialog" aria-modal="true" aria-label="确认订单"><button class="sheet-close" @click="closeConfirm" aria-label="关闭"><Icon name="x" :size="19"/></button><h3>确认订单</h3><p class="checkout-note">当前为模拟支付，提交后生成待付款订单，不会发生真实扣款。</p><StatusPanel v-if="confirmLoading" state="loading" message="正在核对最新价格与库存…"/><template v-else-if="confirmError&&!confirmItems.length"><StatusPanel state="error" :message="confirmError" action-label="重新加载" :busy="confirmLoading" @retry="loadConfirmation"/><button class="outline-button checkout-back" @click="closeConfirm">返回调整</button></template><template v-else><section class="checkout-shop"><strong>{{confirmMerchant.name||'校内商户'}}</strong><span>{{confirmMerchant.storeName||'门店'}} · {{confirmMerchant.location||'校内自提点'}}</span></section><div class="checkout-lines"><div v-for="i in confirmItems" :key="i.skuId" class="checkout-line"><div><strong>{{i.title}}</strong><small>{{i.specKey}} × {{i.quantity}} · {{money(i.priceCent)}}/件</small></div><b>{{money(Number(i.priceCent)*Number(i.quantity))}}</b></div></div>
-  <section class="checkout-rituals">
-    <div class="checkout-ritual-group"><label class="checkout-ritual-label">取餐时段</label><div class="slot-pills"><button type="button" v-for="slot in PICKUP_SLOTS" :key="slot.value" class="slot-pill" :class="{active:pickupSlot===slot.value}" :aria-pressed="pickupSlot===slot.value" @click="pickupSlot=slot.value">{{slot.label}}</button></div></div>
-    <div class="checkout-ritual-group"><label class="checkout-ritual-label" for="checkout-remark">口味与自提备注</label><div class="quick-chip-row"><button type="button" v-for="chip in REMARK_CHIPS" :key="chip" class="quick-chip" @click="appendRemark(chip)">+ {{chip}}</button></div><input id="checkout-remark" v-model="buyerRemark" maxlength="200" class="admin-input checkout-remark-input" placeholder="选填：口味偏好或取餐备注"/></div>
-  </section>
-  <div class="checkout-total"><span>应付合计</span><b>{{money(confirmTotal)}}</b></div><div v-if="confirmRetryable" class="mobile-hint" role="status">提交结果未知，可直接重试；同一内容不会重复下单。</div><div v-if="confirmError" class="inline-error" role="alert">{{confirmError}} <button @click="loadConfirmation">刷新确认信息</button></div><div class="checkout-actions"><button class="outline-button" @click="closeConfirm" :disabled="busy">返回调整</button><button class="teal-button" :disabled="busy||confirmLoading||!!confirmError" @click="confirmCheckout">{{busy?'提交中…':'确认下单（模拟支付）'}}</button></div></template></section></div></ConsumerShell>`,
+  template: `<ConsumerShell active="cart">
+    <div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>购物车 ({{items.length}})</b><button :disabled="busy||loading" @click="load" aria-label="刷新"><Icon name="refresh"/></button></div>
+    <div class="mall-cart-head">
+      <div>
+        <h1>我的购物车 <span>全部商品 {{items.length}}</span></h1>
+        <p>校内门店直供 · 免打包费 · 单次结算同一门店凭动态码极速取货</p>
+      </div>
+      <button type="button" class="outline-button small" :disabled="busy||loading" @click="load"><Icon name="refresh" :size="14"/>刷新库存价格</button>
+    </div>
+    <StatusPanel v-if="loading" state="loading" message="正在加载购物车…"/>
+    <StatusPanel v-if="error" state="error" :message="error" action-label="重新加载" :busy="loading" @retry="load"/>
+    <div v-if="!loading&&!items.length&&!error" class="mobile-empty cart-empty-box">
+      <Icon name="cart" :size="40"/>
+      <strong>购物车还是空的，去挑点零食冰饮吧</strong>
+      <button class="teal-button" @click="go('/')">去首页逛逛</button>
+    </div>
+    <div v-if="items.length" class="cart-layout">
+      <div class="cart-stores-col">
+        <template v-for="g in groups" :key="g.id">
+          <section class="cart-store" :class="{selected:merchantId===g.id}">
+            <div class="cart-store-head-wrap">
+              <button class="cart-store-head" :disabled="busy||loading" :aria-pressed="merchantId===g.id" @click="selectStore(g.id)">
+                <span class="radio-circle" :class="{active:merchantId===g.id}"><Icon name="check" :size="12"/></span>
+                <span class="store-badge-mini">校内店</span>
+                <strong>{{merchantName(g.id)}}</strong>
+                <span class="store-pack-free">免打包费 · 最快8分钟可取</span>
+                <span class="cart-store-total">{{money(g.total)}}</span>
+              </button>
+            </div>
+            <div class="cart-line" v-for="i in g.rows" :key="i.skuId">
+              <button type="button" class="sku-check-btn" :class="{checked:merchantId===g.id&&checkedSkus.includes(i.skuId)}" :aria-label="'勾选'+i.title" :aria-pressed="merchantId===g.id&&checkedSkus.includes(i.skuId)" :disabled="busy||loading" @click="toggleSku(i)"><Icon name="check" :size="12"/></button>
+              <ProductImage :src="i.imageUrl" :alt="i.title"/>
+              <div class="cart-line-info">
+                <div class="cart-line-top">
+                  <strong>{{i.title}}</strong>
+                  <button class="cart-remove" :disabled="busy||preview" :aria-label="'移除'+i.title" @click="remove(i)">删除</button>
+                </div>
+                <div class="cart-spec-pill-row">
+                  <span class="cart-spec-pill">{{i.specKey}}</span>
+                  <span v-if="!i.sellable||i.available<i.quantity" class="red-text">库存不足或已下架</span>
+                  <span v-else class="cart-stock-ok">现货充足</span>
+                </div>
+                <div class="cart-line-bottom">
+                  <b class="cart-unit-price">{{money(i.priceCent)}}</b>
+                  <div class="mini-qty">
+                    <button :disabled="busy||preview" :aria-label="'减少'+i.title" @click="quantity(i,-1)"><Icon name="minus" :size="15"/></button>
+                    <span>{{i.quantity}}</span>
+                    <button :disabled="busy||preview||!i.sellable||i.quantity>=99||i.quantity>=i.available" :aria-label="'增加'+i.title" @click="quantity(i,1)"><Icon name="plus" :size="15"/></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </template>
+        <div v-if="groups.length>1" class="mobile-hint">温馨提示：不同门店备餐窗口独立，每次结算一家门店，点击店名即可切换结算店铺</div>
+      </div>
+      <aside class="cart-summary-col">
+        <div class="mobile-summary tmall-cart-summary">
+          <h3>结算明细</h3>
+          <div class="summary-store-tag"><Icon name="store" :size="14"/> <span>{{merchantName(merchantId)}}</span></div>
+          <div>已选商品 <strong>{{selected.length}} 种（共 {{selectedQty}} 件）</strong></div>
+          <div>商品总额 <strong>{{money(total)}}</strong></div>
+          <div>打包与服务费 <strong class="free-green">¥0（校内免打包费）</strong></div>
+          <div>履约方式 <strong>到店凭 6 位码自提</strong></div>
+          <div class="mobile-summary-total">应付合计 <b>{{money(total)}}</b></div>
+        </div>
+        <div class="mobile-checkout-bar tmall-checkout-bar">
+          <div class="checkout-bar-price">
+            <small>已选 {{selectedQty}} 件 · 免打包费 · 合计：</small>
+            <b>{{money(total)}}</b>
+          </div>
+          <button class="teal-button checkout-submit-btn" :disabled="preview||busy||loading||!selected.length" @click="checkout">{{busy?'提交中':'提交订单'}}</button>
+        </div>
+      </aside>
+    </div>
+
+    <div v-if="confirmOpen" v-modal="closeConfirm" class="ui-overlay" @click.self="closeConfirm">
+      <section class="product-sheet checkout-confirm" role="dialog" aria-modal="true" aria-label="确认订单">
+        <button class="sheet-close" @click="closeConfirm" aria-label="关闭"><Icon name="x" :size="19"/></button>
+        <h3>确认自提订单</h3>
+        <p class="checkout-note">核验门店实时库存与价格后锁单（当前为校园模拟收银沙箱，不产生真实扣款）。</p>
+        <StatusPanel v-if="confirmLoading" state="loading" message="正在核对最新价格与库存…"/>
+        <template v-else-if="confirmError&&!confirmItems.length">
+          <StatusPanel state="error" :message="confirmError" action-label="重新加载" :busy="confirmLoading" @retry="loadConfirmation"/>
+          <button class="outline-button checkout-back" @click="closeConfirm">返回调整</button>
+        </template>
+        <template v-else>
+          <section class="checkout-shop">
+            <div class="checkout-shop-badge">自提点</div>
+            <div>
+              <strong>{{confirmMerchant.name||'校内商户'}}</strong>
+              <span>{{confirmMerchant.storeName||'门店'}} · {{confirmMerchant.location||'校内自提点'}}</span>
+            </div>
+          </section>
+          <div class="checkout-lines">
+            <div v-for="i in confirmItems" :key="i.skuId" class="checkout-line">
+              <div><strong>{{i.title}}</strong><small>{{i.specKey}} × {{i.quantity}} · {{money(i.priceCent)}}/件</small></div>
+              <b>{{money(Number(i.priceCent)*Number(i.quantity))}}</b>
+            </div>
+          </div>
+          <section class="checkout-rituals">
+            <div class="checkout-ritual-group">
+              <label class="checkout-ritual-label">预约取餐时段</label>
+              <div class="slot-pills">
+                <button type="button" v-for="slot in PICKUP_SLOTS" :key="slot.value" class="slot-pill" :class="{active:pickupSlot===slot.value}" :aria-pressed="pickupSlot===slot.value" @click="pickupSlot=slot.value">{{slot.label}}</button>
+              </div>
+            </div>
+            <div class="checkout-ritual-group">
+              <label class="checkout-ritual-label" for="checkout-remark">口味与自提备注</label>
+              <div class="quick-chip-row"><button type="button" v-for="chip in REMARK_CHIPS" :key="chip" class="quick-chip" @click="appendRemark(chip)">+ {{chip}}</button></div>
+              <input id="checkout-remark" v-model="buyerRemark" maxlength="200" class="admin-input checkout-remark-input" placeholder="选填：如少冰、三分糖、多拿双筷子…"/>
+            </div>
+          </section>
+          <div class="checkout-total"><span>应付合计（免打包费）</span><b>{{money(confirmTotal)}}</b></div>
+          <div v-if="confirmRetryable" class="mobile-hint" role="status">提交结果未知，可直接重试；同一内容不会重复下单。</div>
+          <div v-if="confirmError" class="inline-error" role="alert">{{confirmError}} <button @click="loadConfirmation">刷新确认信息</button></div>
+          <div class="checkout-actions">
+            <button class="outline-button" @click="closeConfirm" :disabled="busy">返回调整</button>
+            <button class="teal-button" :disabled="busy||confirmLoading||!!confirmError" @click="confirmCheckout">{{busy?'提交中…':'确认下单（模拟支付）'}}</button>
+          </div>
+        </template>
+      </section>
+    </div>
+  </ConsumerShell>`,
 };

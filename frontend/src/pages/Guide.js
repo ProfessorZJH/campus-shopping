@@ -525,17 +525,36 @@ export default {
   },
   template: `
     <ConsumerShell active="ai">
-      <section class="ai-hero">
-        <div class="ai-hero-text"><h1><span>AI</span> 导购助手</h1><p>说出预算、口味、规格或自提问题，跨店实时核验库存后由你确认加购</p></div>
-        <img src="./images/robot.webp" alt="AI 导购助手" class="ai-hero-robot"/>
+      <section class="ai-wenwen-topbar">
+        <div class="wenwen-brand">
+          <img src="./images/robot.webp" alt="AI 导购助手" class="wenwen-avatar"/>
+          <div>
+            <div class="wenwen-title-row">
+              <h1><span>AI</span> 问问导购</h1>
+              <em class="wenwen-live-pill">实时核验校内4店现货</em>
+            </div>
+            <p>按预算、口味、场景跨店比价凑单 · 先核验库存价格，确认后才加购</p>
+          </div>
+        </div>
+        <div class="wenwen-actions">
+          <button v-if="!preview" type="button" class="outline-button small" :disabled="thinking||openingConversation||proposalBusy" @click="newConversation"><Icon name="plus" :size="14"/> 新对话</button>
+          <button v-if="!preview" type="button" class="outline-button small" :class="{active:historyOpen}" @click="historyOpen=!historyOpen;historyOpen&&loadHistory()"><Icon name="clock" :size="14"/> 历史记录</button>
+        </div>
       </section>
       <div class="ai-workspace" :class="{'has-proposal': showProposal}">
         <div class="ai-workspace-main">
-          <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
-          <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
+          <GuideHistory v-if="!preview && historyOpen" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen" @open="openConversation" @more="loadHistory(false)"/>
+          <div class="quick-prompts" aria-label="快捷提问">
+            <span class="quick-prompts-label">✨ 大家都在问：</span>
+            <button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="14"/>{{p.label}}</button>
+          </div>
           <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :streaming-text="streamingText" :error="error"/>
           <div class="chat-composer-placeholder" aria-hidden="true"></div>
-          <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：预算20元买两瓶无糖乌龙茶，几点可以自提？"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="19"/></button></form>
+          <form class="chat-composer" @submit.prevent="ask()">
+            <input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="问问导购：预算20元推荐冰镇无糖茶，或者查一下我的取餐码…"/>
+            <button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button>
+            <button v-else type="submit" class="wenwen-send-btn" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="17"/><span>发送</span></button>
+          </form>
         </div>
         <aside v-if="showProposal" class="ai-workspace-side">
           <GuideRecommendations :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :rejecting="rejectingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>

@@ -46,7 +46,8 @@ defineEmits<{ select: [orderId: string] }>();
                 {{ order.pickup.pickupCode }}
               </span>
               <button
-                class="row-link"
+                class="row-link mono-order-link"
+                :title="order.orderId"
                 :aria-pressed="selectedOrder?.orderId === order.orderId"
                 @click.stop="$emit('select', order.orderId)"
               >

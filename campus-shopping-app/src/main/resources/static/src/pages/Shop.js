@@ -62,5 +62,43 @@ export default {
     watch(page, load);
     return { merchant, products, error, loading, page, hasNext, go, money, skuOf, priceSku, load };
   },
-  template: `<ConsumerShell active="home"><div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>{{merchant?.name||'门店主页'}}</b><span></span></div><StatusPanel v-if="error" state="error" :message="error" action-label="重新加载" :busy="loading" @retry="load"/><template v-if="merchant"><section class="shop-hero"><ProductImage v-if="merchant.imageUrl" class="shop-hero-image" :src="merchant.imageUrl" :alt="merchant.name+'门店图片'"/><span v-else class="merchant-logo"><Icon name="store" :size="28"/></span><div><h1>{{merchant.name}}</h1><p>{{merchant.storeName}} · {{merchant.location}}</p></div></section><section class="detail-card shop-intro"><div><h2>门店介绍</h2><p v-if="merchant.description">{{merchant.description}}</p><p v-else class="muted-short">未填写</p></div><div><h2>营业时间</h2><p v-if="merchant.businessHours">{{merchant.businessHours}}<small v-if="!merchant.businessHours.includes('时间')">（北京时间）</small></p><p v-else class="muted-short">未填写</p></div></section><div class="section-head"><div class="section-title"><span class="head-accent"><Icon name="package" :size="18"/></span><h2>在售商品</h2></div><span class="tiny-note">{{products.length}} 款现货</span></div><StatusPanel v-if="loading" state="loading" message="正在加载商品…"/><div class="shop-product-grid"><button v-for="p in products" :key="p.productId" class="shop-product-card" @click="go('/product/'+encodeURIComponent(p.productId))"><ProductImage :src="p.imageUrl" :alt="p.title"/><strong>{{p.title}}</strong><small>{{p.skus?.length||1}} 个规格 · 到店自提</small><span>{{money((priceSku(p)||skuOf(p)).priceCent)}}</span></button></div><StatusPanel v-if="!products.length&&!loading&&!error" state="empty" message="暂无在售商品"/><UiPagination class="shop-pagination" :page="page" :has-next="hasNext" :busy="loading" @previous="page--" @next="page++"/></template><StatusPanel v-else-if="loading" state="loading" message="正在加载商户…"/></ConsumerShell>`,
+  template: `<ConsumerShell active="home">
+    <div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>{{merchant?.name||'门店主页'}}</b><span></span></div>
+    <nav class="mall-breadcrumb"><button type="button" @click="go('/')">首页</button><span>/</span><span>校内品质好店</span><span>/</span><strong>{{merchant?.name||'门店主页'}}</strong></nav>
+    <StatusPanel v-if="error" state="error" :message="error" action-label="重新加载" :busy="loading" @retry="load"/>
+    <template v-if="merchant">
+      <section class="shop-hero meituan-shop-banner">
+        <ProductImage v-if="merchant.imageUrl" class="shop-hero-image" :src="merchant.imageUrl" :alt="merchant.name+'门店图片'"/>
+        <span v-else class="merchant-logo"><Icon name="store" :size="28"/></span>
+        <div class="meituan-shop-main">
+          <div class="meituan-shop-title-row">
+            <h1>{{merchant.name}}</h1>
+            <span class="store-rating-pill">★ 4.9 高分店</span>
+            <span class="store-free-tag">校内免打包费 · 最快8分钟自提</span>
+          </div>
+          <p><Icon name="pin" :size="14"/> {{merchant.storeName}} · {{merchant.location}}</p>
+        </div>
+      </section>
+      <section class="detail-card shop-intro">
+        <div><h2>门店公告与介绍</h2><p v-if="merchant.description">{{merchant.description}}</p><p v-else class="muted-short">未填写</p></div>
+        <div><h2>营业自提时间</h2><p v-if="merchant.businessHours">{{merchant.businessHours}}<small v-if="!merchant.businessHours.includes('时间')">（北京时间）</small></p><p v-else class="muted-short">未填写</p></div>
+      </section>
+      <div class="section-head"><div class="section-title"><span class="head-accent mint"><Icon name="package" :size="18"/></span><h2>店内在售现货</h2></div><span class="tiny-note">本页 {{products.length}} 款现货 · 到店凭码免排队</span></div>
+      <StatusPanel v-if="loading" state="loading" message="正在加载商品…"/>
+      <div class="shop-product-grid">
+        <button v-for="p in products" :key="p.productId" class="shop-product-card" @click="go('/product/'+encodeURIComponent(p.productId))">
+          <div class="shop-card-photo"><ProductImage :src="p.imageUrl" :alt="p.title"/><span class="floating-pickup">⚡ 到店即取</span></div>
+          <strong>{{p.title}}</strong>
+          <small>{{p.skus?.length||1}} 款规格可选 · 免打包费</small>
+          <div class="shop-card-bottom">
+            <span>{{money((priceSku(p)||skuOf(p)).priceCent)}}</span>
+            <em class="shop-card-plus">选购</em>
+          </div>
+        </button>
+      </div>
+      <StatusPanel v-if="!products.length&&!loading&&!error" state="empty" message="暂无在售商品"/>
+      <UiPagination class="shop-pagination" :page="page" :has-next="hasNext" :busy="loading" @previous="page--" @next="page++"/>
+    </template>
+    <StatusPanel v-else-if="loading" state="loading" message="正在加载商户…"/>
+  </ConsumerShell>`,
 };

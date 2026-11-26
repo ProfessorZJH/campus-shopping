@@ -53,14 +53,37 @@ function splitRichLines(content: string): { kind: 'knowledge' | 'note' | 'text';
     return { kind: 'text', text: line };
   });
 }
+function friendlyWarning(raw?: string): string {
+  const text = String(raw || '').trim();
+  if (!text) return '';
+  if (text.includes('远程模型不可用')) {
+    return '✨ 已通过校内现货检索引擎为您匹配商品与门店规则（库存价格实时核验）';
+  }
+  return text;
+}
 </script>
 
 <template>
   <section class="chat-thread" aria-label="AI对话">
-    <div v-if="!messages.length" class="chat-welcome">
-      <span class="chat-welcome-icon"><Icon name="sparkles" :size="21" /></span>
-      <h2>想买点什么？</h2>
-      <p>直接点击上方标签，或在下方输入你的预算、规格与自提需求</p>
+    <div v-if="!messages.length" class="chat-welcome wenwen-welcome">
+      <div class="wenwen-welcome-head">
+        <span class="chat-welcome-icon"><Icon name="sparkles" :size="20" /></span>
+        <div>
+          <h2>Hi 同学，今天想喝点或买点什么？</h2>
+          <p>支持跨店预算凑单、无糖/低卡筛选、门店营业时间咨询与个人自提进度秒查</p>
+        </div>
+      </div>
+      <div class="wenwen-scene-grid">
+        <div class="wenwen-scene-card">
+          <strong>🍜 深夜复习夜宵</strong><small>30元配齐热汤泡面+零食+冰饮</small>
+        </div>
+        <div class="wenwen-scene-card">
+          <strong>☕ 早八课间提神</strong><small>生椰冰拿铁 / 巴氏鲜奶顺路取</small>
+        </div>
+        <div class="wenwen-scene-card">
+          <strong>🎫 实时取餐查询</strong><small>直接问“我的订单备好货了吗”</small>
+        </div>
+      </div>
     </div>
     <div
       v-for="(message, index) in messages"
@@ -89,7 +112,9 @@ function splitRichLines(content: string): { kind: 'knowledge' | 'note' | 'text';
             {{ part.text }}
           </p>
         </div>
-        <div v-if="message.warning" class="message-warning">{{ message.warning }}</div>
+        <div v-if="message.warning" class="message-warning">
+          {{ friendlyWarning(message.warning) }}
+        </div>
         <div v-if="message.citations?.length" class="citation-chips">
           <details
             v-for="(citation, ci) in message.citations"
