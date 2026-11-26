@@ -571,7 +571,7 @@ export default {
           <div class="summary-piece"><span class="summary-icon green"><Icon name="check" :size="20"/></span><div><span>当前页在售</span><strong>{{count.published}}</strong></div></div>
           <div class="summary-piece"><span class="summary-icon orange"><Icon name="box" :size="20"/></span><div><span>当前页未上架</span><strong>{{count.unpublished}}</strong></div></div>
           <div class="summary-piece"><span class="summary-icon red"><Icon name="alert" :size="20"/></span><div><span>低库存预警</span><strong>{{count.low}}</strong></div></div>
-          <div class="summary-stockbar"><span>当前页在售占比</span><div class="summary-stockbar-track"><span :style="{width:(count.all?count.published/count.all*100:0)+'%'}"></span></div><strong>{{count.all?Math.round(count.published/count.all*100):0}}%</strong></div>
+          <div class="summary-stockbar"><span>当前页在售占比</span><div class="summary-stockbar-track"><svg class="progress-bar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="100" height="6" rx="3" class="progress-track-bg"/><rect x="0" y="0" :width="count.all?Math.round(count.published/count.all*100):0" height="6" rx="3" class="progress-track-fill"/></svg></div><strong>{{count.all?Math.round(count.published/count.all*100):0}}%</strong></div>
         </section>
         <section class="product-workspace">
           <div class="product-list-panel">
@@ -598,7 +598,7 @@ export default {
             <div class="inspector-body" v-if="drawerTab==='stock'">
               <label class="field-label" for="merchant-field-1">选择规格</label><select id="merchant-field-1" v-model="selectedSkuId" class="inspector-select"><option v-for="s in selected.skus" :key="s.skuId" :value="s.skuId">{{s.specKey}}</option></select>
               <div class="stock-metrics"><div><small>实物库存</small><strong>{{stock?.onHand??'—'}}</strong></div><div><small>已预占</small><strong>{{stock?.reserved??'—'}}</strong></div><div><small>可售库存</small><strong class="mint-text">{{stock?.available??selectedSku?.available??'—'}}</strong></div></div>
-              <div class="stock-progress"><div class="stock-progress-top"><span>可售占比</span><strong>{{Math.round(inventoryPercent)}}%</strong></div><div class="track"><span :style="{width:inventoryPercent+'%'}"></span></div></div>
+              <div class="stock-progress"><div class="stock-progress-top"><span>可售占比</span><strong>{{Math.round(inventoryPercent)}}%</strong></div><div class="track"><svg class="progress-bar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true"><rect x="0" y="0" width="100" height="6" rx="3" class="progress-track-bg"/><rect x="0" y="0" :width="Math.round(inventoryPercent)" height="6" rx="3" class="progress-track-fill"/></svg></div></div>
               <div v-if="stock && stock.available<20" class="stock-warning"><Icon name="alert" :size="17"/>库存偏低，建议及时补货</div>
               <div class="inspector-divider"></div><h3 class="field-heading">库存补货</h3><label class="field-label" for="restock-n">增加数量</label><div class="number-input"><button @click="adjustment=Math.max(1,Number(adjustment)-1)" aria-label="减少补货数量"><Icon name="minus" :size="17" /></button><input id="restock-n" v-model.number="adjustment" type="number" min="1" max="1000000"/><button @click="adjustment=Math.min(1000000,Number(adjustment)+1)" aria-label="增加补货数量"><Icon name="plus" :size="17" /></button></div>
               <button class="teal-button inspector-submit" @click="replenish" :disabled="preview||saving||!canReplenish||!selectedSku?.skuId">确认补货</button>

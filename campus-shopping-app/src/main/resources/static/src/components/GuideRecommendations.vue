@@ -48,9 +48,15 @@ function meaningfulReason(raw?: string): string {
       <h2>
         推荐搭配 <em>{{ items.length }}</em>
       </h2>
+      <span class="rec-header-sub">价格与库存实时复验</span>
     </div>
     <div class="rec-cards">
-      <article v-for="item in items" :key="item.skuId" class="rec-item">
+      <article
+        v-for="item in items"
+        :key="item.skuId"
+        class="rec-item"
+        :class="{ 'is-checked': selectedIds.includes(item.skuId) }"
+      >
         <button
           type="button"
           class="rec-check"
@@ -88,16 +94,18 @@ function meaningfulReason(raw?: string): string {
           <div v-if="meaningfulReason(item.reason)" class="rec-item-reason">
             {{ meaningfulReason(item.reason) }}
           </div>
-          <button
-            class="rec-detail-link"
-            type="button"
-            :disabled="!item.detailAvailable || !item.productId"
-            @click="$emit('detail', item)"
-          >
-            {{ item.detailAvailable ? '查看详情' : '暂无详情' }}
-          </button>
-          <div class="rec-price">
-            <span>{{ money(item.priceCent) }}</span>
+          <div class="rec-price-row">
+            <div class="rec-price">
+              <span>{{ money(item.priceCent) }}</span>
+            </div>
+            <button
+              class="rec-detail-link"
+              type="button"
+              :disabled="!item.detailAvailable || !item.productId"
+              @click="$emit('detail', item)"
+            >
+              {{ item.detailAvailable ? '查看详情' : '暂无详情' }}
+            </button>
           </div>
         </div>
       </article>
@@ -127,6 +135,7 @@ function meaningfulReason(raw?: string): string {
         </button>
         <button
           v-else
+          type="button"
           class="confirm-button"
           :disabled="
             preview ||
@@ -138,7 +147,7 @@ function meaningfulReason(raw?: string): string {
           "
           @click="$emit('confirm')"
         >
-          <Icon name="check" :size="16" />{{ confirming ? '加入中…' : '确认加购' }}
+          <Icon name="check" :size="15" />{{ confirming ? '加入中…' : '确认加购' }}
         </button>
       </div>
     </div>

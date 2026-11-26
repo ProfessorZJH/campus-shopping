@@ -396,7 +396,7 @@ export default {
               <h2>取货凭证</h2>
               <span v-if="tokenCountdown" class="boarding-timer"><Icon name="clock" :size="13"/> 有效期 {{tokenCountdown}}</span>
             </div>
-            <div class="pickup-code boarding-pass luckin-stub" v-if="token">
+            <div class="pickup-code boarding-pass luckin-stub pickup-ticket" v-if="token">
               <div class="luckin-stub-top">
                 <div>
                   <span class="stub-eyebrow">取餐号</span>
@@ -414,7 +414,7 @@ export default {
                   <button type="button" class="outline-button small copy-token-btn" @click="copyToken">复制取件码</button>
                 </div>
               </div>
-              <code class="sr-token-code">{{token.token}}</code>
+              <code class="sr-only sr-token-code">{{token.token}}</code>
             </div>
             <div v-else class="pickup-code placeholder-code">
               <Icon name="scan" :size="28"/>

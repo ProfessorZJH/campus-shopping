@@ -291,7 +291,7 @@ export default {
             </div>
           </div>
 
-          <div class="detail-buy-col">
+          <div class="detail-buy-col detail-buy-box">
             <div class="detail-info">
               <h1>{{product.title}}</h1>
               <p v-if="product.description" class="muted-short detail-desc-text">{{product.description}}</p>

@@ -1,309 +1,522 @@
+/* ==========================================================================
+   青柠校园 · 全端跨断点响应式规则 (responsive.css)
+   320px / 390px / 768px / 1024px / 1440px Zero-Overflow & Clean Specificity
+   ========================================================================== */
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
-@keyframes typing {
-  to {
-    opacity: 0.25;
-    transform: translateY(-3px);
+
+/* ---------- 1. Global Min-Width & Fixed-Containing-Block Guards ---------- */
+.consumer-shell,
+.consumer-width,
+.consumer-main,
+.guide-shell,
+.ai-workspace,
+.ai-workspace-main,
+.ai-workspace-side,
+.merchant-shell,
+.merchant-content-shell,
+.merchant-main,
+.ops-card,
+.ops-table-wrap,
+.product-workspace,
+.product-list-panel,
+.product-inspector {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Prevent .consumer-header from creating a fixed-position trap for .mobile-tabbar */
+.consumer-header {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: none;
+  filter: none;
+}
+
+/* ---------- 2. Consumer Primary Navigation: Mobile Tabbar vs Desktop Inline ---------- */
+@media (max-width: 768px) {
+  .consumer-shell {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    height: auto;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    background: rgba(255, 255, 255, 0.96);
+    border: 0;
+    border-top: 1px solid var(--border-default);
+    border-radius: 0;
+    box-shadow: 0 -2px 12px rgba(24, 24, 27, 0.04);
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar:has(> .mobile-tabbar-inner) {
+    display: block;
+  }
+
+  .consumer-header .mobile-tabbar-inner {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    height: 56px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar button {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 56px;
+    padding: 0 2px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar button.selected {
+    background: transparent;
+    box-shadow: none;
+    color: var(--color-brand);
+    font-weight: 600;
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar .nav-cart-badge {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 20px);
+  }
+
+  .header-workbench-btn {
+    display: none;
   }
 }
-@media (min-width: 620px) {
-  .consumer-width {
-    border-left: 1px solid #eaf1f5;
-    border-right: 1px solid #eaf1f5;
+
+@media (min-width: 769px) {
+  .consumer-shell {
+    padding-bottom: 0;
   }
-  .consumer-main {
-    padding-inline: 21px;
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar {
+    position: static;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    width: auto;
+    height: 38px;
+    padding: 3px;
+    border-radius: 999px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    box-shadow: none;
   }
-  .mobile-tabbar-inner {
-    border-radius: 15px 15px 0 0;
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar:has(> .mobile-tabbar-inner) {
+    height: auto;
+    padding: 0;
+    background: transparent;
+    border: 0;
   }
-  .home-product-photo {
-    height: 191px;
+
+  .consumer-header .mobile-tabbar-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 38px;
+    padding: 3px;
+    margin: 0;
+    border-radius: 999px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    box-shadow: none;
   }
-  .merchant-card {
-    flex-basis: 145px;
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar button {
+    position: relative;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar button:hover {
+    color: var(--ink-primary);
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar button.selected {
+    background: var(--bg-surface);
+    color: var(--ink-primary);
+    font-weight: 600;
+    box-shadow:
+      0 1px 2px rgba(24, 24, 27, 0.06),
+      0 0 0 1px rgba(24, 24, 27, 0.04);
+  }
+
+  .consumer-header .desktop-consumer-nav.mobile-tabbar .nav-cart-badge {
+    position: static;
   }
 }
-@media (max-width: 1250px) {
+
+/* ---------- 3. Desktop & Large Tablet Breakpoints (<= 1240px / <= 1024px) ---------- */
+@media (max-width: 1240px) {
   .inventory-summary {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+
   .summary-stockbar {
     display: none;
   }
+
   .product-workspace {
     grid-template-columns: minmax(0, 1fr) 320px;
   }
-  .summary-piece {
-    padding: 12px;
+
+  .telemetry-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .knowledge-layout {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+
+  .kb-preview {
+    grid-column: 1 / -1;
   }
 }
-@media (max-width: 1080px) {
+
+@media (max-width: 1024px) {
+  .ops-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .ops-grid.stats-three-col,
+  .echarts-pro-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rbac-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- 4. Tablet & Compact Sidebar Rail (561px .. 960px) ---------- */
+@media (max-width: 960px) {
+  .product-workspace,
+  .orders-split,
+  .inventory-grid,
+  .admin-review-grid,
+  .ops-grid,
+  .redis-plane-grid,
+  .kb-forms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kb-preview {
+    grid-column: auto;
+  }
+
+  .product-inspector {
+    position: static;
+    max-height: none;
+  }
+
+  .order-inspector {
+    border-left: 0;
+    border-top: 1px solid var(--border-default);
+    padding: 16px 0 0;
+  }
+
+  .merchant-topbar {
+    height: auto;
+    min-height: 54px;
+    padding: 8px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .merchant-main {
+    padding: 18px 16px 30px;
+  }
+}
+
+@media (min-width: 561px) and (max-width: 960px) {
   .merchant-shell {
-    grid-template-columns: 67px minmax(0, 1fr);
+    grid-template-columns: 72px minmax(0, 1fr);
   }
+
   .merchant-sidebar {
-    padding-inline: 9px;
+    padding: 16px 8px;
+    align-items: center;
   }
+
   .merchant-brand {
     justify-content: center;
-    padding: 0;
+    padding: 4px 0 14px;
   }
-  .merchant-brand .brand-word,
-  .sidebar-caption,
-  .merchant-nav span:not(.nav-left-bar),
+
+  .merchant-brand .brand-word-stack,
+  .nav-group-title,
+  .merchant-nav button span,
   .sidebar-back span {
     display: none;
   }
+
+  .merchant-nav button,
   .sidebar-back {
+    width: 44px;
     justify-content: center;
     padding: 0;
   }
-  .merchant-nav {
-    margin-top: 38px;
-  }
-  .merchant-nav button {
-    justify-content: center;
-    padding: 0;
-  }
-  .merchant-nav button.active .nav-left-bar {
-    left: -9px;
-  }
-  .merchant-page-heading h1 {
-    font-size: 25px;
-  }
-  .product-workspace {
-    grid-template-columns: minmax(0, 1fr) 320px;
-  }
 }
-@media (max-width: 860px) {
-  .product-workspace {
-    grid-template-columns: 1fr;
-  }
-  .product-inspector {
-    position: static;
-    min-height: auto;
-  }
-  .product-list-panel {
-    min-height: 400px;
-  }
-  .merchant-main {
-    padding: 20px 14px 30px;
-  }
-  .inventory-summary {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .summary-piece {
-    gap: 7px;
-  }
-  .summary-piece .summary-icon {
-    width: 33px;
-    height: 33px;
-  }
-  .summary-piece div strong {
-    font-size: 20px;
-  }
-}
+
+/* ---------- 5. Mobile Backoffice & Guide (<= 560px) ---------- */
 @media (max-width: 560px) {
   .merchant-shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
+
   .merchant-sidebar {
     display: none;
   }
+
+  /* CRITICAL CONTRACT (ui_copy_polish.py): relative + auto height so topbar never intercepts mobile-nav */
   .merchant-topbar {
-    height: 60px;
-    padding: 0 12px;
-  }
-  .merchant-topbar-tools {
+    position: relative;
+    height: auto;
+    min-height: 50px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
     gap: 6px;
   }
-  .topbar-merchant-select {
-    max-width: 158px;
-    padding: 7px;
+
+  .topbar-crumb,
+  .merchant-topbar-tools {
+    min-width: 0;
+    flex-wrap: wrap;
   }
-  .topbar-merchant-select select {
-    max-width: 113px;
-  }
+
+  .topbar-mall-btn,
+  .merchant-live-status,
+  .topbar-chime-btn span,
   .admin-user {
     display: none;
   }
+
+  .topbar-merchant-select {
+    max-width: 158px;
+    padding: 0 4px 0 8px;
+  }
+
+  .topbar-merchant-select select {
+    max-width: 118px;
+  }
+
+  /* CRITICAL CONTRACT (ui_design_system.py): horizontal scrollable nav visible at <= 560px */
+  .merchant-mobile-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 8px 12px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-default);
+    scrollbar-width: none;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .merchant-mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .merchant-mobile-nav button {
+    flex: 0 0 auto;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--ink-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .merchant-mobile-nav button.active {
+    background: var(--bg-surface);
+    color: var(--ink-primary);
+    font-weight: 600;
+    box-shadow:
+      0 1px 2px rgba(24, 24, 27, 0.06),
+      0 0 0 1px rgba(24, 24, 27, 0.04);
+  }
+
+  .merchant-mobile-nav button.active svg {
+    color: var(--color-brand);
+  }
+
   .merchant-main {
-    padding: 18px 9px;
+    padding: 14px 12px 28px;
+    gap: 12px;
   }
+
   .merchant-page-heading h1 {
-    font-size: 24px;
+    font-size: 20px;
   }
-  .inventory-summary {
-    grid-template-columns: repeat(2, 1fr);
+
+  .ops-card {
+    padding: 14px;
   }
+
+  .inventory-summary,
+  .todo-tiles-grid,
+  .ops-kpis,
+  .telemetry-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ops-kpis > div,
+  .todo-tile,
   .summary-piece {
-    height: 75px;
+    padding: 12px;
   }
-  .product-toolbar {
-    padding-inline: 9px;
+
+  .ops-kpis > div strong,
+  .todo-tile strong,
+  .summary-piece div strong {
+    font-size: 22px;
   }
-  .table-select {
-    max-width: 98px;
+
+  .rbac-permissions,
+  .wenwen-scene-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .product-tabs {
-    gap: 15px;
-    padding: 0 13px;
+
+  .donut-chart-layout {
+    flex-direction: column;
+    align-items: flex-start;
   }
+
+  .donut-legend {
+    width: 100%;
+  }
+
+  .cashier-channels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- 6. Ultra-Narrow 390px / 320px Zero-Overflow Safeguards ---------- */
+@media (max-width: 420px) {
+  .consumer-header-inner {
+    padding-inline: 10px;
+    gap: 8px;
+  }
+
+  .consumer-width {
+    padding-inline: 10px;
+  }
+
+  .header-zone-pill,
+  .brand-sub-en {
+    display: none;
+  }
+
+  .user-menu-name {
+    max-width: 58px;
+  }
+
+  .ai-wenwen-topbar {
+    padding: 12px 14px;
+  }
+
+  .chat-welcome.wenwen-welcome {
+    padding: 16px;
+  }
+
+  .chat-body {
+    max-width: 90%;
+  }
+
+  .rec-photo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .product-toolbar .table-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
   .toolbar-count {
     display: none;
   }
-  .merchant-page-heading {
-    align-items: center;
+
+  .quick-verify-inputs {
+    flex: 1 1 100%;
     flex-wrap: wrap;
+  }
+
+  .quick-verify-inputs .teal-button {
+    width: 100%;
+  }
+
+  .product-image-field {
     gap: 10px;
   }
-  .head-actions {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .head-actions .outline-button {
-    padding: 0 10px;
-  }
-  .head-actions .teal-button {
-    padding: 0 10px;
+
+  .product-image-preview {
+    width: 84px;
+    height: 84px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
-  *:before,
-  *:after {
-    animation-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.001ms !important;
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
   }
 }
-.header-login {
-  background: #0bbba7;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 11px;
-  font-weight: 740;
-}
-.account-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #e7f7f5;
-  color: #009d8e;
-  padding: 6px 9px;
-  border-radius: 13px;
-  font-size: 10px;
-}
-.merchant-login-action {
-  font-size: 11px;
-  color: #009e95;
-  text-decoration: underline;
-  margin-left: auto;
-}
-.login-dialog {
-  width: min(calc(100% - 32px), 370px);
-  padding: 25px 25px 21px;
-  background: white;
-  border-radius: 22px;
-  align-self: center;
-  box-shadow: 0 20px 70px #112b4b35;
-}
-.login-dialog-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 17px;
-}
-.auth-logo {
-  width: 43px;
-  height: 43px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  color: white;
-  background: linear-gradient(145deg, #18d8b2, #03a5c4);
-}
-.login-dialog-heading button {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: #8fa1b0;
-}
-.login-dialog h2 {
-  font-size: 23px;
-  font-weight: 860;
-  letter-spacing: -0.6px;
-}
-.login-dialog p {
-  font-size: 11px;
-  color: #98acbc;
-  letter-spacing: 2px;
-  margin: 4px 0 23px;
-}
-.login-dialog label {
-  display: block;
-  font-size: 11.5px;
-  font-weight: 710;
-  color: #536a7f;
-  margin: 14px 0 8px;
-}
-.login-dialog input {
-  width: 100%;
-  height: 43px;
-  border-radius: var(--radius-input);
-  border: 1px solid #e0eaf0;
-  padding: 0 12px;
-  font-size: 12.5px;
-}
-.auth-hint {
-  display: block;
-  font-size: 11px;
-  color: #7f91a4;
-  line-height: 1.5;
-  margin-top: 8px;
-}
-.login-error {
-  font-size: 11px;
-  color: #ed6573;
-  margin-top: 11px;
-}
-.login-submit {
-  margin-top: 22px;
-  height: 43px;
-}
-.login-switch {
-  display: block;
-  margin: 16px auto 0;
-  color: #269d9a;
-  font-size: 11px;
-}
-
-@media (max-width: 500px) {
-  .rec-item {
-    flex: 0 0 calc((100% - 18px) / 3);
-  }
-  .rec-photo {
-    height: 108px;
-  }
-  .rec-card-content {
-    padding: 7px 6px 10px;
-  }
-  .rec-item-tag {
-    font-size: 9px;
-    letter-spacing: 0;
-  }
-  .rec-item strong {
-    font-size: 11px;
-  }
-  .rec-item small {
-    font-size: 9px;
-  }
-}
-
-/* 第二批：消费者交易页与平台/商户操作页，共享第一批色板与密度。 */

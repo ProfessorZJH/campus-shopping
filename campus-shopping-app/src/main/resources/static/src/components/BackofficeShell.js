@@ -6,7 +6,9 @@ import {
   notify,
   switchMerchantContext,
   hasPermission,
+  replaceSession,
 } from '../services/store.js';
+import { api, resetCsrf } from '../services/api.js';
 import AuthDialog from './AuthDialog.js';
 import { merchantNav, adminNav, merchantPermissions } from '../services/backoffice-metadata.js';
 const { ref, computed, watch, nextTick, onMounted, onUnmounted } = Vue;
@@ -125,6 +127,21 @@ export default {
         notify('新单提醒音已关闭');
       }
     }
+    async function logout() {
+      if (preview) {
+        go('/');
+        return;
+      }
+      try {
+        await api('/auth/logout', { method: 'POST' });
+        resetCsrf();
+        replaceSession(null);
+        notify('已退出登录');
+        go('/');
+      } catch (err) {
+        notify(err.message);
+      }
+    }
     const groupedNav = computed(() => {
       const list = props.role === 'admin' ? adminNav : visibleMerchantNav.value;
       const groupTitleOf = (path) => {
@@ -161,6 +178,7 @@ export default {
       mobileNav,
       soundOn,
       toggleSound,
+      logout,
       merchantNav,
       visibleMerchantNav,
       adminNav,
@@ -168,5 +186,5 @@ export default {
       switchShop,
     };
   },
-  template: `<div class="merchant-shell"><aside class="merchant-sidebar"><button class="merchant-brand" @click="go('/')"><BrandLogo :size="34"/><span class="brand-word">青柠校园 <span class="brand-suffix">{{role==='admin'?'平台管理中心':'商家工作台'}}</span></span></button><nav class="merchant-nav"><template v-for="(entry, idx) in groupedNav" :key="entry.path||('g-'+idx)"><div v-if="entry.kind==='group'" class="nav-group-title">{{entry.label}}</div><button v-else :title="entry.label" :aria-label="entry.label" :class="{active:store.route===entry.path||(entry.path.endsWith('/knowledge')&&store.route===entry.path+'/debug')}" @click="go(entry.path)"><Icon :name="entry.ico" :size="17"/><span>{{entry.label}}</span></button></template></nav><div class="merchant-sidebar-bottom"><button class="sidebar-back" @click="go('/')" title="返回购物端" aria-label="返回购物端"><Icon name="arrowLeft" :size="15"/><span>返回商城</span></button></div></aside><div class="merchant-content-shell"><header class="merchant-topbar"><div class="topbar-crumb"><span class="crumb-role-badge">{{role==='admin'?'平台管理':'商家后台'}}</span><Icon name="chevronRight" :size="13"/><strong>{{title}}</strong></div><div class="merchant-topbar-tools"><span v-if="role==='merchant'&&!preview" class="merchant-live-status"><i class="live-dot"></i>营业中</span><span v-if="preview" class="admin-preview-tag">设计预览</span><button v-if="role==='merchant'&&!preview" type="button" class="topbar-chime-btn" :class="{active:soundOn}" :aria-pressed="soundOn" @click="toggleSound" :title="soundOn?'点击关闭新单提醒':'点击开启新单提醒'"><Icon name="volume" :size="14"/><span>{{soundOn?'提醒音开启':'已静音'}}</span></button><label class="topbar-merchant-select" v-if="role==='merchant'"><Icon name="store" :size="15"/><select :value="store.merchantId" @change="switchShop" :disabled="preview"><option v-for="m in store.merchants" :key="m.merchantId" :value="m.merchantId">{{m.name}}</option></select></label><button class="topbar-avatar" @click="loginOpen=true" title="切换账号"><Icon name="user" :size="16"/><span v-if="store.user?.displayName" class="admin-user">{{store.user.displayName}}</span></button></div></header><nav ref="mobileNav" class="merchant-mobile-nav" aria-label="工作台导航"><button type="button" @click="go('/')" aria-label="返回购物端"><Icon name="arrowLeft" :size="15"/>商城</button><button v-for="([ico,label,path]) in (role==='admin'?adminNav:visibleMerchantNav)" :key="path" :class="{active:store.route===path||(path.endsWith('/knowledge')&&store.route===path+'/debug')}" @click="go(path)"><Icon :name="ico" :size="15"/>{{label}}</button></nav><main class="merchant-main"><div class="merchant-page-heading"><div><h1>{{title}}</h1></div><slot name="actions"/></div><div v-if="store.error" class="inline-error merchant-error">{{store.error}}</div><slot/></main></div><AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="role==='merchant'?loadMerchant():null"/></div>`,
+  template: `<div class="merchant-shell"><aside class="merchant-sidebar"><button type="button" class="merchant-brand" @click="go('/')"><BrandLogo :size="32"/><span class="brand-word-stack"><span class="brand-word">青柠校园</span><span class="brand-suffix" :class="role==='admin'?'role-badge-admin':'role-badge-merchant'">{{role==='admin'?'平台管理':'商家工作台'}}</span></span></button><nav class="merchant-nav"><template v-for="(entry, idx) in groupedNav" :key="entry.path||('g-'+idx)"><div v-if="entry.kind==='group'" class="nav-group-title">{{entry.label}}</div><button v-else type="button" :title="entry.label" :aria-label="entry.label" :class="{active:store.route===entry.path||(entry.path.endsWith('/knowledge')&&store.route===entry.path+'/debug')}" @click="go(entry.path)"><Icon :name="entry.ico" :size="17"/><span>{{entry.label}}</span></button></template></nav><div class="merchant-sidebar-bottom"><button type="button" class="sidebar-back" @click="go('/')" title="返回购物端" aria-label="返回购物端"><Icon name="arrowLeft" :size="15"/><span>返回商城</span></button></div></aside><div class="merchant-content-shell"><header class="merchant-topbar"><div class="topbar-crumb"><span class="crumb-role-badge" :class="role==='admin'?'role-badge-admin':'role-badge-merchant'">{{role==='admin'?'平台管理':'商家工作台'}}</span><Icon name="chevronRight" :size="13"/><strong>{{title}}</strong></div><div class="merchant-topbar-tools"><span v-if="role==='merchant'&&!preview" class="merchant-live-status"><i class="live-dot"></i>营业中</span><span v-if="preview" class="admin-preview-tag">设计预览</span><button v-if="role==='merchant'&&!preview" type="button" class="topbar-chime-btn" :class="{active:soundOn}" :aria-pressed="soundOn" @click="toggleSound" :title="soundOn?'点击关闭新单提醒':'点击开启新单提醒'"><Icon name="volume" :size="14"/><span>{{soundOn?'提醒音开启':'已静音'}}</span></button><label class="topbar-merchant-select" v-if="role==='merchant'"><Icon name="store" :size="15"/><select :value="store.merchantId" @change="switchShop" :disabled="preview"><option v-for="m in store.merchants" :key="m.merchantId" :value="m.merchantId">{{m.name}}</option></select></label><button type="button" class="topbar-ghost-btn topbar-mall-btn" @click="go('/')">返回商城</button><button type="button" class="topbar-avatar" @click="loginOpen=true" title="切换账号"><Icon name="user" :size="15"/><span v-if="store.user?.displayName" class="admin-user">{{store.user.displayName}}</span></button><button v-if="store.user&&!preview" type="button" class="topbar-ghost-btn topbar-logout-btn" @click="logout" title="退出当前账号">退出</button></div></header><nav ref="mobileNav" class="merchant-mobile-nav" aria-label="工作台导航"><button type="button" @click="go('/')" aria-label="返回购物端"><Icon name="arrowLeft" :size="15"/>商城</button><button v-for="([ico,label,path]) in (role==='admin'?adminNav:visibleMerchantNav)" :key="path" type="button" :class="{active:store.route===path||(path.endsWith('/knowledge')&&store.route===path+'/debug')}" @click="go(path)"><Icon :name="ico" :size="15"/>{{label}}</button></nav><main class="merchant-main"><div class="merchant-page-heading"><div><h1>{{title}}</h1></div><slot name="actions"/></div><div v-if="store.error" class="inline-error merchant-error">{{store.error}}</div><slot/></main></div><AuthDialog v-if="loginOpen" @close="loginOpen=false" @success="role==='merchant'?loadMerchant():null"/></div>`,
 };

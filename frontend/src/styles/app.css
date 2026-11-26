@@ -1,11 +1,7 @@
 @import './tokens.css';
 @import './base.css';
+@import './auth.css';
 @import './consumer.css';
 @import './guide.css';
 @import './backoffice.css';
 @import './responsive.css';
-@import './consumer-transactions.css';
-@import './backoffice-operations.css';
-@import './features.css';
-@import './flagship.css';
-@import './domestic-retail.css';

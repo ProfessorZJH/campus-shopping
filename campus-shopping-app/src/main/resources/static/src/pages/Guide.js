@@ -525,32 +525,39 @@ export default {
   },
   template: `
     <ConsumerShell active="ai">
-      <section class="ai-wenwen-topbar">
-        <div class="wenwen-brand">
-          <img src="./images/robot.webp" alt="AI 导购" class="wenwen-avatar"/>
-          <div>
-            <h1><span>AI</span> 导购</h1>
-            <p>说出预算或口味，帮你挑好商品</p>
+      <div class="guide-shell" :class="{'has-proposal': showProposal}">
+        <section class="ai-wenwen-topbar">
+          <div class="wenwen-brand">
+            <span class="wenwen-avatar" aria-hidden="true">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11.5 3L13.4 8.1L18.5 10L13.4 11.9L11.5 17L9.6 11.9L4.5 10L9.6 8.1L11.5 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M19.5 14.5C19.5 18.1 16.6 21 13 21C13 17.4 15.9 14.5 19.5 14.5Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <div>
+              <h1><span>AI</span> 导购助手</h1>
+              <p>说出预算、口味或场景，直接挑好校内现货</p>
+            </div>
           </div>
-        </div>
-        <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
-      </section>
-      <div class="ai-workspace" :class="{'has-proposal': showProposal}">
-        <div class="ai-workspace-main">
-          <div class="quick-prompts" aria-label="快捷提问">
-            <button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="14"/>{{p.label}}</button>
+          <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
+        </section>
+        <div class="ai-workspace" :class="{'has-proposal': showProposal}">
+          <div class="ai-workspace-main">
+            <div class="quick-prompts" aria-label="快捷提问">
+              <button v-for="p in prompts" :key="p.label" type="button" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="14"/>{{p.label}}</button>
+            </div>
+            <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :streaming-text="streamingText" :error="error" @prompt="ask"/>
+            <div class="chat-composer-placeholder" aria-hidden="true"></div>
+            <form class="chat-composer" @submit.prevent="ask()">
+              <input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：预算20元推荐无糖饮料，或查一下我的订单进度…"/>
+              <button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止'}}</button>
+              <button v-else type="submit" class="wenwen-send-btn" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="16"/></button>
+            </form>
           </div>
-          <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :streaming-text="streamingText" :error="error"/>
-          <div class="chat-composer-placeholder" aria-hidden="true"></div>
-          <form class="chat-composer" @submit.prevent="ask()">
-            <input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：预算20元推荐无糖饮料，或查一下我的订单进度…"/>
-            <button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止'}}</button>
-            <button v-else type="submit" class="wenwen-send-btn" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="16"/><span>发送</span></button>
-          </form>
+          <aside v-if="showProposal" class="ai-workspace-side">
+            <GuideRecommendations :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :rejecting="rejectingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
+          </aside>
         </div>
-        <aside v-if="showProposal" class="ai-workspace-side">
-          <GuideRecommendations :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :rejecting="rejectingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
-        </aside>
       </div>
     </ConsumerShell>`,
 };

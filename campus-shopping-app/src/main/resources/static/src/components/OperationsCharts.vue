@@ -27,7 +27,7 @@ const props = defineProps<{
   orderStatusLabel: (status: string) => string;
 }>();
 
-const SLICE_COLORS = ['#00a870', '#3b82f6', '#f59e0b', '#64748b', '#e11d48'];
+const SLICE_COLORS = ['#15803D', '#2563EB', '#D97706', '#6366F1', '#E53524'];
 
 const trendModel = computed(() => {
   const raw = props.stats?.trend || [];
@@ -128,9 +128,9 @@ const donutModel = computed(() => {
             {{ trendModel.midVal }}
           </text>
           <text class="chart-axis-text" x="28" y="124" text-anchor="end">0</text>
-          <line x1="34" y1="32" x2="348" y2="32" stroke="#f1f5f9" stroke-dasharray="3 3" />
-          <line x1="34" y1="77" x2="348" y2="77" stroke="#f1f5f9" stroke-dasharray="3 3" />
-          <line x1="34" y1="122" x2="348" y2="122" stroke="#e2e8f0" />
+          <line x1="34" y1="32" x2="348" y2="32" stroke="#E4E4DF" stroke-dasharray="3 3" />
+          <line x1="34" y1="77" x2="348" y2="77" stroke="#E4E4DF" stroke-dasharray="3 3" />
+          <line x1="34" y1="122" x2="348" y2="122" stroke="#D4D4CE" />
           <g v-for="bar in trendModel.bars" :key="bar.day">
             <rect
               class="chart-bar-rect"
@@ -138,7 +138,7 @@ const donutModel = computed(() => {
               :y="bar.y"
               :width="bar.w"
               :height="bar.h"
-              rx="5"
+              rx="4"
             />
             <text
               v-if="bar.val > 0"
@@ -172,14 +172,14 @@ const donutModel = computed(() => {
             <b>{{ item.quantity }} 件</b>
           </div>
           <svg class="hbar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
-            <rect x="0" y="0" width="100" height="6" rx="3" fill="#f1f5f9" />
+            <rect x="0" y="0" width="100" height="6" rx="3" fill="#F2F2EF" />
             <rect
               x="0"
               y="0"
               :width="item.pct"
               height="6"
               rx="3"
-              :fill="item.rank === 1 ? '#00a870' : item.rank === 2 ? '#10b981' : '#34d399'"
+              :fill="item.rank === 1 ? '#15803D' : item.rank === 2 ? '#2563EB' : '#D97706'"
             />
           </svg>
         </div>
@@ -194,7 +194,7 @@ const donutModel = computed(() => {
       <div v-if="donutModel.slices.length" class="donut-chart-layout">
         <div class="donut-svg-box">
           <svg viewBox="0 0 120 120" class="donut-svg" role="img" aria-label="订单状态环形图">
-            <circle cx="60" cy="60" r="38" fill="none" stroke="#f1f5f9" stroke-width="14" />
+            <circle cx="60" cy="60" r="38" fill="none" stroke="#F2F2EF" stroke-width="14" />
             <circle
               v-for="s in donutModel.slices"
               :key="s.status"
@@ -216,7 +216,9 @@ const donutModel = computed(() => {
         </div>
         <div class="donut-legend">
           <div v-for="s in donutModel.slices" :key="'lg-' + s.status" class="donut-legend-row">
-            <span class="legend-dot" :style="{ background: s.color }"></span>
+            <svg class="legend-dot" width="8" height="8" viewBox="0 0 8 8" aria-hidden="true">
+              <circle cx="4" cy="4" r="4" :fill="s.color" />
+            </svg>
             <span class="legend-name">{{ orderStatusLabel(s.status) }}</span>
             <b>{{ s.orderCount }}单</b>
           </div>

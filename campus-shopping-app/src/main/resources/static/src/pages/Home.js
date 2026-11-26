@@ -561,9 +561,11 @@ export default {
         </div>
       </div>
 
-      <button class="hero-shopping" @click="go('/ai')" aria-label="进入 AI 导购">
+      <button class="hero-shopping cabin-ai-card" @click="go('/ai')" aria-label="进入 AI 导购">
         <div class="cabin-ai-top">
-          <img src="./images/robot.webp" alt="AI 导购" class="cabin-ai-avatar"/>
+          <span class="cabin-ai-avatar cabin-ai-emblem" aria-hidden="true">
+            <Icon name="sparkles" :size="20"/>
+          </span>
           <div>
             <div class="hero-title"><span>AI</span> 导购</div>
             <div class="cabin-ai-sub">按预算和口味帮你挑</div>

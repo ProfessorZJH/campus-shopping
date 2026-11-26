@@ -110,6 +110,40 @@ public class OrderDelayCoordinator implements IOrderDelayScheduler {
         }
     }
 
+    @Override
+    public void cancelOrderExpiryAfterCommit(String orderId) {
+        if (orderId == null || orderId.isBlank()) return;
+        Runnable cancelTask = () -> cancelNow(orderId);
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        cancelTask.run();
+                    }
+                }
+            );
+        } else {
+            cancelTask.run();
+        }
+    }
+
+    /** 订单已支付、取消或关闭后立即移除延时队列与就绪队列中的残留任务，避免遥测虚高。 */
+    public void cancelNow(String orderId) {
+        if (orderId == null || orderId.isBlank()) return;
+        RDelayedQueue<String> dq = ensureQueue();
+        if (dq == null) return;
+        try {
+            dq.remove(orderId);
+            RBlockingDeque<String> deque = blockingDeque;
+            if (deque != null) {
+                deque.remove(orderId);
+            }
+        } catch (RuntimeException error) {
+            log.warn("order_delay_cancel_degraded orderId={} error={}", orderId, error.getClass().getSimpleName());
+        }
+    }
+
     public long queueSize() {
         RDelayedQueue<String> dq = delayedQueue;
         if (dq == null) return 0L;

@@ -24,6 +24,7 @@ import cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO;
 import cn.bugstack.ai.domain.trading.model.valobj.OrderReviewVO;
 import cn.bugstack.ai.domain.trading.model.valobj.OrderStatusEnumVO;
 import cn.bugstack.ai.domain.trading.service.IAfterSaleService;
+import cn.bugstack.ai.domain.trading.service.IOrderDelayScheduler;
 import cn.bugstack.ai.domain.trading.service.IOrderEventService;
 import cn.bugstack.ai.domain.trading.service.IOrderService;
 import cn.bugstack.ai.types.enums.ResponseCode;
@@ -61,6 +62,9 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
 
     @Autowired(required = false)
     private ICatalogService catalogService;
+
+    @Autowired(required = false)
+    private IOrderDelayScheduler delayScheduler;
 
     public OrderLifecycleCaseImpl(
         IOrderService trading,
@@ -107,6 +111,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             trading.save(o);
             events.record(id, null, "PAYMENT_SUCCEEDED", buyer, "BUYER", "");
             recordPaidAnalyticsAndBroadcast(o, pickupCode);
+            cancelOrderExpiry(id);
         }
         return query.view(o);
     }
@@ -163,6 +168,7 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             inventory.release(id);
             trading.save(o);
             events.record(id, null, "CANCELED", buyer, "BUYER", "");
+            cancelOrderExpiry(id);
         }
         return query.view(o);
     }
@@ -174,6 +180,14 @@ public class OrderLifecycleCaseImpl implements IOrderLifecycleCase {
             inventory.release(id);
             trading.save(o);
             events.record(id, null, "EXPIRED", null, "SYSTEM", "");
+            cancelOrderExpiry(id);
+        }
+    }
+
+    /** 订单脱离待付款后撤销延时关单任务，避免已支付或已取消订单长期滞留 Redis 延时队列。 */
+    private void cancelOrderExpiry(String orderId) {
+        if (delayScheduler != null) {
+            delayScheduler.cancelOrderExpiryAfterCommit(orderId);
         }
     }
 

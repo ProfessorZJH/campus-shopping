@@ -11,6 +11,7 @@ import importlib.util
 import json
 import os
 import secrets
+import time
 import urllib.parse
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -180,36 +181,39 @@ def seed_showcase(base_url: str, admin_user: str, admin_pwd: str, *, db_conn=Non
         },
     )
 
+    # Default home catalog sorts by created_at DESC (last inserted appears first).
+    # Insert 10 secondary items first (interleaved across stores), then 12 flagship hero items
+    # with 12 distinct prod-*.jpg primary covers interleaved across all 4 stores and 6 categories,
+    # guaranteeing ZERO duplicate primary cover photos in the top 12 on Home page 1.
     product_specs = [
-        # Store 1: 学一食堂东侧自提店 (drinks + milk + light snacks)
-        (owner1, mid1, "tea", "无糖原叶乌龙茶", "0糖0脂0卡福建高山铁观音冷泡原叶萃取，清爽回甘解腻，图书馆复习与饭后解渴常备。", "drink", ["prod-oolong-tea.jpg", "prod-mineral-water.jpg"], [{"specKey": "500ml 冰镇单瓶", "priceCent": 600}, {"specKey": "500ml×3 连包", "priceCent": 1650}, {"specKey": "1.5L 宿舍分享瓶", "priceCent": 1200}]),
-        (owner1, mid1, "milk", "牧场低温鲜纯牛奶", "生牛乳巴氏杀菌保留活性免疫球蛋白，每100ml含3.6g优质乳蛋白，早八课前营养满格。", "drink", ["prod-fresh-milk.jpg", "prod-campus-snacks.jpg"], [{"specKey": "250ml 早餐瓶", "priceCent": 480}, {"specKey": "950ml 家庭装", "priceCent": 1580}]),
-        (owner1, mid1, "water", "长白山天然饮用矿泉水", "偏硅酸型天然弱碱矿泉水，球场运动补水与宿舍整提囤货高性价比之选。", "drink", ["prod-mineral-water.jpg"], [{"specKey": "550ml 单瓶", "priceCent": 200}, {"specKey": "550ml×6 宿舍提装", "priceCent": 1000}]),
-        (owner1, mid1, "oatbar", "高蛋白黑巧燕麦能量棒零食", "高膳食纤维零反式脂肪，独立小包装塞进书包，大课间与晚自习抗饿零食首选。", "food", ["prod-campus-snacks.jpg", "prod-fresh-milk.jpg"], [{"specKey": "黑巧海盐 4支装", "priceCent": 1190}, {"specKey": "混合莓果 8支盒装", "priceCent": 2190}]),
-        (owner1, mid1, "jasmine", "冷泡茉莉雪芽绿茶", "横县双瓣茉莉七次窨制，零糖清香不涩口，适合午后提神。", "drink", ["prod-oolong-tea.jpg"], [{"specKey": "500ml 单瓶", "priceCent": 580}, {"specKey": "500ml×2 双瓶", "priceCent": 1080}]),
-        # Store 2: 图书馆文具咖啡屋 (coffee + stationery)
-        (owner2, mid2, "latte", "生椰燕麦冰拿铁咖啡", "埃塞俄比亚中深烘意式浓缩碰撞植物燕麦奶，乳糖不耐受友好，丝滑醇厚不反酸。", "drink", ["prod-iced-latte.jpg", "prod-cold-brew.jpg"], [{"specKey": "中杯 360ml 少冰", "priceCent": 1390}, {"specKey": "大杯 480ml 标准冰", "priceCent": 1650}]),
-        (owner2, mid2, "coffee", "12h低温冰萃美式黑咖啡", "0糖0脂高倍咖啡因顺滑慢萃，期末周刷题与早八困倦急救提神。", "drink", ["prod-cold-brew.jpg", "prod-iced-latte.jpg"], [{"specKey": "330ml 冰萃瓶", "priceCent": 1290}, {"specKey": "2瓶复习续命装", "priceCent": 2380}]),
-        (owner2, mid2, "pen", "考试速干0.5mm黑色中性笔文具套装", "日本进口碳素墨水秒干不脏卷面，软胶护指久写不累，附赠康奈尔B5错题活页本。", "stationery", ["prod-gel-pens.jpg"], [{"specKey": "3支速干笔+B5活页本", "priceCent": 1280}, {"specKey": "黑色子弹头 6支盒装", "priceCent": 990}]),
-        (owner2, mid2, "notebook", "高克重护眼米黄方格活页笔记本", "100g道林护眼纸双面书写不洇墨，高数推导与专业课框架整理必备文具。", "stationery", ["prod-gel-pens.jpg"], [{"specKey": "B5 方格 80张", "priceCent": 880}, {"specKey": "A4 康奈尔 2本装", "priceCent": 1890}]),
-        (owner2, mid2, "highlighter", "莫兰迪柔和双头荧光标记笔文具", "温和低饱和度不遮挡字迹，文献精读与重点背诵分色清晰。", "stationery", ["prod-gel-pens.jpg"], [{"specKey": "盐系6色套装", "priceCent": 1150}]),
-        # Store 3: 北苑宿舍24h便利仓 (instant noodles + snacks + tissues + daily + digital)
-        (owner3, mid3, "noodles", "日式浓汤豚骨叉烧泡面杯面", "熬制猪骨浓白高汤搭配大片冻干叉烧与溏心卤蛋，宿舍深夜赶论文5分钟热汤治愈夜宵。", "food", ["prod-instant-noodles.jpg", "prod-campus-snacks.jpg"], [{"specKey": "浓汤豚骨大杯 115g", "priceCent": 750}, {"specKey": "番茄肥牛+豚骨 双杯组合", "priceCent": 1390}, {"specKey": "宿舍囤货 4杯箱装", "priceCent": 2680}]),
-        (owner3, mid3, "nuts", "每日坚果海苔脆综合学习零食包", "巴旦木、腰果、核桃仁配慢烤芝麻海苔脆，非油炸低负担高脑力补给零食。", "food", ["prod-campus-snacks.jpg", "prod-instant-noodles.jpg"], [{"specKey": "120g 锁鲜自封袋", "priceCent": 1480}, {"specKey": "25g×7日周享装", "priceCent": 2490}]),
-        (owner3, mid3, "tissue", "原生竹浆4层加厚柔韧本色抽纸巾", "无荧光增白剂湿水不易破，擦汗卸妆桌面清洁一包搞定，宿舍整提纸巾常备。", "daily", ["prod-soft-tissues.jpg"], [{"specKey": "100抽×3包 体验提", "priceCent": 890}, {"specKey": "100抽×8包 整提实惠装", "priceCent": 1990}]),
-        (owner3, mid3, "wetwipes", "EDI纯水弱酸便携消毒湿纸巾", "食堂就餐前擦手与图书馆桌面清洁必备，温和无酒精不伤手。", "daily", ["prod-soft-tissues.jpg"], [{"specKey": "20抽×4包 随身装", "priceCent": 790}, {"specKey": "80抽×3包 大容量带盖", "priceCent": 1590}]),
-        (owner3, mid3, "lamp", "国AA级全光谱充插两用护眼学习台灯", "RG0豁免级防蓝光无频闪，内置4000mAh电池宿舍熄灯不断电，三档色温触控调节。", "daily", ["prod-desk-lamp.jpg", "prod-headphones.jpg"], [{"specKey": "象牙白·长续航版", "priceCent": 4500}, {"specKey": "星耀银·超大灯头旗舰版", "priceCent": 5900}]),
-        (owner3, mid3, "headphones", "42dB深度主动降噪蓝牙自习耳机", "双馈ANC主动降噪隔绝键盘与走廊嘈杂，45小时续航+双设备无缝切换，沉浸考研利器。", "digital", ["prod-headphones.jpg", "prod-desk-lamp.jpg"], [{"specKey": "云岩米白", "priceCent": 15900}, {"specKey": "星际深灰", "priceCent": 15900}]),
-        (owner3, mid3, "cable", "100W氮化镓Type-C快充编织数据线", "支持笔记本、平板与手机PD快充，耐弯折尼龙编织线身，图书馆插座救星。", "digital", ["prod-headphones.jpg"], [{"specKey": "1.5米 100W数显款", "priceCent": 2290}, {"specKey": "2米 宿舍上铺加长款", "priceCent": 2690}]),
-        (owner3, mid3, "beefnoodle", "红烧劲道半干鲜面速食泡面碗", "非油炸蒸煮面饼久泡爽滑劲道，配秘制红烧牛肉浇头包，夜宵解馋。", "food", ["prod-instant-noodles.jpg"], [{"specKey": "145g 大满贯碗装", "priceCent": 890}, {"specKey": "2碗夜宵搭档装", "priceCent": 1680}]),
-        (owner3, mid3, "milk2", "高钙低脂晚安纯牛奶整箱", "低脂肪高钙配方，睡前温热一杯助眠无负担，宿舍床底整箱常备。", "drink", ["prod-fresh-milk.jpg"], [{"specKey": "200ml×6盒 周享提", "priceCent": 2280}, {"specKey": "200ml×12盒 整箱装", "priceCent": 4290}]),
-        # Store 4: 南区鲜果切切屋 (fresh fruits & yogurt cups)
-        (owner4, mid4, "fruit", "当晨现切草莓奇异果缤纷水果杯", "红颜草莓、绿心奇异果、台农芒果与蓝莓四拼冷链鲜切，附独立果叉，课间维C补给站。", "fruit", ["prod-fruit-cup.jpg", "prod-fresh-milk.jpg"], [{"specKey": "300g 单人活力杯", "priceCent": 1490}, {"specKey": "500g 双人分享桶", "priceCent": 2290}]),
+        # Secondary items (page 2-3, interleaved across stores and covers)
         (owner4, mid4, "orange", "赣南冰糖脐橙鲜切水果盒", "去皮分瓣免动手，清甜爆汁高维C，追剧刷题不脏手。", "fruit", ["prod-fruit-cup.jpg"], [{"specKey": "280g 免剥果肉盒", "priceCent": 1090}, {"specKey": "整果 4粒装（约1kg）", "priceCent": 1580}]),
+        (owner1, mid1, "oatbar", "高蛋白黑巧燕麦能量棒零食", "高膳食纤维零反式脂肪，独立小包装塞进书包，大课间与晚自习抗饿零食首选。", "food", ["prod-campus-snacks.jpg", "prod-fresh-milk.jpg"], [{"specKey": "黑巧海盐 4支装", "priceCent": 1190}, {"specKey": "混合莓果 8支盒装", "priceCent": 2190}]),
+        (owner2, mid2, "notebook", "高克重护眼米黄方格活页笔记本", "100g道林护眼纸双面书写不洇墨，高数推导与专业课框架整理必备文具。", "stationery", ["prod-gel-pens.jpg"], [{"specKey": "B5 方格 80张", "priceCent": 880}, {"specKey": "A4 康奈尔 2本装", "priceCent": 1890}]),
+        (owner3, mid3, "beefnoodle", "红烧劲道半干鲜面速食泡面碗", "非油炸蒸煮面饼久泡爽滑劲道，配秘制红烧牛肉浇头包，夜宵解馋。", "food", ["prod-instant-noodles.jpg"], [{"specKey": "145g 大满贯碗装", "priceCent": 890}, {"specKey": "2碗夜宵搭档装", "priceCent": 1680}]),
+        (owner1, mid1, "jasmine", "冷泡茉莉雪芽绿茶", "横县双瓣茉莉七次窨制，零糖清香不涩口，适合午后提神。", "drink", ["prod-oolong-tea.jpg"], [{"specKey": "500ml 单瓶", "priceCent": 580}, {"specKey": "500ml×2 双瓶", "priceCent": 1080}]),
+        (owner3, mid3, "cable", "轻量透气头戴式自习室隔音蓝牙耳机", "蛋白皮记忆棉耳罩久戴不压眼镜，支持蓝牙5.4与有线双模连接，网课听力与宿舍追剧高性价比之选。", "digital", ["prod-headphones.jpg"], [{"specKey": "奶油白·轻音标准版", "priceCent": 8900}, {"specKey": "深空灰·双麦通话版", "priceCent": 10900}]),
         (owner4, mid4, "yogurt", "蓝莓坚果厚切希腊酸奶水果碗", "3倍浓缩滤乳清厚酸奶铺满新鲜蓝莓、香蕉片与烤燕麦脆，低卡代餐饱腹感强。", "fruit", ["prod-fruit-cup.jpg", "prod-campus-snacks.jpg"], [{"specKey": "260g 轻体代餐碗", "priceCent": 1690}]),
+        (owner3, mid3, "wetwipes", "EDI纯水弱酸便携消毒湿纸巾", "食堂就餐前擦手与图书馆桌面清洁必备，温和无酒精不伤手。", "daily", ["prod-soft-tissues.jpg"], [{"specKey": "20抽×4包 随身装", "priceCent": 790}, {"specKey": "80抽×3包 大容量带盖", "priceCent": 1590}]),
+        (owner2, mid2, "highlighter", "莫兰迪柔和双头荧光标记笔文具", "温和低饱和度不遮挡字迹，文献精读与重点背诵分色清晰。", "stationery", ["prod-gel-pens.jpg"], [{"specKey": "盐系6色套装", "priceCent": 1150}]),
+        (owner3, mid3, "milk2", "高钙低脂晚安纯牛奶整箱", "低脂肪高钙配方，睡前温热一杯助眠无负担，宿舍床底整箱常备。", "drink", ["prod-fresh-milk.jpg"], [{"specKey": "200ml×6盒 周享提", "priceCent": 2280}, {"specKey": "200ml×12盒 整箱装", "priceCent": 4290}]),
+        # Top-12 flagship showcase items (12 unique primary studio photos; last item renders as Home #1)
+        (owner3, mid3, "tissue", "原生竹浆4层加厚柔韧本色抽纸巾", "无荧光增白剂湿水不易破，擦汗卸妆桌面清洁一包搞定，宿舍整提纸巾常备。", "daily", ["prod-soft-tissues.jpg"], [{"specKey": "100抽×3包 体验提", "priceCent": 890}, {"specKey": "100抽×8包 整提实惠装", "priceCent": 1990}]),
+        (owner1, mid1, "water", "长白山天然饮用矿泉水", "偏硅酸型天然弱碱矿泉水，球场运动补水与宿舍整提囤货高性价比之选。", "drink", ["prod-mineral-water.jpg"], [{"specKey": "550ml 单瓶", "priceCent": 200}, {"specKey": "550ml×6 宿舍提装", "priceCent": 1000}]),
+        (owner2, mid2, "coffee", "12h低温冰萃美式黑咖啡", "0糖0脂高倍咖啡因顺滑慢萃，期末周刷题与早八困倦急救提神。", "drink", ["prod-cold-brew.jpg", "prod-iced-latte.jpg"], [{"specKey": "330ml 冰萃瓶", "priceCent": 1290}, {"specKey": "2瓶复习续命装", "priceCent": 2380}]),
+        (owner3, mid3, "nuts", "每日坚果海苔脆综合学习零食包", "巴旦木、腰果、核桃仁配慢烤芝麻海苔脆，非油炸低负担高脑力补给零食。", "food", ["prod-campus-snacks.jpg", "prod-instant-noodles.jpg"], [{"specKey": "120g 锁鲜自封袋", "priceCent": 1480}, {"specKey": "25g×7日周享装", "priceCent": 2490}]),
+        (owner3, mid3, "lamp", "国AA级全光谱充插两用护眼学习台灯", "RG0豁免级防蓝光无频闪，内置4000mAh电池宿舍熄灯不断电，三档色温触控调节。", "daily", ["prod-desk-lamp.jpg", "prod-headphones.jpg"], [{"specKey": "象牙白·长续航版", "priceCent": 4500}, {"specKey": "星耀银·超大灯头旗舰版", "priceCent": 5900}]),
+        (owner1, mid1, "milk", "牧场低温鲜纯牛奶", "生牛乳巴氏杀菌保留活性免疫球蛋白，每100ml含3.6g优质乳蛋白，早八课前营养满格。", "drink", ["prod-fresh-milk.jpg", "prod-campus-snacks.jpg"], [{"specKey": "250ml 早餐瓶", "priceCent": 480}, {"specKey": "950ml 家庭装", "priceCent": 1580}]),
+        (owner2, mid2, "pen", "考试速干0.5mm黑色中性笔文具套装", "日本进口碳素墨水秒干不脏卷面，软胶护指久写不累，附赠康奈尔B5错题活页本。", "stationery", ["prod-gel-pens.jpg"], [{"specKey": "3支速干笔+B5活页本", "priceCent": 1280}, {"specKey": "黑色子弹头 6支盒装", "priceCent": 990}]),
+        (owner3, mid3, "noodles", "日式浓汤豚骨叉烧泡面杯面", "熬制猪骨浓白高汤搭配大片冻干叉烧与溏心卤蛋，宿舍深夜赶论文5分钟热汤治愈夜宵。", "food", ["prod-instant-noodles.jpg", "prod-campus-snacks.jpg"], [{"specKey": "浓汤豚骨大杯 115g", "priceCent": 750}, {"specKey": "番茄肥牛+豚骨 双杯组合", "priceCent": 1390}, {"specKey": "宿舍囤货 4杯箱装", "priceCent": 2680}]),
+        (owner3, mid3, "headphones", "42dB深度主动降噪蓝牙自习耳机", "双馈ANC主动降噪隔绝键盘与走廊嘈杂，45小时续航+双设备无缝切换，沉浸考研利器。", "digital", ["prod-headphones.jpg", "prod-desk-lamp.jpg"], [{"specKey": "云岩米白", "priceCent": 15900}, {"specKey": "星际深灰", "priceCent": 15900}]),
+        (owner1, mid1, "tea", "无糖原叶乌龙茶", "0糖0脂0卡福建高山铁观音冷泡原叶萃取，清爽回甘解腻，图书馆复习与饭后解渴常备。", "drink", ["prod-oolong-tea.jpg", "prod-mineral-water.jpg"], [{"specKey": "500ml 冰镇单瓶", "priceCent": 600}, {"specKey": "500ml×3 连包", "priceCent": 1650}, {"specKey": "1.5L 宿舍分享瓶", "priceCent": 1200}]),
+        (owner4, mid4, "fruit", "当晨现切草莓奇异果缤纷水果杯", "红颜草莓、绿心奇异果、台农芒果与蓝莓四拼冷链鲜切，附独立果叉，课间维C补给站。", "fruit", ["prod-fruit-cup.jpg", "prod-fresh-milk.jpg"], [{"specKey": "300g 单人活力杯", "priceCent": 1490}, {"specKey": "500g 双人分享桶", "priceCent": 2290}]),
+        (owner2, mid2, "latte", "生椰燕麦冰拿铁咖啡", "埃塞俄比亚中深烘意式浓缩碰撞植物燕麦奶，乳糖不耐受友好，丝滑醇厚不反酸。", "drink", ["prod-iced-latte.jpg", "prod-cold-brew.jpg"], [{"specKey": "中杯 360ml 少冰", "priceCent": 1390}, {"specKey": "大杯 480ml 标准冰", "priceCent": 1650}]),
     ]
 
     products = {}
+    ordered_product_ids: list[str] = []
     for cli, mid, key, title, desc, cat, img_files, skus in product_specs:
         urls = [upload_asset(cli, mid, fn) for fn in img_files]
         p = cli.call(
@@ -221,6 +225,8 @@ def seed_showcase(base_url: str, admin_user: str, admin_pwd: str, *, db_conn=Non
             cli.call("POST", f"/merchants/{mid}/stocks/{s['skuId']}/replenish", {"quantity": 60}, key=uuid.uuid4().hex)
         cli.call("POST", f"/merchants/{mid}/products/{p['productId']}/publish", {"published": True})
         products[key] = p
+        ordered_product_ids.append(p["productId"])
+        time.sleep(0.015)
 
     # Public + internal knowledge documents
     kb_pub = owner1.call("POST", "/knowledge/bases", {"merchantId": mid1, "name": "门店公开自提与售后说明", "visibility": "PUBLIC"})
@@ -390,10 +396,14 @@ def seed_showcase(base_url: str, admin_user: str, admin_pwd: str, *, db_conn=Non
         for _ in range(freq):
             buyer.call("GET", f"/products/page?q={urllib.parse.quote(kw)}&page=1&size=8")
 
-    # Backdate historical completed orders across the past 7 days on isolated showcase MySQL so 7-day & 30-day charts show realistic multi-day curves!
+    # Backdate historical completed orders across the past 7 days & stamp deterministic product created_at order on isolated showcase MySQL!
     if db_conn is not None:
         now_utc = datetime.now(timezone.utc)
         with db_conn.cursor() as cur:
+            total_products = len(ordered_product_ids)
+            for idx, pid in enumerate(ordered_product_ids):
+                pts = (now_utc - timedelta(minutes=(total_products - idx))).strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+                cur.execute("UPDATE cat_product SET created_at=%s WHERE id=%s", (pts, pid))
             for idx, (oid, days_ago) in enumerate(dated_orders):
                 if days_ago <= 0:
                     continue
