@@ -4813,3 +4813,841 @@ body {
     min-height: 54px !important;
   }
 }
+
+/* ==========================================================================
+   12. 大厂级品牌标志、840px 双栏登录窗、零抖动布局锁、深色工作台侧栏与自定义下拉框
+   ========================================================================== */
+
+/* 12.1 永久预留滚动条槽位，彻底消除弹窗开关或登录瞬间 17px 页面缩放跳动 */
+html {
+  scrollbar-gutter: stable;
+}
+
+/* 12.2 青柠校园矢量品牌标志与双行字标 */
+.brand-logo-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(0, 168, 112, 0.22);
+}
+
+.brand-logo-mark svg {
+  display: block;
+}
+
+.brand-wordmark-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+.brand-sub-en {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+@media (max-width: 440px) {
+  .brand-sub-en {
+    display: none;
+  }
+}
+
+/* 12.3 国内大厂级 840px 双栏旗舰登录/注册弹窗 */
+.auth-modal-overlay {
+  background: rgba(15, 23, 42, 0.54) !important;
+  backdrop-filter: blur(6px) !important;
+  padding: 16px !important;
+}
+
+form.login-dialog.flagship-auth-dialog {
+  width: min(840px, calc(100vw - 32px)) !important;
+  max-width: 840px !important;
+  min-height: 500px;
+  padding: 0 !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow:
+    0 28px 72px rgba(15, 23, 42, 0.28),
+    0 4px 16px rgba(15, 23, 42, 0.08) !important;
+  display: grid !important;
+  grid-template-columns: 332px minmax(0, 1fr);
+  overflow: hidden;
+  align-self: center;
+}
+
+.auth-showcase-panel {
+  position: relative;
+  background: linear-gradient(158deg, #06281f 0%, #0b3d2e 52%, #007f56 100%);
+  color: #ffffff;
+  padding: 38px 32px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  overflow: hidden;
+}
+
+.auth-showcase-glow {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  right: -90px;
+  top: -80px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(217, 249, 157, 0.24) 0%, rgba(16, 185, 129, 0) 70%);
+  pointer-events: none;
+}
+
+.auth-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 26px;
+}
+
+.auth-brand-name {
+  display: block;
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.auth-brand-en {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(217, 249, 157, 0.85);
+  margin-top: 2px;
+}
+
+.auth-showcase-slogan {
+  margin: 0 0 12px;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.32;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.auth-showcase-lead {
+  margin: 0 !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+  letter-spacing: 0 !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.auth-feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-feature-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-feat-dot {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d9f99d;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.auth-feature-list strong {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.auth-feature-list small {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.68);
+  margin-top: 1px;
+}
+
+.auth-form-panel {
+  padding: 30px 44px 34px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #ffffff;
+}
+
+.flagship-auth-dialog .login-dialog-heading {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 6px !important;
+}
+
+.auth-mobile-brand {
+  display: none;
+  align-items: center;
+  gap: 9px;
+  margin-right: auto;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.auth-close-btn {
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 50% !important;
+  background: #f1f5f9 !important;
+  color: #64748b !important;
+  display: grid !important;
+  place-items: center !important;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.auth-close-btn:hover {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.auth-form-header h2 {
+  margin: 0 0 16px !important;
+  font-size: 23px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  letter-spacing: -0.02em !important;
+}
+
+.auth-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 11px;
+  margin-bottom: 20px;
+}
+
+.auth-mode-tab {
+  height: 34px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #64748b;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.auth-mode-tab.active {
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.auth-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.auth-field-group label {
+  display: flex !important;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #334155 !important;
+}
+
+.auth-opt-tag {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.auth-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.auth-input-wrap > svg {
+  position: absolute;
+  left: 14px;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.flagship-auth-dialog .auth-input-wrap input {
+  width: 100% !important;
+  height: 46px !important;
+  padding: 0 14px 0 40px !important;
+  border-radius: 11px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  font-size: 14px !important;
+  color: #0f172a !important;
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.flagship-auth-dialog .auth-input-wrap input#login-password {
+  padding-right: 60px !important;
+}
+
+.flagship-auth-dialog .auth-input-wrap input:hover {
+  border-color: #94a3b8 !important;
+}
+
+.flagship-auth-dialog .auth-input-wrap input:focus {
+  border-color: #00a870 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 112, 0.12) !important;
+}
+
+.flagship-auth-dialog .auth-input-wrap input:focus-visible {
+  outline: 3px solid var(--color-focus) !important;
+  outline-offset: 2px !important;
+}
+
+.auth-pwd-toggle {
+  position: absolute;
+  right: 10px;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.auth-pwd-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.flagship-auth-dialog .auth-hint {
+  margin-top: 2px !important;
+  font-size: 12px !important;
+  color: #64748b !important;
+}
+
+.flagship-auth-dialog .login-error {
+  margin-top: 12px !important;
+  padding: 9px 12px;
+  border-radius: 9px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626 !important;
+  font-size: 12.5px !important;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* 零位移提交按钮（点击与加载态绝不改变尺寸或上下跳动） */
+.flagship-auth-dialog .login-submit,
+.flagship-auth-dialog .login-submit:hover:not(:disabled),
+.flagship-auth-dialog .login-submit:active {
+  margin-top: 20px !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  border-radius: 11px !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  transform: none !important;
+}
+
+.auth-footer-switch {
+  margin-top: 14px;
+  text-align: center;
+}
+
+.flagship-auth-dialog .login-switch {
+  display: inline-block !important;
+  margin: 0 !important;
+  padding: 4px 10px;
+  font-size: 13px !important;
+  font-weight: 600;
+  color: #008f5d !important;
+}
+
+.flagship-auth-dialog .login-switch:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 759px) {
+  form.login-dialog.flagship-auth-dialog {
+    width: min(420px, calc(100vw - 24px)) !important;
+    min-height: 0;
+    grid-template-columns: 1fr;
+  }
+  .auth-showcase-panel {
+    display: none;
+  }
+  .auth-mobile-brand {
+    display: inline-flex;
+  }
+  .auth-form-panel {
+    padding: 22px 20px 24px;
+  }
+}
+
+/* 12.4 飞书 / 抖店 / Arco Design Pro 级深邃石板蓝商家与平台后台配色体系 */
+.admin-mode,
+.merchant-shell {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+.merchant-sidebar {
+  width: 232px !important;
+  background: #0f172a !important;
+  border-right: 1px solid #1e293b !important;
+  padding: 18px 12px 16px !important;
+  color: #cbd5e1 !important;
+}
+
+.merchant-brand {
+  padding: 4px 8px 16px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  margin-bottom: 6px !important;
+  gap: 11px !important;
+}
+
+.merchant-sidebar .merchant-brand .brand-word {
+  color: #ffffff !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.merchant-sidebar .merchant-brand .brand-suffix {
+  color: #34d399 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  margin-top: 2px;
+}
+
+.merchant-sidebar .nav-group-title {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  padding: 14px 12px 5px !important;
+}
+
+/* 锁死全部伪类状态颜色，彻底根除点击/聚焦瞬间白字隐身闪烁 */
+.merchant-sidebar .merchant-nav button {
+  height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: #cbd5e1 !important;
+  font-size: 13.5px !important;
+  font-weight: 500 !important;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease !important;
+}
+
+.merchant-sidebar .merchant-nav button:hover:not(:disabled),
+.merchant-sidebar .merchant-nav button:focus,
+.merchant-sidebar .merchant-nav button:focus-visible,
+.merchant-sidebar .merchant-nav button:active {
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: #ffffff !important;
+}
+
+.merchant-sidebar .merchant-nav button.active,
+.merchant-sidebar .merchant-nav button.active:hover:not(:disabled),
+.merchant-sidebar .merchant-nav button.active:focus,
+.merchant-sidebar .merchant-nav button.active:active {
+  background: linear-gradient(90deg, #00b578 0%, #009963 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(0, 168, 112, 0.28) !important;
+}
+
+.merchant-sidebar .merchant-sidebar-bottom {
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding-top: 12px !important;
+}
+
+.merchant-sidebar .sidebar-back {
+  height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 9px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #e2e8f0 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+.merchant-sidebar .sidebar-back:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.merchant-topbar {
+  height: 58px;
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.crumb-role-badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ops-card,
+.ops-kpis > div,
+.product-list-panel,
+.product-inspector,
+.summary-piece,
+.kb-list,
+.kb-docs,
+.kb-preview {
+  background: #ffffff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04) !important;
+}
+
+.ops-kpis > div:before {
+  display: none !important;
+}
+
+.todo-tile {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 11px !important;
+}
+
+.todo-tile:hover {
+  background: #ffffff !important;
+  border-color: #00a870 !important;
+  box-shadow: 0 4px 12px rgba(0, 168, 112, 0.08) !important;
+}
+
+.todo-tile.highlight {
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%) !important;
+  border-color: #6ee7b7 !important;
+}
+
+/* 飞书/Arco 分段胶囊切换器 */
+.filter-pills,
+.stats-period-pills {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 9px;
+  background: #e2e8f0;
+}
+
+.filter-pills button,
+.stats-period-pills button {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: 0 !important;
+  background: transparent !important;
+  color: #475569 !important;
+  font-size: 12.5px;
+  font-weight: 500;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+
+.filter-pills button:hover,
+.stats-period-pills button:hover {
+  color: #0f172a !important;
+}
+
+.filter-pills button.active,
+.stats-period-pills button.active {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  font-weight: 600 !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1) !important;
+}
+
+.ops-table th {
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+.ops-table td {
+  color: #1e293b !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+}
+
+.ops-table tbody tr:hover,
+.ops-table tbody tr.active {
+  background: #f0fdf4 !important;
+}
+
+@media (min-width: 561px) and (max-width: 959px) {
+  .merchant-sidebar {
+    width: 68px !important;
+    padding: 14px 8px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .merchant-topbar {
+    height: auto !important;
+    min-height: 50px !important;
+    position: relative !important;
+  }
+}
+
+/* 12.5 大厂级自定义下拉框触发器与浮层菜单 (.cs-select-popover) */
+select,
+select.admin-input,
+.compact-select,
+.inspector-select,
+.account-form select {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  height: 36px;
+  padding: 0 34px 0 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  background-color: #ffffff !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 14px 14px !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  line-height: 34px;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.compact-select {
+  height: 32px !important;
+  line-height: 30px;
+  padding: 0 30px 0 10px !important;
+  font-size: 12.5px !important;
+}
+
+select:hover:not(:disabled),
+select.admin-input:hover:not(:disabled),
+.compact-select:hover:not(:disabled) {
+  border-color: #94a3b8 !important;
+  background-color: #f8fafc !important;
+}
+
+select.cs-select-open,
+select:focus {
+  border-color: #00a870 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 112, 0.14) !important;
+  outline: none;
+}
+
+select.cs-select-open {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2300a870' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='18 15 12 9 6 15'/%3E%3C/svg%3E") !important;
+}
+
+select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background-color: #f1f5f9 !important;
+}
+
+/* 顶栏门店切换器专属胶囊包裹 */
+.topbar-merchant-select {
+  height: 34px !important;
+  padding: 0 4px 0 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid #cbd5e1 !important;
+  background: #f8fafc !important;
+  color: #008f5d !important;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+.topbar-merchant-select:hover {
+  border-color: #94a3b8 !important;
+  background: #ffffff !important;
+}
+
+.topbar-merchant-select:has(select.cs-select-open) {
+  border-color: #00a870 !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(0, 168, 112, 0.14) !important;
+}
+
+.topbar-merchant-select select {
+  height: 32px !important;
+  line-height: 32px !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  padding: 0 28px 0 4px !important;
+  font-weight: 600 !important;
+}
+
+@keyframes csPopoverIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cs-select-popover {
+  position: fixed;
+  z-index: 960;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+  padding: 5px;
+  box-shadow:
+    0 14px 36px rgba(15, 23, 42, 0.15),
+    0 2px 8px rgba(15, 23, 42, 0.06);
+  animation: csPopoverIn 0.13s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cs-select-search {
+  padding: 3px 3px 6px;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 4px;
+}
+
+.cs-select-search input {
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  font-size: 12.5px;
+  color: #0f172a;
+  outline: none;
+}
+
+.cs-select-search input:focus {
+  border-color: #00a870;
+  background: #ffffff;
+}
+
+.cs-select-list {
+  max-height: 252px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cs-select-option {
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  transition: background 0.1s ease;
+}
+
+.cs-select-option.is-highlighted:not(:disabled) {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.cs-select-option.is-selected {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  font-weight: 600;
+}
+
+.cs-select-option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cs-select-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-select-option-check {
+  color: #00a870;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.cs-select-empty {
+  padding: 14px 10px;
+  text-align: center;
+  font-size: 12.5px;
+  color: #94a3b8;
+}

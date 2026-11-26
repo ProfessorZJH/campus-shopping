@@ -86,8 +86,11 @@ export default {
         <div class="consumer-header-inner">
           <div class="header-brand-group">
             <button type="button" class="campus-location" @click="go('/')">
-              <div class="brand-pin"><span>青</span></div>
-              <span class="location-name">青柠校园</span>
+              <BrandLogo :size="34" />
+              <div class="brand-wordmark-col">
+                <span class="location-name">青柠校园</span>
+                <small class="brand-sub-en">CAMPUS MART</small>
+              </div>
             </button>
             <button type="button" class="header-zone-pill" @click="cycleZone" aria-label="切换取货区域">
               <Icon name="pin" :size="13" />

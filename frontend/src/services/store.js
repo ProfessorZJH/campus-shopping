@@ -50,9 +50,12 @@ export function replaceSession(user) {
   store.user = user;
   store.workspace = null;
   store.merchantId = '';
-  store.products = [];
+  if (!user) {
+    store.products = [];
+    store.merchants = [];
+    store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
+  }
   store.stocks = [];
-  store.merchants = [];
   store.conversationId = '';
   store.messages = [];
   store.proposal = null;
@@ -62,7 +65,6 @@ export function replaceSession(user) {
   store.error = '';
   store.toast = '';
   clearTimeout(toastTimer);
-  store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
   store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
   if (user && !preview) warmCsrf();
 }

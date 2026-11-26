@@ -11757,6 +11757,229 @@
       (_a = element.__disposeModal) == null ? void 0 : _a.call(element);
     }
   };
+  function installCustomSelects() {
+    if (typeof window === "undefined" || window.__campusCustomSelectInstalled) return;
+    window.__campusCustomSelectInstalled = true;
+    let activeSelect = null;
+    let popoverEl = null;
+    let listEl = null;
+    let searchInputEl = null;
+    let activeIndex = -1;
+    let visibleOptions = [];
+    function closePopover({ restoreFocus = false } = {}) {
+      if (!popoverEl) return;
+      const prev = activeSelect;
+      if (prev) prev.classList.remove("cs-select-open");
+      popoverEl.remove();
+      popoverEl = null;
+      listEl = null;
+      searchInputEl = null;
+      activeSelect = null;
+      activeIndex = -1;
+      visibleOptions = [];
+      if (restoreFocus && prev && prev.isConnected) {
+        prev.focus();
+      }
+    }
+    function commitChoice(optionEl) {
+      if (!activeSelect || !optionEl || optionEl.disabled) return;
+      const target = activeSelect;
+      const nextVal = optionEl.value;
+      const changed = target.value !== nextVal;
+      target.value = nextVal;
+      closePopover({ restoreFocus: true });
+      if (changed) {
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        target.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+    function highlightItem(idx) {
+      if (!listEl || !visibleOptions.length) return;
+      const clamped = Math.max(0, Math.min(visibleOptions.length - 1, idx));
+      activeIndex = clamped;
+      const nodes = listEl.querySelectorAll(".cs-select-option");
+      nodes.forEach((node, i) => {
+        node.classList.toggle("is-highlighted", i === clamped);
+        if (i === clamped) {
+          node.scrollIntoView({ block: "nearest" });
+        }
+      });
+    }
+    function renderOptions(filterText = "") {
+      if (!activeSelect || !listEl) return;
+      const q = String(filterText || "").trim().toLowerCase();
+      const all = [...activeSelect.options];
+      visibleOptions = all.filter((opt) => {
+        if (opt.disabled && opt.value === "") return false;
+        if (!q) return true;
+        return (opt.textContent || "").toLowerCase().includes(q);
+      });
+      listEl.innerHTML = "";
+      if (!visibleOptions.length) {
+        const empty = document.createElement("div");
+        empty.className = "cs-select-empty";
+        empty.textContent = "无匹配选项";
+        listEl.appendChild(empty);
+        activeIndex = -1;
+        return;
+      }
+      const currentVal = activeSelect.value;
+      let selectedIdx = 0;
+      visibleOptions.forEach((opt, idx) => {
+        const isSelected = opt.value === currentVal;
+        if (isSelected) selectedIdx = idx;
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "cs-select-option" + (isSelected ? " is-selected" : "");
+        btn.disabled = opt.disabled;
+        btn.setAttribute("role", "option");
+        btn.setAttribute("aria-selected", isSelected ? "true" : "false");
+        const label = document.createElement("span");
+        label.className = "cs-select-option-label";
+        label.textContent = (opt.textContent || "").trim();
+        btn.appendChild(label);
+        if (isSelected) {
+          const check = document.createElement("span");
+          check.className = "cs-select-option-check";
+          check.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+          btn.appendChild(check);
+        }
+        btn.addEventListener("mouseenter", () => highlightItem(idx));
+        btn.addEventListener("click", (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+          commitChoice(opt);
+        });
+        listEl.appendChild(btn);
+      });
+      highlightItem(selectedIdx);
+    }
+    function positionPopover() {
+      if (!activeSelect || !popoverEl) return;
+      const anchor = activeSelect.closest(".topbar-merchant-select") || activeSelect;
+      const rect = anchor.getBoundingClientRect();
+      const minW = Math.max(rect.width, 176);
+      popoverEl.style.minWidth = `${Math.round(minW)}px`;
+      popoverEl.style.maxWidth = `${Math.min(420, window.innerWidth - 24)}px`;
+      const popRect = popoverEl.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom - 12;
+      const spaceAbove = rect.top - 12;
+      const placeAbove = spaceBelow < Math.min(popRect.height || 220, 220) && spaceAbove > spaceBelow;
+      let left = rect.left;
+      if (left + minW > window.innerWidth - 12) {
+        left = Math.max(12, window.innerWidth - minW - 12);
+      }
+      popoverEl.style.left = `${Math.round(left)}px`;
+      if (placeAbove) {
+        popoverEl.style.top = "auto";
+        popoverEl.style.bottom = `${Math.round(window.innerHeight - rect.top + 6)}px`;
+      } else {
+        popoverEl.style.bottom = "auto";
+        popoverEl.style.top = `${Math.round(rect.bottom + 6)}px`;
+      }
+    }
+    function openPopover(selectEl) {
+      if (selectEl.disabled) return;
+      if (activeSelect === selectEl) {
+        closePopover();
+        return;
+      }
+      closePopover();
+      activeSelect = selectEl;
+      selectEl.classList.add("cs-select-open");
+      popoverEl = document.createElement("div");
+      popoverEl.className = "cs-select-popover";
+      popoverEl.setAttribute("role", "listbox");
+      const realOptionCount = [...selectEl.options].filter(
+        (o) => !(o.disabled && o.value === "")
+      ).length;
+      if (realOptionCount > 6) {
+        const searchWrap = document.createElement("div");
+        searchWrap.className = "cs-select-search";
+        searchInputEl = document.createElement("input");
+        searchInputEl.type = "text";
+        searchInputEl.placeholder = "搜索选项…";
+        searchInputEl.autocomplete = "off";
+        searchInputEl.addEventListener("input", () => renderOptions(searchInputEl.value));
+        searchWrap.appendChild(searchInputEl);
+        popoverEl.appendChild(searchWrap);
+      }
+      listEl = document.createElement("div");
+      listEl.className = "cs-select-list";
+      popoverEl.appendChild(listEl);
+      document.body.appendChild(popoverEl);
+      renderOptions("");
+      positionPopover();
+      if (searchInputEl) {
+        searchInputEl.focus();
+      } else {
+        selectEl.focus();
+      }
+    }
+    document.addEventListener(
+      "mousedown",
+      (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+        if (popoverEl && popoverEl.contains(target)) return;
+        const labelWrap = target.closest(".topbar-merchant-select");
+        const selectEl = target.closest("select") || (labelWrap ? labelWrap.querySelector("select") : null);
+        if (selectEl && !selectEl.multiple && selectEl.size <= 1) {
+          if (selectEl.disabled) return;
+          event.preventDefault();
+          openPopover(selectEl);
+          return;
+        }
+        if (popoverEl) closePopover();
+      },
+      true
+    );
+    document.addEventListener(
+      "keydown",
+      (event) => {
+        if (popoverEl) {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            closePopover({ restoreFocus: true });
+            return;
+          }
+          if (event.key === "ArrowDown") {
+            event.preventDefault();
+            highlightItem(activeIndex + 1);
+            return;
+          }
+          if (event.key === "ArrowUp") {
+            event.preventDefault();
+            highlightItem(activeIndex - 1);
+            return;
+          }
+          if (event.key === "Enter" && activeIndex >= 0 && visibleOptions[activeIndex]) {
+            event.preventDefault();
+            commitChoice(visibleOptions[activeIndex]);
+            return;
+          }
+        } else if (document.activeElement instanceof HTMLSelectElement && !document.activeElement.disabled && (event.key === " " || event.key === "Enter" || event.altKey && event.key === "ArrowDown")) {
+          event.preventDefault();
+          openPopover(document.activeElement);
+        }
+      },
+      true
+    );
+    window.addEventListener("resize", () => {
+      if (popoverEl) positionPopover();
+    });
+    window.addEventListener(
+      "scroll",
+      (ev) => {
+        if (!popoverEl) return;
+        if (ev.target instanceof Node && popoverEl.contains(ev.target)) return;
+        positionPopover();
+      },
+      true
+    );
+    window.addEventListener("hashchange", () => closePopover());
+  }
   const paths = {
     search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
     bell: '<path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/>',
@@ -11826,6 +12049,87 @@
         innerHTML: paths[props.name] || paths.circleHelp
       });
     }
+  };
+  const BrandLogo = {
+    name: "BrandLogo",
+    props: {
+      size: { type: Number, default: 34 }
+    },
+    render: (() => {
+      const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock } = Vue;
+      return function render2(_ctx, _cache) {
+        return _openBlock(), _createElementBlock("span", {
+          class: "brand-logo-mark",
+          "aria-hidden": "true"
+        }, [
+          (_openBlock(), _createElementBlock("svg", {
+            width: _ctx.size,
+            height: _ctx.size,
+            viewBox: "0 0 48 48",
+            fill: "none",
+            xmlns: "http://www.w3.org/2000/svg"
+          }, [
+            _createElementVNode("rect", {
+              width: "48",
+              height: "48",
+              rx: "13",
+              fill: "#00A870"
+            }),
+            _createElementVNode("path", {
+              d: "M0 13C0 5.8203 5.8203 0 13 0H35C42.1797 0 48 5.8203 48 13V23C36 27 14 25 0 19V13Z",
+              fill: "#10C483",
+              "fill-opacity": "0.55"
+            }),
+            _createElementVNode("rect", {
+              x: "0.75",
+              y: "0.75",
+              width: "46.5",
+              height: "46.5",
+              rx: "12.25",
+              stroke: "#FFFFFF",
+              "stroke-opacity": "0.22",
+              "stroke-width": "1.5"
+            }),
+            _createElementVNode("path", {
+              d: "M18.5 16.5C18.5 13.4624 20.9624 11 24 11C27.0376 11 29.5 13.4624 29.5 16.5",
+              stroke: "#FFFFFF",
+              "stroke-width": "2.6",
+              "stroke-linecap": "round"
+            }),
+            _createElementVNode("rect", {
+              x: "12.5",
+              y: "16",
+              width: "23",
+              height: "21.5",
+              rx: "6.5",
+              fill: "#FFFFFF"
+            }),
+            _createElementVNode("circle", {
+              cx: "24",
+              cy: "26.8",
+              r: "6.6",
+              fill: "#00A870"
+            }),
+            _createElementVNode("circle", {
+              cx: "24",
+              cy: "26.8",
+              r: "4.8",
+              fill: "#D9F99D"
+            }),
+            _createElementVNode("path", {
+              d: "M24 22V31.6M19.2 26.8H28.8M20.6 23.4L27.4 30.2M27.4 23.4L20.6 30.2",
+              stroke: "#00A870",
+              "stroke-width": "1.25",
+              "stroke-linecap": "round"
+            }),
+            _createElementVNode("path", {
+              d: "M30.5 11.2C34.2 10.6 37.2 12.6 37.5 16.2C33.9 16.7 30.9 14.8 30.5 11.2Z",
+              fill: "#D9F99D"
+            })
+          ], 8, ["width", "height"]))
+        ]);
+      };
+    })()
   };
   const _hoisted_1$a = ["aria-label"];
   const _hoisted_2$a = { key: 0 };
@@ -12156,9 +12460,12 @@
     store.user = user;
     store.workspace = null;
     store.merchantId = "";
-    store.products = [];
+    if (!user) {
+      store.products = [];
+      store.merchants = [];
+      store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
+    }
     store.stocks = [];
-    store.merchants = [];
     store.conversationId = "";
     store.messages = [];
     store.proposal = null;
@@ -12168,7 +12475,6 @@
     store.error = "";
     store.toast = "";
     clearTimeout(toastTimer);
-    store.publicPage = { page: 1, size: 20, total: 0, hasNext: false };
     store.merchantPage = { page: 1, size: 9, total: 0, hasNext: false };
     if (user && !preview) warmCsrf();
   }
@@ -12555,10 +12861,18 @@
       const username = ref$i("");
       const password = ref$i("");
       const displayName = ref$i("");
+      const showPwd = ref$i(false);
       const busy = ref$i(false);
       const error = ref$i("");
+      let lastSubmitMs = 0;
+      function switchMode(next) {
+        if (busy.value || mode.value === next) return;
+        mode.value = next;
+        error.value = "";
+      }
       async function submit() {
-        if (busy.value) return;
+        const now = Date.now();
+        if (busy.value || now - lastSubmitMs < 380) return;
         error.value = "";
         if (!username.value.trim() || !password.value) {
           error.value = "请填写账号和密码";
@@ -12574,6 +12888,7 @@
             return;
           }
         }
+        lastSubmitMs = now;
         busy.value = true;
         try {
           if (mode.value === "register") {
@@ -12598,7 +12913,7 @@
             password.value = "";
             emit2("success", user);
             emit2("close");
-            notify("已登录");
+            notify("登录成功");
           }
         } catch (err) {
           error.value = err.message;
@@ -12606,113 +12921,227 @@
           busy.value = false;
         }
       }
-      return { mode, username, password, displayName, busy, error, submit };
+      return { mode, username, password, displayName, showPwd, busy, error, switchMode, submit };
     },
     render: (() => {
-      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, vModelText: _vModelText, withDirectives: _withDirectives, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers, resolveDirective: _resolveDirective } = Vue;
+      const { createElementVNode: _createElementVNode, resolveComponent: _resolveComponent, createVNode: _createVNode2, createTextVNode: _createTextVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, vModelText: _vModelText, withDirectives: _withDirectives, vModelDynamic: _vModelDynamic, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers, resolveDirective: _resolveDirective } = Vue;
       return function render2(_ctx, _cache) {
+        const _component_BrandLogo = _resolveComponent("BrandLogo");
         const _component_Icon = _resolveComponent("Icon");
         const _directive_modal = _resolveDirective("modal");
         return _withDirectives((_openBlock(), _createElementBlock("div", {
-          class: "ui-overlay",
+          class: "ui-overlay auth-modal-overlay",
           onClick: _withModifiers(($event) => _ctx.$emit("close"), ["self"])
         }, [
           _createElementVNode("form", {
-            class: "login-dialog",
+            class: "login-dialog flagship-auth-dialog",
             onSubmit: _withModifiers(_ctx.submit, ["prevent"]),
             "aria-label": "账号登录"
           }, [
-            _createElementVNode("div", { class: "login-dialog-heading" }, [
-              _createElementVNode("span", { class: "auth-logo" }, [
-                _createVNode2(_component_Icon, {
-                  name: "store",
-                  size: 21
-                })
+            _createElementVNode("aside", {
+              class: "auth-showcase-panel",
+              "aria-hidden": "true"
+            }, [
+              _createElementVNode("div", { class: "auth-showcase-glow" }),
+              _createElementVNode("div", { class: "auth-showcase-top" }, [
+                _createElementVNode("div", { class: "auth-brand-row" }, [
+                  _createVNode2(_component_BrandLogo, { size: 46 }),
+                  _createElementVNode("div", null, [
+                    _createElementVNode("strong", { class: "auth-brand-name" }, "青柠校园"),
+                    _createElementVNode("span", { class: "auth-brand-en" }, "QINGNING CAMPUS")
+                  ])
+                ]),
+                _createElementVNode("h3", { class: "auth-showcase-slogan" }, [
+                  _createTextVNode("校内好物"),
+                  _createElementVNode("br"),
+                  _createTextVNode("下课顺路免排队即取")
+                ]),
+                _createElementVNode("p", { class: "auth-showcase-lead" }, "连接校内认证便利店、书咖与鲜果站，手机先下单，到店凭码秒取。")
               ]),
-              _createElementVNode("button", {
-                type: "button",
-                onClick: ($event) => _ctx.$emit("close"),
-                "aria-label": "关闭登录窗"
+              _createElementVNode("ul", { class: "auth-feature-list" }, [
+                _createElementVNode("li", null, [
+                  _createElementVNode("span", { class: "auth-feat-dot" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "store",
+                      size: 15
+                    })
+                  ]),
+                  _createElementVNode("div", null, [
+                    _createElementVNode("strong", null, "校内多店直供"),
+                    _createElementVNode("small", null, "食堂、图书馆、南北宿舍区全覆盖")
+                  ])
+                ]),
+                _createElementVNode("li", null, [
+                  _createElementVNode("span", { class: "auth-feat-dot" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "sparkles",
+                      size: 15
+                    })
+                  ]),
+                  _createElementVNode("div", null, [
+                    _createElementVNode("strong", null, "AI 智能凑单导购"),
+                    _createElementVNode("small", null, "说出预算和口味，自动搭配现货")
+                  ])
+                ]),
+                _createElementVNode("li", null, [
+                  _createElementVNode("span", { class: "auth-feat-dot" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "scan",
+                      size: 15
+                    })
+                  ]),
+                  _createElementVNode("div", null, [
+                    _createElementVNode("strong", null, "6 位取件码秒取"),
+                    _createElementVNode("small", null, "支持课间与夜宵时段预约取餐")
+                  ])
+                ])
+              ])
+            ]),
+            _createElementVNode("div", { class: "auth-form-panel" }, [
+              _createElementVNode("div", { class: "login-dialog-heading" }, [
+                _createElementVNode("div", { class: "auth-mobile-brand" }, [
+                  _createVNode2(_component_BrandLogo, { size: 34 }),
+                  _createElementVNode("strong", null, "青柠校园")
+                ]),
+                _createElementVNode("button", {
+                  type: "button",
+                  class: "auth-close-btn",
+                  onClick: ($event) => _ctx.$emit("close"),
+                  "aria-label": "关闭登录窗"
+                }, [
+                  _createVNode2(_component_Icon, {
+                    name: "x",
+                    size: 18
+                  })
+                ], 8, ["onClick"])
+              ]),
+              _createElementVNode("div", { class: "auth-form-header" }, [
+                _createElementVNode(
+                  "h2",
+                  null,
+                  _toDisplayString(_ctx.mode === "login" ? "欢迎登录青柠校园" : "创建青柠校园账号"),
+                  1
+                  /* TEXT */
+                ),
+                _createElementVNode("div", { class: "auth-mode-tabs" }, [
+                  _createElementVNode("span", {
+                    class: _normalizeClass(["auth-mode-tab", { active: _ctx.mode === "login" }]),
+                    onClick: ($event) => _ctx.switchMode("login")
+                  }, "账号密码登录", 10, ["onClick"]),
+                  _createElementVNode("span", {
+                    class: _normalizeClass(["auth-mode-tab", { active: _ctx.mode === "register" }]),
+                    onClick: ($event) => _ctx.switchMode("register")
+                  }, "新用户注册", 10, ["onClick"])
+                ])
+              ]),
+              _createElementVNode("div", { class: "auth-fields" }, [
+                _createElementVNode("div", { class: "auth-field-group" }, [
+                  _createElementVNode("label", { for: "login-name" }, "账号"),
+                  _createElementVNode("div", { class: "auth-input-wrap" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "user",
+                      size: 17
+                    }),
+                    _withDirectives(_createElementVNode("input", {
+                      id: "login-name",
+                      "onUpdate:modelValue": ($event) => _ctx.username = $event,
+                      autocomplete: "username",
+                      minlength: _ctx.mode === "register" ? 4 : void 0,
+                      required: "",
+                      maxlength: "32",
+                      placeholder: _ctx.mode === "login" ? "请输入登录账号" : "4~32位字母开头（含字母/数字/下划线）"
+                    }, null, 8, ["onUpdate:modelValue", "minlength", "placeholder"]), [
+                      [_vModelText, _ctx.username]
+                    ])
+                  ])
+                ]),
+                _createElementVNode("div", { class: "auth-field-group" }, [
+                  _createElementVNode("label", { for: "login-password" }, "密码"),
+                  _createElementVNode("div", { class: "auth-input-wrap" }, [
+                    _createVNode2(_component_Icon, {
+                      name: "shield",
+                      size: 17
+                    }),
+                    _withDirectives(_createElementVNode("input", {
+                      id: "login-password",
+                      "onUpdate:modelValue": ($event) => _ctx.password = $event,
+                      type: _ctx.showPwd ? "text" : "password",
+                      autocomplete: _ctx.mode === "login" ? "current-password" : "new-password",
+                      required: "",
+                      minlength: _ctx.mode === "register" ? 8 : void 0,
+                      maxlength: _ctx.mode === "register" ? 64 : void 0,
+                      placeholder: _ctx.mode === "login" ? "请输入登录密码" : "请设置 8~64 位登录密码"
+                    }, null, 8, ["onUpdate:modelValue", "type", "autocomplete", "minlength", "maxlength", "placeholder"]), [
+                      [_vModelDynamic, _ctx.password]
+                    ]),
+                    _createElementVNode("button", {
+                      type: "button",
+                      class: "auth-pwd-toggle",
+                      onClick: ($event) => _ctx.showPwd = !_ctx.showPwd,
+                      "aria-label": _ctx.showPwd ? "隐藏密码" : "显示密码"
+                    }, _toDisplayString(_ctx.showPwd ? "隐藏" : "显示"), 9, ["onClick", "aria-label"])
+                  ])
+                ]),
+                _ctx.mode === "register" ? (_openBlock(), _createElementBlock(
+                  _Fragment,
+                  { key: 0 },
+                  [
+                    _createElementVNode("div", { class: "auth-field-group" }, [
+                      _createElementVNode("label", { for: "login-display" }, [
+                        _createTextVNode("昵称 "),
+                        _createElementVNode("em", { class: "auth-opt-tag" }, "选填")
+                      ]),
+                      _createElementVNode("div", { class: "auth-input-wrap" }, [
+                        _createVNode2(_component_Icon, {
+                          name: "sparkles",
+                          size: 16
+                        }),
+                        _withDirectives(_createElementVNode("input", {
+                          id: "login-display",
+                          "onUpdate:modelValue": ($event) => _ctx.displayName = $event,
+                          maxlength: "50",
+                          placeholder: "用于订单与评价展示，如：计科23级·小林"
+                        }, null, 8, ["onUpdate:modelValue"]), [
+                          [_vModelText, _ctx.displayName]
+                        ])
+                      ])
+                    ]),
+                    _createElementVNode("small", { class: "auth-hint" }, "账号以字母开头（4~32位），密码长度 8~64 位")
+                  ],
+                  64
+                  /* STABLE_FRAGMENT */
+                )) : _createCommentVNode("v-if", true)
+              ]),
+              _ctx.error ? (_openBlock(), _createElementBlock("div", {
+                key: 0,
+                class: "login-error",
+                role: "alert"
               }, [
                 _createVNode2(_component_Icon, {
-                  name: "x",
-                  size: 20
-                })
-              ], 8, ["onClick"])
-            ]),
-            _createElementVNode(
-              "h2",
-              null,
-              _toDisplayString(_ctx.mode === "login" ? "账号登录" : "注册新账号"),
-              1
-              /* TEXT */
-            ),
-            _createElementVNode("label", { for: "login-name" }, "账号"),
-            _withDirectives(_createElementVNode("input", {
-              id: "login-name",
-              "onUpdate:modelValue": ($event) => _ctx.username = $event,
-              autocomplete: "username",
-              minlength: _ctx.mode === "register" ? 4 : void 0,
-              required: "",
-              maxlength: "32",
-              placeholder: "请输入用户名"
-            }, null, 8, ["onUpdate:modelValue", "minlength"]), [
-              [_vModelText, _ctx.username]
-            ]),
-            _createElementVNode("label", { for: "login-password" }, "密码"),
-            _withDirectives(_createElementVNode("input", {
-              id: "login-password",
-              "onUpdate:modelValue": ($event) => _ctx.password = $event,
-              type: "password",
-              autocomplete: _ctx.mode === "login" ? "current-password" : "new-password",
-              required: "",
-              minlength: _ctx.mode === "register" ? 8 : void 0,
-              maxlength: _ctx.mode === "register" ? 64 : void 0,
-              placeholder: "请输入密码"
-            }, null, 8, ["onUpdate:modelValue", "autocomplete", "minlength", "maxlength"]), [
-              [_vModelText, _ctx.password]
-            ]),
-            _ctx.mode === "register" ? (_openBlock(), _createElementBlock(
-              _Fragment,
-              { key: 0 },
-              [
-                _createElementVNode("small", { class: "auth-hint" }, "账号以字母开头（4~32位字母、数字或下划线），密码 8~64 位"),
-                _createElementVNode("label", { for: "login-display" }, "昵称"),
-                _withDirectives(_createElementVNode("input", {
-                  id: "login-display",
-                  "onUpdate:modelValue": ($event) => _ctx.displayName = $event,
-                  maxlength: "50",
-                  placeholder: "选填，用于订单展示"
-                }, null, 8, ["onUpdate:modelValue"]), [
-                  [_vModelText, _ctx.displayName]
-                ])
-              ],
-              64
-              /* STABLE_FRAGMENT */
-            )) : _createCommentVNode("v-if", true),
-            _ctx.error ? (_openBlock(), _createElementBlock(
-              "div",
-              {
-                key: 1,
-                class: "login-error"
-              },
-              _toDisplayString(_ctx.error),
-              1
-              /* TEXT */
-            )) : _createCommentVNode("v-if", true),
-            _createElementVNode("button", {
-              type: "submit",
-              class: "primary-wide login-submit",
-              disabled: _ctx.busy
-            }, _toDisplayString(_ctx.busy ? "请稍候…" : _ctx.mode === "login" ? "登录" : "注册"), 9, ["disabled"]),
-            _createElementVNode("button", {
-              type: "button",
-              class: "login-switch",
-              onClick: ($event) => {
-                _ctx.mode = _ctx.mode === "login" ? "register" : "login";
-                _ctx.error = "";
-              }
-            }, _toDisplayString(_ctx.mode === "login" ? "没有账号？注册" : "已有账号？登录"), 9, ["onClick"])
+                  name: "alert",
+                  size: 15
+                }),
+                _createElementVNode(
+                  "span",
+                  null,
+                  _toDisplayString(_ctx.error),
+                  1
+                  /* TEXT */
+                )
+              ])) : _createCommentVNode("v-if", true),
+              _createElementVNode("button", {
+                type: "submit",
+                class: "primary-wide login-submit",
+                disabled: _ctx.busy
+              }, _toDisplayString(_ctx.busy ? "正在提交…" : _ctx.mode === "login" ? "登录" : "注册"), 9, ["disabled"]),
+              _createElementVNode("div", { class: "auth-footer-switch" }, [
+                _createElementVNode("button", {
+                  type: "button",
+                  class: "login-switch",
+                  onClick: ($event) => _ctx.switchMode(_ctx.mode === "login" ? "register" : "login")
+                }, _toDisplayString(_ctx.mode === "login" ? "没有账号？注册" : "已有账号？登录"), 9, ["onClick"])
+              ])
+            ])
           ], 40, ["onSubmit"])
         ], 8, ["onClick"])), [
           [_directive_modal, () => _ctx.$emit("close")]
@@ -12811,8 +13240,9 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, resolveComponent: _resolveComponent, createVNode: _createVNode2, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, withModifiers: _withModifiers, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
       return function render2(_ctx, _cache) {
+        const _component_BrandLogo = _resolveComponent("BrandLogo");
         const _component_Icon = _resolveComponent("Icon");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
         return _openBlock(), _createElementBlock("div", { class: "consumer-shell" }, [
@@ -12824,10 +13254,11 @@
                   class: "campus-location",
                   onClick: ($event) => _ctx.go("/")
                 }, [
-                  _createElementVNode("div", { class: "brand-pin" }, [
-                    _createElementVNode("span", null, "青")
-                  ]),
-                  _createElementVNode("span", { class: "location-name" }, "青柠校园")
+                  _createVNode2(_component_BrandLogo, { size: 34 }),
+                  _createElementVNode("div", { class: "brand-wordmark-col" }, [
+                    _createElementVNode("span", { class: "location-name" }, "青柠校园"),
+                    _createElementVNode("small", { class: "brand-sub-en" }, "CAMPUS MART")
+                  ])
                 ], 8, ["onClick"]),
                 _createElementVNode("button", {
                   type: "button",
@@ -16811,9 +17242,10 @@
       };
     },
     render: (() => {
-      const { createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, resolveComponent: _resolveComponent, createVNode: _createVNode2, normalizeClass: _normalizeClass, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
+      const { resolveComponent: _resolveComponent, createVNode: _createVNode2, toDisplayString: _toDisplayString, createElementVNode: _createElementVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, normalizeClass: _normalizeClass, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
       return function render2(_ctx, _cache) {
         var _a;
+        const _component_BrandLogo = _resolveComponent("BrandLogo");
         const _component_Icon = _resolveComponent("Icon");
         const _component_AuthDialog = _resolveComponent("AuthDialog");
         return _openBlock(), _createElementBlock("div", { class: "merchant-shell" }, [
@@ -16822,15 +17254,13 @@
               class: "merchant-brand",
               onClick: ($event) => _ctx.go("/")
             }, [
-              _createElementVNode("span", { class: "brand-pin" }, [
-                _createElementVNode("span", null, "青")
-              ]),
+              _createVNode2(_component_BrandLogo, { size: 34 }),
               _createElementVNode("span", { class: "brand-word" }, [
                 _createTextVNode("青柠校园 "),
                 _createElementVNode(
                   "span",
                   { class: "brand-suffix" },
-                  _toDisplayString(_ctx.role === "admin" ? "管理后台" : "商家后台"),
+                  _toDisplayString(_ctx.role === "admin" ? "平台管理中心" : "商家工作台"),
                   1
                   /* TEXT */
                 )
@@ -28498,15 +28928,16 @@
           "RoleManager"
         ].includes(current.value)
       );
-      let version2 = 0, restoredIdentity = -1, sessionPending;
+      let version2 = 0, restoredIdentity = -1, booted = false, sessionPending;
       async function refresh() {
         const stamp = ++version2;
-        ready.value = false;
+        const identity = store.identityVersion;
+        const needsBlockingGate = !booted || backoffice.value && (restoredIdentity !== identity || store.route.startsWith("/admin") && !store.workspace || store.route.startsWith("/merchant") && !store.merchants.length);
+        if (needsBlockingGate) ready.value = false;
         contextError.value = "";
         authRequired.value = false;
         try {
           if (!preview) {
-            const identity = store.identityVersion;
             if (restoredIdentity !== identity) {
               restoredIdentity = identity;
               sessionPending = loadSession();
@@ -28523,11 +28954,16 @@
             authRequired.value = true;
             return;
           }
-          if (store.route.startsWith("/merchant")) await loadMerchant({ contextOnly: true });
-          else if (!preview && store.route.startsWith("/admin")) {
-            const workspace = await api("/workspace");
-            if (stamp !== version2) return;
-            store.workspace = workspace;
+          if (store.route.startsWith("/merchant")) {
+            if (preview || !store.merchants.length || !store.merchantId) {
+              await loadMerchant({ contextOnly: true });
+            }
+          } else if (!preview && store.route.startsWith("/admin")) {
+            if (!store.workspace) {
+              const workspace = await api("/workspace");
+              if (stamp !== version2) return;
+              store.workspace = workspace;
+            }
           } else if (preview) await loadPublic();
         } catch (e) {
           if (stamp === version2) {
@@ -28535,7 +28971,10 @@
             else contextError.value = e.message;
           }
         } finally {
-          if (stamp === version2) ready.value = true;
+          if (stamp === version2) {
+            booted = true;
+            ready.value = true;
+          }
         }
       }
       onMounted$f(() => {
@@ -28610,6 +29049,8 @@
   };
   const app = createApp(App);
   app.component("Icon", Icon);
+  app.component("BrandLogo", BrandLogo);
   app.directive("modal", modal);
+  installCustomSelects();
   app.mount("#app");
 })();

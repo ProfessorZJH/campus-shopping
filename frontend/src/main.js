@@ -2,7 +2,9 @@ import './vue-runtime.js';
 import { createApp, ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { api } from './services/api.js';
 import { modal } from './services/modal.js';
+import { installCustomSelects } from './services/custom-select.js';
 import Icon from './components/Icon.js';
+import BrandLogo from './components/BrandLogo.js';
 import Home from './pages/Home.js';
 import Guide from './pages/Guide.js';
 import Merchant from './pages/Merchant.js';
@@ -81,15 +83,22 @@ const App = {
     );
     let version = 0,
       restoredIdentity = -1,
+      booted = false,
       sessionPending;
     async function refresh() {
       const stamp = ++version;
-      ready.value = false;
+      const identity = store.identityVersion;
+      const needsBlockingGate =
+        !booted ||
+        (backoffice.value &&
+          (restoredIdentity !== identity ||
+            (store.route.startsWith('/admin') && !store.workspace) ||
+            (store.route.startsWith('/merchant') && !store.merchants.length)));
+      if (needsBlockingGate) ready.value = false;
       contextError.value = '';
       authRequired.value = false;
       try {
         if (!preview) {
-          const identity = store.identityVersion;
           if (restoredIdentity !== identity) {
             restoredIdentity = identity;
             sessionPending = loadSession();
@@ -107,11 +116,16 @@ const App = {
           authRequired.value = true;
           return;
         }
-        if (store.route.startsWith('/merchant')) await loadMerchant({ contextOnly: true });
-        else if (!preview && store.route.startsWith('/admin')) {
-          const workspace = await api('/workspace');
-          if (stamp !== version) return;
-          store.workspace = workspace;
+        if (store.route.startsWith('/merchant')) {
+          if (preview || !store.merchants.length || !store.merchantId) {
+            await loadMerchant({ contextOnly: true });
+          }
+        } else if (!preview && store.route.startsWith('/admin')) {
+          if (!store.workspace) {
+            const workspace = await api('/workspace');
+            if (stamp !== version) return;
+            store.workspace = workspace;
+          }
         } else if (preview) await loadPublic();
       } catch (e) {
         if (stamp === version) {
@@ -119,7 +133,10 @@ const App = {
           else contextError.value = e.message;
         }
       } finally {
-        if (stamp === version) ready.value = true;
+        if (stamp === version) {
+          booted = true;
+          ready.value = true;
+        }
       }
     }
     onMounted(() => {
@@ -137,5 +154,7 @@ const App = {
 };
 const app = createApp(App);
 app.component('Icon', Icon);
+app.component('BrandLogo', BrandLogo);
 app.directive('modal', modal);
+installCustomSelects();
 app.mount('#app');
