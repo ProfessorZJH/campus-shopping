@@ -1,16 +1,18 @@
 /* ==========================================================================
-   青柠校园 · V6 Carbon Flagship 消费者端即时零售与交易样式 (consumer.css)
-   美学基调：Botanical Jade (#0A7B56 / #0A291E) × Electric Citrus (#C8F963) × Porcelain Studio
-   严格契约：零强权覆盖、零内联样式、全视口无横向溢出、首屏完整露出首排商品
+   青柠校园 · V7 国内大厂消费端旗舰设计系统 (consumer.css)
+   4 套消费端风格 (taobao / youpin / hema / dingdong) × 2 套首屏结构 (classic / feed)
+   严格契约：零强权覆盖、零内联样式、全视口零横向溢出、纯正日光商业棚拍质感
    ========================================================================== */
 
-/* ---------- 1. 消费者外壳与顶栏 ---------- */
+/* ---------- 1. 消费者外壳与日光纯白顶栏 ---------- */
 .consumer-shell {
   min-height: 100vh;
   background-color: var(--bg-canvas);
-  background-image:
-    radial-gradient(1100px 380px at 50% -120px, rgba(16, 152, 104, 0.07), transparent 70%),
-    linear-gradient(180deg, #f7f9f7 0%, #f1f4f1 100%);
+  background-image: linear-gradient(
+    180deg,
+    var(--bg-canvas) 0%,
+    var(--bg-canvas-end, #f0f2f5) 100%
+  );
   color: var(--ink-primary);
   padding-bottom: 72px;
 }
@@ -22,8 +24,8 @@
 }
 
 .consumer-main {
-  padding-top: 10px;
-  padding-bottom: 36px;
+  padding-top: 12px;
+  padding-bottom: 40px;
 }
 
 /* 严禁在顶栏开启滤镜或变换，避免创建固定定位包含块导致移动端底部导航漂移 */
@@ -36,8 +38,8 @@
   -webkit-backdrop-filter: none;
   transform: none;
   filter: none;
-  border-bottom: 1px solid rgba(15, 23, 20, 0.07);
-  box-shadow: 0 2px 12px rgba(15, 23, 20, 0.025);
+  border-bottom: 1px solid var(--border-default);
+  box-shadow: 0 1px 4px rgba(29, 33, 41, 0.04);
 }
 
 .consumer-header-inner {
@@ -77,8 +79,8 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border-radius: 10px;
-  box-shadow: 0 3px 10px rgba(10, 123, 86, 0.2);
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(29, 33, 41, 0.08);
 }
 
 .brand-logo-mark svg {
@@ -94,16 +96,16 @@
 
 .location-name {
   font-size: 16.5px;
-  font-weight: 780;
-  letter-spacing: -0.025em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   color: var(--ink-primary);
   white-space: nowrap;
 }
 
 .brand-sub-en {
   font-size: 9px;
-  font-weight: 750;
-  letter-spacing: 0.09em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   color: var(--ink-muted);
   margin-top: 2px;
 }
@@ -114,12 +116,12 @@
   gap: 5px;
   height: 30px;
   padding: 0 11px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   background: var(--bg-subtle);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   color: var(--ink-secondary);
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
   max-width: 156px;
   white-space: nowrap;
   overflow: hidden;
@@ -143,7 +145,7 @@
 .header-zone-pill:hover {
   background: var(--color-brand-soft);
   border-color: var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
 }
 
 /* 顶部主导航（移动端底部固定，桌面端内嵌顶栏） */
@@ -153,10 +155,10 @@
   right: 0;
   bottom: 0;
   z-index: 50;
-  background: rgba(255, 255, 255, 0.98);
+  background: #ffffff;
   border-top: 1px solid var(--border-default);
   padding-bottom: env(safe-area-inset-bottom, 0);
-  box-shadow: 0 -4px 18px rgba(15, 23, 20, 0.05);
+  box-shadow: 0 -2px 12px rgba(29, 33, 41, 0.05);
 }
 
 .mobile-tabbar-inner {
@@ -174,7 +176,7 @@
   gap: 2px;
   height: 56px;
   padding: 0;
-  color: var(--ink-muted);
+  color: var(--ink-secondary);
   font-size: 11px;
   font-weight: 500;
   transition:
@@ -219,7 +221,7 @@
 .header-workbench-btn {
   height: 32px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-default);
   background: var(--bg-surface);
   color: var(--ink-secondary);
@@ -241,20 +243,19 @@
 .header-workbench-btn:hover {
   border-color: var(--color-brand-border);
   background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
 }
 
 .header-login {
   height: 34px;
-  padding: 0 17px;
-  border-radius: 999px;
+  padding: 0 18px;
+  border-radius: var(--radius-btn, 999px);
+  background-color: var(--color-brand);
   background-image: var(--gradient-brand);
   color: #ffffff;
   font-size: 13px;
   font-weight: 650;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 3px 10px rgba(10, 123, 86, 0.2);
+  box-shadow: 0 2px 8px rgba(29, 33, 41, 0.1);
   transition:
     filter 0.16s ease,
     transform 0.16s ease;
@@ -267,10 +268,10 @@
 
 .demo-pill {
   padding: 4px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
@@ -297,8 +298,7 @@
   gap: 7px;
   transition:
     border-color 0.16s ease,
-    background 0.16s ease,
-    box-shadow 0.16s ease;
+    background 0.16s ease;
 }
 
 .user-menu-btn:hover {
@@ -310,13 +310,13 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  border: 1px solid var(--color-brand-border);
   font-size: 12px;
-  font-weight: 750;
+  font-weight: 700;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 0 0 1px rgba(200, 249, 99, 0.25);
 }
 
 .user-menu-name {
@@ -352,9 +352,9 @@
   top: calc(100% + 8px);
   right: 0;
   width: 212px;
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 16px;
+  border-radius: var(--radius-card, 12px);
   box-shadow: var(--shadow-elevated);
   padding: 6px;
   z-index: 70;
@@ -383,7 +383,7 @@
 .user-menu-popover button {
   width: 100%;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   color: var(--ink-secondary);
   font-size: 13px;
   font-weight: 500;
@@ -424,7 +424,7 @@
   height: 34px;
   border-radius: 10px;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: var(--ink-secondary);
   display: grid;
   place-items: center;
@@ -432,11 +432,11 @@
 
 .mobile-page-top b {
   font-size: 15.5px;
-  font-weight: 680;
+  font-weight: 700;
   color: var(--ink-primary);
 }
 
-/* 价格统一拆字号排版（朱砂珊瑚红数字，等宽对齐） */
+/* 零售价格拆字号排版（等宽数字对齐） */
 .rtl-price {
   display: inline-flex;
   align-items: baseline;
@@ -447,25 +447,25 @@
 
 .rtl-price .yen {
   font-style: normal;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   margin-right: 1px;
 }
 
 .rtl-price .int {
-  font-size: 21px;
-  font-weight: 780;
-  letter-spacing: -0.025em;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 .rtl-price .dec {
   font-style: normal;
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
 }
 
 .rtl-price .qi {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--ink-muted);
   margin-left: 1px;
@@ -480,50 +480,6 @@
   font-size: 13px;
   color: var(--ink-muted);
   line-height: 1.55;
-}
-
-.inline-error {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 10px 14px;
-  background: var(--color-danger-bg);
-  border: 1px solid var(--color-danger-border);
-  border-radius: 12px;
-  color: var(--color-danger);
-  font-size: 13px;
-  line-height: 1.45;
-  margin-bottom: 12px;
-}
-
-.inline-error button {
-  margin-left: auto;
-  font-weight: 600;
-  color: var(--color-danger-strong);
-  text-decoration: underline;
-}
-
-.mobile-empty {
-  min-height: 150px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 32px 16px;
-  border-radius: 18px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-card);
-  color: var(--ink-muted);
-  font-size: 13.5px;
-  text-align: center;
-}
-
-.mobile-empty strong {
-  color: var(--ink-primary);
-  font-size: 15px;
 }
 
 .mobile-hint {
@@ -545,48 +501,55 @@
   border: 0;
 }
 
-/* ---------- 2. 首页：50px 悬浮搜索胶囊 + 编辑级不对称 Bento 双卡 + 门店实拍条 + 杂志级商品卡 ---------- */
+/* ---------- 2. 首页搜索胶囊（淘宝 2025 / 京东 / 小米有品居中大胶囊） ---------- */
 .home-search-strip {
   display: flex;
   flex-direction: column;
-  gap: 7px;
-  margin-bottom: 10px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 0 2px;
+  margin-bottom: 8px;
 }
 
 .home-search-bar-row {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 10px;
 }
 
 .big-search {
-  flex: 1 1 280px;
+  width: 100%;
+  max-width: 680px;
   min-width: 0;
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 50px;
-  padding: 0 5px 0 18px;
+  height: 44px;
+  padding: 0 3px 0 16px;
   background: #ffffff;
-  border: 1.5px solid var(--border-default);
-  border-radius: 999px;
-  box-shadow: var(--shadow-card);
+  border: 2px solid var(--search-border, var(--color-brand));
+  border-radius: var(--radius-btn, 999px);
+  box-shadow: 0 2px 8px rgba(29, 33, 41, 0.04);
   transition:
-    border-color 0.2s ease,
-    box-shadow 0.2s ease;
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .big-search:focus-within {
   border-color: var(--color-brand);
-  box-shadow:
-    0 8px 28px rgba(10, 123, 86, 0.1),
-    0 0 0 3px rgba(10, 123, 86, 0.12);
+  box-shadow: 0 4px 18px rgba(29, 33, 41, 0.08);
 }
 
 .big-search .big-search-icon,
 .big-search svg {
-  color: var(--color-brand);
+  color: var(--ink-muted);
   flex-shrink: 0;
+}
+
+.big-search:focus-within .big-search-icon {
+  color: var(--color-brand);
 }
 
 .big-search input {
@@ -602,21 +565,21 @@
   color: var(--ink-muted);
 }
 
+.big-search input:focus:not(:focus-visible) {
+  outline: none;
+}
+
 .big-search button {
-  height: 38px;
-  padding: 0 22px;
-  border-radius: 999px;
+  height: 36px;
+  padding: 0 24px;
+  border-radius: var(--radius-btn, 999px);
+  background-color: var(--color-brand);
   background-image: var(--gradient-brand);
   color: #ffffff;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 650;
   flex-shrink: 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 3px 10px rgba(10, 123, 86, 0.2);
-  transition:
-    filter 0.16s ease,
-    transform 0.16s ease;
+  transition: filter 0.16s ease;
 }
 
 .big-search button:hover {
@@ -624,6 +587,9 @@
 }
 
 .popular-tags {
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -632,11 +598,11 @@
 
 .popular-tags button,
 .search-history-chip {
-  height: 25px;
-  padding: 0 11px;
-  border-radius: 999px;
-  border: 1px solid rgba(15, 23, 20, 0.05);
-  background: #ffffff;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--radius-btn, 999px);
+  border: 1px solid var(--border-subtle);
+  background: rgba(255, 255, 255, 0.86);
   color: var(--ink-secondary);
   font-size: 12px;
   font-weight: 500;
@@ -647,8 +613,7 @@
   transition:
     background 0.15s ease,
     color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    border-color 0.15s ease;
 }
 
 .popular-tags button .hot-lead-icon {
@@ -659,19 +624,18 @@
 .popular-tags button:hover {
   background: var(--color-brand-soft);
   border-color: var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
 }
 
 .popular-tags button.active {
-  background: var(--bg-forest, #0a291e);
-  border-color: var(--bg-forest, #0a291e);
-  color: #ffffff;
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
   font-weight: 650;
-  box-shadow: 0 2px 8px rgba(10, 41, 30, 0.16);
 }
 
 .popular-tags button.active .hot-lead-icon {
-  color: var(--color-lime-zest, #c8f963);
+  color: var(--color-brand);
 }
 
 .search-history-sep,
@@ -693,44 +657,154 @@
   color: var(--ink-primary);
 }
 
-/* 不对称首屏 Bento 双卡（紧凑控高 ~166px，确保 1440×900 与 390×844 首排商品 100% 露出） */
+/* ---------- 3. 双套首页首屏结构：classic 三栏摄影大片 vs feed 极简高密流 ---------- */
 .home-hero-row {
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
-/* 左卡：深林剧场感主视觉 (Dark Botanical Cinema Stage) */
+/* 左栏：纯白纵向商品分类菜单（仅桌面 classic 展示） */
+.hero-cat-sidebar {
+  display: none;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
+  padding: 8px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2px;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: none;
+  box-shadow: var(--shadow-card);
+}
+
+.hero-cat-sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.hero-cat-row {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 30px;
+  max-height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+
+.hero-cat-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-subtle);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.hero-cat-icon img {
+  width: 22px;
+  height: 22px;
+  object-fit: cover;
+  display: block;
+}
+
+.hero-cat-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-cat-arrow {
+  color: var(--ink-muted);
+  flex-shrink: 0;
+  opacity: 0.72;
+  transition:
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.hero-cat-row:hover,
+.hero-cat-row.active {
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  font-weight: 650;
+}
+
+.hero-cat-row:hover .hero-cat-arrow,
+.hero-cat-row.active .hero-cat-arrow {
+  color: var(--color-brand);
+  opacity: 1;
+  transform: translateX(1px);
+}
+
+/* 中栏：16:9 真实商业摄影满幅轮播舞台 */
 .home-scene-banner {
   position: relative;
   overflow: hidden;
-  background-color: var(--bg-forest, #0a291e);
-  background-image: var(--gradient-forest);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 22px;
-  padding: 16px 22px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
+  padding: 26px 30px;
+  display: flex;
   align-items: center;
-  gap: 18px;
-  color: #ffffff;
-  box-shadow: var(--shadow-panel);
-  min-height: 152px;
+  min-height: 220px;
+  box-shadow: var(--shadow-card);
 }
 
-.home-scene-banner::before {
+.hero-banner-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: right center;
+  z-index: 0;
+  cursor: pointer;
+  transition: transform 0.55s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.home-scene-banner:hover .hero-banner-photo {
+  transform: scale(1.025);
+}
+
+.home-scene-banner::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(360px 180px at 14% 0%, rgba(255, 255, 255, 0.07), transparent 70%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.88) 0%,
+    rgba(255, 255, 255, 0.68) 38%,
+    rgba(255, 255, 255, 0) 64%
+  );
   pointer-events: none;
+  z-index: 1;
 }
 
 .scene-banner-copy {
   position: relative;
-  z-index: 1;
+  z-index: 2;
+  max-width: 56%;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .carousel-scene-tag {
@@ -738,38 +812,37 @@
   align-items: center;
   gap: 6px;
   padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(200, 249, 99, 0.16);
-  border: 1px solid rgba(200, 249, 99, 0.34);
-  color: #d9f99d;
-  font-size: 11px;
+  border-radius: var(--radius-btn, 999px);
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
+  font-size: 11.5px;
   font-weight: 650;
-  letter-spacing: 0.02em;
-  margin-bottom: 8px;
+  letter-spacing: 0.01em;
+  margin-bottom: 10px;
 }
 
 .scene-live-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-lime-zest, #c8f963);
-  box-shadow: 0 0 8px rgba(200, 249, 99, 0.7);
+  background: var(--color-brand);
 }
 
 .scene-banner-copy h2 {
-  font-size: 22px;
-  font-weight: 780;
-  color: #ffffff;
-  letter-spacing: -0.025em;
-  line-height: 1.26;
-  margin-bottom: 5px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #1d2129;
+  letter-spacing: -0.02em;
+  line-height: 1.24;
+  margin-bottom: 8px;
 }
 
 .scene-banner-copy p {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.78);
-  line-height: 1.42;
-  margin-bottom: 12px;
+  font-size: 13.5px;
+  color: #4e5969;
+  line-height: 1.48;
+  margin-bottom: 18px;
 }
 
 .carousel-actions {
@@ -779,17 +852,18 @@
 }
 
 .carousel-cta-btn {
-  height: 32px;
-  padding: 0 15px;
-  border-radius: 999px;
-  background: var(--color-lime-zest, #c8f963);
-  color: var(--bg-forest, #0a291e);
-  font-size: 12.5px;
-  font-weight: 750;
+  height: 36px;
+  padding: 0 20px;
+  border-radius: var(--radius-btn, 999px);
+  background-color: var(--color-brand);
+  background-image: var(--gradient-brand);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  box-shadow: 0 4px 14px rgba(200, 249, 99, 0.24);
+  gap: 4px;
+  box-shadow: 0 4px 12px rgba(29, 33, 41, 0.12);
   transition:
     transform 0.18s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
     filter 0.18s ease;
@@ -803,15 +877,15 @@
 .carousel-dots {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
 }
 
 .carousel-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   padding: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(29, 33, 41, 0.22);
   transition:
     width 0.22s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
     background 0.22s ease;
@@ -819,67 +893,33 @@
 
 .carousel-dot.active {
   width: 20px;
-  background: var(--color-lime-zest, #c8f963);
+  background: var(--color-brand);
 }
 
-.scene-banner-art {
-  position: relative;
-  z-index: 1;
-  width: 132px;
-  height: 132px;
-  border-radius: 18px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.08);
-  border: 2px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.28);
-  cursor: pointer;
-  flex-shrink: 0;
-  transform: rotate(-2deg);
-  transition:
-    transform 0.38s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    border-color 0.24s ease;
-}
-
-.home-scene-banner:hover .scene-banner-art {
-  transform: rotate(0deg) scale(1.04);
-  border-color: rgba(200, 249, 99, 0.48);
-}
-
-.scene-banner-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-/* 右卡：通透青柠翡翠 AI 导购 Bento 卡 */
+/* 右栏：纯白智能导购卡 */
 .hero-shopping,
 .cabin-ai-card {
   width: 100%;
-  min-height: 164px;
-  background: var(
-    --gradient-copilot,
-    linear-gradient(145deg, #ecfdf5 0%, #ffffff 52%, #f7fee7 100%)
-  );
-  border: 1px solid rgba(10, 123, 86, 0.18);
-  border-radius: 22px;
-  padding: 18px 20px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
+  padding: 18px;
   text-align: left;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 9px;
+  gap: 10px;
   box-shadow: var(--shadow-card);
   transition:
-    transform 0.22s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
+    transform 0.2s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
 }
 
 .hero-shopping:hover,
 .cabin-ai-card:hover {
   transform: translateY(-2px);
-  border-color: var(--color-brand);
+  border-color: var(--color-brand-border);
   box-shadow: var(--shadow-panel);
 }
 
@@ -889,23 +929,27 @@
   gap: 11px;
 }
 
+.cabin-ai-heading {
+  min-width: 0;
+}
+
 .cabin-ai-avatar,
 .cabin-ai-emblem {
   width: 40px;
   height: 40px;
-  border-radius: 13px;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  border-radius: 10px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 6px 14px rgba(10, 41, 30, 0.16);
 }
 
 .hero-title {
   font-size: 16.5px;
-  font-weight: 780;
-  color: var(--ink-primary);
+  font-weight: 800;
+  color: #1d2129;
   line-height: 1.2;
   letter-spacing: -0.02em;
 }
@@ -916,56 +960,67 @@
 
 .cabin-ai-sub {
   font-size: 12px;
-  color: var(--ink-secondary);
+  color: var(--ink-muted);
   margin-top: 2px;
-}
-
-.cabin-ai-go {
-  margin-left: auto;
-  height: 29px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
-  font-size: 12px;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(10, 41, 30, 0.14);
 }
 
 .cabin-ai-desc {
   font-size: 12.5px;
   color: var(--ink-secondary);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .cabin-ai-tags {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
 .cabin-ai-tag {
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(10, 123, 86, 0.16);
-  color: var(--color-brand-strong);
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--ink-secondary);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 550;
 }
 
-/* 视觉分类胶囊条 + 实拍头像门店条 */
+.cabin-ai-go {
+  width: 100%;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--radius-btn, 999px);
+  background-color: var(--color-brand);
+  background-image: var(--gradient-brand);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 650;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  white-space: nowrap;
+  transition: filter 0.16s ease;
+}
+
+.cabin-ai-card:hover .cabin-ai-go {
+  filter: brightness(1.04);
+}
+
+/* feed 高密流模式：隐藏首屏英雄区，将横向分类条与 5 列商品流直接推至视口首屏 */
+html[data-home-layout='feed'] .home-hero-row {
+  display: none;
+}
+
+/* ---------- 4. 分类胶囊条 + 实拍门店条 + 5 列桌面商品网格 ---------- */
 .home-browse-panel {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
+  padding: 8px 12px;
+  margin-bottom: 8px;
   box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
@@ -990,10 +1045,10 @@
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 13px 0 5px;
-  border-radius: 14px;
+  gap: 7px;
+  height: 34px;
+  padding: 0 12px 0 5px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-default);
   background: var(--bg-subtle);
   color: var(--ink-secondary);
@@ -1001,11 +1056,9 @@
   font-weight: 550;
   white-space: nowrap;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease;
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .category-item:hover {
@@ -1014,25 +1067,21 @@
 }
 
 .category-item.categoryActive {
-  background: var(--bg-forest, #0a291e);
-  border-color: var(--bg-forest, #0a291e);
-  color: #ffffff;
-  font-weight: 680;
-  box-shadow:
-    0 4px 12px rgba(10, 41, 30, 0.18),
-    inset 0 0 0 1px rgba(200, 249, 99, 0.34);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  font-weight: 650;
 }
 
 .category-picture {
-  width: 26px;
-  height: 26px;
-  border-radius: 9px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   overflow: hidden;
   background: #ffffff;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(15, 23, 20, 0.08);
 }
 
 .category-picture img {
@@ -1067,9 +1116,9 @@
 
 .store-pill-chip {
   flex: 0 0 auto;
-  height: 34px;
+  height: 32px;
   padding: 0 13px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-default);
   background: var(--bg-subtle);
   color: var(--ink-secondary);
@@ -1081,14 +1130,13 @@
   gap: 7px;
   white-space: nowrap;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    box-shadow 0.16s ease;
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .store-pill-chip.merchant-card {
-  padding: 0 13px 0 6px;
+  padding: 0 13px 0 5px;
 }
 
 .store-pill-avatar {
@@ -1097,8 +1145,7 @@
   border-radius: 50%;
   object-fit: cover;
   background: #ffffff;
-  border: 1.5px solid #ffffff;
-  box-shadow: 0 1px 3px rgba(15, 23, 20, 0.14);
+  border: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
@@ -1110,26 +1157,25 @@
 
 .store-pill-chip.active,
 .store-pill-chip.merchant-card.active {
-  background: var(--bg-forest, #0a291e);
-  border-color: var(--bg-forest, #0a291e);
-  color: #ffffff;
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
   font-weight: 650;
-  box-shadow: 0 3px 10px rgba(10, 41, 30, 0.16);
 }
 
 .store-pill-chip.merchant-card.active .store-pill-avatar {
-  border-color: var(--color-lime-zest, #c8f963);
+  border-color: var(--color-brand);
 }
 
 .store-enter-inline {
   margin-left: auto;
   flex-shrink: 0;
-  height: 32px;
+  height: 30px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-size: 12px;
   font-weight: 650;
   display: inline-flex;
@@ -1151,7 +1197,7 @@
   justify-content: space-between;
   gap: 10px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .sort-tabs {
@@ -1159,25 +1205,24 @@
   align-items: center;
   gap: 3px;
   padding: 3px;
-  border-radius: 11px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
   flex-wrap: wrap;
 }
 
 .sort-tabs button {
   height: 28px;
   padding: 0 12px;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--ink-secondary);
   font-size: 12.5px;
-  font-weight: 550;
+  font-weight: 500;
   white-space: nowrap;
   transition:
     background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s ease;
 }
 
 .sort-tabs button:hover {
@@ -1185,10 +1230,9 @@
 }
 
 .sort-tabs button.active {
-  background: var(--bg-surface);
-  color: var(--ink-primary);
-  font-weight: 680;
-  box-shadow: 0 1px 3px rgba(15, 23, 20, 0.08);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+  font-weight: 650;
 }
 
 .price-filter {
@@ -1203,16 +1247,16 @@
 .price-filter-label {
   font-size: 12px;
   color: var(--ink-muted);
-  font-weight: 550;
+  font-weight: 500;
 }
 
 .price-filter input {
   width: 68px;
   height: 30px;
   padding: 0 9px;
-  border-radius: 9px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: #ffffff;
   font-size: 12px;
   color: var(--ink-primary);
 }
@@ -1224,7 +1268,7 @@
 .price-filter button {
   height: 30px;
   padding: 0 11px;
-  border-radius: 9px;
+  border-radius: 8px;
   font-size: 12px;
 }
 
@@ -1238,39 +1282,39 @@
   color: var(--ink-primary);
 }
 
-/* 杂志级四列商品流卡片 */
+/* 大厂纯白零售商品流卡片（2 -> 3 -> 4 -> 5 列） */
 .home-product-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .home-product {
   min-width: 0;
   background: #ffffff;
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
+  border-radius: var(--radius-card, 12px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   cursor: pointer;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   transition:
-    transform 0.24s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
-    box-shadow 0.24s ease,
-    border-color 0.24s ease;
+    transform 0.22s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
 }
 
 .home-product:hover {
-  transform: translateY(-4px);
-  border-color: rgba(10, 123, 86, 0.22);
-  box-shadow: var(--shadow-panel);
+  transform: translateY(-3px);
+  border-color: var(--color-brand-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .home-product-photo {
   position: relative;
   aspect-ratio: 1 / 1;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
   overflow: hidden;
 }
 
@@ -1279,40 +1323,39 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.45s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: transform 0.38s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .home-product:hover .home-product-photo img {
-  transform: scale(1.05);
+  transform: scale(1.03);
 }
 
 .product-photo-badge {
   position: absolute;
-  top: 10px;
-  left: 10px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgba(10, 41, 30, 0.84);
-  color: var(--color-lime-zest, #c8f963);
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--color-brand);
+  color: #ffffff;
   font-size: 11px;
   font-weight: 650;
-  line-height: 1.3;
-  box-shadow: 0 4px 10px rgba(10, 41, 30, 0.16);
+  line-height: 1.35;
 }
 
 .product-photo-badge.is-scarce {
-  background: rgba(255, 251, 235, 0.95);
+  background: rgba(255, 251, 235, 0.96);
   border: 1px solid var(--color-warning-border);
   color: var(--color-warning);
 }
 
 .product-photo-badge.is-soldout {
-  background: rgba(15, 23, 20, 0.72);
+  background: rgba(29, 33, 41, 0.72);
   color: #ffffff;
 }
 
 .home-product-info {
-  padding: 11px 13px 13px;
+  padding: 10px 12px 12px;
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -1323,15 +1366,15 @@
   padding: 0;
   width: 100%;
   text-align: left;
-  font-size: 14.5px;
-  font-weight: 650;
-  color: var(--ink-primary);
-  line-height: 1.36;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  line-height: 1.38;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 39px;
+  min-height: 38px;
 }
 
 .product-store-meta {
@@ -1356,15 +1399,6 @@
   flex-shrink: 0;
 }
 
-.product-scarce-note {
-  font-style: normal;
-  color: var(--color-warning);
-  font-size: 11px;
-  font-weight: 600;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
 .product-price-row {
   margin-top: auto;
   padding-top: 6px;
@@ -1376,10 +1410,10 @@
 
 .rtl-plus-btn {
   position: relative;
-  min-width: 32px;
-  height: 32px;
+  min-width: 30px;
+  height: 30px;
   padding: 0;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   background: var(--color-brand);
   color: #ffffff;
   font-size: 12px;
@@ -1389,7 +1423,6 @@
   justify-content: center;
   flex-shrink: 0;
   white-space: nowrap;
-  box-shadow: 0 3px 10px rgba(10, 123, 86, 0.24);
   transition:
     background 0.16s ease,
     color 0.16s ease,
@@ -1404,11 +1437,11 @@
 
 .rtl-plus-btn.is-spec {
   min-width: auto;
-  padding: 0 12px;
+  height: 28px;
+  padding: 0 11px;
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
-  box-shadow: none;
+  color: var(--color-brand);
 }
 
 .rtl-plus-btn.is-spec:hover:not(:disabled) {
@@ -1436,23 +1469,85 @@
   border: 1.5px solid #ffffff;
 }
 
-/* 首页迷你悬浮结算胶囊 */
+/* 4 套大厂消费端精细视觉微调 */
+html[data-consumer-theme='taobao'] .big-search {
+  border-color: #ff5000;
+}
+
+html[data-consumer-theme='taobao'] .product-photo-badge:not(.is-soldout):not(.is-scarce) {
+  background: linear-gradient(135deg, #ff6a00 0%, #ff4500 100%);
+  color: #ffffff;
+}
+
+html[data-consumer-theme='youpin'] .home-product,
+html[data-consumer-theme='youpin'] .shop-product-card {
+  border-radius: 8px;
+  border-color: #ebe9e4;
+}
+
+html[data-consumer-theme='youpin'] .home-product-photo,
+html[data-consumer-theme='youpin'] .shop-card-photo {
+  background: #faf9f6;
+}
+
+html[data-consumer-theme='youpin'] .product-photo-badge:not(.is-soldout):not(.is-scarce),
+html[data-consumer-theme='youpin'] .carousel-scene-tag {
+  background: #f8f4ec;
+  border: 1px solid #e3dacb;
+  color: #9f7e54;
+}
+
+html[data-consumer-theme='youpin'] .scene-live-dot {
+  background: #9f7e54;
+}
+
+html[data-consumer-theme='hema'] .big-search {
+  border-color: #0089ff;
+}
+
+html[data-consumer-theme='hema'] .rtl-plus-btn:not(.is-spec) {
+  background: #0089ff;
+}
+
+html[data-consumer-theme='hema'] .product-photo-badge:not(.is-soldout):not(.is-scarce) {
+  background: linear-gradient(135deg, #ff7d1a 0%, #ff5800 100%);
+  color: #ffffff;
+}
+
+html[data-consumer-theme='hema'] .rtl-price,
+html[data-consumer-theme='hema'] .red-text {
+  color: #ff6a00;
+}
+
+html[data-consumer-theme='dingdong'] .rtl-plus-btn:not(.is-spec) {
+  background: #00b42a;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 180, 42, 0.24);
+}
+
+html[data-consumer-theme='dingdong'] .rtl-price,
+html[data-consumer-theme='dingdong'] .red-text {
+  color: #ff4d29;
+}
+
+/* 首页迷你悬浮结算胶囊（深炭灰底 + 品牌实心按钮，右锚定不遮挡商品价格） */
 .floating-cart-pill {
   position: fixed;
-  left: 50%;
-  bottom: 68px;
-  transform: translateX(-50%);
+  right: 24px;
+  left: auto;
+  bottom: 72px;
+  transform: none;
   z-index: 42;
-  background: var(--bg-forest, #0a291e);
-  border: 1px solid rgba(200, 249, 99, 0.24);
+  background: #1d2129;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #ffffff;
-  height: 48px;
-  padding: 0 6px 0 18px;
+  height: 44px;
+  padding: 0 5px 0 16px;
   border-radius: 999px;
-  box-shadow: var(--shadow-elevated);
+  box-shadow: 0 10px 28px rgba(29, 33, 41, 0.24);
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
 }
 
 .floating-cart-pill span {
@@ -1462,13 +1557,14 @@
 }
 
 .floating-cart-pill button {
-  height: 36px;
-  padding: 0 16px;
+  height: 34px;
+  padding: 0 15px;
   border-radius: 999px;
-  background: var(--color-lime-zest, #c8f963);
-  color: var(--bg-forest, #0a291e);
-  font-size: 13px;
-  font-weight: 750;
+  background-color: var(--color-brand);
+  background-image: var(--gradient-brand);
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 650;
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -1481,9 +1577,9 @@
   width: min(468px, 100%);
   max-height: 86vh;
   overflow-y: auto;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
   padding: 24px;
   box-shadow: var(--shadow-elevated);
 }
@@ -1520,15 +1616,15 @@
 .sheet-product-line img {
   width: 80px;
   height: 80px;
-  border-radius: 14px;
+  border-radius: 10px;
   object-fit: cover;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
 
 .sheet-product-line h3 {
-  font-size: 16.5px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink-primary);
   margin-bottom: 6px;
@@ -1551,9 +1647,9 @@
   height: 38px;
   padding: 0 13px;
   margin-bottom: 16px;
-  border-radius: 11px;
+  border-radius: 10px;
   border: 1px solid var(--border-default);
-  background: var(--bg-canvas);
+  background: var(--bg-subtle);
   color: var(--ink-secondary);
   font-size: 12.5px;
   font-weight: 550;
@@ -1569,7 +1665,7 @@
 .more-product-detail:hover {
   border-color: var(--color-brand-border);
   background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
 }
 
 .sheet-field-label {
@@ -1588,22 +1684,21 @@
 }
 
 .sku-picker button {
-  min-height: 38px;
+  min-height: 36px;
   padding: 6px 15px;
-  border-radius: 11px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
+  border-radius: 8px;
+  border: 1px solid var(--border-default);
+  background: #ffffff;
   color: var(--ink-primary);
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition:
     border-color 0.15s ease,
     background 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s ease;
 }
 
 .sku-picker button:hover:not(:disabled) {
@@ -1613,9 +1708,8 @@
 .sku-picker button.active {
   border: 1.5px solid var(--color-brand);
   background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
-  font-weight: 680;
-  box-shadow: 0 0 0 3px rgba(10, 123, 86, 0.08);
+  color: var(--color-brand);
+  font-weight: 650;
 }
 
 .sku-picker button:disabled {
@@ -1642,15 +1736,15 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border-default);
-  border-radius: 11px;
-  background: var(--bg-surface);
+  border-radius: 8px;
+  background: #ffffff;
   overflow: hidden;
 }
 
 .quantity-picker button {
   width: 34px;
   height: 34px;
-  background: var(--bg-canvas);
+  background: var(--bg-subtle);
   color: var(--ink-primary);
   display: grid;
   place-items: center;
@@ -1669,7 +1763,7 @@
   min-width: 38px;
   text-align: center;
   font-size: 14px;
-  font-weight: 680;
+  font-weight: 650;
   color: var(--ink-primary);
   font-variant-numeric: tabular-nums;
 }
@@ -1681,7 +1775,7 @@
   margin-left: 6px;
 }
 
-/* ---------- 3. 商品详情页 (02)：得物/盒马棚拍舞台 + 通透价格履约卡 + 奢感高反差双主 CTA ---------- */
+/* ---------- 5. 商品详情页 (02)：纯白棚拍画廊 + 主题柔和价格带 + 双主按钮 ---------- */
 .mall-breadcrumb {
   display: flex;
   align-items: center;
@@ -1708,12 +1802,12 @@
 }
 
 .detail-cabin-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
   padding: 24px;
   box-shadow: var(--shadow-card);
-  margin-bottom: 18px;
+  margin-bottom: 16px;
 }
 
 .detail-layout {
@@ -1729,11 +1823,10 @@
 .detail-art {
   position: relative;
   aspect-ratio: 1 / 1;
-  border-radius: 20px;
+  border-radius: var(--radius-card, 12px);
   overflow: hidden;
-  background: radial-gradient(circle at 50% 42%, #ffffff 0%, #eef2ef 100%);
+  background: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
-  box-shadow: inset 0 1px 0 #ffffff;
 }
 
 .detail-art-trigger {
@@ -1749,7 +1842,7 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.45s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: transform 0.4s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .detail-art:hover .detail-art-trigger img {
@@ -1765,15 +1858,12 @@
   height: 36px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.94);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-default);
   color: var(--ink-primary);
   font-size: 20px;
   display: grid;
   place-items: center;
-  box-shadow: var(--shadow-panel);
-  transition:
-    background 0.16s ease,
-    transform 0.16s ease;
+  box-shadow: var(--shadow-card);
 }
 
 .detail-image-prev:hover,
@@ -1803,26 +1893,23 @@
   width: 68px;
   height: 68px;
   padding: 2px;
-  border-radius: 12px;
+  border-radius: 8px;
   border: 2px solid transparent;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
   overflow: hidden;
   flex-shrink: 0;
-  transition:
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
+  transition: border-color 0.16s ease;
 }
 
 .detail-image-thumbs button.active {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 3px rgba(10, 123, 86, 0.1);
 }
 
 .detail-image-thumbs img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 9px;
+  border-radius: 6px;
   display: block;
 }
 
@@ -1835,11 +1922,11 @@
 }
 
 .detail-info h1 {
-  font-size: 23px;
-  font-weight: 780;
-  color: var(--ink-primary);
-  letter-spacing: -0.025em;
-  line-height: 1.3;
+  font-size: 22px;
+  font-weight: 800;
+  color: #1d2129;
+  letter-spacing: -0.02em;
+  line-height: 1.32;
   margin-bottom: 6px;
 }
 
@@ -1849,16 +1936,14 @@
   line-height: 1.55;
 }
 
-/* 通透珊瑚玉色价格与履约保障横幅 */
 .tmall-price-banner {
-  background: linear-gradient(135deg, #fff5f4 0%, #fffdfb 62%, #f1fbf6 100%);
-  border: 1px solid rgba(235, 59, 46, 0.14);
-  border-radius: 16px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  border-radius: var(--radius-card, 12px);
   padding: 15px 18px;
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  box-shadow: inset 0 1px 0 #ffffff;
+  gap: 10px;
 }
 
 .tmall-price-main-row {
@@ -1873,7 +1958,7 @@
 }
 
 .tmall-price-banner .detail-price .int {
-  font-size: 32px;
+  font-size: 30px;
 }
 
 .tmall-price-banner .detail-price .dec {
@@ -1882,7 +1967,7 @@
 
 .detail-assurance-strip {
   padding-top: 10px;
-  border-top: 1px dashed rgba(15, 23, 20, 0.09);
+  border-top: 1px dashed var(--color-brand-border);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1906,7 +1991,7 @@
 .fav-toggle-btn {
   height: 34px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-default);
   background: #ffffff;
   color: var(--ink-secondary);
@@ -1915,7 +2000,6 @@
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  box-shadow: 0 1px 3px rgba(15, 23, 20, 0.04);
   transition:
     border-color 0.15s ease,
     background 0.15s ease,
@@ -1966,7 +2050,7 @@
 
 .meta-eta {
   font-style: normal;
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
   padding: 2px 8px;
@@ -1996,7 +2080,7 @@
   margin-bottom: 0;
 }
 
-/* 旗舰奢感双主 CTA：翡翠渐变“加入购物车” + 深林青柠“立即购买”（保持 .teal-button 渐变契约不变） */
+/* 大厂双主 CTA：保持 .teal-button 同源渐变契约，立即购买采用 --gradient-buy 白字 */
 .detail-fixed.tmall-action-bar {
   display: flex;
   align-items: center;
@@ -2006,36 +2090,35 @@
 
 .tmall-action-bar .teal-button {
   flex: 1;
-  min-height: 48px;
-  border-radius: 14px;
+  min-height: 46px;
+  border-radius: var(--radius-btn, 999px);
   font-size: 15px;
-  font-weight: 680;
+  font-weight: 650;
 }
 
 .buy-now-button {
   flex: 1;
-  min-height: 48px;
+  min-height: 46px;
   padding: 0 18px;
-  border-radius: 14px;
-  background-image: var(--gradient-buy, linear-gradient(135deg, #18241f 0%, #0b120f 100%));
-  border: 1px solid rgba(200, 249, 99, 0.22);
-  color: var(--color-lime-zest, #c8f963);
+  border-radius: var(--radius-btn, 999px);
+  background-color: var(--color-brand);
+  background-image: var(--gradient-buy, var(--gradient-brand));
+  border: 0;
+  color: #ffffff;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 650;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 6px 18px rgba(10, 41, 30, 0.2);
+  box-shadow: 0 4px 12px rgba(29, 33, 41, 0.12);
   transition:
     filter 0.18s ease,
     transform 0.18s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .buy-now-button:hover:not(:disabled) {
-  filter: brightness(1.08);
+  filter: brightness(1.06);
   transform: translateY(-1px);
 }
 
@@ -2049,36 +2132,34 @@
   width: 100%;
   margin-top: 2px;
   padding: 13px 15px;
-  border-radius: 16px;
+  border-radius: var(--radius-card, 12px);
   border: 1px solid var(--border-default);
-  background: linear-gradient(135deg, #f8faf8 0%, #ffffff 100%);
+  background: var(--bg-subtle);
   display: flex;
   align-items: center;
   gap: 13px;
   text-align: left;
   transition:
     border-color 0.16s ease,
-    box-shadow 0.16s ease,
-    transform 0.16s ease;
+    background 0.16s ease;
 }
 
 .detail-merchant:hover {
   border-color: var(--color-brand-border);
-  box-shadow: var(--shadow-card);
+  background: #ffffff;
 }
 
 .merchant-logo {
   width: 48px;
   height: 48px;
-  border-radius: 13px;
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
   color: var(--color-brand);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 2px 8px rgba(15, 23, 20, 0.06);
 }
 
 .merchant-logo img {
@@ -2096,7 +2177,7 @@
 .store-dsr-main strong {
   display: block;
   font-size: 14.5px;
-  font-weight: 680;
+  font-weight: 650;
   color: var(--ink-primary);
 }
 
@@ -2108,12 +2189,12 @@
 .shop-enter-label {
   height: 30px;
   padding: 0 12px;
-  border-radius: 999px;
-  background: var(--color-brand-soft);
+  border-radius: var(--radius-btn, 999px);
+  background: #ffffff;
   border: 1px solid var(--color-brand-border);
   font-size: 12px;
   font-weight: 650;
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -2137,9 +2218,9 @@
 }
 
 .detail-card {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
   padding: 20px 22px;
   box-shadow: var(--shadow-card);
 }
@@ -2192,8 +2273,8 @@
 
 .review-item {
   padding: 13px 15px;
-  border-radius: 14px;
-  background: var(--bg-canvas);
+  border-radius: 10px;
+  background: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
 }
 
@@ -2217,8 +2298,9 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-size: 11px;
   font-weight: 700;
   display: inline-grid;
@@ -2246,7 +2328,7 @@
 .review-tag-chip {
   padding: 2px 9px;
   border-radius: 999px;
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
   font-size: 11px;
   color: var(--ink-secondary);
@@ -2266,8 +2348,8 @@
 
 .detail-reco-item {
   border: 1px solid var(--border-subtle);
-  border-radius: 16px;
-  background: var(--bg-surface);
+  border-radius: var(--radius-card, 12px);
+  background: #ffffff;
   padding: 10px;
   text-align: left;
   display: flex;
@@ -2281,15 +2363,15 @@
 
 .detail-reco-item:hover {
   transform: translateY(-2px);
-  border-color: rgba(10, 123, 86, 0.2);
-  box-shadow: var(--shadow-panel);
+  border-color: var(--color-brand-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .detail-reco-photo {
   aspect-ratio: 1 / 1;
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
 }
 
 .detail-reco-photo img {
@@ -2301,7 +2383,7 @@
 
 .detail-reco-item strong {
   font-size: 13.5px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-primary);
   display: -webkit-box;
   -webkit-line-clamp: 1;
@@ -2312,15 +2394,15 @@
 /* 大图预览灯箱 */
 .lightbox-overlay {
   z-index: 95;
-  background: rgba(10, 24, 18, 0.84);
+  background: rgba(0, 0, 0, 0.76);
 }
 
 .lightbox-dialog {
   position: relative;
   width: min(92vw, 720px);
   max-height: 88vh;
-  background: var(--bg-surface);
-  border-radius: 20px;
+  background: #ffffff;
+  border-radius: 16px;
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -2332,9 +2414,9 @@
 .lightbox-dialog img {
   max-width: 100%;
   max-height: 70vh;
-  border-radius: 14px;
+  border-radius: 10px;
   object-fit: contain;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
 }
 
 .lightbox-controls {
@@ -2345,7 +2427,7 @@
   color: var(--ink-secondary);
 }
 
-/* ---------- 4. 购物车与吸顶票据式结算面板 (Cart.js) ---------- */
+/* ---------- 6. 购物车与吸顶结算面板 (Cart.js) ---------- */
 .mall-cart-head,
 .mall-orders-head {
   display: flex;
@@ -2358,7 +2440,7 @@
 .mall-cart-head h1,
 .mall-orders-head h1 {
   font-size: 21px;
-  font-weight: 780;
+  font-weight: 800;
   letter-spacing: -0.02em;
   color: var(--ink-primary);
 }
@@ -2384,9 +2466,9 @@
 }
 
 .cart-store {
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 18px;
+  border-radius: var(--radius-card, 12px);
   padding: 16px 18px;
   box-shadow: var(--shadow-card);
   transition:
@@ -2395,7 +2477,7 @@
 }
 
 .cart-store.selected {
-  border-color: rgba(10, 123, 86, 0.34);
+  border-color: var(--color-brand-border);
   box-shadow: var(--shadow-panel);
 }
 
@@ -2411,11 +2493,11 @@
 
 .radio-circle,
 .sku-check-btn {
-  width: 21px;
-  height: 21px;
-  border-radius: 7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
   border: 1.5px solid var(--border-control);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: transparent;
   display: inline-grid;
   place-items: center;
@@ -2463,9 +2545,9 @@
 .cart-line img {
   width: 72px;
   height: 72px;
-  border-radius: 13px;
+  border-radius: 10px;
   object-fit: cover;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -2487,7 +2569,7 @@
 
 .cart-line-top strong {
   font-size: 14.5px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-primary);
 }
 
@@ -2536,15 +2618,15 @@
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border-default);
-  border-radius: 10px;
-  background: var(--bg-surface);
+  border-radius: 8px;
+  background: #ffffff;
   overflow: hidden;
 }
 
 .mini-qty button {
-  width: 29px;
-  height: 29px;
-  background: var(--bg-canvas);
+  width: 28px;
+  height: 28px;
+  background: var(--bg-subtle);
   color: var(--ink-primary);
   display: grid;
   place-items: center;
@@ -2563,18 +2645,17 @@
   min-width: 30px;
   text-align: center;
   font-size: 13px;
-  font-weight: 680;
+  font-weight: 650;
   color: var(--ink-primary);
   font-variant-numeric: tabular-nums;
 }
 
-/* 吸顶工作室票据结算卡 */
 .tmall-cart-summary {
-  background: linear-gradient(180deg, #ffffff 0%, #fafcfa 100%);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius-card, 12px);
   padding: 20px 22px;
-  box-shadow: var(--shadow-panel);
+  box-shadow: var(--shadow-card);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2586,7 +2667,7 @@
   justify-content: space-between;
   gap: 8px;
   padding-bottom: 10px;
-  border-bottom: 1px dashed var(--border-control);
+  border-bottom: 1px dashed var(--border-default);
 }
 
 .tmall-cart-summary h3 {
@@ -2603,7 +2684,7 @@
   border-radius: 999px;
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-size: 11.5px;
   font-weight: 650;
 }
@@ -2618,7 +2699,7 @@
 
 .summary-row strong {
   color: var(--ink-primary);
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .cart-inline-rituals {
@@ -2649,38 +2730,30 @@
 .quick-chip {
   height: 30px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-default);
-  background: var(--bg-canvas);
+  background: var(--bg-subtle);
   color: var(--ink-secondary);
   font-size: 12px;
-  font-weight: 550;
+  font-weight: 500;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s ease;
 }
 
 .slot-pill:hover,
 .quick-chip:hover {
   border-color: var(--color-brand-border);
   background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
 }
 
-.slot-pill.active {
-  background: var(--bg-forest, #0a291e);
-  border-color: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
-  font-weight: 700;
-  box-shadow: 0 3px 10px rgba(10, 41, 30, 0.16);
-}
-
+.slot-pill.active,
 .quick-chip.active {
   background: var(--color-brand-soft);
   border-color: var(--color-brand);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-weight: 650;
 }
 
@@ -2691,7 +2764,7 @@
 
 .mobile-summary-total {
   padding-top: 14px;
-  border-top: 1px dashed var(--border-control);
+  border-top: 1px dashed var(--border-default);
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -2701,18 +2774,18 @@
 }
 
 .mobile-summary-total b {
-  font-size: 25px;
-  font-weight: 780;
+  font-size: 24px;
+  font-weight: 800;
   color: var(--color-price);
   font-variant-numeric: tabular-nums;
 }
 
 .checkout-submit-btn {
   width: 100%;
-  min-height: 48px;
-  border-radius: 14px;
+  min-height: 46px;
+  border-radius: var(--radius-btn, 999px);
   font-size: 15px;
-  font-weight: 680;
+  font-weight: 650;
 }
 
 /* 确认订单弹窗 */
@@ -2732,9 +2805,9 @@
 
 .checkout-shop {
   padding: 13px 15px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #f3faf6 0%, #ffffff 100%);
-  border: 1px solid var(--color-brand-border);
+  border-radius: 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border-default);
   margin-bottom: 14px;
   display: flex;
   align-items: center;
@@ -2743,9 +2816,10 @@
 
 .checkout-shop-badge {
   padding: 3px 9px;
-  border-radius: 7px;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  border-radius: 6px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-size: 11px;
   font-weight: 700;
   flex-shrink: 0;
@@ -2796,7 +2870,7 @@
 
 .checkout-total {
   padding: 13px 0;
-  border-top: 1px dashed var(--border-control);
+  border-top: 1px dashed var(--border-default);
   display: flex;
   justify-content: space-between;
   align-items: baseline;
@@ -2805,8 +2879,8 @@
 }
 
 .checkout-total b {
-  font-size: 23px;
-  font-weight: 780;
+  font-size: 22px;
+  font-weight: 800;
   color: var(--color-price);
   font-variant-numeric: tabular-nums;
 }
@@ -2819,7 +2893,7 @@
 
 .checkout-actions button {
   flex: 1;
-  min-height: 46px;
+  min-height: 44px;
 }
 
 .checkout-back {
@@ -2828,7 +2902,7 @@
   min-height: 42px;
 }
 
-/* ---------- 5. 订单列表、精致收银台与深林青柠穿孔取件登机牌 (Orders.js) ---------- */
+/* ---------- 7. 订单列表、明亮收银台与明亮穿孔登机牌取件凭证 (Orders.js) ---------- */
 .mall-orders-title-left {
   display: flex;
   align-items: center;
@@ -2840,7 +2914,7 @@
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: var(--ink-secondary);
   font-size: 13px;
   display: inline-flex;
@@ -2863,20 +2937,19 @@
 
 .order-tabs button,
 .tmall-order-tabs button {
-  height: 36px;
+  height: 34px;
   padding: 0 16px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: var(--ink-secondary);
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   white-space: nowrap;
   transition:
     background 0.15s ease,
     border-color 0.15s ease,
-    color 0.15s ease,
-    box-shadow 0.15s ease;
+    color 0.15s ease;
 }
 
 .order-tabs button:hover,
@@ -2887,11 +2960,10 @@
 
 .order-tabs button.active,
 .tmall-order-tabs button.active {
-  background: var(--bg-forest, #0a291e);
-  border-color: var(--bg-forest, #0a291e);
-  color: #ffffff;
-  font-weight: 680;
-  box-shadow: 0 3px 10px rgba(10, 41, 30, 0.16);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  font-weight: 650;
 }
 
 .orders-grid {
@@ -2902,9 +2974,9 @@
 
 .consumer-order-card {
   width: 100%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
   padding: 16px 18px;
   text-align: left;
   box-shadow: var(--shadow-card);
@@ -2919,8 +2991,8 @@
 
 .consumer-order-card:hover {
   transform: translateY(-2px);
-  border-color: rgba(10, 123, 86, 0.22);
-  box-shadow: var(--shadow-panel);
+  border-color: var(--color-brand-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
 }
 
 .order-card-head {
@@ -2935,7 +3007,7 @@
   align-items: center;
   gap: 6px;
   font-size: 14.5px;
-  font-weight: 680;
+  font-weight: 650;
   color: var(--ink-primary);
 }
 
@@ -2946,13 +3018,13 @@
 .order-card-head b.ok {
   color: var(--color-brand);
   font-size: 13px;
-  font-weight: 680;
+  font-weight: 650;
 }
 
 .order-card-head b.warn {
   color: var(--color-warning);
   font-size: 13px;
-  font-weight: 680;
+  font-weight: 650;
 }
 
 .order-card-head b.muted {
@@ -2975,14 +3047,15 @@
 .slot-chip,
 .remark-chip {
   padding: 2px 9px;
-  border-radius: 7px;
+  border-radius: 6px;
   font-size: 12px;
   font-weight: 550;
 }
 
 .pickup-queue-badge {
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-weight: 700;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -3007,9 +3080,9 @@
   min-width: 56px;
   max-width: 56px;
   flex: 0 0 56px;
-  border-radius: 11px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
   border: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
@@ -3029,7 +3102,7 @@
 .order-goods strong {
   display: block;
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-primary);
 }
 
@@ -3065,52 +3138,49 @@
 
 .order-cta-pill {
   padding: 5px 13px;
-  border-radius: 999px;
-  border: 1px solid var(--border-control);
-  background: var(--bg-surface);
+  border-radius: var(--radius-btn, 999px);
+  border: 1px solid var(--border-default);
+  background: #ffffff;
   font-size: 12px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-secondary);
 }
 
 .order-cta-pill.urgent {
   border-color: var(--color-brand-border);
   background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
 }
 
-/* 订单详情顶部状态卡 */
+/* 订单详情顶部状态卡（明亮白卡） */
 .pickup-hero {
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 20px;
-  padding: 20px 22px;
+  border-radius: var(--radius-card, 12px);
+  padding: 18px 22px;
   margin-bottom: 14px;
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 14px;
   box-shadow: var(--shadow-card);
 }
 
 .pickup-hero.ready,
 .pickup-hero.complete {
-  background: var(
-    --gradient-copilot,
-    linear-gradient(145deg, #ecfdf5 0%, #ffffff 52%, #f7fee7 100%)
-  );
-  border-color: rgba(10, 123, 86, 0.24);
+  background: linear-gradient(135deg, var(--color-brand-soft) 0%, #ffffff 56%);
+  border-color: var(--color-brand-border);
 }
 
 .pickup-status-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 6px 14px rgba(10, 41, 30, 0.16);
 }
 
 .pickup-hero-copy {
@@ -3119,9 +3189,9 @@
 }
 
 .pickup-hero-copy h1 {
-  font-size: 19.5px;
-  font-weight: 780;
-  color: var(--ink-primary);
+  font-size: 19px;
+  font-weight: 800;
+  color: #1d2129;
   margin-bottom: 3px;
 }
 
@@ -3133,29 +3203,29 @@
 .hero-queue-ticket {
   text-align: right;
   padding: 8px 14px;
-  border-radius: 12px;
-  background: var(--bg-forest, #0a291e);
-  color: #ffffff;
+  border-radius: 10px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
 }
 
 .hero-queue-ticket small {
   display: block;
-  font-size: 10.5px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  color: var(--ink-secondary);
 }
 
 .hero-queue-ticket strong {
   font-size: 24px;
   font-weight: 800;
   font-family: var(--font-mono);
-  color: var(--color-lime-zest, #c8f963);
+  color: #1d2129;
   letter-spacing: -0.02em;
 }
 
 .order-stepper {
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
   padding: 14px 18px;
   margin-bottom: 14px;
   display: grid;
@@ -3188,7 +3258,7 @@
 .order-step.done,
 .order-step.current {
   color: var(--ink-primary);
-  font-weight: 680;
+  font-weight: 650;
 }
 
 .order-step.done .order-step-dot,
@@ -3212,11 +3282,11 @@
   gap: 14px;
 }
 
-/* 精致收银台与品牌勾选态支付渠道卡 */
+/* 明亮收银台卡片 */
 .cashier-card {
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 18px;
+  border-radius: var(--radius-card, 12px);
   padding: 20px 22px;
   box-shadow: var(--shadow-card);
   display: flex;
@@ -3259,11 +3329,11 @@
 }
 
 .cashier-channel {
-  min-height: 52px;
+  min-height: 50px;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 10px;
   border: 1.5px solid var(--border-default);
-  background: var(--bg-canvas);
+  background: var(--bg-subtle);
   text-align: left;
   display: flex;
   align-items: center;
@@ -3271,8 +3341,7 @@
   gap: 8px;
   transition:
     border-color 0.15s ease,
-    background 0.15s ease,
-    box-shadow 0.15s ease;
+    background 0.15s ease;
 }
 
 .channel-title-group {
@@ -3283,8 +3352,8 @@
 }
 
 .channel-radio-dot {
-  width: 19px;
-  height: 19px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 1.5px solid var(--border-control);
   background: #ffffff;
@@ -3292,15 +3361,11 @@
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
 }
 
 .cashier-channel strong {
   font-size: 14px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--ink-primary);
 }
 
@@ -3312,7 +3377,6 @@
 .cashier-channel.active {
   border-color: var(--color-brand);
   background: var(--color-brand-soft);
-  box-shadow: 0 0 0 3px rgba(10, 123, 86, 0.08);
 }
 
 .cashier-channel.active .channel-radio-dot {
@@ -3324,8 +3388,9 @@
 .channel-badge {
   padding: 2px 7px;
   border-radius: 999px;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-size: 10px;
   font-weight: 700;
   flex-shrink: 0;
@@ -3342,12 +3407,12 @@
   font-size: 15px;
 }
 
-/* 喜茶/瑞幸风深林青柠穿孔登机牌取件凭证 */
+/* 明亮大厂穿孔登机牌取件凭证（4px 品牌顶栏 + #1D2129 取餐号 + 品牌色 6 位 PIN） */
 .token-card,
 .luckin-ticket-wrap {
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 20px;
+  border-radius: var(--radius-card, 12px);
   padding: 20px 22px;
   box-shadow: var(--shadow-card);
   display: flex;
@@ -3374,7 +3439,7 @@
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
   font-size: 12px;
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-weight: 650;
   font-variant-numeric: tabular-nums;
   display: inline-flex;
@@ -3391,18 +3456,18 @@
   position: relative;
   background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 18px;
+  border-top: 4px solid var(--color-brand);
+  border-radius: var(--radius-card, 12px);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: var(--shadow-panel);
+  box-shadow: 0 4px 16px rgba(29, 33, 41, 0.05);
 }
 
 .luckin-stub-top {
-  background-color: var(--bg-forest, #0a291e);
-  background-image: var(--gradient-forest);
-  color: #ffffff;
-  padding: 20px 22px 18px;
+  background: linear-gradient(180deg, var(--color-brand-soft) 0%, #ffffff 100%);
+  color: var(--ink-primary);
+  padding: 18px 22px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3416,7 +3481,7 @@
   font-size: 11px;
   font-weight: 650;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.68);
+  color: var(--ink-secondary);
   margin-bottom: 5px;
 }
 
@@ -3424,7 +3489,7 @@
   font-size: 30px;
   font-weight: 800;
   font-family: var(--font-mono);
-  color: var(--color-lime-zest, #c8f963);
+  color: #1d2129;
   letter-spacing: -0.02em;
   line-height: 1.08;
 }
@@ -3437,17 +3502,16 @@
   font-size: 28px;
   font-weight: 800;
   font-family: var(--font-mono);
-  color: #ffffff;
+  color: var(--color-brand);
   letter-spacing: 0.08em;
   font-variant-numeric: tabular-nums;
   line-height: 1.08;
 }
 
-/* 登机牌左右半圆打孔撕裂线 */
 .luckin-perforation {
   position: relative;
-  height: 18px;
-  background: #f6f9f7;
+  height: 16px;
+  background: #ffffff;
   display: flex;
   align-items: center;
 }
@@ -3457,25 +3521,25 @@
   content: '';
   position: absolute;
   top: 50%;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--bg-surface);
+  background: #ffffff;
   border: 1px solid var(--border-default);
   transform: translateY(-50%);
   z-index: 2;
 }
 
 .luckin-perforation::before {
-  left: -10px;
+  left: -9px;
 }
 
 .luckin-perforation::after {
-  right: -10px;
+  right: -9px;
 }
 
 .boarding-pass-body {
-  background: #f6f9f7;
+  background: var(--bg-subtle);
   border-top: 1px dashed var(--border-control);
   padding: 16px 22px 20px;
   display: flex;
@@ -3488,10 +3552,10 @@
   width: 132px;
   height: 132px;
   padding: 9px;
-  border-radius: 14px;
+  border-radius: 10px;
   background: #ffffff;
-  border: 1px solid rgba(10, 123, 86, 0.18);
-  box-shadow: 0 4px 14px rgba(10, 41, 30, 0.06);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 2px 8px rgba(29, 33, 41, 0.05);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -3509,7 +3573,7 @@
 }
 
 .qr-cell {
-  fill: #0a291e;
+  fill: #1d2129;
 }
 
 .boarding-pin-col {
@@ -3533,8 +3597,8 @@
 
 .placeholder-code {
   padding: 28px 16px;
-  border-radius: 16px;
-  background: #f6f9f7;
+  border-radius: 10px;
+  background: var(--bg-subtle);
   border: 1.5px dashed var(--border-control);
   color: var(--ink-muted);
   font-size: 13px;
@@ -3564,7 +3628,7 @@
 }
 
 .text-go-shop {
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-size: 13px;
   font-weight: 600;
   display: inline-flex;
@@ -3577,7 +3641,7 @@
   align-items: center;
   justify-content: space-between;
   font-size: 15.5px;
-  font-weight: 750;
+  font-weight: 700;
   color: var(--ink-primary);
   margin-bottom: 12px;
 }
@@ -3630,7 +3694,7 @@
 
 .price-row b {
   font-size: 21px;
-  font-weight: 780;
+  font-weight: 800;
 }
 
 .order-actions {
@@ -3671,7 +3735,7 @@
 
 .review-stars span {
   font-size: 13px;
-  font-weight: 680;
+  font-weight: 650;
   color: var(--color-warning);
   margin-left: 6px;
 }
@@ -3684,7 +3748,7 @@
   border-radius: 999px;
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-size: 13px;
   font-weight: 650;
 }
@@ -3735,7 +3799,7 @@
   padding: 2px 8px;
   border-radius: 6px;
   border: 1px solid var(--border-default);
-  background: var(--bg-canvas);
+  background: var(--bg-subtle);
   font-size: 11px;
   color: var(--ink-secondary);
 }
@@ -3791,41 +3855,40 @@
   font-size: 12px;
 }
 
-/* ---------- 6. 门店主页：深林玻璃店招 + 杂志级商品卡 (Shop.js) ---------- */
+/* ---------- 8. 门店主页：明亮纯白店招卡 + 零售商品流 (Shop.js) ---------- */
 .shop-hero,
 .meituan-shop-banner {
   position: relative;
   overflow: hidden;
-  background-color: var(--bg-forest, #0a291e);
-  background-image: var(--gradient-forest);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 22px;
-  padding: 24px 26px;
+  background: linear-gradient(135deg, var(--color-brand-soft) 0%, #ffffff 55%);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
+  padding: 22px 24px;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
   gap: 18px;
-  color: #ffffff;
-  box-shadow: var(--shadow-panel);
+  color: var(--ink-primary);
+  box-shadow: var(--shadow-card);
 }
 
 .shop-hero-image {
-  width: 78px;
-  height: 78px;
-  border-radius: 18px;
+  width: 76px;
+  height: 76px;
+  border-radius: 14px;
   object-fit: cover;
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px rgba(29, 33, 41, 0.08);
   flex-shrink: 0;
 }
 
 .shop-hero-fallback {
   width: 68px;
   height: 68px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(200, 249, 99, 0.3);
-  color: var(--color-lime-zest, #c8f963);
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
 }
 
 .shop-verified-pill {
@@ -3834,9 +3897,9 @@
   gap: 5px;
   padding: 2px 10px;
   border-radius: 999px;
-  background: rgba(200, 249, 99, 0.16);
-  border: 1px solid rgba(200, 249, 99, 0.32);
-  color: #d9f99d;
+  background: #ffffff;
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-size: 11px;
   font-weight: 650;
   margin-bottom: 6px;
@@ -3847,23 +3910,23 @@
 }
 
 .meituan-shop-main h1 {
-  font-size: 22px;
-  font-weight: 780;
-  color: #ffffff;
+  font-size: 21px;
+  font-weight: 800;
+  color: #1d2129;
   letter-spacing: -0.02em;
   margin-bottom: 5px;
 }
 
 .meituan-shop-main p {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--ink-secondary);
   display: flex;
   align-items: center;
   gap: 5px;
 }
 
 .meituan-shop-main p svg {
-  color: var(--color-lime-zest, #c8f963);
+  color: var(--color-brand);
   flex-shrink: 0;
 }
 
@@ -3891,19 +3954,19 @@
 .shop-product-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .shop-product-card {
   background: #ffffff;
   border: 1px solid var(--border-subtle);
-  border-radius: 18px;
-  padding: 10px 11px 13px;
+  border-radius: var(--radius-card, 12px);
+  padding: 10px 11px 12px;
   text-align: left;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
   transition:
     transform 0.22s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1)),
     box-shadow 0.22s ease,
@@ -3912,15 +3975,15 @@
 
 .shop-product-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(10, 123, 86, 0.22);
-  box-shadow: var(--shadow-panel);
+  border-color: var(--color-brand-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .shop-card-photo {
   aspect-ratio: 1 / 1;
-  border-radius: 13px;
+  border-radius: 8px;
   overflow: hidden;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
 }
 
 .shop-card-photo img {
@@ -3928,17 +3991,17 @@
   height: 100%;
   object-fit: cover;
   display: block;
-  transition: transform 0.4s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: transform 0.38s var(--ease-out-expo, cubic-bezier(0.16, 1, 0.3, 1));
 }
 
 .shop-product-card:hover .shop-card-photo img {
-  transform: scale(1.05);
+  transform: scale(1.03);
 }
 
 .shop-product-card strong {
   font-size: 14px;
-  font-weight: 650;
-  color: var(--ink-primary);
+  font-weight: 600;
+  color: #1d2129;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -3958,20 +4021,13 @@
   justify-content: space-between;
 }
 
-.shop-card-bottom span {
-  font-size: 17.5px;
-  font-weight: 780;
-  color: var(--color-price);
-  font-variant-numeric: tabular-nums;
-}
-
 .shop-card-plus {
   font-style: normal;
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   font-size: 12px;
   font-weight: 650;
   transition:
@@ -3986,31 +4042,29 @@
   color: #ffffff;
 }
 
-/* ---------- 7. 个人中心：通透植物翡翠会员卡 + 雕塑感快捷宫格 + 入驻申请 (Account.js) ---------- */
+/* ---------- 9. 个人中心：明亮会员卡 + 快捷宫格 + 入驻申请 (Account.js) ---------- */
 .account-profile {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 22px 24px;
+  padding: 20px 24px;
   margin-bottom: 14px;
-  border-radius: 22px;
-  background: var(
-    --gradient-copilot,
-    linear-gradient(145deg, #ecfdf5 0%, #ffffff 52%, #f7fee7 100%)
-  );
-  border: 1px solid rgba(10, 123, 86, 0.18);
+  border-radius: var(--radius-card, 12px);
+  background: linear-gradient(135deg, var(--color-brand-soft) 0%, #ffffff 58%);
+  border: 1px solid var(--border-default);
   box-shadow: var(--shadow-card);
 }
 
 .profile-avatar {
-  width: 58px;
-  height: 58px;
-  border-radius: 18px;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
   display: grid;
   place-items: center;
-  color: var(--color-lime-zest, #c8f963);
-  background: var(--bg-forest, #0a291e);
-  box-shadow: 0 8px 20px rgba(10, 41, 30, 0.18);
+  color: var(--color-brand);
+  background: #ffffff;
+  border: 1px solid var(--color-brand-border);
+  box-shadow: 0 4px 12px rgba(29, 33, 41, 0.06);
   flex-shrink: 0;
 }
 
@@ -4025,17 +4079,18 @@
   gap: 4px;
   padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(10, 123, 86, 0.1);
-  color: var(--color-brand-strong);
+  background: #ffffff;
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-size: 11px;
-  font-weight: 680;
+  font-weight: 650;
   margin-bottom: 5px;
 }
 
 .account-profile h1 {
   font-size: 20px;
-  font-weight: 780;
-  color: var(--ink-primary);
+  font-weight: 800;
+  color: #1d2129;
   letter-spacing: -0.02em;
 }
 
@@ -4049,9 +4104,9 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card, 12px);
   padding: 16px 12px;
   margin-bottom: 16px;
   box-shadow: var(--shadow-card);
@@ -4063,7 +4118,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 4px;
-  border-radius: 14px;
+  border-radius: 10px;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--ink-primary);
@@ -4075,7 +4130,7 @@
 .account-quick-icon {
   width: 40px;
   height: 40px;
-  border-radius: 13px;
+  border-radius: 12px;
   background: var(--color-brand-soft);
   border: 1px solid var(--color-brand-border);
   color: var(--color-brand);
@@ -4114,25 +4169,24 @@
   gap: 6px;
   height: 34px;
   padding: 0 15px;
-  border-radius: 999px;
+  border-radius: var(--radius-btn, 999px);
   background: var(--bg-subtle);
-  border: 1px solid transparent;
+  border: 1px solid var(--border-default);
   font-size: 13px;
-  font-weight: 550;
+  font-weight: 500;
   color: var(--ink-secondary);
 }
 
 .account-shelf-tabs button.active {
-  background: var(--bg-forest, #0a291e);
-  border-color: var(--bg-forest, #0a291e);
-  color: #ffffff;
-  font-weight: 680;
-  box-shadow: 0 3px 10px rgba(10, 41, 30, 0.16);
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  font-weight: 650;
 }
 
 .account-shelf-tabs button span {
   font-size: 11.5px;
-  opacity: 0.78;
+  opacity: 0.85;
 }
 
 .account-product-grid {
@@ -4142,9 +4196,9 @@
 }
 
 .account-product-card {
-  background: var(--bg-canvas);
-  border: 1px solid var(--border-subtle);
-  border-radius: 15px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -4161,7 +4215,7 @@
 .account-product-photo {
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #f4f6f4;
+  background: var(--bg-subtle);
   overflow: hidden;
 }
 
@@ -4198,7 +4252,7 @@
   padding: 7px;
   font-size: 11.5px;
   color: var(--ink-muted);
-  background: var(--bg-surface);
+  background: var(--bg-subtle);
 }
 
 .account-fav-remove:hover:not(:disabled) {
@@ -4231,7 +4285,7 @@
 .account-section-head button {
   font-size: 12.5px;
   font-weight: 650;
-  color: var(--color-brand-strong);
+  color: var(--color-brand);
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -4251,8 +4305,8 @@
   text-align: left;
   padding: 13px 15px;
   border: 1px solid var(--border-default);
-  border-radius: 14px;
-  background: var(--bg-canvas);
+  border-radius: 10px;
+  background: var(--bg-subtle);
   transition:
     border-color 0.15s ease,
     background 0.15s ease;
@@ -4260,15 +4314,16 @@
 
 .workspace-entry-btn:hover {
   border-color: var(--color-brand-border);
-  background: var(--bg-surface);
+  background: #ffffff;
 }
 
 .workspace-entry-btn .mini-icon {
   width: 38px;
   height: 38px;
-  border-radius: 11px;
-  background: var(--bg-forest, #0a291e);
-  color: var(--color-lime-zest, #c8f963);
+  border-radius: 10px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -4294,9 +4349,9 @@
 
 .account-application {
   padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid var(--border-subtle);
-  background: var(--bg-surface);
+  border-radius: var(--radius-card, 12px);
+  border: 1px solid var(--border-default);
+  background: #ffffff;
   box-shadow: var(--shadow-card);
   margin-bottom: 10px;
   display: flex;
@@ -4364,9 +4419,9 @@
 .account-form input {
   height: 44px;
   border: 1px solid var(--border-control);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-input, 8px);
   padding: 0 12px;
-  background-color: var(--bg-surface);
+  background-color: #ffffff;
   color: var(--ink-primary);
   font-size: 14px;
 }
@@ -4374,9 +4429,9 @@
 .account-form select {
   height: 44px;
   border: 1px solid var(--border-control);
-  border-radius: var(--radius-input);
+  border-radius: var(--radius-input, 8px);
   padding: 0 34px 0 12px;
-  background-color: var(--bg-surface);
+  background-color: #ffffff;
   color: var(--ink-primary);
   font-size: 14px;
 }
@@ -4388,7 +4443,7 @@
 
 .account-form .teal-button {
   margin-top: 6px;
-  min-height: 48px;
+  min-height: 46px;
   font-size: 15px;
 }
 
@@ -4417,64 +4472,8 @@
   margin-top: 3px;
 }
 
-/* ---------- 8. 消费者端全视口响应式断点 ---------- */
-@media (min-width: 769px) {
-  .consumer-shell {
-    padding-bottom: 0;
-  }
-  .mobile-page-top {
-    display: none;
-  }
-  .consumer-header .desktop-consumer-nav.mobile-tabbar {
-    position: static;
-    display: flex;
-    background: transparent;
-    border: 0;
-    padding: 0;
-    box-shadow: none;
-  }
-  .consumer-header .mobile-tabbar-inner {
-    display: inline-flex;
-    align-items: center;
-    gap: 3px;
-    height: 38px;
-    padding: 3px;
-    border-radius: 999px;
-    background: var(--bg-subtle);
-  }
-  .consumer-header .mobile-tabbar-inner button {
-    flex-direction: row;
-    height: 32px;
-    padding: 0 14px;
-    border-radius: 999px;
-    font-size: 13px;
-    font-weight: 550;
-    color: var(--ink-secondary);
-    gap: 6px;
-  }
-  .consumer-header .mobile-tabbar-inner button:hover {
-    color: var(--ink-primary);
-  }
-  .consumer-header .mobile-tabbar-inner button svg {
-    width: 15px;
-    height: 15px;
-  }
-  .consumer-header .mobile-tabbar-inner button.selected {
-    background: var(--bg-surface);
-    color: var(--ink-primary);
-    font-weight: 680;
-    box-shadow: 0 1px 3px rgba(15, 23, 20, 0.08);
-  }
-  .consumer-header .mobile-tabbar-inner button.selected svg {
-    color: var(--color-brand);
-  }
-  .consumer-header .mobile-tabbar-inner .nav-cart-badge {
-    position: static;
-    border: 0;
-  }
-  .floating-cart-pill {
-    bottom: 22px;
-  }
+/* ---------- 10. 消费者端全视口响应式网格与首屏切换 ---------- */
+@media (min-width: 640px) {
   .home-product-grid,
   .shop-product-grid,
   .detail-reco-grid {
@@ -4483,179 +4482,304 @@
   }
 }
 
-@media (min-width: 960px) {
+@media (min-width: 769px) {
+  .consumer-shell {
+    padding-bottom: 0;
+  }
+
+  .mobile-page-top {
+    display: none;
+  }
+
   .home-hero-row {
-    grid-template-columns: minmax(0, 1.68fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 248px;
     gap: 14px;
+    height: 256px;
   }
+
+  .home-scene-banner {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .cabin-ai-card {
+    height: 100%;
+  }
+}
+
+@media (min-width: 900px) {
   .home-product-grid,
-  .shop-product-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 16px;
-  }
+  .shop-product-grid,
   .detail-reco-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
   }
+
   .detail-layout {
-    grid-template-columns: 448px minmax(0, 1fr);
-    gap: 34px;
+    grid-template-columns: 440px minmax(0, 1fr);
+    gap: 32px;
     align-items: start;
   }
+
   .cart-layout {
-    grid-template-columns: minmax(0, 1fr) 368px;
-    gap: 22px;
+    grid-template-columns: minmax(0, 1fr) 364px;
+    gap: 20px;
   }
+
   .tmall-cart-summary {
     position: sticky;
-    top: 76px;
+    top: 74px;
   }
+
   .order-detail-grid {
     grid-template-columns: 1.45fr 1fr;
     gap: 18px;
   }
+
   .orders-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
+/* 桌面端 >= 1100px：classic 启用大厂三栏 200px + 1fr + 248px (220px 黄金控高，首排 5 卡价格与选规格 100% 露出) */
+@media (min-width: 1100px) {
+  .home-hero-row {
+    grid-template-columns: 200px minmax(0, 1fr) 248px;
+    gap: 12px;
+    height: 220px;
+    margin-bottom: 8px;
+  }
+
+  .hero-cat-sidebar {
+    display: flex;
+  }
+
+  html:not([data-home-layout='feed']) .feed-cat-bar {
+    display: none;
+  }
+
+  html:not([data-home-layout='feed']) .home-browse-panel .store-pills-row {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  html:not([data-home-layout='feed']) .home-browse-panel:not(:has(.store-pills-row)) {
+    display: none;
+  }
+}
+
+/* 桌面端 >= 1200px：淘宝/京东/有品标准 5 列高密商品网格 */
+@media (min-width: 1200px) {
+  .home-product-grid,
+  .shop-product-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  html[data-consumer-theme='youpin'] .home-product-grid,
+  html[data-consumer-theme='youpin'] .shop-product-grid {
+    gap: 16px;
+  }
+}
+
 @media (max-width: 768px) {
+  .floating-cart-pill {
+    display: none;
+  }
+
   .desktop-only-head {
     display: none;
   }
+
   .consumer-header-inner {
     height: 50px;
     padding: 0 12px;
   }
+
   .consumer-width {
     padding: 0 12px;
   }
+
   .consumer-main {
     padding-top: 8px;
   }
+
   .header-zone-pill {
     display: none;
   }
+
   .user-menu-name {
-    max-width: 68px;
+    max-width: 96px;
   }
+
+  .floating-cart-pill {
+    right: 12px;
+    left: auto;
+    bottom: 116px;
+    height: 40px;
+    padding: 0 5px 0 13px;
+    gap: 8px;
+  }
+
   .home-search-strip {
-    gap: 5px;
+    gap: 6px;
     margin-bottom: 8px;
   }
+
   .big-search {
     height: 40px;
-    padding: 0 4px 0 14px;
+    padding: 0 3px 0 14px;
   }
+
   .big-search button {
     height: 32px;
-    padding: 0 15px;
-    font-size: 12.5px;
+    padding: 0 16px;
+    font-size: 13px;
   }
+
   .popular-tags {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
   }
+
   .popular-tags::-webkit-scrollbar {
     display: none;
   }
+
   .popular-tags button {
     height: 23px;
     font-size: 11.5px;
     flex-shrink: 0;
   }
+
   .home-hero-row {
     gap: 8px;
     margin-bottom: 8px;
   }
+
   .home-scene-banner {
-    min-height: 82px;
-    border-radius: 18px;
-    padding: 11px 14px;
-    gap: 12px;
+    min-height: 138px;
+    padding: 14px 16px;
   }
-  .carousel-scene-tag,
+
+  .home-scene-banner::after {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(255, 255, 255, 0.78) 46%,
+      rgba(255, 255, 255, 0.12) 82%
+    );
+  }
+
+  .scene-banner-copy {
+    max-width: 72%;
+  }
+
+  .carousel-scene-tag {
+    margin-bottom: 6px;
+    font-size: 10.5px;
+    padding: 2px 8px;
+  }
+
+  .scene-banner-copy h2 {
+    font-size: 17px;
+    margin-bottom: 8px;
+  }
+
   .scene-banner-copy p {
     display: none;
   }
-  .scene-banner-copy h2 {
-    font-size: 15px;
-    margin-bottom: 7px;
-  }
+
   .carousel-cta-btn {
-    height: 26px;
-    padding: 0 11px;
-    font-size: 11.5px;
+    height: 28px;
+    padding: 0 13px;
+    font-size: 12px;
   }
-  .scene-banner-art {
-    width: 62px;
-    height: 62px;
-    border-radius: 12px;
-    transform: none;
-  }
+
   .hero-shopping,
   .cabin-ai-card {
     min-height: 0;
-    border-radius: 16px;
-    padding: 9px 13px;
-    gap: 0;
+    padding: 10px 13px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
   }
+
   .cabin-ai-avatar,
   .cabin-ai-emblem {
     width: 32px;
     height: 32px;
-    border-radius: 10px;
+    border-radius: 8px;
   }
+
   .hero-title {
     font-size: 14.5px;
   }
+
   .cabin-ai-sub,
   .cabin-ai-desc,
   .cabin-ai-tags {
     display: none;
   }
+
+  .cabin-ai-go {
+    width: auto;
+    height: 28px;
+    padding: 0 12px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
   .home-browse-panel {
-    border-radius: 16px;
     padding: 8px 10px;
     gap: 6px;
     margin-bottom: 8px;
   }
+
   .category-item {
-    height: 31px;
+    height: 30px;
     padding: 0 10px 0 4px;
-    border-radius: 11px;
     font-size: 12px;
   }
+
   .category-picture {
-    width: 22px;
-    height: 22px;
-    border-radius: 7px;
+    width: 21px;
+    height: 21px;
   }
+
   .store-pills-row {
     padding-top: 6px;
   }
+
   .store-pill-chip {
     height: 28px;
     padding: 0 10px;
     font-size: 11.5px;
   }
+
   .store-pill-chip.merchant-card {
     padding: 0 10px 0 4px;
     gap: 5px;
   }
+
   .store-pill-avatar {
     width: 19px;
     height: 19px;
   }
+
   .feed-sticky-bar {
     gap: 6px;
     margin-bottom: 8px;
   }
+
   .sort-tabs button {
     height: 26px;
     padding: 0 8px;
     font-size: 12px;
   }
+
   .price-filter {
     gap: 4px;
     flex-wrap: nowrap;
@@ -4663,15 +4787,18 @@
     max-width: 100%;
     scrollbar-width: none;
   }
+
   .price-filter::-webkit-scrollbar {
     display: none;
   }
+
   .price-filter input {
     width: 52px;
     height: 26px;
     padding: 0 6px;
     font-size: 11.5px;
   }
+
   .price-filter button {
     height: 26px;
     padding: 0 8px;
@@ -4679,29 +4806,33 @@
     white-space: nowrap;
     flex-shrink: 0;
   }
+
   .home-product-info {
     padding: 9px 10px 11px;
     gap: 4px;
   }
+
   .home-product-open {
     min-height: 35px;
     font-size: 13.5px;
   }
+
   .cashier-channels {
     grid-template-columns: 1fr;
   }
+
   .shop-hero,
   .meituan-shop-banner {
     padding: 18px;
-    border-radius: 18px;
   }
+
   .shop-hero-image {
     width: 64px;
     height: 64px;
   }
+
   .account-profile {
     padding: 18px;
-    border-radius: 18px;
   }
 }
 
@@ -4716,32 +4847,41 @@
   .consumer-header-inner {
     padding: 0 10px;
   }
+
   .order-stepper {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .detail-cabin-card {
     padding: 14px;
   }
+
   .tmall-sku-row {
     flex-direction: column;
     gap: 6px;
   }
+
   .tmall-sku-row.qty-row {
     flex-direction: row;
     align-items: center;
   }
+
   .luckin-stub-top {
-    padding: 16px;
+    padding: 14px 16px;
   }
+
   .boarding-queue-code {
     font-size: 25px;
   }
+
   .boarding-pin-value {
     font-size: 23px;
   }
+
   .boarding-pass-body {
     padding: 14px 16px 16px;
   }
+
   .account-quick {
     gap: 6px;
     padding: 12px 8px;

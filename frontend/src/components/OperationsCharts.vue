@@ -27,8 +27,21 @@ const props = defineProps<{
   orderStatusLabel: (status: string) => string;
 }>();
 
-const HBAR_COLORS = ['#0A7B56', '#0D9488', '#0284C7', '#6366F1', '#F59E0B', '#64748B'];
-const SLICE_COLORS = ['#0A7B56', '#0EA5E9', '#F59E0B', '#6366F1', '#EF4444'];
+const HBAR_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+  'var(--chart-6)',
+];
+const SLICE_COLORS = [
+  'var(--chart-1)',
+  'var(--chart-2)',
+  'var(--chart-3)',
+  'var(--chart-4)',
+  'var(--chart-5)',
+];
 
 const trendModel = computed(() => {
   const raw = props.stats?.trend || [];
@@ -161,12 +174,12 @@ const donutModel = computed(() => {
         <svg class="chart-svg" viewBox="0 0 360 154" role="img" aria-label="每日订单量趋势图">
           <defs>
             <linearGradient id="ops-area-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#109868" stop-opacity="0.24" />
-              <stop offset="100%" stop-color="#109868" stop-opacity="0" />
+              <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.22" />
+              <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0" />
             </linearGradient>
             <linearGradient id="ops-bar-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#0A7B56" />
-              <stop offset="100%" stop-color="#109868" />
+              <stop offset="0%" stop-color="var(--chart-1)" />
+              <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.65" />
             </linearGradient>
           </defs>
           <text class="chart-axis-text" x="28" y="40" text-anchor="end">
@@ -176,9 +189,9 @@ const donutModel = computed(() => {
             {{ trendModel.midVal }}
           </text>
           <text class="chart-axis-text" x="28" y="126" text-anchor="end">0</text>
-          <line x1="34" y1="38" x2="348" y2="38" stroke="#E5EBE7" stroke-dasharray="3 3" />
-          <line x1="34" y1="81" x2="348" y2="81" stroke="#E5EBE7" stroke-dasharray="3 3" />
-          <line x1="34" y1="124" x2="348" y2="124" stroke="#D5DFD9" />
+          <line x1="34" y1="38" x2="348" y2="38" stroke="#E5E6EB" stroke-dasharray="3 3" />
+          <line x1="34" y1="81" x2="348" y2="81" stroke="#E5E6EB" stroke-dasharray="3 3" />
+          <line x1="34" y1="124" x2="348" y2="124" stroke="#C9CDD4" />
           <rect
             v-for="bar in trendModel.bars"
             :key="'col-' + bar.day"
@@ -187,17 +200,17 @@ const donutModel = computed(() => {
             :y="bar.y"
             :width="bar.w"
             :height="bar.h"
-            rx="5"
+            rx="4"
             fill="url(#ops-bar-grad)"
-            opacity="0.18"
+            opacity="0.16"
           />
           <path v-if="trendModel.areaPath" :d="trendModel.areaPath" fill="url(#ops-area-grad)" />
           <path
             v-if="trendModel.linePath"
             :d="trendModel.linePath"
             fill="none"
-            stroke="#0A7B56"
-            stroke-width="2.5"
+            stroke="var(--chart-1)"
+            stroke-width="2.4"
             stroke-linecap="round"
             stroke-linejoin="round"
           />
@@ -205,9 +218,9 @@ const donutModel = computed(() => {
             <circle
               :cx="bar.cx"
               :cy="bar.pointY"
-              r="4"
+              r="3.8"
               fill="#FFFFFF"
-              stroke="#0A7B56"
+              stroke="var(--chart-1)"
               stroke-width="2.2"
             />
             <text
@@ -243,7 +256,7 @@ const donutModel = computed(() => {
             <b>{{ item.quantity }} 件</b>
           </div>
           <svg class="hbar-svg" viewBox="0 0 280 8" aria-hidden="true">
-            <rect x="0" y="0" width="280" height="8" rx="4" fill="#EEF2EF" />
+            <rect x="0" y="0" width="280" height="8" rx="4" fill="#F2F3F5" />
             <rect x="0" y="0" :width="item.barWidth" height="8" rx="4" :fill="item.color" />
           </svg>
         </div>
@@ -259,13 +272,13 @@ const donutModel = computed(() => {
       <div v-if="donutModel.slices.length" class="donut-chart-layout">
         <div class="donut-svg-box">
           <svg viewBox="0 0 124 124" class="donut-svg" role="img" aria-label="订单状态环形图">
-            <circle cx="62" cy="62" r="40" fill="none" stroke="#EEF2EF" stroke-width="15" />
+            <circle cx="62" cy="62" r="40" fill="none" stroke="#F2F3F5" stroke-width="15" />
             <circle
               cx="62"
               cy="62"
               r="28"
               fill="none"
-              stroke="#DFE5E1"
+              stroke="#E5E6EB"
               stroke-width="1"
               stroke-dasharray="2.5 3"
             />

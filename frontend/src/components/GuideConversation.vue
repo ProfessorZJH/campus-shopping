@@ -39,7 +39,7 @@ const sceneCards = [
   {
     title: '课间低糖提神',
     desc: '20元内无糖茶饮与门店营业时间',
-    icon: 'leaf',
+    icon: 'clock',
     query: '预算20元推荐无糖饮料，顺便问自提几点关门？',
   },
   {
@@ -51,7 +51,7 @@ const sceneCards = [
   {
     title: '实时取餐进度',
     desc: '直接查询我的订单是否备好可取',
-    icon: 'clock',
+    icon: 'order',
     query: '帮我看看我的订单备好货了吗？',
   },
 ];
@@ -92,26 +92,25 @@ function friendlyWarning(raw?: string): string {
       <div class="wenwen-welcome-head">
         <span class="chat-welcome-icon" aria-hidden="true">
           <svg
-            width="22"
-            height="22"
+            width="21"
+            height="21"
             viewBox="0 0 24 24"
             fill="none"
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
-              d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z"
+              d="M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z"
               fill="currentColor"
-              fill-opacity="0.22"
+              fill-opacity="0.18"
               stroke="currentColor"
               stroke-width="1.8"
               stroke-linejoin="round"
             />
             <path
-              d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z"
+              d="M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z"
               fill="currentColor"
-              fill-opacity="0.34"
               stroke="currentColor"
-              stroke-width="1.6"
+              stroke-width="1.4"
               stroke-linejoin="round"
             />
           </svg>
@@ -154,19 +153,18 @@ function friendlyWarning(raw?: string): string {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z"
+            d="M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z"
             fill="currentColor"
-            fill-opacity="0.22"
+            fill-opacity="0.18"
             stroke="currentColor"
             stroke-width="1.9"
             stroke-linejoin="round"
           />
           <path
-            d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z"
+            d="M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z"
             fill="currentColor"
-            fill-opacity="0.34"
             stroke="currentColor"
-            stroke-width="1.6"
+            stroke-width="1.5"
             stroke-linejoin="round"
           />
         </svg>
@@ -241,19 +239,18 @@ function friendlyWarning(raw?: string): string {
           xmlns="http://www.w3.org/2000/svg"
         >
           <path
-            d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z"
+            d="M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z"
             fill="currentColor"
-            fill-opacity="0.22"
+            fill-opacity="0.18"
             stroke="currentColor"
             stroke-width="1.9"
             stroke-linejoin="round"
           />
           <path
-            d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z"
+            d="M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z"
             fill="currentColor"
-            fill-opacity="0.34"
             stroke="currentColor"
-            stroke-width="1.6"
+            stroke-width="1.5"
             stroke-linejoin="round"
           />
         </svg>

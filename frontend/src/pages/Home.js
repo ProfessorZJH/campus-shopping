@@ -93,28 +93,20 @@ export default {
 
     const banners = computed(() => [
       {
-        tag: '深夜热食',
-        title: '赶论文饿了？热汤杯面配无糖冰茶',
-        sub: '手机下单，下楼到店直接取走，不用排队等结账',
-        cta: '看看夜宵',
-        keyword: '泡面',
-        img: preview ? './images/noodles.webp' : './images/prod-instant-noodles.jpg',
-      },
-      {
-        tag: '课间饮品',
-        title: '早八大课间 · 生椰冰拿铁与鲜牛奶',
-        sub: '支持预约 10:00 课间取餐，路过连廊顺手带进教室',
-        cta: '挑杯饮品',
+        tag: '校园鲜饮节',
+        title: '冰萃拿铁与鲜切果杯',
+        sub: '下课顺路 5 分钟即取 · 校内门店现做现货',
+        cta: '立即选购',
         categoryCode: 'drink',
-        img: preview ? './images/milk.webp' : './images/prod-iced-latte.jpg',
+        img: './images/hero-campus-fresh.jpg',
       },
       {
-        tag: '每日鲜切',
-        title: '现切双拼鲜果杯 · 清爽低负担',
-        sub: '当天现切草莓芒果与酸奶碗，午休饭后解腻刚刚好',
-        cta: '逛逛鲜果',
-        categoryCode: 'fruit',
-        img: preview ? './images/category-fruit.webp' : './images/prod-fruit-cup.jpg',
+        tag: '自习装备季',
+        title: '护眼台灯与降噪耳机',
+        sub: '图书馆与宿舍专享 · 校内自提免运费',
+        cta: '去看看',
+        categoryCode: 'stationery',
+        img: './images/hero-campus-study.jpg',
       },
     ]);
 
@@ -168,7 +160,12 @@ export default {
     function syncUrlQuery() {
       if (preview || window.__CAMPUS_TEST_ROUTE__ || !location.protocol.startsWith('http')) return;
       try {
+        const hashQ = (location.hash || '').indexOf('?');
+        const prev = hashQ >= 0 ? new URLSearchParams(location.hash.slice(hashQ + 1)) : null;
         const params = new URLSearchParams();
+        for (const k of ['ct', 'hl', 'at']) {
+          if (prev?.get(k)) params.set(k, prev.get(k));
+        }
         if (search.value.trim()) params.set('q', search.value.trim());
         if (category.value) params.set('category', category.value);
         const qs = params.toString();
@@ -192,7 +189,7 @@ export default {
     onMounted(() => {
       if (!preview && !window.__contractApi) {
         bannerTimer = setInterval(() => {
-          bannerIdx.value = (bannerIdx.value + 1) % 3;
+          bannerIdx.value = (bannerIdx.value + 1) % banners.value.length;
         }, 5600);
       }
       const initReq = initialScope.begin();
@@ -543,7 +540,28 @@ export default {
     </section>
 
     <section class="home-hero-row" aria-label="精选场景与导购">
+      <aside class="hero-cat-sidebar" aria-label="分类导航">
+        <button
+          v-for="c in categories"
+          :key="'side-'+c.code"
+          type="button"
+          class="hero-cat-row"
+          :class="{active:category===c.code}"
+          @click="setCategory(c.code)"
+        >
+          <span class="hero-cat-icon"><img :src="c.image||staticCategoryArt[c.code]||'./images/category-snacks.webp'" :alt="c.name"/></span>
+          <span class="hero-cat-name">{{c.name}}</span>
+          <Icon name="chevronRight" :size="13" class="hero-cat-arrow"/>
+        </button>
+      </aside>
+
       <div class="home-scene-banner">
+        <img
+          class="hero-banner-photo"
+          :src="banners[bannerIdx].img"
+          :alt="banners[bannerIdx].title"
+          @click="triggerBanner(banners[bannerIdx])"
+        />
         <div class="scene-banner-copy">
           <span class="carousel-scene-tag"><span class="scene-live-dot" aria-hidden="true"></span>{{banners[bannerIdx].tag}}</span>
           <h2>{{banners[bannerIdx].title}}</h2>
@@ -565,9 +583,6 @@ export default {
             </div>
           </div>
         </div>
-        <div class="scene-banner-art" @click="triggerBanner(banners[bannerIdx])">
-          <ProductImage :src="banners[bannerIdx].img" :alt="banners[bannerIdx].title"/>
-        </div>
       </div>
 
       <button type="button" class="hero-shopping cabin-ai-card" @click="go('/ai')" aria-label="进入 AI 导购">
@@ -575,24 +590,24 @@ export default {
           <span class="cabin-ai-avatar cabin-ai-emblem" aria-hidden="true">
             <Icon name="sparkles" :size="20"/>
           </span>
-          <div>
+          <div class="cabin-ai-heading">
             <div class="hero-title"><span>AI</span> 导购</div>
             <div class="cabin-ai-sub">按预算和口味帮你挑</div>
           </div>
-          <span class="cabin-ai-go">去试试 <Icon name="chevronRight" :size="12"/></span>
         </div>
         <p class="cabin-ai-desc">不知道买什么？说声“30元夜宵”或“无糖冰饮”，直接配好加购方案</p>
         <div class="cabin-ai-tags" aria-hidden="true">
           <span class="cabin-ai-tag">20元无糖冰饮</span>
           <span class="cabin-ai-tag">30元深夜夜宵</span>
         </div>
+        <span class="cabin-ai-go">去试试 <Icon name="chevronRight" :size="13"/></span>
       </button>
     </section>
 
     <section class="home-browse-panel" aria-label="分类与门店筛选">
-      <div class="category-section" aria-label="商品分类">
+      <div class="category-section feed-cat-bar" aria-label="商品分类">
         <button v-for="c in categories" :key="c.code" type="button" class="category-item" @click="setCategory(c.code)" :class="{categoryActive:category===c.code}">
-          <span class="category-picture"><img :src="staticCategoryArt[c.code]||'./images/category-snacks.webp'" :alt="c.name"/></span>
+          <span class="category-picture"><img :src="c.image||staticCategoryArt[c.code]||'./images/category-snacks.webp'" :alt="c.name"/></span>
           <span>{{c.name}}</span>
         </button>
       </div>

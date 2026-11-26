@@ -42,8 +42,8 @@ export default {
       storeName: '',
       location: '',
     });
-    const isApply = computed(() => store.route === '/apply');
-    const isInvite = computed(() => store.route === '/invitations');
+    const isApply = computed(() => store.route.split('?')[0] === '/apply');
+    const isInvite = computed(() => store.route.split('?')[0] === '/invitations');
     async function load() {
       const stamp = ++loadEpoch;
       error.value = '';

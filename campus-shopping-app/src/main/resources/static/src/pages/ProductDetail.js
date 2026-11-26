@@ -42,7 +42,7 @@ export default {
       recommendations = ref({ boughtTogether: [], sameStoreHot: [] });
     const defaultSku = (p) =>
       p?.skus?.find((s) => s.status === 'ACTIVE' && Number(s.available || 0) > 0) || skuOf(p);
-    const id = computed(() => safeDecodeId(store.route.split('/')[2] || ''));
+    const id = computed(() => safeDecodeId(store.route.split('?')[0].split('/')[2] || ''));
     const sku = computed(
       () => product.value?.skus?.find((s) => s.skuId === chosen.value) || defaultSku(product.value),
     );

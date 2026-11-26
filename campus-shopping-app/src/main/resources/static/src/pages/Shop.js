@@ -6,6 +6,12 @@ import ProductImage from '../components/ProductImage.js';
 import { api, query } from '../services/api.js';
 import { store, go, money, skuOf, preview } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
+function splitPrice(cent) {
+  const formatted = money(cent).replace(/^¥/, '');
+  const dot = formatted.indexOf('.');
+  if (dot < 0) return { int: formatted, dec: '' };
+  return { int: formatted.slice(0, dot), dec: formatted.slice(dot) };
+}
 export default {
   name: 'Shop',
   components: { ConsumerShell, ProductImage, UiPagination, StatusPanel },
@@ -17,7 +23,7 @@ export default {
       page = ref(1),
       hasNext = ref(false);
     const id = computed(() =>
-      safeDecodeId(store.route.slice('/shops/'.length).split('/')[0] || ''),
+      safeDecodeId(store.route.split('?')[0].slice('/shops/'.length).split('/')[0] || ''),
     );
     let loadVersion = 0;
     async function load() {
@@ -60,7 +66,20 @@ export default {
     onMounted(load);
     onUnmounted(() => ++loadVersion);
     watch(page, load);
-    return { merchant, products, error, loading, page, hasNext, go, money, skuOf, priceSku, load };
+    return {
+      merchant,
+      products,
+      error,
+      loading,
+      page,
+      hasNext,
+      go,
+      money,
+      splitPrice,
+      skuOf,
+      priceSku,
+      load,
+    };
   },
   template: `<ConsumerShell active="home">
     <div class="mobile-page-top"><button @click="go('/')" aria-label="返回"><Icon name="arrowLeft"/></button><b>{{merchant?.name||'门店主页'}}</b><span></span></div>
@@ -88,7 +107,7 @@ export default {
           <strong>{{p.title}}</strong>
           <small>{{(priceSku(p)||skuOf(p))?.specKey||'标准装'}}</small>
           <div class="shop-card-bottom">
-            <span>{{money((priceSku(p)||skuOf(p)).priceCent)}}</span>
+            <span class="rtl-price"><em class="yen">¥</em><b class="int">{{splitPrice((priceSku(p)||skuOf(p))?.priceCent).int}}</b><i v-if="splitPrice((priceSku(p)||skuOf(p))?.priceCent).dec" class="dec">{{splitPrice((priceSku(p)||skuOf(p))?.priceCent).dec}}</i></span>
             <em class="shop-card-plus">选购</em>
           </div>
         </button>

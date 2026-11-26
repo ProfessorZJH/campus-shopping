@@ -1,11 +1,11 @@
 /* ==========================================================================
    青柠校园 · AI 导购对话工作台 (guide.css)
-   V6 Carbon Flagship Studio · Botanical Jade × Electric Citrus × Perplexity Citations
+   V7 Authentic Doubao / Kimi Clean Studio · Pure White Workspace & Neutral Rail
    ========================================================================== */
 
 .guide-shell {
   width: 100%;
-  max-width: 880px;
+  max-width: 840px;
   margin: 0 auto;
   display: flex;
   flex-direction: column;
@@ -13,45 +13,40 @@
 }
 
 .guide-shell.has-proposal {
-  max-width: 1140px;
+  max-width: 1120px;
 }
 
-/* ---------- 1. Ambient Studio Topbar & Collapsible Conversation History ---------- */
+/* ---------- 1. Clean Doubao / Kimi Topbar & Collapsible History Rail ---------- */
 .ai-wenwen-topbar {
-  background: var(--gradient-copilot);
-  border: 1px solid rgba(10, 123, 86, 0.16);
-  border-radius: 22px;
-  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  padding: 14px 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
   flex-wrap: wrap;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.85),
-    var(--shadow-card);
+  box-shadow: 0 1px 4px rgba(29, 33, 41, 0.04);
 }
 
 .wenwen-brand {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   min-width: 0;
 }
 
 .wenwen-avatar {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  background: #0a291e;
-  border: 1px solid rgba(200, 249, 99, 0.3);
-  color: #c8f963;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow:
-    0 6px 16px rgba(10, 41, 30, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }
 
 .wenwen-brand-copy {
@@ -61,16 +56,16 @@
 .wenwen-title-row {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .wenwen-brand h1 {
   margin: 0;
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 700;
   color: var(--ink-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   line-height: 1.25;
 }
 
@@ -85,11 +80,11 @@
   height: 22px;
   padding: 0 9px;
   border-radius: 999px;
-  background: rgba(10, 123, 86, 0.09);
-  border: 1px solid rgba(10, 123, 86, 0.18);
-  color: var(--color-brand-strong);
+  background: #f7f8fa;
+  border: 1px solid var(--border-default);
+  color: var(--ink-secondary);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -97,8 +92,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--color-brand);
-  box-shadow: 0 0 0 2px rgba(16, 152, 104, 0.2);
+  background: #00b42a;
+  box-shadow: 0 0 0 2px rgba(0, 180, 42, 0.16);
 }
 
 .wenwen-brand p {
@@ -115,61 +110,55 @@
 }
 
 .ai-history-head button {
-  height: 36px;
+  height: 34px;
   padding: 0 13px;
   border-radius: 999px;
   border: 1px solid var(--border-default);
-  background: rgba(255, 255, 255, 0.92);
+  background: #f7f8fa;
   color: var(--ink-secondary);
   font-size: 12.5px;
   font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow: 0 1px 2px rgba(15, 23, 20, 0.03);
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease;
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
 .ai-history-head button:hover:not(:disabled) {
-  background: var(--bg-surface);
+  background: #f2f3f5;
   border-color: var(--border-control);
   color: var(--ink-primary);
-  transform: translateY(-1px);
 }
 
 .ai-history-head button.ai-new-chat {
-  background: #0a291e;
-  border-color: #0a291e;
-  color: #c8f963;
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-border);
+  color: var(--color-brand);
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(10, 41, 30, 0.14);
 }
 
 .ai-history-head button.ai-new-chat:hover:not(:disabled) {
-  background: #103b2b;
-  border-color: #103b2b;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
   color: #ffffff;
 }
 
 .ai-history-head button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-  transform: none;
 }
 
 .ai-history-list {
   flex: 1 1 100%;
   width: 100%;
-  margin-top: 6px;
+  margin-top: 4px;
   padding: 8px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
+  border-radius: 12px;
+  background: #f7f8fa;
   border: 1px solid var(--border-default);
-  box-shadow: var(--shadow-card);
   max-height: 240px;
   overflow-y: auto;
   display: flex;
@@ -179,8 +168,8 @@
 
 .ai-history-list button {
   width: 100%;
-  padding: 9px 11px;
-  border-radius: 10px;
+  padding: 8px 11px;
+  border-radius: 8px;
   border: 0;
   background: transparent;
   color: var(--ink-primary);
@@ -193,7 +182,7 @@
 }
 
 .ai-history-list button:hover:not(:disabled) {
-  background: var(--color-brand-soft);
+  background: #ffffff;
 }
 
 .ai-history-list button:disabled {
@@ -233,11 +222,11 @@
   color: var(--ink-muted);
 }
 
-/* ---------- 2. Workspace Layout & Tactile Quick Prompt Capsules ---------- */
+/* ---------- 2. Workspace Layout & Quick Prompt Capsules ---------- */
 .ai-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: 20px;
+  gap: 18px;
   align-items: start;
 }
 
@@ -267,26 +256,21 @@
 
 .quick-prompts button {
   flex: 0 0 auto;
-  height: 36px;
-  padding: 0 14px;
+  height: 34px;
+  padding: 0 13px;
   border-radius: 999px;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: var(--ink-secondary);
   font-size: 12.5px;
-  font-weight: 600;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  box-shadow:
-    inset 0 1px 0 #ffffff,
-    0 1px 3px rgba(15, 23, 20, 0.04);
   transition:
-    border-color 0.16s ease,
-    background 0.16s ease,
-    color 0.16s ease,
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
+    border-color 0.15s ease,
+    background 0.15s ease,
+    color 0.15s ease;
 }
 
 .quick-prompts button svg {
@@ -294,20 +278,17 @@
 }
 
 .quick-prompts button:hover:not(:disabled) {
-  border-color: rgba(10, 123, 86, 0.34);
+  border-color: var(--color-brand-border);
   background: var(--color-brand-soft);
-  color: var(--color-brand-strong);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px -4px rgba(10, 123, 86, 0.14);
+  color: var(--color-brand);
 }
 
 .quick-prompts button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  transform: none;
 }
 
-/* ---------- 3. Studio Welcome Hero & Sculpted Scenario Cards ---------- */
+/* ---------- 3. Doubao / Kimi Clean Welcome Hero & Scenario Cards ---------- */
 .chat-thread {
   display: flex;
   flex-direction: column;
@@ -316,39 +297,38 @@
 }
 
 .chat-welcome.wenwen-welcome {
-  background: linear-gradient(180deg, #ffffff 0%, #f9fbf9 100%);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 22px;
-  padding: 26px;
-  box-shadow: var(--shadow-panel);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 10px rgba(29, 33, 41, 0.04);
 }
 
 .wenwen-welcome-head {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .chat-welcome-icon {
-  width: 46px;
-  height: 46px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  background: #0a291e;
-  border: 1px solid rgba(200, 249, 99, 0.3);
-  color: #c8f963;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 6px 16px rgba(10, 41, 30, 0.16);
 }
 
 .wenwen-welcome h2 {
   margin: 0;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--ink-primary);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 
 .wenwen-welcome p {
@@ -360,24 +340,22 @@
 .wenwen-scene-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
 }
 
 .wenwen-scene-card {
-  padding: 15px 16px;
-  border-radius: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  background: #f7f8fa;
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  box-shadow: 0 1px 3px rgba(15, 23, 20, 0.03);
+  gap: 4px;
   transition:
-    background 0.18s ease,
-    border-color 0.18s ease,
-    transform 0.18s ease,
-    box-shadow 0.18s ease;
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .wenwen-scene-top {
@@ -385,15 +363,15 @@
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .wenwen-scene-ico {
   width: 28px;
   height: 28px;
   border-radius: 8px;
-  background: var(--color-brand-soft);
-  border: 1px solid rgba(10, 123, 86, 0.18);
+  background: #ffffff;
+  border: 1px solid var(--border-default);
   color: var(--color-brand);
   display: inline-grid;
   place-items: center;
@@ -402,17 +380,19 @@
 .wenwen-scene-arrow {
   color: var(--ink-muted);
   transition:
-    transform 0.18s ease,
-    color 0.18s ease;
+    transform 0.16s ease,
+    color 0.16s ease;
 }
 
 .wenwen-scene-card:hover:not(:disabled) {
-  background: linear-gradient(145deg, #ffffff 0%, #f4fbf7 100%);
-  border-color: rgba(10, 123, 86, 0.34);
-  transform: translateY(-2px);
-  box-shadow:
-    0 10px 24px -6px rgba(10, 123, 86, 0.12),
-    0 2px 6px rgba(15, 23, 20, 0.04);
+  background: #ffffff;
+  border-color: var(--color-brand-border);
+  box-shadow: 0 4px 14px rgba(29, 33, 41, 0.06);
+}
+
+.wenwen-scene-card:hover:not(:disabled) .wenwen-scene-ico {
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-border);
 }
 
 .wenwen-scene-card:hover:not(:disabled) .wenwen-scene-arrow {
@@ -423,12 +403,11 @@
 .wenwen-scene-card:disabled {
   opacity: 0.55;
   cursor: not-allowed;
-  transform: none;
 }
 
 .wenwen-scene-card strong {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13.5px;
+  font-weight: 600;
   color: var(--ink-primary);
 }
 
@@ -438,11 +417,11 @@
   line-height: 1.45;
 }
 
-/* ---------- 4. Chat Thread, Vibrant Emerald User Bubble & Perplexity Citations ---------- */
+/* ---------- 4. Chat Thread, Kimi/Doubao Neutral User Pill & Source Citations ---------- */
 .chat-row {
   display: flex;
   align-items: flex-start;
-  gap: 11px;
+  gap: 10px;
   max-width: 100%;
 }
 
@@ -454,14 +433,13 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: #0a291e;
-  border: 1px solid rgba(200, 249, 99, 0.28);
-  color: #c8f963;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: grid;
   place-items: center;
   flex-shrink: 0;
   margin-top: 2px;
-  box-shadow: 0 3px 10px rgba(10, 41, 30, 0.14);
 }
 
 .chat-body {
@@ -470,43 +448,41 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 7px;
+  gap: 6px;
 }
 
 .chat-row.is-user .chat-body {
   align-items: flex-end;
 }
 
-/* Assistant porcelain message card */
+/* Assistant pure-white editorial message card */
 .chat-bubble {
   padding: 14px 18px;
-  background: var(--bg-surface);
-  border: 1px solid rgba(15, 23, 20, 0.08);
-  border-radius: 6px 20px 20px 20px;
-  color: var(--ink-primary);
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 4px 18px 18px 18px;
+  color: #1d2129;
   font-size: 14px;
-  line-height: 1.7;
-  box-shadow: var(--shadow-card);
+  line-height: 1.72;
+  box-shadow: 0 1px 4px rgba(29, 33, 41, 0.03);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-/* User message bubble: Vibrant Botanical Emerald gradient */
+/* User message bubble: Kimi / 豆包 / ChatGPT calm neutral light pill */
 .chat-row.is-user .chat-bubble {
-  background: var(--gradient-brand);
-  border: 0;
-  border-radius: 20px 20px 4px 20px;
-  color: #ffffff;
-  font-weight: 500;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.22),
-    0 4px 14px rgba(10, 123, 86, 0.18);
+  background: #f2f3f5;
+  border: 1px solid rgba(29, 33, 41, 0.04);
+  border-radius: 18px 18px 4px 18px;
+  color: #1d2129;
+  font-weight: 400;
+  box-shadow: none;
 }
 
 .chat-rich-lines {
   display: flex;
   flex-direction: column;
-  gap: 9px;
+  gap: 8px;
   white-space: normal;
 }
 
@@ -515,16 +491,16 @@
   white-space: pre-wrap;
 }
 
-/* Perplexity-style inline knowledge source card */
+/* Crisp #F7F8FA inline knowledge source citation card */
 .chat-rich-knowledge {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 10px 14px;
-  background: #f6faf7;
-  border: 1px solid rgba(10, 123, 86, 0.16);
-  border-radius: 12px;
-  color: var(--ink-primary);
+  padding: 10px 13px;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  color: #1d2129;
   font-size: 13px;
   line-height: 1.58;
 }
@@ -533,10 +509,10 @@
 .citation-book-badge {
   width: 22px;
   height: 22px;
-  border-radius: 7px;
-  background: #ecfdf5;
-  border: 1px solid rgba(10, 123, 86, 0.22);
-  color: #0a7b56;
+  border-radius: 6px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   display: inline-grid;
   place-items: center;
   flex-shrink: 0;
@@ -573,7 +549,7 @@
   animation: campusStreamBlink 0.9s steps(2, start) infinite;
 }
 
-/* Perplexity-style expandable store knowledge citations */
+/* Expandable store knowledge citations */
 .citation-chips {
   display: flex;
   flex-direction: column;
@@ -582,21 +558,20 @@
 }
 
 .citation-chip {
-  background: #f6faf7;
-  border: 1px solid rgba(10, 123, 86, 0.16);
-  border-radius: 12px;
-  padding: 10px 14px;
-  color: var(--ink-primary);
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
+  border-radius: 10px;
+  padding: 9px 13px;
+  color: #1d2129;
   font-size: 12.5px;
   transition:
-    background 0.16s ease,
-    border-color 0.16s ease,
-    box-shadow 0.16s ease;
+    background 0.15s ease,
+    border-color 0.15s ease;
 }
 
 .citation-chip:hover {
-  background: #f1f8f4;
-  border-color: rgba(10, 123, 86, 0.28);
+  background: #f2f3f5;
+  border-color: #c9cdd4;
 }
 
 .citation-chip summary {
@@ -605,7 +580,7 @@
   gap: 8px;
   cursor: pointer;
   font-weight: 600;
-  color: var(--ink-primary);
+  color: #1d2129;
   list-style: none;
 }
 
@@ -633,13 +608,13 @@
 
 .citation-chip[open] .citation-chevron {
   transform: rotate(180deg);
-  color: #0a7b56;
+  color: var(--color-brand);
 }
 
 .citation-chip p {
   margin: 8px 0 0;
   padding-top: 8px;
-  border-top: 1px dashed rgba(10, 123, 86, 0.18);
+  border-top: 1px dashed #e5e6eb;
   color: var(--ink-secondary);
   font-size: 12px;
   line-height: 1.6;
@@ -647,9 +622,9 @@
 
 .message-warning {
   padding: 6px 11px;
-  border-radius: 9px;
-  background: var(--bg-subtle);
-  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
   color: var(--ink-secondary);
   font-size: 11.5px;
   line-height: 1.45;
@@ -670,11 +645,11 @@
 }
 
 .typing-bubble {
-  background: var(--bg-surface);
-  border: 1px solid rgba(15, 23, 20, 0.08);
-  border-radius: 6px 18px 18px 18px;
+  background: #ffffff;
+  border: 1px solid #e5e6eb;
+  border-radius: 4px 18px 18px 18px;
   padding: 12px 16px;
-  box-shadow: var(--shadow-card);
+  box-shadow: 0 1px 4px rgba(29, 33, 41, 0.03);
 }
 
 .typing-head {
@@ -706,16 +681,16 @@
   color: var(--ink-secondary);
 }
 
-/* ---------- 5. Sticky Studio Recommendation Bundle Sidebar ---------- */
+/* ---------- 5. Clean Pure-White Sticky Recommendation Bundle Card ---------- */
 .recommendation-panel {
-  background: linear-gradient(180deg, #ffffff 0%, #fafcfa 100%);
+  background: #ffffff;
   border: 1px solid var(--border-default);
-  border-radius: 22px;
-  padding: 20px;
-  box-shadow: var(--shadow-panel);
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 2px 12px rgba(29, 33, 41, 0.05);
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 14px;
 }
 
 .recommendation-header {
@@ -734,7 +709,7 @@
 
 .recommendation-header h2 {
   margin: 0;
-  font-size: 16.5px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--ink-primary);
   letter-spacing: -0.015em;
@@ -750,8 +725,9 @@
   padding: 0 6px;
   margin-left: 4px;
   border-radius: 999px;
-  background: #0a291e;
-  color: #c8f963;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
   font-size: 11.5px;
   font-variant-numeric: tabular-nums;
   vertical-align: 1px;
@@ -768,9 +744,9 @@
   gap: 4px;
   padding: 4px 10px;
   border-radius: 999px;
-  background: #ecfdf5;
-  border: 1px solid var(--color-brand-border);
-  color: var(--color-brand-strong);
+  background: #f7f8fa;
+  border: 1px solid var(--border-default);
+  color: var(--ink-secondary);
   font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
@@ -792,13 +768,13 @@
   align-items: center;
   gap: 11px;
   padding: 11px 12px;
-  border-radius: 15px;
+  border-radius: 12px;
   border: 1px solid var(--border-default);
-  background: var(--bg-surface);
+  background: #ffffff;
   transition:
-    border-color 0.16s ease,
-    background 0.16s ease,
-    box-shadow 0.16s ease;
+    border-color 0.15s ease,
+    background 0.15s ease,
+    box-shadow 0.15s ease;
 }
 
 .rec-item:hover {
@@ -806,17 +782,17 @@
 }
 
 .rec-item.is-checked {
-  border-color: rgba(10, 123, 86, 0.34);
-  background: linear-gradient(135deg, #f4fbf7 0%, #ffffff 74%);
-  box-shadow: 0 4px 12px rgba(10, 123, 86, 0.06);
+  border-color: var(--color-brand-border);
+  background: #fcfcfd;
+  box-shadow: 0 2px 8px rgba(29, 33, 41, 0.04);
 }
 
 .rec-check {
-  width: 21px;
-  height: 21px;
-  border-radius: 7px;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
   border: 1.5px solid var(--border-control);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: transparent;
   display: grid;
   place-items: center;
@@ -839,13 +815,13 @@
 }
 
 .rec-photo {
-  width: 76px;
-  height: 76px;
+  width: 74px;
+  height: 74px;
   padding: 0;
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--bg-subtle);
+  background: #f7f8fa;
   flex-shrink: 0;
   display: grid;
   place-items: center;
@@ -876,7 +852,7 @@
 
 .rec-card-content strong {
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--ink-primary);
   line-height: 1.35;
   display: -webkit-box;
@@ -893,9 +869,9 @@
 .rec-item-reason {
   margin-top: 3px;
   padding: 4px 8px;
-  border-radius: 7px;
-  background: #f6faf7;
-  border: 1px solid rgba(10, 123, 86, 0.14);
+  border-radius: 6px;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
   color: var(--ink-secondary);
   font-size: 11px;
   line-height: 1.4;
@@ -911,21 +887,21 @@
 
 .rec-price span {
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--color-price);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 
 .rec-detail-link {
-  height: 27px;
-  padding: 0 11px;
+  height: 26px;
+  padding: 0 10px;
   border-radius: 999px;
-  border: 1px solid var(--color-brand-border);
-  background: #ecfdf5;
-  color: var(--color-brand-strong);
+  border: 1px solid var(--border-default);
+  background: #f7f8fa;
+  color: var(--ink-secondary);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -937,14 +913,14 @@
 }
 
 .rec-detail-link:hover:not(:disabled) {
-  background: var(--color-brand);
-  border-color: var(--color-brand);
-  color: #ffffff;
+  background: var(--color-brand-soft);
+  border-color: var(--color-brand-border);
+  color: var(--color-brand);
 }
 
 .rec-detail-link:disabled {
   border-color: var(--border-default);
-  background: var(--bg-subtle);
+  background: #f7f8fa;
   color: var(--ink-muted);
 }
 
@@ -960,7 +936,7 @@
 
 .proposal-footer {
   padding-top: 14px;
-  border-top: 1px dashed var(--border-default);
+  border-top: 1px solid var(--border-default);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -980,11 +956,11 @@
 }
 
 .proposal-total strong {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 800;
   color: var(--color-price);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
 }
 
 .proposal-actions {
@@ -994,25 +970,25 @@
 }
 
 .ghost-decline {
-  height: 40px;
+  height: 38px;
   padding: 0 14px;
-  border-radius: 12px;
+  border-radius: var(--radius-btn, 999px);
   border: 1px solid var(--border-control);
-  background: var(--bg-surface);
+  background: #ffffff;
   color: var(--ink-secondary);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .ghost-decline:hover:not(:disabled) {
-  background: var(--bg-subtle);
+  background: #f7f8fa;
   color: var(--ink-primary);
 }
 
 .confirm-button {
-  height: 40px;
+  height: 38px;
   padding: 0 18px;
-  border-radius: 12px;
+  border-radius: var(--radius-btn, 999px);
   border: 0;
   background-image: var(--gradient-brand);
   color: #ffffff;
@@ -1022,20 +998,16 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 4px 14px rgba(10, 123, 86, 0.22);
+  box-shadow: 0 4px 12px rgba(29, 33, 41, 0.12);
   transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    opacity 0.16s ease;
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .confirm-button:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 8px 18px rgba(10, 123, 86, 0.28);
+  box-shadow: 0 6px 16px rgba(29, 33, 41, 0.16);
 }
 
 .confirm-button:disabled,
@@ -1045,9 +1017,9 @@
   box-shadow: none;
 }
 
-/* ---------- 6. Floating / Sticky 999px Capsule Composer ---------- */
+/* ---------- 6. Crisp Floating / Sticky 24px Rounded Capsule Composer ---------- */
 .chat-composer-placeholder {
-  height: 82px;
+  height: 80px;
 }
 
 .chat-composer {
@@ -1056,28 +1028,24 @@
   bottom: 70px;
   transform: translateX(-50%);
   width: calc(100% - 24px);
-  max-width: 856px;
+  max-width: 840px;
   z-index: 44;
   background: #ffffff;
-  border: 1.5px solid #d5dfd9;
-  border-radius: 999px;
-  padding: 7px 8px 7px 20px;
+  border: 1px solid #d9dce2;
+  border-radius: 24px;
+  padding: 6px 8px 6px 18px;
   display: flex;
   align-items: center;
   gap: 10px;
-  box-shadow:
-    0 12px 32px -6px rgba(10, 41, 30, 0.1),
-    0 2px 8px rgba(15, 23, 20, 0.04);
+  box-shadow: 0 6px 24px rgba(29, 33, 41, 0.08);
   transition:
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .chat-composer:focus-within {
   border-color: var(--color-brand);
-  box-shadow:
-    0 0 0 4px rgba(10, 123, 86, 0.12),
-    0 14px 36px -6px rgba(10, 41, 30, 0.14);
+  box-shadow: 0 8px 28px rgba(29, 33, 41, 0.12);
 }
 
 .composer-spark-icon {
@@ -1106,8 +1074,8 @@
 }
 
 .wenwen-send-btn {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
   border: 0;
   background-image: var(--gradient-brand);
@@ -1115,28 +1083,24 @@
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.24),
-    0 4px 12px rgba(10, 123, 86, 0.24);
+  box-shadow: 0 3px 10px rgba(29, 33, 41, 0.14);
   transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease,
-    opacity 0.16s ease;
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
 }
 
 .wenwen-send-btn:hover:not(:disabled) {
-  transform: translateY(-1px) scale(1.03);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 6px 16px rgba(10, 123, 86, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 14px rgba(29, 33, 41, 0.18);
 }
 
 .wenwen-send-btn:disabled {
   background-image: none;
-  background-color: var(--border-control);
+  background-color: #e5e6eb;
   color: #ffffff;
   box-shadow: none;
-  opacity: 0.68;
+  opacity: 0.85;
   transform: none;
 }
 
@@ -1182,8 +1146,8 @@
 
 @media (min-width: 960px) {
   .ai-workspace.has-proposal {
-    grid-template-columns: minmax(0, 1fr) 376px;
-    gap: 22px;
+    grid-template-columns: minmax(0, 1fr) 368px;
+    gap: 20px;
   }
 
   .ai-workspace-side {

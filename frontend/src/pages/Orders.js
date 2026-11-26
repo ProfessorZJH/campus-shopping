@@ -61,11 +61,10 @@ export default {
       reviewTags = ref([]),
       reviewContent = ref('');
     let tickTimer = null;
-    const id = computed(() =>
-      store.route.startsWith('/orders/')
-        ? safeDecodeId(store.route.slice('/orders/'.length))
-        : null,
-    );
+    const id = computed(() => {
+      const base = store.route.split('?')[0];
+      return base.startsWith('/orders/') ? safeDecodeId(base.slice('/orders/'.length)) : null;
+    });
     const filtered = computed(() =>
       orders.value.filter((o) => tab.value === 'ALL' || o.status === tab.value),
     );
@@ -403,7 +402,7 @@ export default {
               <div class="luckin-stub-top">
                 <div>
                   <span class="stub-eyebrow">取餐号 · PICKUP NO.</span>
-                  <strong class="boarding-queue-code">{{token.pickupCode||detail.pickup?.pickupCode||'A-101'}}</strong>
+                  <strong class="boarding-queue-code">{{token.pickupCode||detail.pickup?.pickupCode||'A-108'}}</strong>
                 </div>
                 <div v-if="token.pinCode" class="boarding-pin-block">
                   <span class="boarding-pin-label">6 位取件码</span>

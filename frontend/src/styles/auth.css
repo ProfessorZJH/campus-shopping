@@ -1,12 +1,12 @@
 /* ==========================================================================
-   旗舰单栏消费级登录 / 注册弹窗 (Apple / Raycast / 小红书 Studio Polish)
-   零营销噪音、零切换标签、顶冠翡翠微光、前置矢量图标、焦点无障碍完备
+   国内大厂极简单栏登录 / 注册弹窗 (小红书 / 淘宝 / 飞书纯白卡片规范)
+   零营销噪音、零切换标签、纯白卡片、#F2F3F5 填充输入框、无障碍键盘焦点完备
    ========================================================================== */
 
 @keyframes authModalIn {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.985);
+    transform: translateY(6px) scale(0.985);
   }
   to {
     opacity: 1;
@@ -16,27 +16,26 @@
 
 .auth-modal-overlay {
   padding: 16px;
-  background: rgba(10, 28, 21, 0.48);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 
 .auth-modal-overlay form.login-dialog {
-  width: min(408px, calc(100vw - 32px));
-  max-width: 408px;
-  padding: 30px 32px 28px;
-  border: 1px solid rgba(15, 23, 20, 0.08);
-  border-radius: 24px;
+  width: min(400px, calc(100vw - 32px));
+  max-width: 400px;
+  padding: 28px 28px 26px;
+  border: 1px solid #e5e6eb;
+  border-radius: 16px;
   background-color: #ffffff;
-  background-image: radial-gradient(120% 90px at 50% 0%, rgba(16, 152, 104, 0.1), transparent 75%);
+  background-image: none;
   box-shadow:
-    0 28px 64px -12px rgba(10, 41, 30, 0.22),
-    0 4px 16px rgba(15, 23, 20, 0.06),
-    inset 0 1px 0 #ffffff;
+    0 20px 48px -8px rgba(0, 0, 0, 0.18),
+    0 4px 14px rgba(0, 0, 0, 0.06);
   align-self: center;
   display: flex;
   flex-direction: column;
-  animation: authModalIn 0.24s var(--ease-out-expo);
+  animation: authModalIn 0.2s var(--ease-out-expo);
 }
 
 .auth-modal-overlay form.login-dialog .login-dialog-heading {
@@ -44,13 +43,13 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 22px;
+  margin-bottom: 20px;
 }
 
 .auth-brand-mark {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   min-width: 0;
 }
 
@@ -59,43 +58,42 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  filter: drop-shadow(0 4px 10px rgba(10, 123, 86, 0.2));
+  filter: drop-shadow(0 2px 6px rgba(29, 33, 41, 0.12));
 }
 
 .auth-brand-wordmark {
-  font-size: 16.5px;
+  font-size: 16px;
   font-weight: 700;
-  letter-spacing: -0.015em;
-  color: var(--ink-primary);
+  letter-spacing: -0.01em;
+  color: #1d2129;
 }
 
 .auth-modal-overlay form.login-dialog .auth-close-btn {
   width: 32px;
   height: 32px;
-  border-radius: 50%;
-  background: var(--bg-subtle);
-  color: var(--ink-secondary);
+  border-radius: 8px;
+  background: #f2f3f5;
+  color: #4e5969;
   display: grid;
   place-items: center;
   flex-shrink: 0;
   transition:
-    background-color 0.18s var(--ease-out-expo),
-    color 0.18s var(--ease-out-expo),
-    transform 0.18s var(--ease-out-expo);
+    background-color 0.16s ease,
+    color 0.16s ease;
 }
 
 .auth-modal-overlay form.login-dialog .auth-close-btn:hover {
-  background: var(--bg-hover);
-  color: var(--ink-primary);
+  background: #e5e6eb;
+  color: #1d2129;
 }
 
 .auth-modal-overlay form.login-dialog h2 {
-  margin: 0 0 20px;
-  font-size: 23px;
+  margin: 0 0 18px;
+  font-size: 22px;
   font-weight: 700;
   line-height: 1.25;
-  letter-spacing: -0.025em;
-  color: var(--ink-primary);
+  letter-spacing: -0.02em;
+  color: #1d2129;
 }
 
 .auth-modal-overlay form.login-dialog label.sr-only {
@@ -113,7 +111,7 @@
 .auth-fields {
   display: flex;
   flex-direction: column;
-  gap: 13px;
+  gap: 12px;
 }
 
 .auth-field {
@@ -124,39 +122,38 @@
   position: relative;
   display: flex;
   align-items: center;
-  height: 50px;
+  height: 46px;
   padding: 0;
-  border: 1px solid var(--border-default);
-  border-radius: 14px;
-  background: #f4f7f5;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: #f2f3f5;
   transition:
-    background-color 0.18s var(--ease-out-expo),
-    border-color 0.18s var(--ease-out-expo),
-    box-shadow 0.18s var(--ease-out-expo);
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
 }
 
 .auth-input-wrap:hover {
-  background: #ffffff;
-  border-color: var(--border-control);
+  background: #ebedf0;
 }
 
 .auth-input-wrap:focus-within {
   background: #ffffff;
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 4px rgba(10, 123, 86, 0.11);
+  box-shadow: 0 0 0 3px var(--color-brand-soft);
 }
 
 .auth-input-icon {
   position: absolute;
-  left: 15px;
+  left: 14px;
   top: 50%;
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--ink-muted);
+  color: #86909c;
   pointer-events: none;
-  transition: color 0.18s var(--ease-out-expo);
+  transition: color 0.16s ease;
 }
 
 .auth-input-wrap:focus-within .auth-input-icon {
@@ -167,21 +164,21 @@
   width: 100%;
   height: 100%;
   margin: 0;
-  padding: 0 16px 0 42px;
+  padding: 0 14px 0 40px;
   border: 0;
-  border-radius: 13px;
+  border-radius: 9px;
   background: transparent;
-  color: var(--ink-primary);
-  font-size: 15px;
+  color: #1d2129;
+  font-size: 14.5px;
   line-height: 1.4;
 }
 
 .auth-modal-overlay form.login-dialog .auth-input-wrap input#login-password {
-  padding-right: 46px;
+  padding-right: 44px;
 }
 
 .auth-modal-overlay form.login-dialog .auth-input-wrap input::placeholder {
-  color: var(--ink-muted);
+  color: #86909c;
   font-size: 14px;
 }
 
@@ -197,35 +194,35 @@
 
 .auth-modal-overlay form.login-dialog .auth-pwd-toggle {
   position: absolute;
-  right: 8px;
+  right: 7px;
   top: 50%;
   transform: translateY(-50%);
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   padding: 0;
-  border-radius: 9px;
+  border-radius: 7px;
   background: transparent;
-  color: var(--ink-muted);
+  color: #86909c;
   display: inline-grid;
   place-items: center;
   transition:
-    color 0.18s var(--ease-out-expo),
-    background-color 0.18s var(--ease-out-expo);
+    color 0.16s ease,
+    background-color 0.16s ease;
 }
 
 .auth-modal-overlay form.login-dialog .auth-pwd-toggle:hover {
-  color: var(--ink-primary);
-  background: rgba(15, 23, 20, 0.05);
+  color: #1d2129;
+  background: rgba(29, 33, 41, 0.06);
 }
 
 .auth-modal-overlay form.login-dialog .login-error {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin-top: 14px;
-  padding: 10px 13px;
+  margin-top: 12px;
+  padding: 9px 12px;
   border: 1px solid var(--color-danger-border);
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--color-danger-bg);
   color: var(--color-danger);
   font-size: 13px;
@@ -237,17 +234,17 @@
 }
 
 .auth-modal-overlay form.login-dialog .login-submit {
-  height: 50px;
-  min-height: 50px;
-  margin-top: 20px;
-  border-radius: 14px;
-  font-size: 15.5px;
+  height: 46px;
+  min-height: 46px;
+  margin-top: 18px;
+  border-radius: 10px;
+  font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.01em;
 }
 
 .auth-footer-switch {
-  margin-top: 16px;
+  margin-top: 14px;
   text-align: center;
 }
 
@@ -258,12 +255,12 @@
   margin: 0;
   padding: 5px 12px;
   border-radius: 999px;
-  color: var(--ink-secondary);
+  color: #4e5969;
   font-size: 13.5px;
   font-weight: 500;
   transition:
-    color 0.18s var(--ease-out-expo),
-    background-color 0.18s var(--ease-out-expo);
+    color 0.16s ease,
+    background-color 0.16s ease;
 }
 
 .auth-modal-overlay form.login-dialog .login-switch:hover {
@@ -273,7 +270,7 @@
 
 @media (max-width: 420px) {
   .auth-modal-overlay form.login-dialog {
-    padding: 24px 22px 22px;
-    border-radius: 22px;
+    padding: 24px 20px 22px;
+    border-radius: 16px;
   }
 }

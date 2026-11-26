@@ -1,10 +1,8 @@
 /* ==========================================================================
-   青柠校园 · V6 Carbon Flagship 设计变量系统
-   "Botanical Jade × Electric Citrus × Porcelain Studio"
-   1. 冷暖均衡瓷雾白基底 (--bg-*, --ink-*, --border-*)
-   2. 翡翠青柠绿唯一主品牌色 (--color-brand: #0A7B56, 白底对比度 5.35:1 WCAG AA)
-   3. 电光鲜青柠点缀 (--color-lime-zest: #C8F963) + 深林剧场底色 (--bg-forest: #0A291E)
-   4. 朱砂珊瑚零售价红 (--color-price: #EB3B2E) 仅用于金额数字与核心角标
+   青柠校园 · V7 国内大厂级 PC Web & SaaS 设计变量基座
+   1. 纯净大厂中性灰白画布与字色体系 (--bg-*, --ink-*, --border-*)
+   2. 默认消费端：淘宝 2025 / 京东活力橙红零售视觉 (--color-brand: #FF5000)
+   3. 企业级语义状态色、图表调色板 (--chart-1..6) 与历史变量全量兼容别名
    ========================================================================== */
 
 :root {
@@ -16,75 +14,82 @@
     'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', Consolas, 'Liberation Mono', Menlo,
     monospace;
 
-  /* 瓷雾白与森林石板中性色体系 */
-  --bg-canvas: #f5f7f5;
+  /* 国内大厂标准中性色阶（字节 Arco / 阿里 AntD / 淘宝白昼基底） */
+  --bg-canvas: #f4f5f7;
+  --bg-canvas-end: #f0f2f5;
   --bg-surface: #ffffff;
   --bg-elevated: #ffffff;
-  --bg-subtle: #eef2ef;
-  --bg-hover: #e5ebe7;
-  --bg-sidebar: #f0f3f1;
-  --bg-forest: #0a291e;
-  --bg-forest-mid: #103b2b;
+  --bg-subtle: #f7f8fa;
+  --bg-hover: #f2f3f5;
+  --bg-sidebar: #ffffff;
 
-  /* 编辑级深松墨字色与细腻发丝描边 */
-  --ink-primary: #0f1714;
-  --ink-secondary: #47544f;
-  --ink-muted: #7e8b85;
+  /* 清晰层级正文与描边色阶 */
+  --ink-primary: #1d2129;
+  --ink-secondary: #4e5969;
+  --ink-muted: #86909c;
 
-  --border-subtle: rgba(15, 23, 20, 0.06);
-  --border-default: #dfe5e1;
-  --border-control: #c9d3cd;
+  --border-subtle: rgba(29, 33, 41, 0.06);
+  --border-default: #e5e6eb;
+  --border-control: #c9cdd4;
 
-  /* 翡翠青柠品牌色（#FFFFFF 对比度 5.35:1 WCAG AA）与电光青柠高光 */
-  --color-brand: #0a7b56;
-  --color-brand-hover: #086647;
-  --color-brand-strong: #064e36;
-  --color-brand-soft: #ecfdf5;
-  --color-brand-border: #a7f3d0;
-  --color-focus: #0a7b56;
-  --color-lime-zest: #c8f963;
-  --color-lime-bright: #a3e635;
+  /* 默认消费端主品牌（淘宝 2025 / 京东橙红零售体系） */
+  --color-brand: #ff5000;
+  --color-brand-hover: #e64500;
+  --color-brand-strong: #cc3d00;
+  --color-brand-soft: #fff2e8;
+  --color-brand-border: #ffd8bf;
+  --color-focus: #ff5000;
 
-  --gradient-brand: linear-gradient(135deg, #109868 0%, #08734f 100%);
-  --gradient-forest:
-    radial-gradient(
-      90% 130% at 90% 12%,
-      rgba(200, 249, 99, 0.22) 0%,
-      rgba(16, 152, 104, 0.24) 38%,
-      rgba(10, 41, 30, 0) 76%
-    ),
-    linear-gradient(135deg, #0b2d21 0%, #071f17 100%);
-  --gradient-buy: linear-gradient(135deg, #18241f 0%, #0b120f 100%);
-  --gradient-copilot: linear-gradient(145deg, #ecfdf5 0%, #ffffff 52%, #f7fee7 100%);
+  --gradient-brand: linear-gradient(135deg, #ff6a00 0%, #ff4500 100%);
+  --gradient-buy: linear-gradient(135deg, #ff9402 0%, #ff6200 100%);
+  --gradient-copilot: linear-gradient(145deg, #fff7f0 0%, #ffffff 56%, #f7f8fa 100%);
 
-  /* 零售金额朱砂红与语义功能色 */
-  --color-price: #eb3b2e;
+  /* 零售价格色、卡片/按钮形态与搜索框特征色 */
+  --color-price: #ff5000;
+  --radius-card: 12px;
+  --radius-btn: 999px;
+  --search-border: #ff5000;
+  --admin-radius: 8px;
 
-  --color-success: #0a7b56;
-  --color-success-bg: #ecfdf5;
-  --color-success-border: #a7f3d0;
+  /* 品牌图形标志动态色槽 */
+  --logo-from: #ff6e00;
+  --logo-to: #ff4000;
+  --logo-accent: #ffe066;
 
-  --color-warning: #b45309;
-  --color-warning-bg: #fffbeb;
-  --color-warning-border: #fde68a;
+  /* 数据可视化标准色板 */
+  --chart-1: #165dff;
+  --chart-2: #14c9c9;
+  --chart-3: #f7ba1e;
+  --chart-4: #722ed1;
+  --chart-5: #f53f3f;
+  --chart-6: #86909c;
 
-  --color-danger: #dc2626;
-  --color-danger-strong: #b91c1c;
-  --color-danger-bg: #fef2f2;
-  --color-danger-border: #fecaca;
+  /* 企业级语义状态色 */
+  --color-success: #00b42a;
+  --color-success-bg: #e8ffea;
+  --color-success-border: #aff0b5;
 
-  --color-info: #0284c7;
-  --color-info-bg: #f0f9ff;
-  --color-info-border: #bae6fd;
+  --color-warning: #d25f00;
+  --color-warning-bg: #fff7e8;
+  --color-warning-border: #ffe4ba;
 
-  --color-admin-accent: #4338ca;
-  --color-admin-bg: #eef2ff;
-  --color-admin-border: #c7d2fe;
+  --color-danger: #f53f3f;
+  --color-danger-strong: #cb2634;
+  --color-danger-bg: #ffece8;
+  --color-danger-border: #fdcdc5;
 
-  /* 多层环境光影与流体阻尼曲线 */
-  --shadow-card: 0 1px 2px rgba(15, 23, 20, 0.04), 0 4px 12px rgba(15, 23, 20, 0.03);
-  --shadow-panel: 0 8px 24px -4px rgba(15, 23, 20, 0.07), 0 2px 6px rgba(15, 23, 20, 0.03);
-  --shadow-elevated: 0 20px 44px -8px rgba(10, 41, 30, 0.14), 0 4px 12px rgba(15, 23, 20, 0.05);
+  --color-info: #165dff;
+  --color-info-bg: #e8f3ff;
+  --color-info-border: #bedaff;
+
+  --color-admin-accent: #165dff;
+  --color-admin-bg: #e8f3ff;
+  --color-admin-border: #bedaff;
+
+  /* 纯净多层环境阴影与缓动曲线 */
+  --shadow-card: 0 1px 3px rgba(29, 33, 41, 0.04), 0 4px 12px rgba(29, 33, 41, 0.03);
+  --shadow-panel: 0 8px 24px -4px rgba(29, 33, 41, 0.08), 0 2px 6px rgba(29, 33, 41, 0.04);
+  --shadow-elevated: 0 18px 42px -8px rgba(29, 33, 41, 0.14), 0 4px 12px rgba(29, 33, 41, 0.06);
 
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -107,10 +112,10 @@
   --radius-2xl: 20px;
   --radius-3xl: 24px;
   --radius-pill: 999px;
-  --radius-control: 10px;
-  --radius-input: 10px;
-  --radius-panel: 16px;
-  --radius-overlay: 20px;
+  --radius-control: 8px;
+  --radius-input: 8px;
+  --radius-panel: 12px;
+  --radius-overlay: 16px;
 
   /* 历史变量全量兼容映射 */
   --ink: var(--ink-primary);
@@ -124,7 +129,7 @@
   --border: var(--border-default);
   --white: var(--bg-surface);
   --obsidian: var(--ink-primary);
-  --obsidian-soft: #18241f;
+  --obsidian-soft: #272e3b;
   --emerald-bright: var(--color-brand);
   --emerald-wash: var(--color-brand-soft);
   --sky: var(--color-info);

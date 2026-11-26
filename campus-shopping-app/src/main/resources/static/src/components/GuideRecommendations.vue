@@ -43,7 +43,7 @@ function meaningfulReason(raw?: string): string {
 </script>
 
 <template>
-  <section class="recommendation-panel">
+  <section class="recommendation-panel" aria-label="推荐商品组合">
     <div class="recommendation-header">
       <div class="rec-header-copy">
         <h2>
@@ -51,7 +51,7 @@ function meaningfulReason(raw?: string): string {
         </h2>
         <small class="rec-header-caption">勾选心仪单品，一键加入购物车</small>
       </div>
-      <span class="rec-header-sub"><Icon name="shield" :size="12" />实时复验</span>
+      <span class="rec-header-sub"><Icon name="shield" :size="12" />现货复验</span>
     </div>
     <div class="rec-cards">
       <article

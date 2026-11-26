@@ -1,6 +1,7 @@
 import { api, resetCsrf } from '../services/api.js';
 import { notify, replaceSession } from '../services/store.js';
 const { ref } = Vue;
+
 /** 登录/注册只使用已有认证接口，不能由前端声明角色。
  * 注意键盘无障碍契约：form.login-dialog 内第一个可聚焦控件为关闭按钮，Tab 下一个为 #login-name。
  */
@@ -85,11 +86,11 @@ export default {
       <form class="login-dialog" @submit.prevent="submit" aria-label="账号登录">
         <div class="login-dialog-heading">
           <div class="auth-brand-mark">
-            <BrandLogo :size="36" />
+            <BrandLogo :size="32" />
             <span class="auth-brand-wordmark">青柠校园</span>
           </div>
           <button type="button" class="auth-close-btn" @click="$emit('close')" aria-label="关闭登录窗">
-            <Icon name="x" :size="18" />
+            <Icon name="x" :size="17" />
           </button>
         </div>
 
@@ -136,7 +137,7 @@ export default {
                 @click="showPwd = !showPwd"
                 :aria-label="showPwd ? '隐藏密码' : '显示密码'"
               >
-                <Icon :name="showPwd ? 'eyeOff' : 'eye'" :size="18" />
+                <Icon :name="showPwd ? 'eyeOff' : 'eye'" :size="17" />
               </button>
             </div>
           </div>

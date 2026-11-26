@@ -1245,7 +1245,7 @@
         return isReadonly2 && isObject(value) ? /* @__PURE__ */ readonly(value) : value;
       }
       if (isObject(res)) {
-        return isReadonly2 ? /* @__PURE__ */ readonly(res) : /* @__PURE__ */ reactive$1(res);
+        return isReadonly2 ? /* @__PURE__ */ readonly(res) : /* @__PURE__ */ reactive$2(res);
       }
       return res;
     }
@@ -1547,7 +1547,7 @@
     }
   }
   // @__NO_SIDE_EFFECTS__
-  function reactive$1(target) {
+  function reactive$2(target) {
     if (/* @__PURE__ */ isReadonly(target)) {
       return target;
     }
@@ -1644,14 +1644,14 @@
     }
     return value;
   }
-  const toReactive = (value) => isObject(value) ? /* @__PURE__ */ reactive$1(value) : value;
+  const toReactive = (value) => isObject(value) ? /* @__PURE__ */ reactive$2(value) : value;
   const toReadonly = (value) => isObject(value) ? /* @__PURE__ */ readonly(value) : value;
   // @__NO_SIDE_EFFECTS__
   function isRef(r) {
     return r ? r["__v_isRef"] === true : false;
   }
   // @__NO_SIDE_EFFECTS__
-  function ref$j(value) {
+  function ref$k(value) {
     return createRef(value, false);
   }
   // @__NO_SIDE_EFFECTS__
@@ -1805,7 +1805,7 @@
     } else if (isObject(source) && arguments.length > 1) {
       return propertyToRef(source, key, defaultValue);
     } else {
-      return /* @__PURE__ */ ref$j(source);
+      return /* @__PURE__ */ ref$k(source);
     }
   }
   function propertyToRef(source, key, defaultValue) {
@@ -3123,7 +3123,7 @@
       isUnmounting: false,
       leavingVNodes: /* @__PURE__ */ new Map()
     };
-    onMounted$f(() => {
+    onMounted$g(() => {
       state.isMounted = true;
     });
     onBeforeUnmount$2(() => {
@@ -4424,9 +4424,9 @@
             }) : null;
           });
         }
-        const loaded = /* @__PURE__ */ ref$j(false);
-        const error = /* @__PURE__ */ ref$j();
-        const delayed = /* @__PURE__ */ ref$j(!!delay);
+        const loaded = /* @__PURE__ */ ref$k(false);
+        const error = /* @__PURE__ */ ref$k();
+        const delayed = /* @__PURE__ */ ref$k(!!delay);
         let timeoutTimer;
         let delayTimer;
         onScopeDispose(() => {
@@ -4626,7 +4626,7 @@
           }
         }
       };
-      onMounted$f(cacheSubtree);
+      onMounted$g(cacheSubtree);
       onUpdated(cacheSubtree);
       onBeforeUnmount$2(() => {
         cache.forEach((cached) => {
@@ -4787,7 +4787,7 @@
     }
   };
   const onBeforeMount = createHook("bm");
-  const onMounted$f = createHook("m");
+  const onMounted$g = createHook("m");
   const onBeforeUpdate = createHook(
     "bu"
   );
@@ -4795,7 +4795,7 @@
   const onBeforeUnmount$2 = createHook(
     "bum"
   );
-  const onUnmounted$c = createHook("um");
+  const onUnmounted$d = createHook("um");
   const onServerPrefetch = createHook(
     "sp"
   );
@@ -5283,7 +5283,7 @@
       const data = dataOptions.call(publicThis, publicThis);
       if (!isObject(data)) ;
       else {
-        instance.data = /* @__PURE__ */ reactive$1(data);
+        instance.data = /* @__PURE__ */ reactive$2(data);
       }
     }
     shouldCacheAccess = true;
@@ -5326,7 +5326,7 @@
       }
     }
     registerLifecycleHook(onBeforeMount, beforeMount);
-    registerLifecycleHook(onMounted$f, mounted);
+    registerLifecycleHook(onMounted$g, mounted);
     registerLifecycleHook(onBeforeUpdate, beforeUpdate);
     registerLifecycleHook(onUpdated, updated);
     registerLifecycleHook(onActivated, activated);
@@ -5335,7 +5335,7 @@
     registerLifecycleHook(onRenderTracked, renderTracked);
     registerLifecycleHook(onRenderTriggered, renderTriggered);
     registerLifecycleHook(onBeforeUnmount$2, beforeUnmount);
-    registerLifecycleHook(onUnmounted$c, unmounted);
+    registerLifecycleHook(onUnmounted$d, unmounted);
     registerLifecycleHook(onServerPrefetch, serverPrefetch);
     if (isArray(expose)) {
       if (expose.length) {
@@ -9791,11 +9791,11 @@
     onBeforeUpdate(() => {
       queuePostFlushCb(setVars);
     });
-    onMounted$f(() => {
+    onMounted$g(() => {
       watch$d(setVars, NOOP, { flush: "post" });
       const ob = new MutationObserver(setVars);
       ob.observe(instance.subTree.el.parentNode, { childList: true });
-      onUnmounted$c(() => ob.disconnect());
+      onUnmounted$d(() => ob.disconnect());
     });
   }
   function setVarsOnVNode(vnode, vars) {
@@ -11370,12 +11370,12 @@
     onBeforeUpdate,
     onDeactivated,
     onErrorCaptured,
-    onMounted: onMounted$f,
+    onMounted: onMounted$g,
     onRenderTracked,
     onRenderTriggered,
     onScopeDispose,
     onServerPrefetch,
-    onUnmounted: onUnmounted$c,
+    onUnmounted: onUnmounted$d,
     onUpdated,
     onWatcherCleanup,
     openBlock,
@@ -11385,9 +11385,9 @@
     proxyRefs,
     pushScopeId,
     queuePostFlushCb,
-    reactive: reactive$1,
+    reactive: reactive$2,
     readonly,
-    ref: ref$j,
+    ref: ref$k,
     registerRuntimeCompiler,
     render,
     renderList,
@@ -12104,78 +12104,62 @@
               }, [
                 _createElementVNode("stop", {
                   offset: "0%",
-                  "stop-color": "#0D8A61"
+                  "stop-color": "var(--logo-from, #FF6E00)"
                 }),
                 _createElementVNode("stop", {
                   offset: "100%",
-                  "stop-color": "#075E41"
+                  "stop-color": "var(--logo-to, #FF4000)"
                 })
               ], 8, ["id"])
             ]),
             _createElementVNode("rect", {
               width: "48",
               height: "48",
-              rx: "13",
-              fill: "#0A7B56"
+              rx: "12",
+              fill: "var(--logo-to, #FF4000)"
             }),
             _createElementVNode("rect", {
               width: "48",
               height: "48",
-              rx: "13",
+              rx: "12",
               fill: "url(#" + _ctx.gradId + ")"
             }, null, 8, ["fill"]),
             _createElementVNode("path", {
-              d: "M0 13C0 5.8203 5.8203 0 13 0H35C42.1797 0 48 5.8203 48 13V22C36 26.5 14 24.5 0 18.5V13Z",
-              fill: "#18B27E",
-              "fill-opacity": "0.26"
+              d: "M0 12C0 5.37258 5.37258 0 12 0H36C42.6274 0 48 5.37258 48 12V21C35.5 25 14.5 23.5 0 18V12Z",
+              fill: "#FFFFFF",
+              "fill-opacity": "0.14"
             }),
             _createElementVNode("rect", {
               x: "0.75",
               y: "0.75",
               width: "46.5",
               height: "46.5",
-              rx: "12.25",
+              rx: "11.25",
               stroke: "#FFFFFF",
-              "stroke-opacity": "0.28",
+              "stroke-opacity": "0.24",
               "stroke-width": "1.5"
             }),
             _createElementVNode("path", {
-              d: "M18.5 16.8C18.5 13.5968 20.9624 11 24 11C27.0376 11 29.5 13.5968 29.5 16.8",
+              d: "M18.5 16.6C18.5 13.5072 20.9624 11 24 11C27.0376 11 29.5 13.5072 29.5 16.6",
               stroke: "#FFFFFF",
               "stroke-width": "2.6",
               "stroke-linecap": "round"
             }),
             _createElementVNode("path", {
-              d: "M13.2 18.8C13.2 17.1431 14.5431 15.8 16.2 15.8H31.8C33.4569 15.8 34.8 17.1431 34.8 18.8L35.6 33.6C35.702 35.4878 34.2007 37.08 32.3098 37.08H15.6902C13.7993 37.08 12.298 35.4878 12.4 33.6L13.2 18.8Z",
+              d: "M13.4 18.6C13.4 16.9431 14.7431 15.6 16.4 15.6H31.6C33.2569 15.6 34.6 16.9431 34.6 18.6L35.4 33.4C35.502 35.2878 34.0007 36.88 32.1098 36.88H15.8902C13.9993 36.88 12.498 35.2878 12.6 33.4L13.4 18.6Z",
               fill: "#FFFFFF"
             }),
-            _createElementVNode("circle", {
-              cx: "24",
-              cy: "26.6",
-              r: "6.8",
-              fill: "#0A7B56"
-            }),
-            _createElementVNode("circle", {
-              cx: "24",
-              cy: "26.6",
-              r: "5.1",
-              fill: "#C8F963"
-            }),
             _createElementVNode("path", {
-              d: "M24 21.5V31.7M18.9 26.6H29.1M20.4 23L27.6 30.2M27.6 23L20.4 30.2",
-              stroke: "#0A7B56",
-              "stroke-width": "1.25",
+              d: "M19.2 25.4C20.5 28.1 22.1 29.4 24 29.4C25.9 29.4 27.5 28.1 28.8 25.4",
+              stroke: "var(--logo-to, #FF4000)",
+              "stroke-width": "2.5",
               "stroke-linecap": "round"
             }),
             _createElementVNode("circle", {
-              cx: "24",
-              cy: "26.6",
-              r: "1.15",
-              fill: "#0A7B56"
-            }),
-            _createElementVNode("path", {
-              d: "M30.2 11.2C34.1 10.4 37.3 12.5 37.7 16.3C33.9 17 30.7 14.9 30.2 11.2Z",
-              fill: "#C8F963"
+              cx: "35.5",
+              cy: "12.5",
+              r: "3.6",
+              fill: "var(--logo-accent, #FFE066)"
             })
           ], 8, ["width", "height"]))
         ]);
@@ -12460,9 +12444,9 @@
     { role: "user", content: "我想买点夜宵，预算 30 元以内，吃得饱一点。" },
     { role: "assistant", content: "给你挑了 3 件方便自提的好物。", demo: true }
   ];
-  const { reactive } = Vue;
+  const { reactive: reactive$1 } = Vue;
   const preview = window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get("demo") === "1";
-  const store = reactive({
+  const store = reactive$1({
     preview,
     route: window.__CAMPUS_TEST_ROUTE__ || location.hash.replace(/^#/, "") || "/",
     products: [],
@@ -12903,18 +12887,18 @@
   function positiveInt(v, max = 99) {
     return Number.isInteger(Number(v)) && Number(v) >= 1 && Number(v) <= max;
   }
-  const { ref: ref$i } = Vue;
+  const { ref: ref$j } = Vue;
   const AuthDialog = {
     name: "AuthDialog",
     emits: ["close", "success"],
     setup(props, { emit: emit2 }) {
-      const mode = ref$i("login");
-      const username = ref$i("");
-      const password = ref$i("");
-      const displayName = ref$i("");
-      const showPwd = ref$i(false);
-      const busy = ref$i(false);
-      const error = ref$i("");
+      const mode = ref$j("login");
+      const username = ref$j("");
+      const password = ref$j("");
+      const displayName = ref$j("");
+      const showPwd = ref$j(false);
+      const busy = ref$j(false);
+      const error = ref$j("");
       let lastSubmitMs = 0;
       function switchMode(next) {
         if (busy.value || mode.value === next) return;
@@ -12991,7 +12975,7 @@
           }, [
             _createElementVNode("div", { class: "login-dialog-heading" }, [
               _createElementVNode("div", { class: "auth-brand-mark" }, [
-                _createVNode2(_component_BrandLogo, { size: 36 }),
+                _createVNode2(_component_BrandLogo, { size: 32 }),
                 _createElementVNode("span", { class: "auth-brand-wordmark" }, "青柠校园")
               ]),
               _createElementVNode("button", {
@@ -13002,7 +12986,7 @@
               }, [
                 _createVNode2(_component_Icon, {
                   name: "x",
-                  size: 18
+                  size: 17
                 })
               ], 8, ["onClick"])
             ]),
@@ -13077,7 +13061,7 @@
                   }, [
                     _createVNode2(_component_Icon, {
                       name: _ctx.showPwd ? "eyeOff" : "eye",
-                      size: 18
+                      size: 17
                     }, null, 8, ["name"])
                   ], 8, ["onClick", "aria-label"])
                 ])
@@ -13147,17 +13131,17 @@
       };
     })()
   };
-  const { ref: ref$h, computed: computed$h, onMounted: onMounted$e, onUnmounted: onUnmounted$b } = Vue;
+  const { ref: ref$i, computed: computed$h, onMounted: onMounted$f, onUnmounted: onUnmounted$c } = Vue;
   const CAMPUS_ZONES = ["全校门店", "学一食堂", "图书馆南门", "北苑宿舍区", "南区活动中心"];
   const ConsumerShell = {
     name: "ConsumerShell",
     components: { AuthDialog },
     props: { active: { type: String, default: "home" } },
     setup() {
-      const loginOpen = ref$h(false);
-      const menuOpen = ref$h(false);
-      const zoneIndex = ref$h(0);
-      const menuWrap = ref$h(null);
+      const loginOpen = ref$i(false);
+      const menuOpen = ref$i(false);
+      const zoneIndex = ref$i(0);
+      const menuWrap = ref$i(null);
       async function logout() {
         menuOpen.value = false;
         try {
@@ -13187,11 +13171,11 @@
       function onDocKey(event) {
         if (event.key === "Escape" && menuOpen.value) menuOpen.value = false;
       }
-      onMounted$e(() => {
+      onMounted$f(() => {
         document.addEventListener("click", onDocClick);
         document.addEventListener("keydown", onDocKey);
       });
-      onUnmounted$b(() => {
+      onUnmounted$c(() => {
         document.removeEventListener("click", onDocClick);
         document.removeEventListener("keydown", onDocKey);
       });
@@ -13527,7 +13511,7 @@
       };
     })()
   };
-  const { computed: computed$g, ref: ref$g, watch: watch$c } = Vue;
+  const { computed: computed$g, ref: ref$h, watch: watch$c } = Vue;
   const ProductImage = {
     name: "ProductImage",
     props: {
@@ -13536,7 +13520,7 @@
       loading: { type: String, default: "lazy" }
     },
     setup(props) {
-      const broken = ref$g(false);
+      const broken = ref$h(false);
       watch$c(
         () => props.src,
         () => {
@@ -13566,7 +13550,7 @@
       };
     })()
   };
-  const { ref: ref$f, computed: computed$f, onMounted: onMounted$d, onUnmounted: onUnmounted$a } = Vue;
+  const { ref: ref$g, computed: computed$f, onMounted: onMounted$e, onUnmounted: onUnmounted$b } = Vue;
   const DEFAULT_KEYWORDS = ["乌龙茶", "泡面", "纯牛奶", "果切", "中性笔", "抽纸"];
   const HISTORY_STORAGE_KEY = "campus_search_history_v1";
   const staticCategoryArt = {
@@ -13585,7 +13569,7 @@
     "./images/store-dorm-mart.jpg",
     "./images/store-fruit-bar.jpg"
   ];
-  function splitPrice$1(cent) {
+  function splitPrice$2(cent) {
     const formatted = money(cent).replace(/^¥/, "");
     const dot = formatted.indexOf(".");
     if (dot < 0) return { int: formatted, dec: "" };
@@ -13614,50 +13598,42 @@
     setup() {
       const scope = requestScope();
       const initialScope = requestScope();
-      const discovery = ref$f(null);
-      const bannerIdx = ref$f(0);
-      const searchHistory = ref$f(readSearchHistory());
-      const search = ref$f("");
-      const category = ref$f("");
-      const merchant = ref$f("");
-      const sort = ref$f("popular");
-      const page = ref$f(1);
-      const priceMin = ref$f("");
-      const priceMax = ref$f("");
-      const appliedMin = ref$f(null);
-      const appliedMax = ref$f(null);
-      const priceError = ref$f("");
-      const selected = ref$f(null);
-      const chosenSku = ref$f("");
-      const count = ref$f(1);
-      const saving = ref$f(false);
-      const quickAddingId = ref$f("");
-      const quickAddedMap = ref$f({});
+      const discovery = ref$g(null);
+      const bannerIdx = ref$g(0);
+      const searchHistory = ref$g(readSearchHistory());
+      const search = ref$g("");
+      const category = ref$g("");
+      const merchant = ref$g("");
+      const sort = ref$g("popular");
+      const page = ref$g(1);
+      const priceMin = ref$g("");
+      const priceMax = ref$g("");
+      const appliedMin = ref$g(null);
+      const appliedMax = ref$g(null);
+      const priceError = ref$g("");
+      const selected = ref$g(null);
+      const chosenSku = ref$g("");
+      const count = ref$g(1);
+      const saving = ref$g(false);
+      const quickAddingId = ref$g("");
+      const quickAddedMap = ref$g({});
       let bannerTimer = null;
       const banners = computed$f(() => [
         {
-          tag: "深夜热食",
-          title: "赶论文饿了？热汤杯面配无糖冰茶",
-          sub: "手机下单，下楼到店直接取走，不用排队等结账",
-          cta: "看看夜宵",
-          keyword: "泡面",
-          img: preview ? "./images/noodles.webp" : "./images/prod-instant-noodles.jpg"
-        },
-        {
-          tag: "课间饮品",
-          title: "早八大课间 · 生椰冰拿铁与鲜牛奶",
-          sub: "支持预约 10:00 课间取餐，路过连廊顺手带进教室",
-          cta: "挑杯饮品",
+          tag: "校园鲜饮节",
+          title: "冰萃拿铁与鲜切果杯",
+          sub: "下课顺路 5 分钟即取 · 校内门店现做现货",
+          cta: "立即选购",
           categoryCode: "drink",
-          img: preview ? "./images/milk.webp" : "./images/prod-iced-latte.jpg"
+          img: "./images/hero-campus-fresh.jpg"
         },
         {
-          tag: "每日鲜切",
-          title: "现切双拼鲜果杯 · 清爽低负担",
-          sub: "当天现切草莓芒果与酸奶碗，午休饭后解腻刚刚好",
-          cta: "逛逛鲜果",
-          categoryCode: "fruit",
-          img: preview ? "./images/category-fruit.webp" : "./images/prod-fruit-cup.jpg"
+          tag: "自习装备季",
+          title: "护眼台灯与降噪耳机",
+          sub: "图书馆与宿舍专享 · 校内自提免运费",
+          cta: "去看看",
+          categoryCode: "stationery",
+          img: "./images/hero-campus-study.jpg"
         }
       ]);
       const keywords = computed$f(
@@ -13708,7 +13684,12 @@
       function syncUrlQuery() {
         if (preview || window.__CAMPUS_TEST_ROUTE__ || !location.protocol.startsWith("http")) return;
         try {
+          const hashQ = (location.hash || "").indexOf("?");
+          const prev = hashQ >= 0 ? new URLSearchParams(location.hash.slice(hashQ + 1)) : null;
           const params = new URLSearchParams();
+          for (const k of ["ct", "hl", "at"]) {
+            if (prev == null ? void 0 : prev.get(k)) params.set(k, prev.get(k));
+          }
           if (search.value.trim()) params.set("q", search.value.trim());
           if (category.value) params.set("category", category.value);
           const qs = params.toString();
@@ -13730,10 +13711,10 @@
         searchHistory.value = [];
         writeSearchHistory([]);
       }
-      onMounted$d(() => {
+      onMounted$e(() => {
         if (!preview && !window.__contractApi) {
           bannerTimer = setInterval(() => {
-            bannerIdx.value = (bannerIdx.value + 1) % 3;
+            bannerIdx.value = (bannerIdx.value + 1) % banners.value.length;
           }, 5600);
         }
         const initReq = initialScope.begin();
@@ -13758,7 +13739,7 @@
           }
         });
       });
-      onUnmounted$a(() => {
+      onUnmounted$b(() => {
         if (bannerTimer) {
           clearInterval(bannerTimer);
           bannerTimer = null;
@@ -13995,7 +13976,7 @@
         pathId,
         go,
         money,
-        splitPrice: splitPrice$1,
+        splitPrice: splitPrice$2,
         skuOf,
         priceSku,
         available,
@@ -14147,7 +14128,51 @@
               class: "home-hero-row",
               "aria-label": "精选场景与导购"
             }, [
+              _createElementVNode("aside", {
+                class: "hero-cat-sidebar",
+                "aria-label": "分类导航"
+              }, [
+                (_openBlock(true), _createElementBlock(
+                  _Fragment,
+                  null,
+                  _renderList(_ctx.categories, (c) => {
+                    return _openBlock(), _createElementBlock("button", {
+                      key: "side-" + c.code,
+                      type: "button",
+                      class: _normalizeClass(["hero-cat-row", { active: _ctx.category === c.code }]),
+                      onClick: ($event) => _ctx.setCategory(c.code)
+                    }, [
+                      _createElementVNode("span", { class: "hero-cat-icon" }, [
+                        _createElementVNode("img", {
+                          src: c.image || _ctx.staticCategoryArt[c.code] || "./images/category-snacks.webp",
+                          alt: c.name
+                        }, null, 8, ["src", "alt"])
+                      ]),
+                      _createElementVNode(
+                        "span",
+                        { class: "hero-cat-name" },
+                        _toDisplayString(c.name),
+                        1
+                        /* TEXT */
+                      ),
+                      _createVNode2(_component_Icon, {
+                        name: "chevronRight",
+                        size: 13,
+                        class: "hero-cat-arrow"
+                      })
+                    ], 10, ["onClick"]);
+                  }),
+                  128
+                  /* KEYED_FRAGMENT */
+                ))
+              ]),
               _createElementVNode("div", { class: "home-scene-banner" }, [
+                _createElementVNode("img", {
+                  class: "hero-banner-photo",
+                  src: _ctx.banners[_ctx.bannerIdx].img,
+                  alt: _ctx.banners[_ctx.bannerIdx].title,
+                  onClick: ($event) => _ctx.triggerBanner(_ctx.banners[_ctx.bannerIdx])
+                }, null, 8, ["src", "alt", "onClick"]),
                 _createElementVNode("div", { class: "scene-banner-copy" }, [
                   _createElementVNode("span", { class: "carousel-scene-tag" }, [
                     _createElementVNode("span", {
@@ -14212,16 +14237,7 @@
                       ))
                     ])
                   ])
-                ]),
-                _createElementVNode("div", {
-                  class: "scene-banner-art",
-                  onClick: ($event) => _ctx.triggerBanner(_ctx.banners[_ctx.bannerIdx])
-                }, [
-                  _createVNode2(_component_ProductImage, {
-                    src: _ctx.banners[_ctx.bannerIdx].img,
-                    alt: _ctx.banners[_ctx.bannerIdx].title
-                  }, null, 8, ["src", "alt"])
-                ], 8, ["onClick"])
+                ])
               ]),
               _createElementVNode("button", {
                 type: "button",
@@ -14239,19 +14255,12 @@
                       size: 20
                     })
                   ]),
-                  _createElementVNode("div", null, [
+                  _createElementVNode("div", { class: "cabin-ai-heading" }, [
                     _createElementVNode("div", { class: "hero-title" }, [
                       _createElementVNode("span", null, "AI"),
                       _createTextVNode(" 导购")
                     ]),
                     _createElementVNode("div", { class: "cabin-ai-sub" }, "按预算和口味帮你挑")
-                  ]),
-                  _createElementVNode("span", { class: "cabin-ai-go" }, [
-                    _createTextVNode("去试试 "),
-                    _createVNode2(_component_Icon, {
-                      name: "chevronRight",
-                      size: 12
-                    })
                   ])
                 ]),
                 _createElementVNode("p", { class: "cabin-ai-desc" }, "不知道买什么？说声“30元夜宵”或“无糖冰饮”，直接配好加购方案"),
@@ -14261,6 +14270,13 @@
                 }, [
                   _createElementVNode("span", { class: "cabin-ai-tag" }, "20元无糖冰饮"),
                   _createElementVNode("span", { class: "cabin-ai-tag" }, "30元深夜夜宵")
+                ]),
+                _createElementVNode("span", { class: "cabin-ai-go" }, [
+                  _createTextVNode("去试试 "),
+                  _createVNode2(_component_Icon, {
+                    name: "chevronRight",
+                    size: 13
+                  })
                 ])
               ], 8, ["onClick"])
             ]),
@@ -14269,7 +14285,7 @@
               "aria-label": "分类与门店筛选"
             }, [
               _createElementVNode("div", {
-                class: "category-section",
+                class: "category-section feed-cat-bar",
                 "aria-label": "商品分类"
               }, [
                 (_openBlock(true), _createElementBlock(
@@ -14284,7 +14300,7 @@
                     }, [
                       _createElementVNode("span", { class: "category-picture" }, [
                         _createElementVNode("img", {
-                          src: _ctx.staticCategoryArt[c.code] || "./images/category-snacks.webp",
+                          src: c.image || _ctx.staticCategoryArt[c.code] || "./images/category-snacks.webp",
                           alt: c.name
                         }, null, 8, ["src", "alt"])
                       ]),
@@ -14952,7 +14968,7 @@
         {
           title: "课间低糖提神",
           desc: "20元内无糖茶饮与门店营业时间",
-          icon: "leaf",
+          icon: "clock",
           query: "预算20元推荐无糖饮料，顺便问自提几点关门？"
         },
         {
@@ -14964,7 +14980,7 @@
         {
           title: "实时取餐进度",
           desc: "直接查询我的订单是否备好可取",
-          icon: "clock",
+          icon: "order",
           query: "帮我看看我的订单备好货了吗？"
         }
       ];
@@ -14991,7 +15007,7 @@
         const _component_Icon = resolveComponent("Icon");
         return openBlock(), createElementBlock("section", _hoisted_1$8, [
           !__props.messages.length ? (openBlock(), createElementBlock("div", _hoisted_2$8, [
-            _cache[0] || (_cache[0] = createStaticVNode('<div class="wenwen-welcome-head"><span class="chat-welcome-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z" fill="currentColor" fill-opacity="0.22" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z" fill="currentColor" fill-opacity="0.34" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></svg></span><div><h2>今天想买点什么？</h2><p>说出预算、口味或场景，直接帮你挑好校内在售商品并核验门店规则</p></div></div>', 1)),
+            _cache[0] || (_cache[0] = createStaticVNode('<div class="wenwen-welcome-head"><span class="chat-welcome-icon" aria-hidden="true"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"></path><path d="M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"></path></svg></span><div><h2>今天想买点什么？</h2><p>说出预算、口味或场景，直接帮你挑好校内在售商品并核验门店规则</p></div></div>', 1)),
             createBaseVNode("div", _hoisted_3$7, [
               (openBlock(), createElementBlock(
                 Fragment,
@@ -15063,19 +15079,18 @@
                       },
                       [
                         createBaseVNode("path", {
-                          d: "M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z",
+                          d: "M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z",
                           fill: "currentColor",
-                          "fill-opacity": "0.22",
+                          "fill-opacity": "0.18",
                           stroke: "currentColor",
                           "stroke-width": "1.9",
                           "stroke-linejoin": "round"
                         }),
                         createBaseVNode("path", {
-                          d: "M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z",
+                          d: "M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z",
                           fill: "currentColor",
-                          "fill-opacity": "0.34",
                           stroke: "currentColor",
-                          "stroke-width": "1.6",
+                          "stroke-width": "1.5",
                           "stroke-linejoin": "round"
                         })
                       ],
@@ -15221,19 +15236,18 @@
                   xmlns: "http://www.w3.org/2000/svg"
                 }, [
                   createBaseVNode("path", {
-                    d: "M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z",
+                    d: "M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z",
                     fill: "currentColor",
-                    "fill-opacity": "0.22",
+                    "fill-opacity": "0.18",
                     stroke: "currentColor",
                     "stroke-width": "1.9",
                     "stroke-linejoin": "round"
                   }),
                   createBaseVNode("path", {
-                    d: "M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z",
+                    d: "M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z",
                     fill: "currentColor",
-                    "fill-opacity": "0.34",
                     stroke: "currentColor",
-                    "stroke-width": "1.6",
+                    "stroke-width": "1.5",
                     "stroke-linejoin": "round"
                   })
                 ])
@@ -15439,7 +15453,10 @@
       };
     }
   });
-  const _hoisted_1$6 = { class: "recommendation-panel" };
+  const _hoisted_1$6 = {
+    class: "recommendation-panel",
+    "aria-label": "推荐商品组合"
+  };
   const _hoisted_2$6 = { class: "recommendation-header" };
   const _hoisted_3$5 = { class: "rec-header-copy" };
   const _hoisted_4$5 = { class: "rec-header-sub" };
@@ -15518,7 +15535,7 @@
                 size: 12
               }),
               _cache[5] || (_cache[5] = createTextVNode(
-                "实时复验",
+                "现货复验",
                 -1
                 /* CACHED */
               ))
@@ -15847,7 +15864,7 @@
     }
     return { loadHistory, loadSnapshot, recoverAfterDisconnect, cancelTurn, streamTurn };
   }
-  const { ref: ref$e, computed: computed$e, onMounted: onMounted$c, onUnmounted: onUnmounted$9, watch: watch$b } = Vue;
+  const { ref: ref$f, computed: computed$e, onMounted: onMounted$d, onUnmounted: onUnmounted$a, watch: watch$b } = Vue;
   const prompts = [
     {
       label: "无糖饮料+营业时间",
@@ -15863,28 +15880,28 @@
     components: { ConsumerShell, GuideConversation: _sfc_main$8, GuideHistory: _sfc_main$7, GuideRecommendations: _sfc_main$6 },
     setup() {
       const conversationTransport = createGuideConversationTransport();
-      const input = ref$e("");
-      const thinking = ref$e(false);
-      const selectedIds = ref$e([]);
-      const messages = ref$e([]);
-      const proposal = ref$e(null);
-      const mode = ref$e("");
-      const error = ref$e("");
-      const historyOpen = ref$e(false);
-      const conversations = ref$e([]);
-      const historyPage = ref$e(1);
-      const historyHasMore = ref$e(false);
-      const loadingHistory = ref$e(false);
-      const openingConversation = ref$e(false);
-      const confirmingProposal = ref$e(false);
-      const rejectingProposal = ref$e(false);
+      const input = ref$f("");
+      const thinking = ref$f(false);
+      const selectedIds = ref$f([]);
+      const messages = ref$f([]);
+      const proposal = ref$f(null);
+      const mode = ref$f("");
+      const error = ref$f("");
+      const historyOpen = ref$f(false);
+      const conversations = ref$f([]);
+      const historyPage = ref$f(1);
+      const historyHasMore = ref$f(false);
+      const loadingHistory = ref$f(false);
+      const openingConversation = ref$f(false);
+      const confirmingProposal = ref$f(false);
+      const rejectingProposal = ref$f(false);
       const proposalBusy = computed$e(() => confirmingProposal.value || rejectingProposal.value);
-      const proposalFeedback = ref$e("");
-      const streamProgress = ref$e(0);
-      const streamStage = ref$e("");
-      const streamingText = ref$e("");
-      const reconnecting = ref$e(false);
-      const cancelRequested = ref$e(false);
+      const proposalFeedback = ref$f("");
+      const streamProgress = ref$f(0);
+      const streamStage = ref$f("");
+      const streamingText = ref$f("");
+      const reconnecting = ref$f(false);
+      const cancelRequested = ref$f(false);
       let conversationEpoch = 0, historyEpoch = 0, activeStreamController = null;
       const examples = computed$e(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$e(
@@ -15956,7 +15973,7 @@
           if (now) loadHistory();
         }
       );
-      onMounted$c(() => {
+      onMounted$d(() => {
         if (!preview) loadHistory();
         if (preview) {
           messages.value = DEMO_CHAT.map((m) => ({ ...m, time: "20:14" }));
@@ -16205,7 +16222,7 @@
         openingConversation.value = false;
         historyOpen.value = false;
       }
-      onUnmounted$9(() => {
+      onUnmounted$a(() => {
         stopActiveStream();
         ++conversationEpoch;
         ++historyEpoch;
@@ -16367,26 +16384,25 @@
                         "aria-hidden": "true"
                       }, [
                         (_openBlock(), _createElementBlock("svg", {
-                          width: "22",
-                          height: "22",
+                          width: "20",
+                          height: "20",
                           viewBox: "0 0 24 24",
                           fill: "none",
                           xmlns: "http://www.w3.org/2000/svg"
                         }, [
                           _createElementVNode("path", {
-                            d: "M11.5 2.8L13.5 8.1L18.8 10.1L13.5 12.1L11.5 17.4L9.5 12.1L4.2 10.1L9.5 8.1L11.5 2.8Z",
+                            d: "M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z",
                             fill: "currentColor",
-                            "fill-opacity": "0.22",
+                            "fill-opacity": "0.18",
                             stroke: "currentColor",
                             "stroke-width": "1.8",
                             "stroke-linejoin": "round"
                           }),
                           _createElementVNode("path", {
-                            d: "M19.8 14.2C19.8 18 16.8 21 13 21C13 17.2 16 14.2 19.8 14.2Z",
+                            d: "M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z",
                             fill: "currentColor",
-                            "fill-opacity": "0.34",
                             stroke: "currentColor",
-                            "stroke-width": "1.6",
+                            "stroke-width": "1.4",
                             "stroke-linejoin": "round"
                           })
                         ]))
@@ -16563,7 +16579,7 @@
     if (typeof value !== "string" || value !== value.trim()) return "";
     return LOCAL_UPLOAD.test(value) || QINIU_UPLOAD.test(value) ? value : "";
   }
-  const { ref: ref$d, computed: computed$d, watch: watch$a, onBeforeUnmount: onBeforeUnmount$1 } = Vue;
+  const { ref: ref$e, computed: computed$d, watch: watch$a, onBeforeUnmount: onBeforeUnmount$1 } = Vue;
   const VALID_TYPES$1 = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES$1 = 2e6;
   const MAX_IMAGES = 8;
@@ -16584,7 +16600,7 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit: emit2 }) {
-      const busy = ref$d(false), error = ref$d(""), notice = ref$d(""), demoValues = ref$d(null), failures = ref$d([]), blocked = ref$d(Boolean(props.invalid));
+      const busy = ref$e(false), error = ref$e(""), notice = ref$e(""), demoValues = ref$e(null), failures = ref$e([]), blocked = ref$e(Boolean(props.invalid));
       const values = computed$d(
         () => props.demo && demoValues.value ? demoValues.value : props.modelValue || []
       );
@@ -17161,7 +17177,7 @@
       };
     }
   });
-  const { ref: ref$c, computed: computed$c, onBeforeUnmount, watch: watch$9 } = Vue;
+  const { ref: ref$d, computed: computed$c, onBeforeUnmount, watch: watch$9 } = Vue;
   const VALID_TYPES = /* @__PURE__ */ new Set(["image/jpeg", "image/png", "image/gif"]);
   const MAX_BYTES = 2e6;
   const ProductImageField = {
@@ -17176,7 +17192,7 @@
     },
     emits: ["update:modelValue", "busy", "invalid"],
     setup(props, { emit: emit2 }) {
-      const busy = ref$c(false), error = ref$c(""), notice = ref$c(""), localUrl = ref$c("");
+      const busy = ref$d(false), error = ref$d(""), notice = ref$d(""), localUrl = ref$d("");
       const scope = requestScope();
       let alive = true, epoch = 0;
       watch$9(
@@ -17398,7 +17414,7 @@
     "/merchant/knowledge/debug",
     "/admin/knowledge/debug"
   ]);
-  const { ref: ref$b, computed: computed$b, watch: watch$8, nextTick: nextTick$2, onMounted: onMounted$b, onUnmounted: onUnmounted$8 } = Vue;
+  const { ref: ref$c, computed: computed$b, watch: watch$8, nextTick: nextTick$2, onMounted: onMounted$c, onUnmounted: onUnmounted$9 } = Vue;
   function playOrderChime() {
     try {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -17427,8 +17443,9 @@
     props: { role: { type: String, default: "merchant" }, title: String },
     components: { AuthDialog },
     setup(props) {
-      const loginOpen = ref$b(false), mobileNav = ref$b(null), soundOn = ref$b(true);
+      const loginOpen = ref$c(false), mobileNav = ref$c(null), soundOn = ref$c(true);
       let eventSource = null;
+      const currentPath = computed$b(() => store.route.split("?")[0] || "/");
       const visibleMerchantNav = computed$b(
         () => merchantNav.filter(([, , path]) => hasPermission(merchantPermissions[path]))
       );
@@ -17487,8 +17504,8 @@
         },
         { immediate: true }
       );
-      onMounted$b(() => window.addEventListener("resize", alignMobileNav));
-      onUnmounted$8(() => {
+      onMounted$c(() => window.addEventListener("resize", alignMobileNav));
+      onUnmounted$9(() => {
         window.removeEventListener("resize", alignMobileNav);
         closeStream();
       });
@@ -17564,6 +17581,7 @@
         visibleMerchantNav,
         adminNav,
         groupedNav,
+        currentPath,
         switchShop
       };
     },
@@ -17620,7 +17638,7 @@
                         type: "button",
                         title: entry.label,
                         "aria-label": entry.label,
-                        class: _normalizeClass({ active: _ctx.store.route === entry.path || entry.path.endsWith("/knowledge") && _ctx.store.route === entry.path + "/debug" }),
+                        class: _normalizeClass({ active: _ctx.currentPath === entry.path || entry.path.endsWith("/knowledge") && _ctx.currentPath === entry.path + "/debug" }),
                         onClick: ($event) => _ctx.go(entry.path)
                       }, [
                         _createVNode2(_component_Icon, {
@@ -17807,7 +17825,7 @@
                     return _openBlock(), _createElementBlock("button", {
                       key: path,
                       type: "button",
-                      class: _normalizeClass({ active: _ctx.store.route === path || path.endsWith("/knowledge") && _ctx.store.route === path + "/debug" }),
+                      class: _normalizeClass({ active: _ctx.currentPath === path || path.endsWith("/knowledge") && _ctx.currentPath === path + "/debug" }),
                       onClick: ($event) => _ctx.go(path)
                     }, [
                       _createVNode2(_component_Icon, {
@@ -17863,7 +17881,7 @@
       };
     })()
   };
-  const { ref: ref$a, computed: computed$a, watch: watch$7, nextTick: nextTick$1, onMounted: onMounted$a, onUnmounted: onUnmounted$7 } = Vue;
+  const { ref: ref$b, computed: computed$a, watch: watch$7, nextTick: nextTick$1, onMounted: onMounted$b, onUnmounted: onUnmounted$8 } = Vue;
   const Merchant = {
     name: "Merchant",
     components: {
@@ -17876,23 +17894,23 @@
     },
     setup() {
       const scope = requestScope();
-      const search = ref$a("");
-      const category = ref$a("");
-      const status = ref$a("");
-      const sort = ref$a("NEWEST");
-      const page = ref$a(1);
-      const selectedId = ref$a("");
-      const selectedSkuId = ref$a("");
-      const drawerTab = ref$a("stock");
-      const loginOpen = ref$a(false);
-      const adjustment = ref$a(1);
-      const pendingReplenishKey = ref$a("");
-      const pendingReplenishPayload = ref$a("");
-      const saving = ref$a(false);
-      const modal2 = ref$a("");
-      const activePriceSku = ref$a(null);
-      const newPrice = ref$a("");
-      const form = ref$a({
+      const search = ref$b("");
+      const category = ref$b("");
+      const status = ref$b("");
+      const sort = ref$b("NEWEST");
+      const page = ref$b(1);
+      const selectedId = ref$b("");
+      const selectedSkuId = ref$b("");
+      const drawerTab = ref$b("stock");
+      const loginOpen = ref$b(false);
+      const adjustment = ref$b(1);
+      const pendingReplenishKey = ref$b("");
+      const pendingReplenishPayload = ref$b("");
+      const saving = ref$b(false);
+      const modal2 = ref$b("");
+      const activePriceSku = ref$b(null);
+      const newPrice = ref$b("");
+      const form = ref$b({
         title: "",
         description: "",
         categoryCode: "food",
@@ -17900,16 +17918,16 @@
         imageUrls: [],
         skus: [{ specKey: "默认规格", price: "4.50" }]
       });
-      const skuForm = ref$a({ specKey: "", price: "" });
-      const info = ref$a({
+      const skuForm = ref$b({ specKey: "", price: "" });
+      const info = ref$b({
         title: "",
         description: "",
         categoryCode: "food",
         imageUrl: "",
         imageUrls: []
       });
-      const createImageUploading = ref$a(false), editImageUploading = ref$a(false);
-      const createImageInvalid = ref$a(false), editImageInvalid = ref$a(false);
+      const createImageUploading = ref$b(false), editImageUploading = ref$b(false);
+      const createImageInvalid = ref$b(false), editImageInvalid = ref$b(false);
       const merchant = computed$a(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || store.merchants[0] || {}
       );
@@ -18011,8 +18029,8 @@
           sort: sort.value
         });
       }
-      onMounted$a(refreshPage);
-      onUnmounted$7(() => clearTimeout(searchDelay));
+      onMounted$b(refreshPage);
+      onUnmounted$8(() => clearTimeout(searchDelay));
       let resettingPage = false;
       watch$7(
         [page, search, category, status, sort],
@@ -18430,7 +18448,7 @@
                       _createElementVNode("span", { class: "summary-icon blue" }, [
                         _createVNode2(_component_Icon, {
                           name: "package",
-                          size: 20
+                          size: 19
                         })
                       ]),
                       _createElementVNode("div", null, [
@@ -18454,7 +18472,7 @@
                       _createElementVNode("span", { class: "summary-icon green" }, [
                         _createVNode2(_component_Icon, {
                           name: "check",
-                          size: 20
+                          size: 19
                         })
                       ]),
                       _createElementVNode("div", null, [
@@ -18472,7 +18490,7 @@
                       _createElementVNode("span", { class: "summary-icon orange" }, [
                         _createVNode2(_component_Icon, {
                           name: "box",
-                          size: 20
+                          size: 19
                         })
                       ]),
                       _createElementVNode("div", null, [
@@ -18490,7 +18508,7 @@
                       _createElementVNode("span", { class: "summary-icon red" }, [
                         _createVNode2(_component_Icon, {
                           name: "alert",
-                          size: 20
+                          size: 19
                         })
                       ]),
                       _createElementVNode("div", null, [
@@ -19387,14 +19405,14 @@
       };
     })()
   };
-  const { ref: ref$9, computed: computed$9, onMounted: onMounted$9 } = Vue;
+  const { ref: ref$a, computed: computed$9, onMounted: onMounted$a } = Vue;
   const STORE_PHOTOS = [
     "./images/store-campus-hub.jpg",
     "./images/store-library-cafe.jpg",
     "./images/store-dorm-mart.jpg",
     "./images/store-fruit-bar.jpg"
   ];
-  function splitPrice(cent) {
+  function splitPrice$1(cent) {
     const formatted = money(cent).replace(/^¥/, "");
     const dot = formatted.indexOf(".");
     if (dot < 0) return { int: formatted, dec: "" };
@@ -19405,12 +19423,12 @@
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$9 },
     setup() {
       const scope = requestScope();
-      const product = ref$9(null), shop = ref$9(null), chosen = ref$9(""), count = ref$9(1), busy = ref$9(false), loading = ref$9(true), error = ref$9(""), errorCode = ref$9(""), imageIndex = ref$9(0), touchStartX = ref$9(null), lightboxOpen = ref$9(false), favorited = ref$9(false), favBusy = ref$9(false), reviewSummary = ref$9(null), recommendations = ref$9({ boughtTogether: [], sameStoreHot: [] });
+      const product = ref$a(null), shop = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), loading = ref$a(true), error = ref$a(""), errorCode = ref$a(""), imageIndex = ref$a(0), touchStartX = ref$a(null), lightboxOpen = ref$a(false), favorited = ref$a(false), favBusy = ref$a(false), reviewSummary = ref$a(null), recommendations = ref$a({ boughtTogether: [], sameStoreHot: [] });
       const defaultSku = (p2) => {
         var _a;
         return ((_a = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available || 0) > 0)) || skuOf(p2);
       };
-      const id = computed$9(() => safeDecodeId(store.route.split("/")[2] || ""));
+      const id = computed$9(() => safeDecodeId(store.route.split("?")[0].split("/")[2] || ""));
       const sku2 = computed$9(
         () => {
           var _a, _b;
@@ -19536,7 +19554,7 @@
         imageIndex.value = 0;
         count.value = 1;
       }
-      onMounted$9(load);
+      onMounted$a(load);
       async function add(goCart = false) {
         var _a;
         if (preview || busy.value || !((_a = sku2.value) == null ? void 0 : _a.skuId)) return;
@@ -19619,7 +19637,7 @@
         store,
         go,
         money,
-        splitPrice,
+        splitPrice: splitPrice$1,
         available,
         priceSku,
         dateTime,
@@ -20259,14 +20277,20 @@
       };
     })()
   };
-  const { ref: ref$8, computed: computed$8, onMounted: onMounted$8, onUnmounted: onUnmounted$6, watch: watch$6 } = Vue;
+  const { ref: ref$9, computed: computed$8, onMounted: onMounted$9, onUnmounted: onUnmounted$7, watch: watch$6 } = Vue;
+  function splitPrice(cent) {
+    const formatted = money(cent).replace(/^¥/, "");
+    const dot = formatted.indexOf(".");
+    if (dot < 0) return { int: formatted, dec: "" };
+    return { int: formatted.slice(0, dot), dec: formatted.slice(dot) };
+  }
   const Shop = {
     name: "Shop",
     components: { ConsumerShell, ProductImage, UiPagination: _sfc_main$a, StatusPanel: _sfc_main$9 },
     setup() {
-      const merchant = ref$8(null), products = ref$8([]), error = ref$8(""), loading = ref$8(false), page = ref$8(1), hasNext = ref$8(false);
+      const merchant = ref$9(null), products = ref$9([]), error = ref$9(""), loading = ref$9(false), page = ref$9(1), hasNext = ref$9(false);
       const id = computed$8(
-        () => safeDecodeId(store.route.slice("/shops/".length).split("/")[0] || "")
+        () => safeDecodeId(store.route.split("?")[0].slice("/shops/".length).split("/")[0] || "")
       );
       let loadVersion = 0;
       async function load() {
@@ -20302,10 +20326,23 @@
           if (valid()) loading.value = false;
         }
       }
-      onMounted$8(load);
-      onUnmounted$6(() => ++loadVersion);
+      onMounted$9(load);
+      onUnmounted$7(() => ++loadVersion);
       watch$6(page, load);
-      return { merchant, products, error, loading, page, hasNext, go, money, skuOf, priceSku, load };
+      return {
+        merchant,
+        products,
+        error,
+        loading,
+        page,
+        hasNext,
+        go,
+        money,
+        splitPrice,
+        skuOf,
+        priceSku,
+        load
+      };
     },
     render: (() => {
       const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, openBlock: _openBlock, createBlock: _createBlock, createCommentVNode: _createCommentVNode, createElementBlock: _createElementBlock, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, withCtx: _withCtx } = Vue;
@@ -20451,7 +20488,7 @@
                       _Fragment,
                       null,
                       _renderList(_ctx.products, (p2) => {
-                        var _a2;
+                        var _a2, _b2, _c, _d;
                         return _openBlock(), _createElementBlock("button", {
                           key: p2.productId,
                           class: "shop-product-card",
@@ -20478,13 +20515,26 @@
                             /* TEXT */
                           ),
                           _createElementVNode("div", { class: "shop-card-bottom" }, [
-                            _createElementVNode(
-                              "span",
-                              null,
-                              _toDisplayString(_ctx.money((_ctx.priceSku(p2) || _ctx.skuOf(p2)).priceCent)),
-                              1
-                              /* TEXT */
-                            ),
+                            _createElementVNode("span", { class: "rtl-price" }, [
+                              _createElementVNode("em", { class: "yen" }, "¥"),
+                              _createElementVNode(
+                                "b",
+                                { class: "int" },
+                                _toDisplayString(_ctx.splitPrice((_b2 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _b2.priceCent).int),
+                                1
+                                /* TEXT */
+                              ),
+                              _ctx.splitPrice((_c = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _c.priceCent).dec ? (_openBlock(), _createElementBlock(
+                                "i",
+                                {
+                                  key: 0,
+                                  class: "dec"
+                                },
+                                _toDisplayString(_ctx.splitPrice((_d = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _d.priceCent).dec),
+                                1
+                                /* TEXT */
+                              )) : _createCommentVNode("v-if", true)
+                            ]),
                             _createElementVNode("em", { class: "shop-card-plus" }, "选购")
                           ])
                         ], 8, ["onClick"]);
@@ -20780,7 +20830,7 @@
       permissions: ["product.read", "product.write", "stock.read"]
     }
   ];
-  const { ref: ref$7, computed: computed$7, onMounted: onMounted$7 } = Vue;
+  const { ref: ref$8, computed: computed$7, onMounted: onMounted$8 } = Vue;
   const PICKUP_SLOTS = [
     { value: "IMMEDIATE", label: "立即取餐" },
     { value: "10:00-10:20 大课间", label: "10:00 课间" },
@@ -20794,7 +20844,7 @@
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$9 },
     setup() {
       const scope = requestScope();
-      const items2 = ref$7([]), merchantId = ref$7(""), checkedSkus = ref$7([]), pickupSlot = ref$7("IMMEDIATE"), buyerRemark = ref$7(""), busy = ref$7(false), loading = ref$7(true), error = ref$7(""), orderKey = ref$7(""), fingerprint = ref$7(""), confirmOpen = ref$7(false), confirmLoading = ref$7(false), confirmError = ref$7(""), confirmRetryable = ref$7(false), confirmItems = ref$7([]), confirmMerchant = ref$7({}), confirmTotal = ref$7(0);
+      const items2 = ref$8([]), merchantId = ref$8(""), checkedSkus = ref$8([]), pickupSlot = ref$8("IMMEDIATE"), buyerRemark = ref$8(""), busy = ref$8(false), loading = ref$8(true), error = ref$8(""), orderKey = ref$8(""), fingerprint = ref$8(""), confirmOpen = ref$8(false), confirmLoading = ref$8(false), confirmError = ref$8(""), confirmRetryable = ref$8(false), confirmItems = ref$8([]), confirmMerchant = ref$8({}), confirmTotal = ref$8(0);
       let confirmVersion = 0;
       const groups = computed$7(
         () => Object.entries(
@@ -20875,7 +20925,7 @@
         const activeStoreSkus = items2.value.filter((i) => i.merchantId === merchantId.value).map((i) => i.skuId);
         checkedSkus.value = kept.some((id) => activeStoreSkus.includes(id)) ? [.../* @__PURE__ */ new Set([...kept, ...activeStoreSkus.filter((id) => !kept.includes(id))])] : [...activeStoreSkus];
       }
-      onMounted$7(load);
+      onMounted$8(load);
       async function quantity(i, d) {
         if (preview || busy.value || loading.value) return;
         const current = scope.capture();
@@ -21663,7 +21713,7 @@
       };
     }
   });
-  const { ref: ref$6, computed: computed$6, onMounted: onMounted$6, onUnmounted: onUnmounted$5, watch: watch$5 } = Vue;
+  const { ref: ref$7, computed: computed$6, onMounted: onMounted$7, onUnmounted: onUnmounted$6, watch: watch$5 } = Vue;
   const PAYMENT_CHANNELS = [
     { code: "WECHAT_PAY", name: "微信支付", badge: "常用" },
     { code: "ALIPAY", name: "支付宝", badge: "" },
@@ -21686,11 +21736,12 @@
     components: { ConsumerShell, ProductImage, StatusPanel: _sfc_main$9, UiPagination: _sfc_main$a, QrCodeSvg: _sfc_main$4 },
     setup() {
       const scope = requestScope();
-      const orders = ref$6([]), detail = ref$6(null), token = ref$6(null), error = ref$6(""), busy = ref$6(false), loading = ref$6(true), tab = ref$6("ALL"), page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false }), refundOpen = ref$6(false), reason = ref$6(""), selectedChannel = ref$6("WECHAT_PAY"), nowMs = ref$6(Date.now()), reviewOpen = ref$6(false), reviewRating = ref$6(5), reviewTags = ref$6([]), reviewContent = ref$6("");
+      const orders = ref$7([]), detail = ref$7(null), token = ref$7(null), error = ref$7(""), busy = ref$7(false), loading = ref$7(true), tab = ref$7("ALL"), page = ref$7(1), pageInfo = ref$7({ total: 0, hasNext: false }), refundOpen = ref$7(false), reason = ref$7(""), selectedChannel = ref$7("WECHAT_PAY"), nowMs = ref$7(Date.now()), reviewOpen = ref$7(false), reviewRating = ref$7(5), reviewTags = ref$7([]), reviewContent = ref$7("");
       let tickTimer = null;
-      const id = computed$6(
-        () => store.route.startsWith("/orders/") ? safeDecodeId(store.route.slice("/orders/".length)) : null
-      );
+      const id = computed$6(() => {
+        const base = store.route.split("?")[0];
+        return base.startsWith("/orders/") ? safeDecodeId(base.slice("/orders/".length)) : null;
+      });
       const filtered = computed$6(
         () => orders.value.filter((o) => tab.value === "ALL" || o.status === tab.value)
       );
@@ -21755,13 +21806,13 @@
           if (request2.current()) loading.value = false;
         }
       }
-      onMounted$6(() => {
+      onMounted$7(() => {
         load();
         tickTimer = setInterval(() => {
           nowMs.value = Date.now();
         }, 1e3);
       });
-      onUnmounted$5(() => {
+      onUnmounted$6(() => {
         if (tickTimer) {
           clearInterval(tickTimer);
           tickTimer = null;
@@ -22415,7 +22466,7 @@
                               _createElementVNode(
                                 "strong",
                                 { class: "boarding-queue-code" },
-                                _toDisplayString(_ctx.token.pickupCode || ((_f = _ctx.detail.pickup) == null ? void 0 : _f.pickupCode) || "A-101"),
+                                _toDisplayString(_ctx.token.pickupCode || ((_f = _ctx.detail.pickup) == null ? void 0 : _f.pickupCode) || "A-108"),
                                 1
                                 /* TEXT */
                               )
@@ -22938,16 +22989,16 @@
       };
     })()
   };
-  const { ref: ref$5, computed: computed$5, onMounted: onMounted$5, onUnmounted: onUnmounted$4, watch: watch$4 } = Vue;
+  const { ref: ref$6, computed: computed$5, onMounted: onMounted$6, onUnmounted: onUnmounted$5, watch: watch$4 } = Vue;
   const Account = {
     name: "Account",
     components: { ConsumerShell, AuthDialog, UiPagination: _sfc_main$a, ProductImage },
     setup() {
       const scope = requestScope();
-      const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false });
-      const login = ref$5(false), apps = ref$5([]), invitations = ref$5([]), favorites = ref$5([]), recentProducts = ref$5([]), shelfTab = ref$5("favorites"), invitePage = ref$5(1), error = ref$5(""), busy = ref$5(false), loading = ref$5(false), key = ref$5(""), fingerprint = ref$5("");
+      const page = ref$6(1), pageInfo = ref$6({ total: 0, hasNext: false });
+      const login = ref$6(false), apps = ref$6([]), invitations = ref$6([]), favorites = ref$6([]), recentProducts = ref$6([]), shelfTab = ref$6("favorites"), invitePage = ref$6(1), error = ref$6(""), busy = ref$6(false), loading = ref$6(false), key = ref$6(""), fingerprint = ref$6("");
       let loadEpoch = 0;
-      const form = ref$5({
+      const form = ref$6({
         merchantName: "",
         category: "便利零售",
         contactName: "",
@@ -22955,8 +23006,8 @@
         storeName: "",
         location: ""
       });
-      const isApply = computed$5(() => store.route === "/apply");
-      const isInvite = computed$5(() => store.route === "/invitations");
+      const isApply = computed$5(() => store.route.split("?")[0] === "/apply");
+      const isInvite = computed$5(() => store.route.split("?")[0] === "/invitations");
       async function load() {
         var _a, _b;
         const stamp = ++loadEpoch;
@@ -23006,10 +23057,10 @@
           if (stamp === loadEpoch) loading.value = false;
         }
       }
-      onMounted$5(load);
+      onMounted$6(load);
       watch$4(page, load);
       watch$4(invitePage, load);
-      onUnmounted$4(() => ++loadEpoch);
+      onUnmounted$5(() => ++loadEpoch);
       async function removeFavorite(product) {
         if (preview || busy.value || !(product == null ? void 0 : product.productId)) return;
         const current = scope.capture();
@@ -24114,8 +24165,21 @@
     },
     setup(__props) {
       const props = __props;
-      const HBAR_COLORS = ["#0A7B56", "#0D9488", "#0284C7", "#6366F1", "#F59E0B", "#64748B"];
-      const SLICE_COLORS = ["#0A7B56", "#0EA5E9", "#F59E0B", "#6366F1", "#EF4444"];
+      const HBAR_COLORS = [
+        "var(--chart-1)",
+        "var(--chart-2)",
+        "var(--chart-3)",
+        "var(--chart-4)",
+        "var(--chart-5)",
+        "var(--chart-6)"
+      ];
+      const SLICE_COLORS = [
+        "var(--chart-1)",
+        "var(--chart-2)",
+        "var(--chart-3)",
+        "var(--chart-4)",
+        "var(--chart-5)"
+      ];
       const trendModel = computed$i(() => {
         var _a;
         const raw = ((_a = props.stats) == null ? void 0 : _a.trend) || [];
@@ -24254,7 +24318,7 @@
             ]),
             trendModel.value.bars.length ? (openBlock(), createElementBlock("div", _hoisted_5$1, [
               (openBlock(), createElementBlock("svg", _hoisted_6$1, [
-                _cache[0] || (_cache[0] = createStaticVNode('<defs><linearGradient id="ops-area-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#109868" stop-opacity="0.24"></stop><stop offset="100%" stop-color="#109868" stop-opacity="0"></stop></linearGradient><linearGradient id="ops-bar-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#0A7B56"></stop><stop offset="100%" stop-color="#109868"></stop></linearGradient></defs>', 1)),
+                _cache[0] || (_cache[0] = createStaticVNode('<defs><linearGradient id="ops-area-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.22"></stop><stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0"></stop></linearGradient><linearGradient id="ops-bar-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--chart-1)"></stop><stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.65"></stop></linearGradient></defs>', 1)),
                 createBaseVNode(
                   "text",
                   _hoisted_7$1,
@@ -24288,7 +24352,7 @@
                     y1: "38",
                     x2: "348",
                     y2: "38",
-                    stroke: "#E5EBE7",
+                    stroke: "#E5E6EB",
                     "stroke-dasharray": "3 3"
                   },
                   null,
@@ -24302,7 +24366,7 @@
                     y1: "81",
                     x2: "348",
                     y2: "81",
-                    stroke: "#E5EBE7",
+                    stroke: "#E5E6EB",
                     "stroke-dasharray": "3 3"
                   },
                   null,
@@ -24316,7 +24380,7 @@
                     y1: "124",
                     x2: "348",
                     y2: "124",
-                    stroke: "#D5DFD9"
+                    stroke: "#C9CDD4"
                   },
                   null,
                   -1
@@ -24333,9 +24397,9 @@
                       y: bar.y,
                       width: bar.w,
                       height: bar.h,
-                      rx: "5",
+                      rx: "4",
                       fill: "url(#ops-bar-grad)",
-                      opacity: "0.18"
+                      opacity: "0.16"
                     }, null, 8, _hoisted_9$1);
                   }),
                   128
@@ -24350,8 +24414,8 @@
                   key: 1,
                   d: trendModel.value.linePath,
                   fill: "none",
-                  stroke: "#0A7B56",
-                  "stroke-width": "2.5",
+                  stroke: "var(--chart-1)",
+                  "stroke-width": "2.4",
                   "stroke-linecap": "round",
                   "stroke-linejoin": "round"
                 }, null, 8, _hoisted_11$1)) : createCommentVNode("v-if", true),
@@ -24365,9 +24429,9 @@
                       createBaseVNode("circle", {
                         cx: bar.cx,
                         cy: bar.pointY,
-                        r: "4",
+                        r: "3.8",
                         fill: "#FFFFFF",
-                        stroke: "#0A7B56",
+                        stroke: "var(--chart-1)",
                         "stroke-width": "2.2"
                       }, null, 8, _hoisted_12$1),
                       bar.val > 0 ? (openBlock(), createElementBlock("text", {
@@ -24453,7 +24517,7 @@
                           width: "280",
                           height: "8",
                           rx: "4",
-                          fill: "#EEF2EF"
+                          fill: "#F2F3F5"
                         },
                         null,
                         -1
@@ -24496,7 +24560,7 @@
                       cy: "62",
                       r: "40",
                       fill: "none",
-                      stroke: "#EEF2EF",
+                      stroke: "#F2F3F5",
                       "stroke-width": "15"
                     },
                     null,
@@ -24510,7 +24574,7 @@
                       cy: "62",
                       r: "28",
                       fill: "none",
-                      stroke: "#DFE5E1",
+                      stroke: "#E5E6EB",
                       "stroke-width": "1",
                       "stroke-dasharray": "2.5 3"
                     },
@@ -24606,7 +24670,7 @@
       };
     }
   });
-  const { ref: ref$4, computed: computed$4, nextTick, onMounted: onMounted$4, onUnmounted: onUnmounted$3, watch: watch$3 } = Vue;
+  const { ref: ref$5, computed: computed$4, nextTick, onMounted: onMounted$5, onUnmounted: onUnmounted$4, watch: watch$3 } = Vue;
   const names = {
     "/merchant": "经营概览",
     "/merchant/inventory": "库存管理",
@@ -24629,19 +24693,19 @@
     },
     setup() {
       const scope = requestScope();
-      const route = computed$4(() => store.route);
+      const route = computed$4(() => store.route.split("?")[0] || "/merchant");
       const title = computed$4(() => names[route.value] || "经营概览");
-      const filter = ref$4("");
-      const pickupState = ref$4(route.value === "/merchant/pickup" ? "READY" : "");
-      const q = ref$4("");
-      const statsPeriod = ref$4(7);
-      const stats = ref$4(null), orders = ref$4([]), afterSales = ref$4([]), members = ref$4([]), moves = ref$4([]), stockRows = ref$4([]), error = ref$4(""), loading = ref$4(false), busy = ref$4(false), picked = ref$4(null), token = ref$4(""), quickToken = ref$4(""), decision = ref$4(""), reason = ref$4(""), historyEvents = ref$4([]), historyLoading = ref$4(false), historyError = ref$4("");
-      const availableBelow = ref$4(null);
-      const movementQ = ref$4("");
-      const movementPage = ref$4(1);
-      const movementPageInfo = ref$4({ total: 0, hasNext: false });
+      const filter = ref$5("");
+      const pickupState = ref$5(route.value === "/merchant/pickup" ? "READY" : "");
+      const q = ref$5("");
+      const statsPeriod = ref$5(7);
+      const stats = ref$5(null), orders = ref$5([]), afterSales = ref$5([]), members = ref$5([]), moves = ref$5([]), stockRows = ref$5([]), error = ref$5(""), loading = ref$5(false), busy = ref$5(false), picked = ref$5(null), token = ref$5(""), quickToken = ref$5(""), decision = ref$5(""), reason = ref$5(""), historyEvents = ref$5([]), historyLoading = ref$5(false), historyError = ref$5("");
+      const availableBelow = ref$5(null);
+      const movementQ = ref$5("");
+      const movementPage = ref$5(1);
+      const movementPageInfo = ref$5({ total: 0, hasNext: false });
       let historyVersion = 0;
-      const page = ref$4(1), pageInfo = ref$4({ total: 0, hasNext: false }), amount = ref$4(1), sku2 = ref$4(""), inviteUser = ref$4(""), profile = ref$4({
+      const page = ref$5(1), pageInfo = ref$5({ total: 0, hasNext: false }), amount = ref$5(1), sku2 = ref$5(""), inviteUser = ref$5(""), profile = ref$5({
         name: "",
         storeName: "",
         location: "",
@@ -24649,7 +24713,7 @@
         businessHours: "",
         imageUrl: ""
       });
-      const replenishKey = ref$4(""), replenishFingerprint = ref$4("");
+      const replenishKey = ref$5(""), replenishFingerprint = ref$5("");
       const merchant = computed$4(
         () => store.merchants.find((m) => m.merchantId === store.merchantId) || {}
       );
@@ -24682,7 +24746,7 @@
       );
       const canOwner = computed$4(() => isOwner());
       const can = computed$4(() => (code) => hasPermission(code));
-      const roles = ref$4([]);
+      const roles = ref$5([]);
       const routePermission = {
         "/merchant": "order.read",
         "/merchant/inventory": "stock.read",
@@ -24821,8 +24885,8 @@
           if (current()) loading.value = false;
         }
       }
-      onMounted$4(load);
-      onUnmounted$3(() => {
+      onMounted$5(load);
+      onUnmounted$4(() => {
         ++loadVersion;
         clearTimeout(searchDelay);
       });
@@ -25258,7 +25322,7 @@
                         _createElementVNode("span", { class: "todo-tile-top" }, [
                           _createElementVNode("span", { class: "todo-tile-label" }, "待核销"),
                           _createElementVNode("span", {
-                            class: "todo-tile-icon emerald",
+                            class: "todo-tile-icon brand",
                             "aria-hidden": "true"
                           }, [
                             _createVNode2(_component_Icon, {
@@ -25808,7 +25872,7 @@
                       })
                     ]),
                     _createElementVNode("div", null, [
-                      _createElementVNode("span", { class: "quick-verify-eyebrow" }, "PICKUP DESK · 极速出餐台"),
+                      _createElementVNode("span", { class: "quick-verify-eyebrow" }, "极速出餐核销"),
                       _createElementVNode("strong", null, "自提凭证核销台"),
                       _createElementVNode("small", null, "输入买家 6 位数字取件码即可出餐核销")
                     ])
@@ -26453,7 +26517,7 @@
       };
     })()
   };
-  const { ref: ref$3, computed: computed$3, onMounted: onMounted$3, onUnmounted: onUnmounted$2, watch: watch$2 } = Vue;
+  const { ref: ref$4, computed: computed$3, onMounted: onMounted$4, onUnmounted: onUnmounted$3, watch: watch$2 } = Vue;
   const Knowledge = {
     name: "Knowledge",
     components: { BackofficeShell, UiPagination: _sfc_main$a },
@@ -26462,10 +26526,10 @@
       const docScope = requestScope();
       const contentScope = requestScope();
       const role = computed$3(() => store.route.startsWith("/admin") ? "admin" : "merchant");
-      const bases = ref$3([]), docs = ref$3([]), active = ref$3(""), selected = ref$3(null), text = ref$3("");
-      const error = ref$3(""), busy = ref$3(false), newBase = ref$3(false), uploading = ref$3(false), baseName = ref$3(""), visibility = ref$3("PUBLIC"), title = ref$3(""), file = ref$3(null);
-      const docPage = ref$3(1), docInfo = ref$3({ total: 0, hasNext: false });
-      const versionRoot = ref$3(null), versionBase = ref$3(""), fileVersion = ref$3(0);
+      const bases = ref$4([]), docs = ref$4([]), active = ref$4(""), selected = ref$4(null), text = ref$4("");
+      const error = ref$4(""), busy = ref$4(false), newBase = ref$4(false), uploading = ref$4(false), baseName = ref$4(""), visibility = ref$4("PUBLIC"), title = ref$4(""), file = ref$4(null);
+      const docPage = ref$4(1), docInfo = ref$4({ total: 0, hasNext: false });
+      const versionRoot = ref$4(null), versionBase = ref$4(""), fileVersion = ref$4(0);
       function clearUpload() {
         versionRoot.value = null;
         versionBase.value = "";
@@ -26565,8 +26629,8 @@
           if (valid()) error.value = e.message;
         }
       }
-      onMounted$3(load);
-      onUnmounted$2(() => {
+      onMounted$4(load);
+      onUnmounted$3(() => {
         ++baseEpoch2;
         ++docEpoch;
         ++readEpoch;
@@ -27241,14 +27305,14 @@
       };
     })()
   };
-  const { ref: ref$2, computed: computed$2, onMounted: onMounted$2 } = Vue;
+  const { ref: ref$3, computed: computed$2, onMounted: onMounted$3 } = Vue;
   const KnowledgeDebug = {
     name: "KnowledgeDebug",
     components: { BackofficeShell },
     setup() {
-      const question = ref$2(""), preview2 = ref$2(false), busy = ref$2(false), error = ref$2(""), result = ref$2(null);
+      const question = ref$3(""), preview2 = ref$3(false), busy = ref$3(false), error = ref$3(""), result = ref$3(null);
       const role = computed$2(() => store.route.startsWith("/admin") ? "admin" : "merchant");
-      onMounted$2(() => {
+      onMounted$3(() => {
         if (role.value === "merchant" && !store.merchants.length) loadMerchant();
       });
       async function run() {
@@ -27629,7 +27693,7 @@
       };
     }
   });
-  const { ref: ref$1, computed: computed$1, onMounted: onMounted$1, onUnmounted: onUnmounted$1, watch: watch$1 } = Vue;
+  const { ref: ref$2, computed: computed$1, onMounted: onMounted$2, onUnmounted: onUnmounted$2, watch: watch$1 } = Vue;
   const titles = {
     "/admin": "平台总览",
     "/admin/applications": "商户审核",
@@ -27651,9 +27715,9 @@
     },
     setup() {
       const scope = requestScope();
-      const route = computed$1(() => store.route), title = computed$1(() => titles[route.value] || "平台总览");
-      const stats = ref$1(null), telemetry = ref$1(null), applications = ref$1([]), merchants = ref$1([]), products = ref$1([]), orders = ref$1([]), aftersales = ref$1([]), categories = ref$1([]);
-      const selectedId = ref$1(""), search = ref$1(""), statsPeriod = ref$1(7), state = ref$1(store.route === "/admin/disputes" ? "DISPUTED" : ""), page = ref$1(1), pageInfo = ref$1({ total: 0, hasNext: false }), reason = ref$1(""), historyEvents = ref$1([]), historyLoading = ref$1(false), historyError = ref$1(""), category = ref$1({ code: "", name: "", active: true }), loading = ref$1(false), busy = ref$1(false), error = ref$1(""), allowed = ref$1(preview);
+      const route = computed$1(() => store.route.split("?")[0] || "/admin"), title = computed$1(() => titles[route.value] || "平台总览");
+      const stats = ref$2(null), telemetry = ref$2(null), applications = ref$2([]), merchants = ref$2([]), products = ref$2([]), orders = ref$2([]), aftersales = ref$2([]), categories = ref$2([]);
+      const selectedId = ref$2(""), search = ref$2(""), statsPeriod = ref$2(7), state = ref$2(route.value === "/admin/disputes" ? "DISPUTED" : ""), page = ref$2(1), pageInfo = ref$2({ total: 0, hasNext: false }), reason = ref$2(""), historyEvents = ref$2([]), historyLoading = ref$2(false), historyError = ref$2(""), category = ref$2({ code: "", name: "", active: true }), loading = ref$2(false), busy = ref$2(false), error = ref$2(""), allowed = ref$2(preview);
       let disputeVersion = 0;
       const pickedApplication = computed$1(
         () => applications.value.find((a) => a.applicationId === selectedId.value) || applications.value[0] || null
@@ -27789,8 +27853,8 @@
           if (stamp === loadVersion) loading.value = false;
         }
       }
-      onMounted$1(load);
-      onUnmounted$1(() => {
+      onMounted$2(load);
+      onUnmounted$2(() => {
         ++loadVersion;
         clearTimeout(searchDelay);
       });
@@ -28279,15 +28343,17 @@
                           /* TEXT */
                         )
                       ]),
-                      _createElementVNode("div", { class: "metric-realtime" }, [
+                      _createElementVNode("div", { class: "metric-realtime is-queue" }, [
                         _createElementVNode("small", { class: "metric-domain" }, "延时队列"),
                         _createElementVNode("span", null, "待超时关单"),
                         _createElementVNode(
                           "strong",
-                          null,
+                          {
+                            class: _normalizeClass({ "brand-text": (_ctx.telemetry.delayedExpiryQueueSize || 0) > 0 })
+                          },
                           _toDisplayString(_ctx.telemetry.delayedExpiryQueueSize || 0),
-                          1
-                          /* TEXT */
+                          3
+                          /* TEXT, CLASS */
                         )
                       ]),
                       _createElementVNode("div", { class: "metric-realtime is-live" }, [
@@ -29278,13 +29344,13 @@
       };
     })()
   };
-  const { ref, computed, onMounted, onUnmounted, watch } = Vue;
+  const { ref: ref$1, computed, onMounted: onMounted$1, onUnmounted: onUnmounted$1, watch } = Vue;
   const RoleManager = {
     name: "RoleManager",
     components: { BackofficeShell },
     setup() {
-      const roles = ref([]), permissions = ref([]), selected = ref(""), name = ref(""), grants = ref([]);
-      const error = ref(""), busy = ref(false), loading = ref(false), count = ref(0);
+      const roles = ref$1([]), permissions = ref$1([]), selected = ref$1(""), name = ref$1(""), grants = ref$1([]);
+      const error = ref$1(""), busy = ref$1(false), loading = ref$1(false), count = ref$1(0);
       const canManage = computed(() => hasPermission("role.manage"));
       const current = computed(() => roles.value.find((r) => r.code === selected.value) || null);
       const assigned = computed(() => count.value);
@@ -29412,8 +29478,8 @@
           busy.value = false;
         }
       }
-      onMounted(load);
-      onUnmounted(() => ++epoch);
+      onMounted$1(load);
+      onUnmounted$1(() => ++epoch);
       watch([() => store.merchantId, () => {
         var _a;
         return (_a = store.user) == null ? void 0 : _a.userId;
@@ -29657,10 +29723,462 @@
       };
     })()
   };
+  const { reactive } = Vue;
+  const STORAGE_KEY = "campus_ui_theme_v7";
+  const CONSUMER_THEMES = [
+    {
+      id: "taobao",
+      label: "淘宝 2025 / 京东",
+      desc: "橙红高转化潮流零售",
+      swatchClass: "swatch-taobao"
+    },
+    {
+      id: "youpin",
+      label: "小米有品 / 严选",
+      desc: "黑金极简精品生活",
+      swatchClass: "swatch-youpin"
+    },
+    {
+      id: "hema",
+      label: "盒马 / 山姆",
+      desc: "品质生鲜蓝橙双色",
+      swatchClass: "swatch-hema"
+    },
+    {
+      id: "dingdong",
+      label: "叮咚买菜 / 小象",
+      desc: "明快即时鲜绿零售",
+      swatchClass: "swatch-dingdong"
+    }
+  ];
+  const HOME_LAYOUTS = [
+    {
+      id: "classic",
+      label: "经典三栏大片首屏",
+      desc: "分类侧栏 + 摄影轮播 + AI 导购舱"
+    },
+    {
+      id: "feed",
+      label: "逛逛极简高密流",
+      desc: "小红书 / 逛逛首屏直出五列商品流"
+    }
+  ];
+  const ADMIN_THEMES = [
+    {
+      id: "arco",
+      label: "字节 Arco / 抖店后台",
+      desc: "纯白侧栏 · 科技蓝 #165DFF",
+      swatchClass: "swatch-arco"
+    },
+    {
+      id: "antd",
+      label: "阿里 AntD 5 / 千牛工作台",
+      desc: "纯白侧栏 · 右侧竖标企业蓝",
+      swatchClass: "swatch-antd"
+    },
+    {
+      id: "meituan",
+      label: "美团商家工具风",
+      desc: "深蓝灰侧栏 · 金黄高光焦点",
+      swatchClass: "swatch-meituan"
+    }
+  ];
+  const DEFAULTS = {
+    consumer: "taobao",
+    layout: "classic",
+    admin: "arco"
+  };
+  const VALID_CONSUMER = new Set(CONSUMER_THEMES.map((item) => item.id));
+  const VALID_LAYOUT = new Set(HOME_LAYOUTS.map((item) => item.id));
+  const VALID_ADMIN = new Set(ADMIN_THEMES.map((item) => item.id));
+  const designTheme = reactive({
+    consumer: DEFAULTS.consumer,
+    layout: DEFAULTS.layout,
+    admin: DEFAULTS.admin
+  });
+  function readStoredTheme() {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  function persistTheme() {
+    try {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          consumer: designTheme.consumer,
+          layout: designTheme.layout,
+          admin: designTheme.admin
+        })
+      );
+    } catch {
+    }
+  }
+  function parseHashQuery() {
+    const rawHash = window.location.hash || "";
+    const queryIdx = rawHash.indexOf("?");
+    return new URLSearchParams(queryIdx >= 0 ? rawHash.slice(queryIdx + 1) : "");
+  }
+  function applyDataset() {
+    if (typeof document === "undefined" || !document.documentElement) return;
+    const root = document.documentElement;
+    root.dataset.consumerTheme = designTheme.consumer;
+    root.dataset.homeLayout = designTheme.layout;
+    root.dataset.adminTheme = designTheme.admin;
+  }
+  let hashListenerInstalled = false;
+  function syncFromHashQuery() {
+    const hashParams = parseHashQuery();
+    const ct = hashParams.get("ct");
+    const hl = hashParams.get("hl");
+    const at = hashParams.get("at");
+    let changed = false;
+    if (ct && VALID_CONSUMER.has(ct) && designTheme.consumer !== ct) {
+      designTheme.consumer = ct;
+      changed = true;
+    }
+    if (hl && VALID_LAYOUT.has(hl) && designTheme.layout !== hl) {
+      designTheme.layout = hl;
+      changed = true;
+    }
+    if (at && VALID_ADMIN.has(at) && designTheme.admin !== at) {
+      designTheme.admin = at;
+      changed = true;
+    }
+    if (changed) {
+      applyDataset();
+      persistTheme();
+    }
+  }
+  function initDesignTheme() {
+    const saved = readStoredTheme();
+    const searchParams = new URLSearchParams(window.location.search || "");
+    const hashParams = parseHashQuery();
+    const nextConsumer = hashParams.get("ct") || searchParams.get("ct") || (saved == null ? void 0 : saved.consumer) || DEFAULTS.consumer;
+    const nextLayout = hashParams.get("hl") || searchParams.get("hl") || (saved == null ? void 0 : saved.layout) || DEFAULTS.layout;
+    const nextAdmin = hashParams.get("at") || searchParams.get("at") || (saved == null ? void 0 : saved.admin) || DEFAULTS.admin;
+    designTheme.consumer = VALID_CONSUMER.has(nextConsumer) ? nextConsumer : DEFAULTS.consumer;
+    designTheme.layout = VALID_LAYOUT.has(nextLayout) ? nextLayout : DEFAULTS.layout;
+    designTheme.admin = VALID_ADMIN.has(nextAdmin) ? nextAdmin : DEFAULTS.admin;
+    applyDataset();
+    if (hashParams.has("ct") || hashParams.has("hl") || hashParams.has("at") || searchParams.has("ct") || searchParams.has("hl") || searchParams.has("at")) {
+      persistTheme();
+    }
+    if (!hashListenerInstalled && typeof window !== "undefined") {
+      window.addEventListener("hashchange", syncFromHashQuery);
+      hashListenerInstalled = true;
+    }
+  }
+  function setConsumerTheme(id) {
+    if (!VALID_CONSUMER.has(id)) return;
+    designTheme.consumer = id;
+    applyDataset();
+    persistTheme();
+  }
+  function setHomeLayout(id) {
+    if (!VALID_LAYOUT.has(id)) return;
+    designTheme.layout = id;
+    applyDataset();
+    persistTheme();
+  }
+  function setAdminTheme(id) {
+    if (!VALID_ADMIN.has(id)) return;
+    designTheme.admin = id;
+    applyDataset();
+    persistTheme();
+  }
+  function resetDesignTheme() {
+    designTheme.consumer = DEFAULTS.consumer;
+    designTheme.layout = DEFAULTS.layout;
+    designTheme.admin = DEFAULTS.admin;
+    applyDataset();
+    persistTheme();
+  }
+  const { ref, onMounted, onUnmounted } = Vue;
+  const DesignVariantSwitcher = {
+    name: "DesignVariantSwitcher",
+    setup() {
+      const open = ref(false);
+      const rootRef = ref(null);
+      function toggleOpen() {
+        open.value = !open.value;
+      }
+      function onDocumentPointerDown(event) {
+        if (!open.value) return;
+        if (rootRef.value && !rootRef.value.contains(event.target)) {
+          open.value = false;
+        }
+      }
+      function onDocumentKeyDown(event) {
+        if (open.value && event.key === "Escape") {
+          open.value = false;
+        }
+      }
+      onMounted(() => {
+        document.addEventListener("pointerdown", onDocumentPointerDown);
+        document.addEventListener("keydown", onDocumentKeyDown);
+      });
+      onUnmounted(() => {
+        document.removeEventListener("pointerdown", onDocumentPointerDown);
+        document.removeEventListener("keydown", onDocumentKeyDown);
+      });
+      return {
+        preview,
+        open,
+        rootRef,
+        CONSUMER_THEMES,
+        HOME_LAYOUTS,
+        ADMIN_THEMES,
+        designTheme,
+        toggleOpen,
+        setConsumerTheme,
+        setHomeLayout,
+        setAdminTheme,
+        resetDesignTheme
+      };
+    },
+    render: (() => {
+      const { createElementVNode: _createElementVNode, resolveComponent: _resolveComponent, createVNode: _createVNode2, renderList: _renderList, Fragment: _Fragment, openBlock: _openBlock, createElementBlock: _createElementBlock, normalizeClass: _normalizeClass, toDisplayString: _toDisplayString, createCommentVNode: _createCommentVNode } = Vue;
+      return function render2(_ctx, _cache) {
+        const _component_Icon = _resolveComponent("Icon");
+        return !_ctx.preview ? (_openBlock(), _createElementBlock(
+          "div",
+          {
+            key: 0,
+            ref: "rootRef",
+            class: "variant-switcher"
+          },
+          [
+            _ctx.open ? (_openBlock(), _createElementBlock("div", {
+              key: 0,
+              class: "variant-switcher-panel",
+              role: "dialog",
+              "aria-label": "大厂风格方案对比"
+            }, [
+              _createElementVNode("div", { class: "variant-panel-head" }, [
+                _createElementVNode("div", { class: "variant-panel-title-wrap" }, [
+                  _createElementVNode("strong", { class: "variant-panel-title" }, "大厂视觉方案对比"),
+                  _createElementVNode("span", { class: "variant-panel-sub" }, "实时切换前台商城与后台工作台")
+                ]),
+                _createElementVNode("div", { class: "variant-panel-actions" }, [
+                  _createElementVNode("button", {
+                    type: "button",
+                    class: "variant-reset-btn",
+                    onClick: _ctx.resetDesignTheme
+                  }, " 恢复默认 ", 8, ["onClick"]),
+                  _createElementVNode("button", {
+                    type: "button",
+                    class: "variant-close-btn",
+                    "aria-label": "收起风格面板",
+                    onClick: ($event) => _ctx.open = false
+                  }, [
+                    _createVNode2(_component_Icon, {
+                      name: "x",
+                      size: 15
+                    })
+                  ], 8, ["onClick"])
+                ])
+              ]),
+              _createElementVNode("section", { class: "variant-section" }, [
+                _createElementVNode("h3", { class: "variant-section-label" }, "消费端风格（4 套）"),
+                _createElementVNode("div", { class: "variant-grid-2" }, [
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.CONSUMER_THEMES, (item) => {
+                      return _openBlock(), _createElementBlock("button", {
+                        key: item.id,
+                        type: "button",
+                        class: _normalizeClass(["variant-option-card", { "is-active": _ctx.designTheme.consumer === item.id }]),
+                        "aria-pressed": _ctx.designTheme.consumer === item.id ? "true" : "false",
+                        onClick: ($event) => _ctx.setConsumerTheme(item.id)
+                      }, [
+                        _createElementVNode(
+                          "span",
+                          {
+                            class: _normalizeClass(["variant-swatch-pair", item.swatchClass]),
+                            "aria-hidden": "true"
+                          },
+                          [
+                            _createElementVNode("i", { class: "swatch-dot swatch-dot-a" }),
+                            _createElementVNode("i", { class: "swatch-dot swatch-dot-b" })
+                          ],
+                          2
+                          /* CLASS */
+                        ),
+                        _createElementVNode("span", { class: "variant-option-text" }, [
+                          _createElementVNode(
+                            "strong",
+                            null,
+                            _toDisplayString(item.label),
+                            1
+                            /* TEXT */
+                          ),
+                          _createElementVNode(
+                            "small",
+                            null,
+                            _toDisplayString(item.desc),
+                            1
+                            /* TEXT */
+                          )
+                        ])
+                      ], 10, ["aria-pressed", "onClick"]);
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  ))
+                ])
+              ]),
+              _createElementVNode("section", { class: "variant-section" }, [
+                _createElementVNode("h3", { class: "variant-section-label" }, "首页首屏结构（2 套）"),
+                _createElementVNode("div", { class: "variant-grid-2" }, [
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.HOME_LAYOUTS, (item) => {
+                      return _openBlock(), _createElementBlock("button", {
+                        key: item.id,
+                        type: "button",
+                        class: _normalizeClass(["variant-option-card", "variant-layout-card", { "is-active": _ctx.designTheme.layout === item.id }]),
+                        "aria-pressed": _ctx.designTheme.layout === item.id ? "true" : "false",
+                        onClick: ($event) => _ctx.setHomeLayout(item.id)
+                      }, [
+                        _createElementVNode("span", { class: "variant-option-text" }, [
+                          _createElementVNode(
+                            "strong",
+                            null,
+                            _toDisplayString(item.label),
+                            1
+                            /* TEXT */
+                          ),
+                          _createElementVNode(
+                            "small",
+                            null,
+                            _toDisplayString(item.desc),
+                            1
+                            /* TEXT */
+                          )
+                        ])
+                      ], 10, ["aria-pressed", "onClick"]);
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  ))
+                ])
+              ]),
+              _createElementVNode("section", { class: "variant-section" }, [
+                _createElementVNode("h3", { class: "variant-section-label" }, "商家 / 平台后台（3 套）"),
+                _createElementVNode("div", { class: "variant-grid-1" }, [
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.ADMIN_THEMES, (item) => {
+                      return _openBlock(), _createElementBlock("button", {
+                        key: item.id,
+                        type: "button",
+                        class: _normalizeClass(["variant-option-row", { "is-active": _ctx.designTheme.admin === item.id }]),
+                        "aria-pressed": _ctx.designTheme.admin === item.id ? "true" : "false",
+                        onClick: ($event) => _ctx.setAdminTheme(item.id)
+                      }, [
+                        _createElementVNode(
+                          "span",
+                          {
+                            class: _normalizeClass(["variant-swatch-pair", item.swatchClass]),
+                            "aria-hidden": "true"
+                          },
+                          [
+                            _createElementVNode("i", { class: "swatch-dot swatch-dot-a" }),
+                            _createElementVNode("i", { class: "swatch-dot swatch-dot-b" })
+                          ],
+                          2
+                          /* CLASS */
+                        ),
+                        _createElementVNode("span", { class: "variant-option-text" }, [
+                          _createElementVNode(
+                            "strong",
+                            null,
+                            _toDisplayString(item.label),
+                            1
+                            /* TEXT */
+                          ),
+                          _createElementVNode(
+                            "small",
+                            null,
+                            _toDisplayString(item.desc),
+                            1
+                            /* TEXT */
+                          )
+                        ])
+                      ], 10, ["aria-pressed", "onClick"]);
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  ))
+                ])
+              ])
+            ])) : _createCommentVNode("v-if", true),
+            _createElementVNode("button", {
+              type: "button",
+              class: "variant-switcher-fab",
+              "aria-label": "切换大厂视觉方案",
+              "aria-expanded": _ctx.open ? "true" : "false",
+              onClick: _ctx.toggleOpen
+            }, [
+              (_openBlock(), _createElementBlock("svg", {
+                width: "15",
+                height: "15",
+                viewBox: "0 0 24 24",
+                fill: "none",
+                stroke: "currentColor",
+                "stroke-width": "2",
+                "stroke-linecap": "round",
+                "stroke-linejoin": "round",
+                "aria-hidden": "true"
+              }, [
+                _createElementVNode("line", {
+                  x1: "4",
+                  y1: "7",
+                  x2: "20",
+                  y2: "7"
+                }),
+                _createElementVNode("circle", {
+                  cx: "9",
+                  cy: "7",
+                  r: "2.2",
+                  fill: "currentColor"
+                }),
+                _createElementVNode("line", {
+                  x1: "4",
+                  y1: "17",
+                  x2: "20",
+                  y2: "17"
+                }),
+                _createElementVNode("circle", {
+                  cx: "15",
+                  cy: "17",
+                  r: "2.2",
+                  fill: "currentColor"
+                })
+              ])),
+              _createElementVNode("span", null, "换风格")
+            ], 8, ["aria-expanded", "onClick"])
+          ],
+          512
+          /* NEED_PATCH */
+        )) : _createCommentVNode("v-if", true);
+      };
+    })()
+  };
   const App = {
     name: "CampusApp",
     components: {
       AuthDialog,
+      DesignVariantSwitcher,
       NotFound: {
         render: (() => {
           const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock } = Vue;
@@ -29705,7 +30223,7 @@
         if (r === "/ai") return "Guide";
         return r === "/" ? "Home" : "NotFound";
       });
-      const ready = /* @__PURE__ */ ref$j(false), contextError = /* @__PURE__ */ ref$j(""), authRequired = /* @__PURE__ */ ref$j(false), loginOpen = /* @__PURE__ */ ref$j(false);
+      const ready = /* @__PURE__ */ ref$k(false), contextError = /* @__PURE__ */ ref$k(""), authRequired = /* @__PURE__ */ ref$k(false), loginOpen = /* @__PURE__ */ ref$k(false);
       const backoffice = computed$i(
         () => [
           "Merchant",
@@ -29765,11 +30283,11 @@
           }
         }
       }
-      onMounted$f(() => {
+      onMounted$g(() => {
         window.addEventListener("hashchange", setRoute);
         refresh();
       });
-      onUnmounted$c(() => {
+      onUnmounted$d(() => {
         ++version2;
         window.removeEventListener("hashchange", setRoute);
       });
@@ -29777,9 +30295,10 @@
       return { store, current, ready, contextError, authRequired, loginOpen, refresh };
     },
     render: (() => {
-      const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, resolveDynamicComponent: _resolveDynamicComponent, createBlock: _createBlock, resolveComponent: _resolveComponent, normalizeClass: _normalizeClass } = Vue;
+      const { openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, resolveDynamicComponent: _resolveDynamicComponent, createBlock: _createBlock, resolveComponent: _resolveComponent, createVNode: _createVNode2, normalizeClass: _normalizeClass } = Vue;
       return function render2(_ctx, _cache) {
         const _component_AuthDialog = _resolveComponent("AuthDialog");
+        const _component_DesignVariantSwitcher = _resolveComponent("DesignVariantSwitcher");
         return _openBlock(), _createElementBlock(
           "div",
           {
@@ -29817,6 +30336,7 @@
               key: 4,
               onClose: ($event) => _ctx.loginOpen = false
             }, null, 8, ["onClose"])) : _createCommentVNode("v-if", true),
+            _createVNode2(_component_DesignVariantSwitcher),
             _ctx.store.toast ? (_openBlock(), _createElementBlock(
               "div",
               {
@@ -29840,5 +30360,6 @@
   app.component("BrandLogo", BrandLogo);
   app.directive("modal", modal);
   installCustomSelects();
+  initDesignTheme();
   app.mount("#app");
 })();
