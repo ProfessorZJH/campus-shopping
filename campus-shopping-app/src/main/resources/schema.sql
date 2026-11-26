@@ -76,6 +76,14 @@ CREATE TABLE IF NOT EXISTS cat_sku (
  UNIQUE KEY uk_sku_spec(product_id,spec_key), CONSTRAINT ck_sku_price CHECK (price_cent > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS cat_product_favorite (
+ user_id VARCHAR(36) NOT NULL,
+ product_id VARCHAR(36) NOT NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ PRIMARY KEY(user_id,product_id),
+ KEY ix_favorite_user(user_id,created_at DESC,product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS inv_stock_balance (
  merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL, sku_id VARCHAR(36) NOT NULL, on_hand BIGINT NOT NULL DEFAULT 0,
  reserved BIGINT NOT NULL DEFAULT 0, version BIGINT NOT NULL DEFAULT 0, PRIMARY KEY(store_id,sku_id), UNIQUE KEY uk_stock_sku(sku_id), KEY ix_stock_merchant(merchant_id), KEY ix_stock_sku(sku_id), KEY ix_stock_merchant_sku(merchant_id,sku_id),
@@ -106,7 +114,10 @@ CREATE TABLE IF NOT EXISTS trd_order (
  id VARCHAR(36) PRIMARY KEY, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
  pickup_store_name VARCHAR(100) NOT NULL DEFAULT '', pickup_location VARCHAR(200) NOT NULL DEFAULT '',
  total_cent BIGINT NOT NULL, status VARCHAR(24) NOT NULL, deadline DATETIME(3) NOT NULL, version BIGINT NOT NULL DEFAULT 0,
- created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_buyer_page(buyer_id,status,created_at DESC,id), KEY ix_order_merchant(merchant_id,status), KEY ix_order_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_order_merchant_created(merchant_id,created_at DESC,id), KEY ix_order_expiry(status,deadline), KEY ix_order_created(created_at,id), CONSTRAINT ck_order_total CHECK(total_cent>0)
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ buyer_remark VARCHAR(200) NOT NULL DEFAULT '', pickup_slot VARCHAR(64) NOT NULL DEFAULT 'IMMEDIATE',
+ payment_channel VARCHAR(24) NOT NULL DEFAULT '', payment_trade_no VARCHAR(64) NOT NULL DEFAULT '',
+ KEY ix_order_buyer(buyer_id,created_at), KEY ix_order_buyer_page(buyer_id,status,created_at DESC,id), KEY ix_order_merchant(merchant_id,status), KEY ix_order_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_order_merchant_created(merchant_id,created_at DESC,id), KEY ix_order_expiry(status,deadline), KEY ix_order_created(created_at,id), CONSTRAINT ck_order_total CHECK(total_cent>0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_order_event (
@@ -137,16 +148,36 @@ CREATE TABLE IF NOT EXISTS trd_payment (
 
 CREATE TABLE IF NOT EXISTS trd_after_sale (
  id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, buyer_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL,
- status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), UNIQUE KEY uk_after_order(order_id), KEY ix_after_sale_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_after_sale_status_created(status,created_at DESC,id)
+ status VARCHAR(16) NOT NULL, reason VARCHAR(500) NOT NULL, decision_reason VARCHAR(500) NOT NULL DEFAULT '', created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ evidence_image_url VARCHAR(255) NOT NULL DEFAULT '',
+ UNIQUE KEY uk_after_order(order_id), KEY ix_after_sale_merchant_page(merchant_id,status,created_at DESC,id), KEY ix_after_sale_status_created(status,created_at DESC,id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS trd_refund (
  order_id VARCHAR(36) PRIMARY KEY, amount_cent BIGINT NOT NULL, created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3), CONSTRAINT ck_refund_amount CHECK(amount_cent > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+CREATE TABLE IF NOT EXISTS trd_order_review (
+ id VARCHAR(36) PRIMARY KEY,
+ order_id VARCHAR(36) NOT NULL,
+ product_id VARCHAR(36) NOT NULL,
+ merchant_id VARCHAR(36) NOT NULL,
+ buyer_id VARCHAR(36) NOT NULL,
+ buyer_name VARCHAR(50) NOT NULL,
+ rating TINYINT NOT NULL,
+ tags VARCHAR(200) NOT NULL DEFAULT '',
+ content VARCHAR(500) NOT NULL,
+ created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+ UNIQUE KEY uk_review_order_product(order_id,product_id),
+ KEY ix_review_product(product_id,created_at DESC,id),
+ CONSTRAINT ck_review_rating CHECK (rating BETWEEN 1 AND 5)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE IF NOT EXISTS ful_pickup_task (
  id VARCHAR(36) PRIMARY KEY, order_id VARCHAR(36) NOT NULL, merchant_id VARCHAR(36) NOT NULL, store_id VARCHAR(36) NOT NULL,
- buyer_id VARCHAR(36) NOT NULL, status VARCHAR(16) NOT NULL, credential_hash CHAR(64), expires_at DATETIME(3), UNIQUE KEY uk_pickup_order(order_id), KEY ix_pickup_merchant(merchant_id,status)
+ buyer_id VARCHAR(36) NOT NULL, status VARCHAR(16) NOT NULL, credential_hash CHAR(64), expires_at DATETIME(3),
+ pickup_code VARCHAR(16) NOT NULL DEFAULT '', pin_hash CHAR(64) NULL,
+ UNIQUE KEY uk_pickup_order(order_id), KEY ix_pickup_merchant(merchant_id,status), KEY ix_pickup_merchant_pin(merchant_id,status,pin_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE IF NOT EXISTS ful_pickup_verification (
@@ -275,3 +306,4 @@ INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_04','49329e
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261107_05','2b786f17d419706dc3c28e4235bb95c78f26616a2b17e37d634d2a2e2b6c2813' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261109_01','6cd21b5743ce1e8b1b8f5ba830bcb36c406767ca35e5e6d48a7f3fd7f230a3ac' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
 INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261125_01','1daa37ca27629dd1ed662abb1c6f3026fd0c9df90920eb02f4b6e1866d02659a' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;
+INSERT INTO sys_schema_migration(version,checksum) SELECT 'V20261126_01','5b9a3af2901ecb17d10679546b9086084fc16cca67fa7ce831f415b484b1839b' WHERE @campus_new_schema=1 ON DUPLICATE KEY UPDATE version=version;

@@ -13,4 +13,6 @@ public class CheckoutRequestDTO {
 
     private String merchantId;
     private List<CheckoutItemDTO> items;
+    private String buyerRemark;
+    private String pickupSlot;
 }

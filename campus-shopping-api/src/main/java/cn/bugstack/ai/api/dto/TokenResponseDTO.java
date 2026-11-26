@@ -13,4 +13,7 @@ public class TokenResponseDTO {
 
     private String token;
     private Instant expiresAt;
+    private String pickupCode;
+    private String pinCode;
+    private String qrPayload;
 }

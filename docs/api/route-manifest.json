@@ -439,6 +439,16 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/admin/redis-telemetry",
+      "controller": "DiscoveryController.java",
+      "handler": "redisTelemetry",
+      "responseType": "RedisTelemetryResponseDTO",
+      "inputs": [],
+      "access": "platform-admin",
+      "csrf": false
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/admin/statistics",
       "controller": "OrderController.java",
       "handler": "platformStatistics",
@@ -771,6 +781,26 @@
       "responseType": "List<CategoryResponseDTO>",
       "inputs": [],
       "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/home",
+      "controller": "DiscoveryController.java",
+      "handler": "home",
+      "responseType": "DiscoveryHomeResponseDTO",
+      "inputs": [],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/favorites",
+      "controller": "DiscoveryController.java",
+      "handler": "favorites",
+      "responseType": "List<ProductResponseDTO>",
+      "inputs": [],
+      "access": "authenticated + domain ACL",
       "csrf": false
     },
     {
@@ -1498,6 +1528,29 @@
         {
           "in": "path",
           "name": "orderId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "VerifyPickupRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/merchants/{merchantId}/pickups/quick-verify",
+      "controller": "FulfillmentController.java",
+      "handler": "quickVerify",
+      "responseType": "OrderResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "merchantId",
           "type": "String",
           "required": true
         },
@@ -2346,6 +2399,13 @@
           "name": "orderId",
           "type": "String",
           "required": true
+        },
+        {
+          "in": "query",
+          "name": "channel",
+          "type": "String",
+          "required": false,
+          "default": "WECHAT_PAY"
         }
       ],
       "access": "authenticated + domain ACL",
@@ -2385,6 +2445,29 @@
           "in": "body",
           "name": "request",
           "type": "RefundRequestDTO",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/orders/{orderId}/reviews",
+      "controller": "OrderController.java",
+      "handler": "submitReview",
+      "responseType": "List<ProductReviewResponseDTO>",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "orderId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "body",
+          "name": "request",
+          "type": "OrderReviewRequestDTO",
           "required": true
         }
       ],
@@ -2522,6 +2605,81 @@
           "name": "productId",
           "type": "String",
           "required": true
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/products/{productId}/favorite",
+      "controller": "DiscoveryController.java",
+      "handler": "removeFavorite",
+      "responseType": "FavoriteStatusResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/products/{productId}/favorite",
+      "controller": "DiscoveryController.java",
+      "handler": "addFavorite",
+      "responseType": "FavoriteStatusResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "authenticated + domain ACL",
+      "csrf": true
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/{productId}/recommendations",
+      "controller": "DiscoveryController.java",
+      "handler": "recommendations",
+      "responseType": "ProductRecommendationsResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        }
+      ],
+      "access": "anonymous",
+      "csrf": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/products/{productId}/reviews",
+      "controller": "CatalogController.java",
+      "handler": "reviews",
+      "responseType": "ProductReviewSummaryResponseDTO",
+      "inputs": [
+        {
+          "in": "path",
+          "name": "productId",
+          "type": "String",
+          "required": true
+        },
+        {
+          "in": "query",
+          "name": "limit",
+          "type": "int",
+          "required": false,
+          "default": "20"
         }
       ],
       "access": "anonymous",

@@ -74,6 +74,22 @@ public class CatalogQueryCaseImpl implements ICatalogQueryCase {
     }
 
     @Override
+    public List<ProductReadModel> publicByIds(List<String> ids) {
+        if (ids == null || ids.isEmpty()) return List.of();
+        List<String> ordered = ids
+            .stream()
+            .filter(id -> id != null && !id.isBlank())
+            .distinct()
+            .limit(100)
+            .toList();
+        if (ordered.isEmpty()) return List.of();
+        Map<String, ProductReadModel> byId = views(catalogService.publicByIds(ordered))
+            .stream()
+            .collect(Collectors.toMap(m -> m.product().getId(), m -> m, (a, b) -> a));
+        return ordered.stream().map(byId::get).filter(java.util.Objects::nonNull).toList();
+    }
+
+    @Override
     public List<ProductReadModel> managedProducts(String actor, String merchant, int page, int size) {
         access.requirePermission(actor, merchant, "product.read");
         return views(catalogService.search(merchant, "", null, false, page, size));

@@ -6,6 +6,8 @@ import cn.bugstack.ai.types.common.EnumValues;
 public enum ProductSortEnumVO {
     NEWEST("最新"),
     PRICE_ASC("价格升序"),
+    PRICE_DESC("价格降序"),
+    SALES_DESC("销量降序"),
     STOCK_DESC("库存降序");
 
     private final String info;

@@ -51,6 +51,7 @@ class BackendContractDouble:
         self.cart=[];self.orders=[];self.applications=[{'applicationId':'a1','merchantName':'校园烘焙屋（待审测试）','category':'食品','contactName':'测试申请人','contactPhone':'10000000000','storeName':'西区小店','location':'西区教学楼一层','status':'SUBMITTED','rejectionReason':None,'merchantId':None}]
         self.members=[{'merchantId':'m1','userId':'u1','role':'OWNER','status':'ACTIVE'},{'merchantId':'m1','userId':'u2','role':'CLERK','status':'ACTIVE'}]
         self.bases=[];self.docs=[];self.conversations=[];self.messages=[];self.proposals=[];self.doc_uploads=[]
+        self.favorites=set();self.reviews={}
     def data(self,value=None,code='0000',info='成功'):
         return {'code':code,'info':info,'data':value}
     def handle(self,route):
@@ -108,9 +109,25 @@ class BackendContractDouble:
                     'CLERK':['product.read','stock.read','stock.replenish','order.read','order.prepare','pickup.verify']}
             data={'platformAdmin':True,'memberships':self.members,'merchantPermissions':{m['merchantId']:grants.get(m['role'],[]) for m in self.members if m['status']=='ACTIVE' and m['userId']==self.user['userId']},'merchants':[s for s in self.shops if s['merchantId'] in {m['merchantId'] for m in self.members if m['userId']==self.user['userId'] and m['status']=='ACTIVE'}]}
         elif path=='/categories':data=self.categories
+        elif path=='/discovery/home':
+            pub=[p for p in self.products if p['status']=='PUBLISHED']
+            data={'hotKeywords':['乌龙茶','泡面','纯牛奶','中性笔','抽纸'],'hotProducts':pub[:4],'recommendedProducts':pub[:4],'recentProducts':pub[:2] if self.logged else [],'favoriteProductIds':sorted(self.favorites) if self.logged else []}
+        elif path=='/favorites':
+            data=[p for p in self.products if p['productId'] in self.favorites]
         elif path=='/merchants/public':data=self.shops
         elif path=='/products':
             data=[p for p in self.products if p['status']=='PUBLISHED' and (not q.get('q') or q['q'][0] in p['title']) and (not q.get('category') or q['category'][0]==p['categoryCode'])]
+        elif re.fullmatch('/products/[^/]+/reviews',path):
+            pid=path.split('/')[2];rev_list=self.reviews.get(pid,[])
+            avg=round(sum(r['rating'] for r in rev_list)/len(rev_list),1) if rev_list else 0.0
+            data={'productId':pid,'averageRating':avg,'totalCount':len(rev_list),'items':rev_list}
+        elif re.fullmatch('/products/[^/]+/recommendations',path):
+            pid=path.split('/')[2];others=[p for p in self.products if p['status']=='PUBLISHED' and p['productId']!=pid][:4]
+            data={'boughtTogether':others,'sameStoreHot':others}
+        elif re.fullmatch('/products/[^/]+/favorite',path):
+            pid=path.split('/')[2]
+            if method=='POST':self.favorites.add(pid);data={'productId':pid,'favorited':True}
+            else:self.favorites.discard(pid);data={'productId':pid,'favorited':False}
         elif re.fullmatch('/products/[^/]+',path):data=next(p for p in self.products if p['productId']==path.split('/')[-1])
         elif path=='/cart':
             if method in ('POST','PUT'):
@@ -125,16 +142,31 @@ class BackendContractDouble:
         elif path=='/orders':
             if method=='POST':
                 items=[{'skuId':x['skuId'],'title':next(p['title'] for p in self.products if p['skus'][0]['skuId']==x['skuId']),'specKey':'标准装','quantity':x['quantity'],'unitPriceCent':x['expectedPriceCent']} for x in body['items']]
-                data={'orderId':'o'+str(len(self.orders)+1),'buyerId':'u1','merchantId':body['merchantId'],'storeId':'s1','status':'PENDING_PAYMENT','totalCent':sum(x['unitPriceCent']*x['quantity'] for x in items),'deadline':DEADLINE,'createdAt':NOW,'items':items,'pickup':None,'afterSale':None}
+                data={'orderId':'o'+str(len(self.orders)+1),'buyerId':'u1','merchantId':body['merchantId'],'storeId':'s1','buyerRemark':body.get('buyerRemark',''),'pickupSlot':body.get('pickupSlot','IMMEDIATE'),'paymentChannel':'','paymentTradeNo':'','reviewed':False,'status':'PENDING_PAYMENT','totalCent':sum(x['unitPriceCent']*x['quantity'] for x in items),'deadline':DEADLINE,'createdAt':NOW,'items':items,'pickup':None,'afterSale':None}
                 self.orders.append(data);self.cart=[x for x in self.cart if x['merchantId']!=body['merchantId']]
             else:data=self.orders
         elif re.fullmatch('/orders/[^/]+',path):data=next(o for o in self.orders if o['orderId']==path.split('/')[-1])
         elif re.fullmatch('/orders/[^/]+/pay',path):
-            data=next(o for o in self.orders if o['orderId']==path.split('/')[2]);data['status']='PAID';data['pickup']={'status':'WAIT_PREP'}
-        elif re.fullmatch('/orders/[^/]+/pickup-token',path):data={'token':'TEST_ONLY_NOT_A_REAL_PICKUP_TOKEN','expiresAt':DEADLINE}
+            ch=q.get('channel',['WECHAT_PAY'])[0]
+            data=next(o for o in self.orders if o['orderId']==path.split('/')[2]);data['status']='PAID';data['paymentChannel']=ch;data['paymentTradeNo']='WX20261126000001';data['pickup']={'status':'WAIT_PREP','pickupCode':'A-101'}
+        elif re.fullmatch('/orders/[^/]+/pickup-token',path):
+            oid=path.split('/')[2]
+            data={'token':'TEST_ONLY_NOT_A_REAL_PICKUP_TOKEN','expiresAt':DEADLINE,'pickupCode':'A-101','pinCode':'682914','qrPayload':f'CS1|{oid}|TEST_ONLY_NOT_A_REAL_PICKUP_TOKEN'}
+        elif re.fullmatch('/orders/[^/]+/reviews',path):
+            oid=path.split('/')[2];order_obj=next(o for o in self.orders if o['orderId']==oid);order_obj['reviewed']=True
+            pid=self.products[0]['productId']
+            rev={'id':'rev-'+oid,'productId':pid,'buyerDisplayName':self.user['displayName'],'rating':int(body.get('rating',5)),'tags':body.get('tags',''),'content':body.get('content',''),'createdAt':NOW}
+            self.reviews.setdefault(pid,[]).insert(0,rev);data=rev
+        elif re.fullmatch('/merchants/[^/]+/pickups/quick-verify',path):
+            mid=path.split('/')[2]
+            match=next((o for o in self.orders if o['merchantId']==mid and o.get('pickup',{}).get('status')=='READY'),self.orders[0] if self.orders else None)
+            if match:match['pickup']={**(match.get('pickup') or {}),'status':'CONSUMED'};match['status']='COMPLETED'
+            data=match
         elif re.fullmatch('/merchants/[^/]+/orders/[^/]+/(prepare|ready|verify)',path):
-            data=next(o for o in self.orders if o['orderId']==path.split('/')[4]);action=path.split('/')[-1];data['pickup']={'status':{'prepare':'PREPARING','ready':'READY','verify':'CONSUMED'}[action]}
+            data=next(o for o in self.orders if o['orderId']==path.split('/')[4]);action=path.split('/')[-1];data['pickup']={**(data.get('pickup') or {}),'status':{'prepare':'PREPARING','ready':'READY','verify':'CONSUMED'}[action]}
             if action=='verify':data['status']='COMPLETED'
+        elif path=='/admin/redis-telemetry':
+            data={'redisEnabled':True,'securityConnected':True,'cacheConnected':True,'namespace':'cs:test','crawlerBlockedCount':0,'rateLimitedCount':0,'orderBrushBlockedCount':0,'pinLockoutCount':0,'displayCacheFailures':0,'topHotKeywords':['乌龙茶','中性笔'],'topSellingProductIds':['p0','p1'],'activeRealtimeSubscribers':0,'delayedExpiryQueueSize':0}
         elif re.fullmatch('/merchants/[^/]+/orders',path) or path=='/admin/orders':data=self.orders
         elif path.endswith('/statistics'):data={'totalOrders':len(self.orders),'pendingCount':0,'paidCount':1,'completedCount':8,'refundedCount':1,'completedAmountCent':25800}
         elif path=='/merchant-applications/mine' or path=='/admin/merchant-applications':data=self.applications

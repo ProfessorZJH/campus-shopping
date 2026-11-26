@@ -19,4 +19,5 @@ public class AfterSalePO {
     private String reason;
     private String decisionReason;
     private Instant createdAt;
+    private String evidenceImageUrl;
 }

@@ -72,7 +72,7 @@ class DetailBackend(TwoMerchantBackend):
 
     def handle(self, route):
         path = urlparse(route.request.url).path.removeprefix('/api/v1')
-        if route.request.method == 'GET' and path.startswith('/products/'):
+        if route.request.method == 'GET' and re.fullmatch(r'/products/[^/]+', path) and path != '/products/page':
             product_id = path.split('/')[-1]
             self.detail_requests.append(product_id)
             if product_id == 'detail-unavailable':

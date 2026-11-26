@@ -34,8 +34,22 @@ public final class AiGatewayDTO {
         String retrievalQuery,
         List<String> semanticSkuIds,
         List<String> externalDocumentIds,
-        boolean answerPreview
+        boolean answerPreview,
+        boolean streamText
     ) {
+        public Query(
+            String question,
+            List<String> allowedDocumentIds,
+            List<Offer> offers,
+            List<History> history,
+            String retrievalQuery,
+            List<String> semanticSkuIds,
+            List<String> externalDocumentIds,
+            boolean answerPreview
+        ) {
+            this(question, allowedDocumentIds, offers, history, retrievalQuery, semanticSkuIds, externalDocumentIds, answerPreview, false);
+        }
+
         public Query(
             String question,
             List<String> allowedDocumentIds,
@@ -45,7 +59,7 @@ public final class AiGatewayDTO {
             List<String> semanticSkuIds,
             List<String> externalDocumentIds
         ) {
-            this(question, allowedDocumentIds, offers, history, retrievalQuery, semanticSkuIds, externalDocumentIds, true);
+            this(question, allowedDocumentIds, offers, history, retrievalQuery, semanticSkuIds, externalDocumentIds, true, false);
         }
     }
 

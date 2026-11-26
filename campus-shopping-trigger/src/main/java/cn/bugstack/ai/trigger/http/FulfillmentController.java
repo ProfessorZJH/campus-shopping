@@ -53,7 +53,13 @@ public class FulfillmentController implements IFulfillmentApi {
     public Response<TokenResponseDTO> token(@PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
             var token = lifecycle.issuePickupToken(actor(principal), orderId);
-            return TokenResponseDTO.builder().token(token.token()).expiresAt(token.expiresAt()).build();
+            return TokenResponseDTO.builder()
+                .token(token.token())
+                .expiresAt(token.expiresAt())
+                .pickupCode(token.pickupCode())
+                .pinCode(token.pinCode())
+                .qrPayload(token.qrPayload())
+                .build();
         });
     }
 
@@ -68,6 +74,20 @@ public class FulfillmentController implements IFulfillmentApi {
     ) {
         return execute(() -> {
             var o = lifecycle.verifyPickup(actor(principal), merchantId, orderId, required(request).getToken());
+            return ApiViews.order(o);
+        });
+    }
+
+    /** 商户快捷核销：支持 6 位核销码或扫码载荷 CS1|orderId|token。 */
+    @Override
+    @PostMapping("/merchants/{merchantId}/pickups/quick-verify")
+    public Response<OrderResponseDTO> quickVerify(
+        @PathVariable("merchantId") String merchantId,
+        @RequestBody VerifyPickupRequestDTO request,
+        Principal principal
+    ) {
+        return execute(() -> {
+            var o = lifecycle.quickVerifyPickup(actor(principal), merchantId, required(request).getToken());
             return ApiViews.order(o);
         });
     }

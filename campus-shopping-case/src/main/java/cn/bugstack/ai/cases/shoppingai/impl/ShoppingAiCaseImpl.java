@@ -10,6 +10,8 @@ import cn.bugstack.ai.cases.shoppingai.IShoppingAiCase;
 import cn.bugstack.ai.cases.shoppingai.model.ChatResult;
 import cn.bugstack.ai.cases.shoppingai.model.KnowledgeDebugResult;
 import cn.bugstack.ai.cases.shoppingai.model.ProposalView;
+import cn.bugstack.ai.cases.trading.IOrderQueryCase;
+import cn.bugstack.ai.cases.trading.model.OrderReadModel;
 import cn.bugstack.ai.domain.catalog.service.ICatalogService;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.domain.inventory.service.IInventoryService;
@@ -48,6 +50,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -71,6 +74,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
     private final Clock clock;
     private final IConversationTurnCase turns;
     private final IProposalConfirmationCase confirmation;
+    private final IOrderQueryCase orderQuery;
     private final CandidateResolver candidateResolver;
     private final EvidenceAssembler evidenceAssembler;
 
@@ -90,6 +94,24 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         IProposalConfirmationCase confirmation,
         KnowledgeEgressPolicy egress
     ) {
+        this(conversations, proposals, engine, knowledge, catalog, inventory, accounts, clock, turns, confirmation, egress, null);
+    }
+
+    @Autowired
+    public ShoppingAiCaseImpl(
+        IConversationService conversations,
+        IProposalService proposals,
+        IAiEnginePort engine,
+        IKnowledgeCase knowledge,
+        ICatalogService catalog,
+        IInventoryService inventory,
+        IUserAccountService accounts,
+        Clock clock,
+        IConversationTurnCase turns,
+        IProposalConfirmationCase confirmation,
+        KnowledgeEgressPolicy egress,
+        IOrderQueryCase orderQuery
+    ) {
         this.egress = egress;
         this.conversations = conversations;
         this.proposals = proposals;
@@ -101,6 +123,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         this.clock = clock;
         this.turns = turns;
         this.confirmation = confirmation;
+        this.orderQuery = orderQuery;
         this.candidateResolver = new CandidateResolver(engine, catalog, inventory);
         this.evidenceAssembler = new EvidenceAssembler(knowledge);
     }
@@ -156,7 +179,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         String normalizedQuestion = text(question, "问题", 2000);
         var turn = conversations.beginTurn(actor, conversationId, normalizedQuestion);
         try {
-            return answer(actor, turn, normalizedQuestion, null);
+            return answer(actor, turn, normalizedQuestion, null, null, null);
         } catch (RuntimeException failure) {
             // 成功提交已经在短事务中释放租约；失败才做 token 条件释放，不能误清除后继请求。
             try {
@@ -171,7 +194,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
 
     @Transactional(propagation = Propagation.NEVER)
     public ChatResult chatStream(String actor, String conversationId, String question, Consumer<String> conversationReady, LongConsumer progress) {
-        return chatStream(actor, conversationId, question, conversationReady, null, progress);
+        return chatStream(actor, conversationId, question, conversationReady, null, null, progress);
     }
 
     @Transactional(propagation = Propagation.NEVER)
@@ -184,12 +207,26 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         Consumer<String> stageListener,
         LongConsumer progress
     ) {
+        return chatStream(actor, conversationId, question, conversationReady, stageListener, null, progress);
+    }
+
+    @Transactional(propagation = Propagation.NEVER)
+    @Override
+    public ChatResult chatStream(
+        String actor,
+        String conversationId,
+        String question,
+        Consumer<String> conversationReady,
+        Consumer<String> stageListener,
+        Consumer<String> deltaListener,
+        LongConsumer progress
+    ) {
         accounts.requireActive(actor);
         String normalizedQuestion = text(question, "问题", 2000);
         var turn = conversations.beginTurn(actor, conversationId, normalizedQuestion);
         try {
             if (conversationReady != null) conversationReady.accept(turn.conversationId());
-            return answer(actor, turn, normalizedQuestion, stageListener, progress);
+            return answer(actor, turn, normalizedQuestion, stageListener, deltaListener, progress);
         } catch (RuntimeException failure) {
             try {
                 conversations.releaseTurn(turn);
@@ -211,12 +248,18 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         return conversations.requestTurnCancel(actor, conversation);
     }
 
-    private ChatResult answer(String actor, ConversationTurnVO turn, String question, LongConsumer progress) {
-        return answer(actor, turn, question, null, progress);
-    }
-
-    private ChatResult answer(String actor, ConversationTurnVO turn, String question, Consumer<String> stageListener, LongConsumer progress) {
+    private ChatResult answer(
+        String actor,
+        ConversationTurnVO turn,
+        String question,
+        Consumer<String> stageListener,
+        Consumer<String> deltaListener,
+        LongConsumer progress
+    ) {
         String conversation = turn.conversationId();
+        if (orderQuery != null && ShoppingAnswerPolicy.personalOrderInquiry(question)) {
+            return answerPersonalOrderInquiry(actor, turn, question, stageListener, deltaListener);
+        }
         if (stageListener != null) stageListener.accept("recall");
         var documents = knowledge.readableScope(actor);
         String fingerprint = scope(documents);
@@ -254,7 +297,7 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
                       progress.accept(bytes);
                   };
         if (stageListener != null) stageListener.accept("generating");
-        AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, guardedProgress);
+        AiAnswerVO answer = progress == null ? engine.query(aiQuery) : engine.queryStream(aiQuery, guardedProgress, deltaListener);
         if (progress != null) ensureTurnActive(actor, conversation);
         if (stageListener != null) stageListener.accept("verifying");
         // 远程响应返回前重新校验整个知识授权快照，撤权/撤稿期间不输出已生成内容。
@@ -278,7 +321,13 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
         // 不把模型提出但未通过 Java SKU/库存复核的条目输出给前端。
         List<AiRecommendationVO> verified = items
             .stream()
-            .map(i -> new AiRecommendationVO(i.skuId(), i.quantity(), "规格：" + i.specKey() + "；以当前商品卡片为准"))
+            .map(i ->
+                new AiRecommendationVO(
+                    i.skuId(),
+                    i.quantity(),
+                    i.reason() != null && !i.reason().isBlank() ? i.reason() : "规格：" + i.specKey() + "；以当前商品卡片为准"
+                )
+            )
             .toList();
         var specs = SkuConstraintPolicy.resolve(
             question,
@@ -290,21 +339,35 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             quotes.stream().map(ProposalItemVO::specKey).toList(),
             quotes.stream().map(ProposalItemVO::title).toList()
         );
-        String safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
+        Map<String, String> visibilityByDoc = current
+            .stream()
+            .collect(Collectors.toMap(KnowledgeScopeVO::id, KnowledgeScopeVO::visibility, (first, second) -> first));
+        boolean hasNonPublicCitation = citations.stream().anyMatch(c -> !"PUBLIC".equals(visibilityByDoc.get(c.documentId())));
         boolean replacementRequest = REPLACEMENT_PATTERN.matcher(question).find();
-        if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
-            String recommendationText = items.isEmpty()
-                ? replacementRequest
-                    ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。"
-                    : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
-                : "可查看以下商品：" +
-                  items
-                      .stream()
-                      .map(i -> i.title() + "（" + i.specKey() + "）×" + i.quantity())
-                      .collect(Collectors.joining("；")) +
-                  "。确认后只加入购物车，不会自动下单或付款。";
-            boolean appendKnowledge = !items.isEmpty() && !citations.isEmpty() && !specs.active() && ShoppingAnswerPolicy.hasServiceInquiry(question);
-            safeText = appendKnowledge ? ShoppingAnswerPolicy.evidenceBrief(citations) + "\n" + recommendationText : recommendationText;
+        boolean rejectedRecommendation = !knowledgeOnly && items.isEmpty() && (replacementRequest || !answer.recommendations().isEmpty() || specs.active());
+        String safeText;
+        if ("LLM".equals(answer.mode()) && !hasNonPublicCitation && !rejectedRecommendation && ShoppingAnswerPolicy.isSafeNaturalAnswer(answer.answer())) {
+            String natural = answer.answer().trim();
+            if (!items.isEmpty() && !natural.contains("不会自动下单") && !natural.contains("加入购物车")) {
+                natural = natural + "\n\n确认提案后只加入购物车，不会自动下单或付款。";
+            }
+            safeText = natural;
+        } else {
+            safeText = ShoppingAnswerPolicy.evidenceAnswer(citations);
+            if (!knowledgeOnly && (replacementRequest || !items.isEmpty() || !answer.recommendations().isEmpty() || specs.active())) {
+                String recommendationText = items.isEmpty()
+                    ? replacementRequest
+                        ? "当前没有找到符合要求的替代商品，请放宽规格或预算后重试。"
+                        : "当前没有可核实且满足要求的商品，请明确规格、数量或预算。"
+                    : "可查看以下商品：" +
+                      items
+                          .stream()
+                          .map(i -> i.title() + "（" + i.specKey() + "）×" + i.quantity())
+                          .collect(Collectors.joining("；")) +
+                      "。确认后只加入购物车，不会自动下单或付款。";
+                boolean appendKnowledge = !items.isEmpty() && !citations.isEmpty() && !specs.active() && ShoppingAnswerPolicy.hasServiceInquiry(question);
+                safeText = appendKnowledge ? ShoppingAnswerPolicy.evidenceBrief(citations) + "\n" + recommendationText : recommendationText;
+            }
         }
         AiAnswerVO safe = new AiAnswerVO(
             safeText,
@@ -336,6 +399,80 @@ public class ShoppingAiCaseImpl implements IShoppingAiCase {
             throw failure;
         }
         return new ChatResult(conversation, safe, proposal);
+    }
+
+    private ChatResult answerPersonalOrderInquiry(
+        String actor,
+        ConversationTurnVO turn,
+        String question,
+        Consumer<String> stageListener,
+        Consumer<String> deltaListener
+    ) {
+        long started = System.nanoTime();
+        if (stageListener != null) stageListener.accept("verifying");
+        var documents = knowledge.readableScope(actor);
+        String fingerprint = scope(documents);
+        var page = orderQuery.mine(actor, null, 1, 3);
+        List<OrderReadModel> recent = page == null ? List.of() : page.items();
+        String summary;
+        if (recent.isEmpty()) {
+            summary = "您当前暂无订单记录。如需选购校园好物，可以直接告诉我预算或想要的品类，我会为您推荐并核实实时库存。";
+        } else {
+            StringBuilder sb = new StringBuilder("为您查到最近 ").append(recent.size()).append(" 笔订单实时进度：\n");
+            for (int idx = 0; idx < recent.size(); idx++) {
+                OrderReadModel o = recent.get(idx);
+                String titles = o
+                    .items()
+                    .stream()
+                    .map(i -> i.title() + "×" + i.quantity())
+                    .collect(Collectors.joining("、"));
+                String statusLabel = orderStatusLabel(o.status(), o.pickup() == null ? null : o.pickup().status());
+                sb.append(idx + 1)
+                    .append(". ")
+                    .append(titles)
+                    .append(" — ")
+                    .append(statusLabel);
+                if (o.pickup() != null && o.pickup().pickupCode() != null && !o.pickup().pickupCode().isBlank()) {
+                    sb.append("，取餐号：").append(o.pickup().pickupCode());
+                }
+                if (o.pickupStoreName() != null && !o.pickupStoreName().isBlank()) {
+                    sb.append("（自提点：").append(o.pickupStoreName());
+                    if (o.pickupLocation() != null && !o.pickupLocation().isBlank()) {
+                        sb.append(" · ").append(o.pickupLocation());
+                    }
+                    sb.append("）");
+                }
+                sb.append("\n");
+            }
+            sb.append("以上为服务端实时只读状态；如需出示自提核销码或申请退款，请前往「我的订单」页面操作。");
+            summary = sb.toString();
+        }
+        if (deltaListener != null) deltaListener.accept(summary);
+        long latencyMs = Duration.ofNanos(System.nanoTime() - started).toMillis();
+        AiAnswerVO safe = new AiAnswerVO(summary, "LOCAL_RETRIEVAL_DEMO", "LOCAL_CHAR_NGRAM_DEMO", question, "", List.of(), List.of(), latencyMs);
+        ProposalVO proposal = turns.complete(
+            turn,
+            question,
+            summary,
+            List.of(),
+            List.of(),
+            clock.instant().plusSeconds(Math.max(1, Math.min(proposalMinutes, 30)) * 60),
+            fingerprint
+        );
+        return new ChatResult(turn.conversationId(), safe, proposal);
+    }
+
+    private String orderStatusLabel(String orderStatus, String pickupStatus) {
+        if ("PENDING_PAYMENT".equals(orderStatus)) return "待付款";
+        if ("CANCELED".equals(orderStatus)) return "已取消";
+        if ("REFUNDED".equals(orderStatus)) return "已退款";
+        if ("COMPLETED".equals(orderStatus)) return "已完成自提";
+        if ("PAID".equals(orderStatus)) {
+            if ("READY".equals(pickupStatus)) return "已备好，可凭取餐号/核销码到店自提";
+            if ("PREPARING".equals(pickupStatus)) return "商家正在备货中";
+            return "已付款，等待商家接单备货";
+        }
+        return orderStatus;
     }
 
     private void ensureTurnActive(String actor, String conversation) {

@@ -13,6 +13,8 @@ import cn.bugstack.ai.api.dto.PriceRequestDTO;
 import cn.bugstack.ai.api.dto.ProductImageUploadDTO;
 import cn.bugstack.ai.api.dto.ProductRequestDTO;
 import cn.bugstack.ai.api.dto.ProductResponseDTO;
+import cn.bugstack.ai.api.dto.ProductReviewResponseDTO;
+import cn.bugstack.ai.api.dto.ProductReviewSummaryResponseDTO;
 import cn.bugstack.ai.api.dto.PublishRequestDTO;
 import cn.bugstack.ai.api.dto.SkuRequestDTO;
 import cn.bugstack.ai.api.dto.SkuStatusRequestDTO;
@@ -20,8 +22,10 @@ import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.catalog.ICatalogCase;
 import cn.bugstack.ai.cases.catalog.ICatalogQueryCase;
 import cn.bugstack.ai.cases.catalog.model.ProductReadModel;
+import cn.bugstack.ai.cases.trading.IOrderQueryCase;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductCreateCommandEntity;
 import cn.bugstack.ai.domain.catalog.model.entity.ProductSkuEntity;
+import cn.bugstack.ai.domain.identity.adapter.port.ICampusRedisPort;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import cn.bugstack.ai.types.exception.AppException;
 import jakarta.annotation.Resource;
@@ -29,6 +33,9 @@ import java.security.Principal;
 import java.util.List;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -49,6 +56,12 @@ public class CatalogController implements ICatalogApi {
 
     @Resource
     private ICatalogQueryCase catalogQuery;
+
+    @Autowired(required = false)
+    private IOrderQueryCase orderQuery;
+
+    @Autowired(required = false)
+    private ICampusRedisPort redisHub;
 
     /** 公开商品搜索与分页。 */
     @Override
@@ -81,6 +94,9 @@ public class CatalogController implements ICatalogApi {
         @RequestParam(defaultValue = "NEWEST") String sort
     ) {
         return execute(() -> {
+            if (redisHub != null && q != null && !q.isBlank()) {
+                redisHub.recordSearchKeyword(q);
+            }
             var result = catalogQuery.publicPage(merchantId, q, category, minPriceCent, maxPriceCent, page, size, sort);
             return PageResponseDTO.of(products(result.items()), page, size, result.total());
         });
@@ -91,7 +107,31 @@ public class CatalogController implements ICatalogApi {
     @GetMapping("/products/{productId}")
     public Response<ProductResponseDTO> detail(@PathVariable("productId") String productId) {
         return execute(() -> {
-            return ApiViews.product(catalogQuery.detail(productId));
+            ProductResponseDTO dto = ApiViews.product(catalogQuery.detail(productId));
+            if (redisHub != null) {
+                Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+                if (auth != null && auth.isAuthenticated() && auth.getName() != null && !"anonymousUser".equals(auth.getName())) {
+                    redisHub.recordFootprint(auth.getName(), productId);
+                }
+            }
+            return dto;
+        });
+    }
+
+    /** 公开查询商品真实买家评价汇总。 */
+    @Override
+    @GetMapping("/products/{productId}/reviews")
+    public Response<ProductReviewSummaryResponseDTO> reviews(@PathVariable("productId") String productId, @RequestParam(defaultValue = "20") int limit) {
+        return execute(() -> {
+            var rows = orderQuery == null ? List.<cn.bugstack.ai.domain.trading.model.valobj.OrderReviewVO>of() : orderQuery.productReviews(productId, limit);
+            List<ProductReviewResponseDTO> items = rows.stream().map(ApiViews::review).toList();
+            double avg = items.isEmpty() ? 0.0 : Math.round(items.stream().mapToInt(ProductReviewResponseDTO::getRating).average().orElse(0.0) * 10.0) / 10.0;
+            return ProductReviewSummaryResponseDTO.builder()
+                .productId(productId)
+                .averageRating(avg)
+                .totalCount((long) items.size())
+                .items(items)
+                .build();
         });
     }
 

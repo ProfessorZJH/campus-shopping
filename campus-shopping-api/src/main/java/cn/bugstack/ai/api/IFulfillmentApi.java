@@ -15,4 +15,6 @@ public interface IFulfillmentApi {
     Response<TokenResponseDTO> token(String orderId, Principal principal);
     /** 店员单次核销，订单完成和库存出库原子提交。 */
     Response<OrderResponseDTO> verify(String merchantId, String orderId, VerifyPickupRequestDTO request, Principal principal);
+    /** 商户快捷核销：支持 6 位核销码或 CS1 二维码扫码，内置防爆破锁定。 */
+    Response<OrderResponseDTO> quickVerify(String merchantId, VerifyPickupRequestDTO request, Principal principal);
 }

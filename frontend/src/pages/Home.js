@@ -20,6 +20,8 @@ import {
   publicSearchCurrent,
 } from '../services/store.js';
 const { ref, computed, onMounted } = Vue;
+const DEFAULT_KEYWORDS = ['乌龙茶', '泡面', '纯牛奶', '果切', '中性笔', '抽纸'];
+const HISTORY_STORAGE_KEY = 'campus_search_history_v1';
 const staticCategoryArt = {
   food: './images/category-snacks.webp',
   drink: './images/category-drinks.webp',
@@ -30,13 +32,33 @@ const staticCategoryArt = {
   dormitory: './images/category-daily.webp',
   digital: './images/category-digital.webp',
 };
+
+function readSearchHistory() {
+  try {
+    const raw = window.localStorage?.getItem(HISTORY_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed)
+      ? parsed.filter((x) => typeof x === 'string' && x.trim()).slice(0, 6)
+      : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeSearchHistory(list) {
+  try {
+    window.localStorage?.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list.slice(0, 6)));
+  } catch {}
+}
+
 export default {
   name: 'Home',
   components: { ConsumerShell, ProductImage, UiPagination, StatusPanel },
   setup() {
     const scope = requestScope();
     const initialScope = requestScope();
-    const keywords = ['泡面', '牛奶', '水果', '文具', '纸巾', '零食'];
+    const discovery = ref(null);
+    const searchHistory = ref(readSearchHistory());
     const search = ref('');
     const category = ref('');
     const merchant = ref('');
@@ -51,6 +73,26 @@ export default {
     const chosenSku = ref('');
     const count = ref(1);
     const saving = ref(false);
+    const keywords = computed(() =>
+      discovery.value?.hotKeywords?.length ? discovery.value.hotKeywords : DEFAULT_KEYWORDS,
+    );
+    const discoveryShelf = computed(() => {
+      if (preview) return [];
+      const seen = new Set();
+      const merged = [];
+      for (const list of [
+        discovery.value?.hotProducts || [],
+        discovery.value?.recommendedProducts || [],
+      ]) {
+        for (const item of list) {
+          if (!item?.productId || seen.has(item.productId) || item.status !== 'PUBLISHED') continue;
+          seen.add(item.productId);
+          merged.push(item);
+          if (merged.length >= 8) return merged;
+        }
+      }
+      return merged;
+    });
     const categories = computed(() => store.categories.filter((c) => c.active));
     const shops = computed(() => store.merchants.filter((m) => m.status === 'ACTIVE').slice(0, 6));
     const shown = computed(() => {
@@ -74,11 +116,62 @@ export default {
         arr = [...arr].sort(
           (a, b) => Number(priceSku(a).priceCent) - Number(priceSku(b).priceCent),
         );
+      if (preview && sort.value === 'priceDesc')
+        arr = [...arr].sort(
+          (a, b) => Number(priceSku(b).priceCent) - Number(priceSku(a).priceCent),
+        );
       if (preview && sort.value === 'stock')
         arr = [...arr].sort((a, b) => available(b) - available(a));
       return arr;
     });
-    onMounted(() => loadPublic({ signal: initialScope.begin().signal }));
+    function syncUrlQuery() {
+      if (preview || window.__CAMPUS_TEST_ROUTE__ || !location.protocol.startsWith('http')) return;
+      try {
+        const params = new URLSearchParams();
+        if (search.value.trim()) params.set('q', search.value.trim());
+        if (category.value) params.set('category', category.value);
+        const qs = params.toString();
+        const nextHash = qs ? '#/?' + qs : '#/';
+        if (location.hash !== nextHash) {
+          window.history.replaceState(null, '', location.pathname + location.search + nextHash);
+        }
+      } catch {}
+    }
+    function recordHistory(term) {
+      const clean = String(term || '').trim();
+      if (!clean) return;
+      const next = [clean, ...searchHistory.value.filter((x) => x !== clean)].slice(0, 6);
+      searchHistory.value = next;
+      writeSearchHistory(next);
+    }
+    function clearSearchHistory() {
+      searchHistory.value = [];
+      writeSearchHistory([]);
+    }
+    onMounted(() => {
+      const initReq = initialScope.begin();
+      const rawHash = window.__CAMPUS_TEST_ROUTE__ ? '' : location.hash || '';
+      const qIdx = rawHash.indexOf('?');
+      if (!preview && qIdx >= 0) {
+        const params = new URLSearchParams(rawHash.slice(qIdx + 1));
+        const initQ = params.get('q') || '';
+        const initCat = params.get('category') || '';
+        if (initQ) search.value = initQ;
+        if (initCat) category.value = initCat;
+      }
+      if (!preview) {
+        api('/discovery/home', { signal: initReq.signal })
+          .then((res) => {
+            if (initReq.current() && res) discovery.value = res;
+          })
+          .catch(() => {});
+      }
+      loadPublic({ signal: initReq.signal }).then(() => {
+        if (initReq.current() && !preview && (search.value.trim() || category.value)) {
+          loadSearch();
+        }
+      });
+    });
     const pageInfo = computed(() => store.publicPage);
     const priceActive = computed(() => appliedMin.value != null || appliedMax.value != null);
     const hasActiveSearch = computed(() =>
@@ -98,6 +191,13 @@ export default {
     const productCategory = (p) =>
       store.categories.find((c) => c.code === p.categoryCode)?.name || '好物';
     const currentShop = (p) => store.merchants.find((m) => m.merchantId === p.merchantId) || {};
+    function resolveSortEnum(value) {
+      if (value === 'sales') return 'SALES_DESC';
+      if (value === 'price') return 'PRICE_ASC';
+      if (value === 'priceDesc') return 'PRICE_DESC';
+      if (value === 'stock') return 'STOCK_DESC';
+      return 'NEWEST';
+    }
     async function retryLoad() {
       if (preview) return;
       if (hasActiveSearch.value) {
@@ -121,7 +221,9 @@ export default {
       }
       return loadPublic({ signal: initialScope.begin().signal });
     }
-    async function loadSearch() {
+    async function loadSearch({ syncUrl = false } = {}) {
+      if (syncUrl) syncUrlQuery();
+      if (search.value.trim()) recordHistory(search.value);
       if (preview) return;
       const request = scope.begin();
       const current = request.current;
@@ -134,8 +236,7 @@ export default {
         maxPriceCent: appliedMax.value,
         page: page.value,
         size: 20,
-        sort:
-          sort.value === 'price' ? 'PRICE_ASC' : sort.value === 'stock' ? 'STOCK_DESC' : 'NEWEST',
+        sort: resolveSortEnum(sort.value),
       };
       store.loading = true;
       store.error = '';
@@ -158,12 +259,16 @@ export default {
     function setCategory(c) {
       category.value = category.value === c ? '' : c;
       page.value = 1;
-      loadSearch();
+      loadSearch({ syncUrl: true });
     }
     function applyKeyword(word) {
       search.value = word;
       page.value = 1;
-      loadSearch();
+      loadSearch({ syncUrl: true });
+    }
+    function submitSearch() {
+      page.value = 1;
+      loadSearch({ syncUrl: true });
     }
     /** 卡片在有价格筛选时展示命中区间的最低有效规格，不能把区间外的最低价当作结果。 */
     function cardSku(p) {
@@ -225,7 +330,7 @@ export default {
       appliedMax.value = null;
       priceError.value = '';
       page.value = 1;
-      loadSearch();
+      loadSearch({ syncUrl: true });
     }
     function showDetail(p) {
       selected.value = p;
@@ -278,6 +383,10 @@ export default {
       shopName,
       preview,
       keywords,
+      discoveryShelf,
+      searchHistory,
+      clearSearchHistory,
+      hasActiveSearch,
       search,
       category,
       merchant,
@@ -303,6 +412,7 @@ export default {
       staticCategoryArt,
       loadPublic,
       loadSearch,
+      submitSearch,
       retryLoad,
       setCategory,
       applyKeyword,
@@ -323,8 +433,9 @@ export default {
           <div class="home-discovery-sub">跨店比价、按预算筛选，下单后凭动态码到店即取</div>
         </div>
         <div class="search-section">
-          <div class="big-search"><Icon name="search" :size="19"/><input v-model="search" placeholder="搜零食、饮料、文具、台灯或校内门店" aria-label="搜索校园商品" @keydown.enter="page=1;loadSearch()"/><button @click="page=1;loadSearch()">搜索</button></div>
+          <div class="big-search"><Icon name="search" :size="19"/><input v-model="search" placeholder="搜零食、饮料、文具、台灯或校内门店" aria-label="搜索校园商品" @keydown.enter="submitSearch"/><button @click="submitSearch">搜索</button></div>
           <div class="popular-tags"><button v-for="k in keywords" :key="k" @click="applyKeyword(k)" :class="{active:search===k}">{{k}}</button></div>
+          <div v-if="searchHistory.length" class="search-history-row"><span class="search-history-label">最近搜过</span><button type="button" v-for="h in searchHistory" :key="h" class="search-history-chip" @click="applyKeyword(h)">{{h}}</button><button type="button" class="search-history-clear" @click="clearSearchHistory">清空</button></div>
         </div>
         <div class="home-trust-strip">
           <span><Icon name="check" :size="13"/> 真实校内门店</span>
@@ -340,6 +451,15 @@ export default {
     <section class="category-section" aria-label="商品分类">
       <button v-for="c in categories" :key="c.code" class="category-item" @click="setCategory(c.code)" :class="{categoryActive:category===c.code}"><span class="category-picture"><img :src="staticCategoryArt[c.code]||'./images/category-snacks.webp'" :alt="c.name"/></span><strong>{{c.name}}</strong></button>
     </section>
+    <section v-if="discoveryShelf.length && !hasActiveSearch" class="discovery-shelf" aria-label="校园实时热销与猜你喜欢">
+      <div class="section-head"><div class="section-title"><span class="head-accent hot"><Icon name="flame" :size="17"/></span><h2>🔥 校园实时热销 · 猜你喜欢</h2></div><span class="tiny-note">Redis 实时热度与校园共购推荐</span></div>
+      <div class="discovery-shelf-track">
+        <button type="button" class="discovery-shelf-card" v-for="p in discoveryShelf" :key="p.productId" @click="showDetail(p)">
+          <div class="discovery-shelf-photo"><ProductImage :src="p.imageUrl" :alt="p.title"/></div>
+          <div class="discovery-shelf-info"><strong>{{p.title}}</strong><small>{{p.merchantStoreName||p.merchantName||'校内门店'}}</small><b>{{money(cardSku(p)?.priceCent)}}</b></div>
+        </button>
+      </div>
+    </section>
     <section class="merchant-section">
       <div class="section-head"><div class="section-title"><span class="head-accent mint"><Icon name="store" :size="18"/></span><h2>校内门店</h2></div><span class="tiny-note">点选门店筛选现货，或进店浏览</span></div>
       <div class="merchant-cards"><button class="merchant-card" v-for="(m,idx) in shops" :key="m.merchantId" @click="merchant=merchant===m.merchantId?'':m.merchantId;page=1;loadSearch()" :class="{active:merchant===m.merchantId}">
@@ -352,7 +472,7 @@ export default {
       <div v-if="merchant" class="merchant-filter-bar"><span>已选门店：{{shopName(merchant)}}</span><div class="merchant-filter-actions"><button type="button" class="shop-visit-link" @click="go('/shops/'+pathId(merchant))">进店逛逛 <Icon name="chevronRight" :size="13"/></button><button type="button" @click="merchant='';page=1;loadSearch()">清除筛选 <Icon name="x" :size="13" /></button></div></div>
     </section>
     <section class="reco-section">
-      <div class="section-head reco-heading"><div class="section-title"><span class="head-accent mint"><Icon name="sparkles" :size="18"/></span><h2>在售好物</h2></div><div class="sort-tabs"><button :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button><button :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">库存</button><button :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">价格</button></div></div>
+      <div class="section-head reco-heading"><div class="section-title"><span class="head-accent mint"><Icon name="sparkles" :size="18"/></span><h2>在售好物</h2></div><div class="sort-tabs"><button :class="{active:sort==='popular'}" @click="sort='popular';page=1;loadSearch()">最新</button><button :class="{active:sort==='sales'}" @click="sort='sales';page=1;loadSearch()">热销优先</button><button :class="{active:sort==='stock'}" @click="sort='stock';page=1;loadSearch()">库存</button><button :class="{active:sort==='price'}" @click="sort='price';page=1;loadSearch()">价格</button><button :class="{active:sort==='priceDesc'}" @click="sort='priceDesc';page=1;loadSearch()">价格从高到低</button></div></div>
       <div class="price-filter" aria-label="价格筛选"><span class="price-filter-label">价格区间</span><input v-model="priceMin" inputmode="decimal" placeholder="最低" aria-label="最低价（元）" @keydown.enter="applyPrice"/><span>—</span><input v-model="priceMax" inputmode="decimal" placeholder="最高" aria-label="最高价（元）" @keydown.enter="applyPrice"/><button class="outline-button" @click="applyPrice">应用</button><button v-if="priceActive" @click="clearPrice">清除价格</button><button class="price-filter-reset" @click="resetFilters">重置筛选</button></div>
       <div v-if="priceError" class="inline-error price-filter-error" role="alert"><Icon name="alert" :size="16"/>{{priceError}}</div>
       <StatusPanel v-if="store.loading" state="loading" message="正在加载"/>

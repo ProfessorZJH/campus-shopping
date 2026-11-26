@@ -14,6 +14,7 @@ interface Recommendation {
   imageUrl?: string;
   product?: { imageUrl?: string };
   detailAvailable?: boolean;
+  reason?: string;
 }
 defineProps<{
   items: Recommendation[];
@@ -81,6 +82,7 @@ defineEmits<{
             >{{ item.specKey
             }}<template v-if="(item.quantity || 1) > 1"> × {{ item.quantity }}</template></small
           >
+          <div v-if="item.reason" class="rec-item-reason">{{ item.reason }}</div>
           <button
             class="rec-detail-link"
             type="button"

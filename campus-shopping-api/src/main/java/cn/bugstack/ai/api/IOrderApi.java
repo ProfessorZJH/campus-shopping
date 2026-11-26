@@ -26,9 +26,11 @@ public interface IOrderApi {
         Principal principal
     );
     /** 本人模拟支付，不产生真实资金。 */
-    Response<OrderResponseDTO> pay(String orderId, Principal principal);
+    Response<OrderResponseDTO> pay(String orderId, String channel, Principal principal);
     /** 取消本人未付款订单并释放预占。 */
     Response<OrderResponseDTO> cancel(String orderId, Principal principal);
+    /** 已完成订单提交真实商品评价（每单一次）。 */
+    Response<List<ProductReviewResponseDTO>> submitReview(String orderId, OrderReviewRequestDTO request, Principal principal);
     /** Owner 经营统计。 */
     Response<StatisticsResponseDTO> merchantStatistics(String merchantId, Principal principal);
     Response<OperationsStatisticsResponseDTO> merchantOperationsStatistics(String merchantId, int periodDays, String to, Principal principal);

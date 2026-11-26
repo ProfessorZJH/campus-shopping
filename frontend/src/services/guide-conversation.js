@@ -129,6 +129,7 @@ export function createGuideConversationTransport({
     onConversationId,
     onStage,
     onProgress,
+    onDelta,
     onCompleted,
     onCancelled,
   }) {
@@ -149,6 +150,9 @@ export function createGuideConversationTransport({
           onStage?.(String(payload?.data?.stage || payload?.stage || ''));
         } else if (event === 'progress') {
           onProgress?.(Number(payload?.data?.bytes || payload?.bytes || 0));
+        } else if (event === 'delta') {
+          const chunk = String(payload?.data?.text ?? payload?.text ?? '');
+          if (chunk) onDelta?.(chunk);
         } else if (event === 'completed') {
           completed = true;
           await onCompleted?.(payload?.data);

@@ -13,4 +13,5 @@ public class PickupResponseDTO {
 
     private String status;
     private Instant expiresAt;
+    private String pickupCode;
 }

@@ -52,6 +52,19 @@ def observed(operation):
     return decorate
 
 
+def record_embedding_cache(hits: int = 0, misses: int = 0):
+    with lock:
+        if hits:
+            counts["embedding.cache_hits"] += hits
+        if misses:
+            counts["embedding.cache_misses"] += misses
+
+
+def embedding_cache_hits() -> int:
+    with lock:
+        return int(counts.get("embedding.cache_hits", 0))
+
+
 def diagnostics():
     with lock:
         return dict(counts)

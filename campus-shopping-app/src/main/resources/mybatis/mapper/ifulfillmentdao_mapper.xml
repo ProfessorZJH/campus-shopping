@@ -4,11 +4,14 @@
     <select id="pickup" resultType="cn.bugstack.ai.infrastructure.dao.po.PickupPO">
 SELECT * FROM ful_pickup_task WHERE order_id=#{order}<if test="lock"> FOR UPDATE</if>
     </select>
+    <select id="findReadyByMerchantAndPinHash" resultType="cn.bugstack.ai.infrastructure.dao.po.PickupPO">
+SELECT * FROM ful_pickup_task WHERE merchant_id=#{merchant} AND status='READY' AND pin_hash=#{pinHash} LIMIT 1
+    </select>
     <insert id="insert">
-INSERT INTO ful_pickup_task(id,order_id,merchant_id,store_id,buyer_id,status) VALUES(#{p.id},#{p.orderId},#{p.merchantId},#{p.storeId},#{p.buyerId},#{p.status})
+INSERT INTO ful_pickup_task(id,order_id,merchant_id,store_id,buyer_id,status,pickup_code) VALUES(#{p.id},#{p.orderId},#{p.merchantId},#{p.storeId},#{p.buyerId},#{p.status},#{p.pickupCode})
     </insert>
     <update id="save">
-UPDATE ful_pickup_task SET status=#{p.status},credential_hash=#{p.credentialHash},expires_at=#{p.expiresAt} WHERE id=#{p.id}
+UPDATE ful_pickup_task SET status=#{p.status},credential_hash=#{p.credentialHash},expires_at=#{p.expiresAt},pickup_code=#{p.pickupCode},pin_hash=#{p.pinHash} WHERE id=#{p.id}
     </update>
     <select id="list" resultType="cn.bugstack.ai.infrastructure.dao.po.PickupPO">
 SELECT * FROM ful_pickup_task WHERE merchant_id=#{merchant} <if test="status != null and status != ''">AND status=#{status}</if> ORDER BY id DESC LIMIT #{limit} OFFSET #{offset}

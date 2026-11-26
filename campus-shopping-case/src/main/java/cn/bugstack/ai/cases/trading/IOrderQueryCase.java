@@ -24,4 +24,8 @@ public interface IOrderQueryCase {
     long countMerchantAfterSales(String actor, String merchant, String state);
     java.util.List<cn.bugstack.ai.domain.trading.model.valobj.AfterSaleVO> platformAfterSales(String actor, String state, int page, int size);
     long countPlatformAfterSales(String actor, String state);
+
+    default java.util.List<cn.bugstack.ai.domain.trading.model.valobj.OrderReviewVO> productReviews(String productId, int limit) {
+        return java.util.List.of();
+    }
 }

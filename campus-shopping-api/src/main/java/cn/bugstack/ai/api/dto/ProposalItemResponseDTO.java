@@ -22,4 +22,5 @@ public class ProposalItemResponseDTO {
     private Integer quantity;
     private Boolean detailAvailable;
     private String detailUnavailableReason;
+    private String reason;
 }

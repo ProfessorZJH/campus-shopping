@@ -100,6 +100,7 @@ public class AiStreamEndpoint {
                     send(emitter, clientGone, "started", envelope(conversationId, "FULL_RESPONSE", null, null));
                 },
                 stage -> send(emitter, clientGone, "stage", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("stage", stage), null)),
+                delta -> send(emitter, clientGone, "delta", envelope(activeConversationId.get(), "STREAMING", Map.of("text", delta), null)),
                 bytes -> send(emitter, clientGone, "progress", envelope(activeConversationId.get(), "FULL_RESPONSE", Map.of("bytes", bytes), null))
             );
             send(emitter, clientGone, "completed", envelope(result.conversationId(), "FULL_RESPONSE", response(result), null));
@@ -181,6 +182,7 @@ public class AiStreamEndpoint {
                             .quoteVersion(item.quoteVersion())
                             .quantity(item.quantity())
                             .detailAvailable(true)
+                            .reason(item.reason() == null ? "" : item.reason())
                             .build()
                     )
                     .toList()

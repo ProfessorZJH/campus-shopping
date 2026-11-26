@@ -36,7 +36,8 @@ public class AfterSaleController implements IAfterSaleApi {
     @PostMapping("/orders/{orderId}/refunds")
     public Response<AfterSaleResponseDTO> requestRefund(@PathVariable("orderId") String orderId, @RequestBody RefundRequestDTO request, Principal principal) {
         return execute(() -> {
-            return ApiViews.afterSale(lifecycle.requestRefund(actor(principal), orderId, required(request).getReason()));
+            required(request);
+            return ApiViews.afterSale(lifecycle.requestRefund(actor(principal), orderId, request.getReason(), request.getEvidenceImageUrl()));
         });
     }
 

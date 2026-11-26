@@ -18,7 +18,7 @@ checks = {
     'checkout snapshot': ('campus-shopping-case/src/main/java/cn/bugstack/ai/cases/trading/impl/CheckoutCaseImpl.java', 'o.imageUrl()'),
     'order DTO': ('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/ApiViews.java', '.imageUrl(i.imageUrl())'),
     'cart DTO': ('campus-shopping-trigger/src/main/java/cn/bugstack/ai/trigger/http/ApiViews.java', '.imageUrl(offer.imageUrl())'),
-    'AI proposal': ('campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/ShoppingAiCaseImpl.java', 'o.imageUrl()'),
+    'AI proposal': ('campus-shopping-case/src/main/java/cn/bugstack/ai/cases/shoppingai/impl/CandidateResolver.java', 'o.imageUrl()'),
 }
 for label, (file, token) in checks.items():
     assert token in (ROOT / file).read_text(encoding='utf-8'), f'{label}: {token} missing'

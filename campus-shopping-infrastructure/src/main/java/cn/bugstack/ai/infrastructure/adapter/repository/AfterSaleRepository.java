@@ -44,6 +44,7 @@ public class AfterSaleRepository implements IAfterSaleRepository {
                 .reason(a.reason())
                 .decisionReason(a.decisionReason())
                 .createdAt(a.createdAt())
+                .evidenceImageUrl(a.evidenceImageUrl() == null ? "" : a.evidenceImageUrl())
                 .build()
         );
     }
@@ -67,7 +68,8 @@ public class AfterSaleRepository implements IAfterSaleRepository {
                   p.getStatus(),
                   p.getReason(),
                   p.getDecisionReason(),
-                  p.getCreatedAt()
+                  p.getCreatedAt(),
+                  p.getEvidenceImageUrl() == null ? "" : p.getEvidenceImageUrl()
               );
     }
 }

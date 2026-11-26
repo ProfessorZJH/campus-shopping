@@ -41,4 +41,20 @@ public interface ICatalogReadService {
     List<SkuOfferVO> offers(List<String> skuIds);
 
     List<CategoryVO> categories();
+
+    default void addFavorite(String userId, String productId) {}
+
+    default void removeFavorite(String userId, String productId) {}
+
+    default List<String> favoriteProductIds(String userId, int limit) {
+        return List.of();
+    }
+
+    default boolean isFavorited(String userId, String productId) {
+        return false;
+    }
+
+    default List<ProductAggregate> publicByIds(List<String> ids) {
+        return List.of();
+    }
 }

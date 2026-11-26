@@ -1,10 +1,12 @@
 package cn.bugstack.ai.config;
 
 import cn.bugstack.ai.api.response.Response;
+import cn.bugstack.ai.domain.identity.adapter.port.ICampusRedisPort;
 import cn.bugstack.ai.domain.identity.service.IUserAccountService;
 import cn.bugstack.ai.infrastructure.config.ProductImageStorageProperties;
 import cn.bugstack.ai.trigger.http.AccountStatusFilter;
 import cn.bugstack.ai.trigger.http.AuthenticationRateFilter;
+import cn.bugstack.ai.trigger.http.PublicAntiCrawlerFilter;
 import cn.bugstack.ai.trigger.http.RequestBodyLimitFilter;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +15,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -71,7 +74,8 @@ public class SessionSecurityConfig {
         ObjectMapper mapper,
         cn.bugstack.ai.domain.identity.adapter.repository.IRequestQuotaRepository quotas,
         ProductImageStorageProperties images,
-        cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy publicHttpPolicy
+        cn.bugstack.ai.infrastructure.config.QiniuPublicHttpPolicy publicHttpPolicy,
+        ObjectProvider<ICampusRedisPort> redisHubProvider
     ) throws Exception {
         return http
             .securityContext(s -> s.securityContextRepository(repository).requireExplicitSave(true))
@@ -107,6 +111,9 @@ public class SessionSecurityConfig {
                         "/api/v1/auth/csrf",
                         "/api/v1/products",
                         "/api/v1/products/*",
+                        "/api/v1/products/*/reviews",
+                        "/api/v1/products/*/recommendations",
+                        "/api/v1/discovery/home",
                         "/api/v1/categories",
                         "/api/v1/merchants/public",
                         "/api/v1/merchants/public/page",
@@ -129,6 +136,7 @@ public class SessionSecurityConfig {
             )
             .addFilterBefore(new RequestBodyLimitFilter(mapper), CsrfFilter.class)
             .addFilterBefore(new AuthenticationRateFilter(mapper, rateLimitEnabled, quotas), CsrfFilter.class)
+            .addFilterBefore(new PublicAntiCrawlerFilter(mapper, rateLimitEnabled, quotas, redisHubProvider.getIfAvailable()), AuthorizationFilter.class)
             .addFilterBefore(new AccountStatusFilter(accountService, sessionLogoutHandler, mapper), AuthorizationFilter.class)
             .addFilterAfter(new cn.bugstack.ai.trigger.http.ProtectedQuotaFilter(quotas, mapper, rateLimitEnabled), AuthorizationFilter.class)
             .build();

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "schemaFingerprint": "bdcf5727947149d744c981d2aef68e20c353e8eb250d3413782bcd5b2094290f",
+  "schemaFingerprint": "9233d6e7cf8c9ae57929c5a8a063430f6978512aeebe4012fb8befedd882e4b6",
   "migrations": [
     {
       "version": "V20261028_01",
@@ -106,6 +106,11 @@
       "version": "V20261125_01",
       "file": "V20261125_01__stage2_query_and_lock_indexes.sql",
       "sha256": "1daa37ca27629dd1ed662abb1c6f3026fd0c9df90920eb02f4b6e1866d02659a"
+    },
+    {
+      "version": "V20261126_01",
+      "file": "V20261126_01__commerce_rituals_reviews_and_favorites.sql",
+      "sha256": "5b9a3af2901ecb17d10679546b9086084fc16cca67fa7ce831f415b484b1839b"
     }
   ]
 }

@@ -7,4 +7,8 @@ import java.util.*;
 /** 单商户订单创建与全部库存预占的原子用例。 */
 public interface ICheckoutCase {
     OrderReadModel checkout(String buyer, String merchant, List<CheckoutItemEntity> items, String requestKey);
+
+    default OrderReadModel checkout(String buyer, String merchant, List<CheckoutItemEntity> items, String requestKey, String buyerRemark, String pickupSlot) {
+        return checkout(buyer, merchant, items, requestKey);
+    }
 }

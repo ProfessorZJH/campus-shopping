@@ -55,7 +55,39 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService, IOrd
         List<OrderItemEntity> items,
         Instant deadline
     ) {
-        OrderAggregate o = new OrderAggregate(id, buyer, merchant, store, pickupStoreName, pickupLocation, items, "PENDING_PAYMENT", deadline, clock.instant());
+        return create(id, buyer, merchant, store, pickupStoreName, pickupLocation, "", "IMMEDIATE", items, deadline);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public OrderAggregate create(
+        String id,
+        String buyer,
+        String merchant,
+        String store,
+        String pickupStoreName,
+        String pickupLocation,
+        String buyerRemark,
+        String pickupSlot,
+        List<OrderItemEntity> items,
+        Instant deadline
+    ) {
+        OrderAggregate o = new OrderAggregate(
+            id,
+            buyer,
+            merchant,
+            store,
+            pickupStoreName,
+            pickupLocation,
+            buyerRemark,
+            pickupSlot,
+            "",
+            "",
+            items,
+            "PENDING_PAYMENT",
+            deadline,
+            clock.instant()
+        );
         repository.insert(o);
         return o;
     }
@@ -170,5 +202,26 @@ public class OrderServiceImpl implements IOrderService, IOrderQueryService, IOrd
 
     public OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone) {
         return repository.operationsStatistics(merchant, start, end, asOf, timezone);
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void insertReview(OrderReviewVO review) {
+        repository.insertReview(review);
+    }
+
+    @Override
+    public boolean hasOrderReviews(String orderId) {
+        return repository.hasOrderReviews(orderId);
+    }
+
+    @Override
+    public List<OrderReviewVO> reviewsByProduct(String productId, int limit) {
+        return repository.reviewsByProduct(text(productId, "商品编号", 64), limit);
+    }
+
+    @Override
+    public Set<String> reviewedOrderIds(List<String> orderIds) {
+        return repository.reviewedOrderIds(orderIds);
     }
 }

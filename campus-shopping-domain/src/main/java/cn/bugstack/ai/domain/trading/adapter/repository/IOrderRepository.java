@@ -37,6 +37,20 @@ public interface IOrderRepository {
     TradingStatsVO statistics(String merchant);
     OperationsStatisticsVO operationsStatistics(String merchant, Instant start, Instant end, Instant asOf, String timezone);
 
+    default void insertReview(OrderReviewVO review) {}
+
+    default List<OrderReviewVO> reviewsByProduct(String productId, int limit) {
+        return List.of();
+    }
+
+    default Set<String> reviewedOrderIds(List<String> orderIds) {
+        return Set.of();
+    }
+
+    default boolean hasOrderReviews(String orderId) {
+        return false;
+    }
+
     /** 多实例下协调逾期关单扫描，避免同批行锁争抢；无分布式锁时直接执行。 */
     default boolean coordinateExpiryScan(Runnable task) {
         task.run();

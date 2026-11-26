@@ -15,11 +15,11 @@ OWNERS = {'IAccessDao': 'iam_', 'IUserAccountDao': 'iam_', 'IAiDao': 'ai_',
           'IMerchantDao': 'mer_', 'IMerchantApplicationDao': 'mer_', 'IAgentRunDao': 'ai_'}
 # 同库单体的明确只读投影。新增跨域表必须说明业务目的并修改此白名单。
 READS = {
-    ('ICatalogQueryDao', 'search'): {'mer_merchant', 'inv_stock_balance'},
+    ('ICatalogQueryDao', 'search'): {'mer_merchant', 'inv_stock_balance', 'trd_order_item', 'trd_order'},
     ('ICatalogQueryDao', 'count'): {'mer_merchant'},
     ('ICatalogQueryDao', 'recall'): {'mer_merchant'},
     ('ICatalogQueryDao', 'publicByIds'): {'mer_merchant'},
-    ('ICatalogQueryDao', 'searchManaged'): {'inv_stock_balance'},
+    ('ICatalogQueryDao', 'searchManaged'): {'inv_stock_balance', 'trd_order_item', 'trd_order'},
     ('ITradingDao', 'ordersByPickupState'): {'ful_pickup_task'},
     ('ITradingDao', 'countOrdersByPickupState'): {'ful_pickup_task'},
     ('ITradingDao', 'statisticsProducts'): {'cat_product', 'cat_sku'},

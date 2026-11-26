@@ -13,7 +13,8 @@ import java.util.*;
  */
 public final class OrderAggregate {
 
-    private final String id, buyerId, merchantId, storeId, pickupStoreName, pickupLocation;
+    private final String id, buyerId, merchantId, storeId, pickupStoreName, pickupLocation, buyerRemark, pickupSlot;
+    private String paymentChannel, paymentTradeNo;
     private final List<OrderItemEntity> items;
     private final long totalCent;
     private final Instant deadline, createdAt;
@@ -30,7 +31,7 @@ public final class OrderAggregate {
         Instant deadline,
         Instant createdAt
     ) {
-        this(id, buyerId, merchantId, storeId, "", "", items, status, deadline, createdAt);
+        this(id, buyerId, merchantId, storeId, "", "", "", "IMMEDIATE", "", "", items, status, deadline, createdAt);
     }
 
     public OrderAggregate(
@@ -45,12 +46,36 @@ public final class OrderAggregate {
         Instant deadline,
         Instant createdAt
     ) {
+        this(id, buyerId, merchantId, storeId, pickupStoreName, pickupLocation, "", "IMMEDIATE", "", "", items, status, deadline, createdAt);
+    }
+
+    public OrderAggregate(
+        String id,
+        String buyerId,
+        String merchantId,
+        String storeId,
+        String pickupStoreName,
+        String pickupLocation,
+        String buyerRemark,
+        String pickupSlot,
+        String paymentChannel,
+        String paymentTradeNo,
+        List<OrderItemEntity> items,
+        String status,
+        Instant deadline,
+        Instant createdAt
+    ) {
         this.id = text(id, "订单ID", 64);
         this.buyerId = text(buyerId, "买家ID", 64);
         this.merchantId = text(merchantId, "商户ID", 64);
         this.storeId = text(storeId, "门店ID", 64);
         this.pickupStoreName = optional(pickupStoreName, 100);
         this.pickupLocation = optional(pickupLocation, 200);
+        this.buyerRemark = optional(buyerRemark, 200);
+        String cleanSlot = optional(pickupSlot, 64);
+        this.pickupSlot = cleanSlot.isEmpty() ? "IMMEDIATE" : cleanSlot;
+        this.paymentChannel = optional(paymentChannel, 24);
+        this.paymentTradeNo = optional(paymentTradeNo, 64);
         require(items != null && !items.isEmpty() && items.size() <= 20, ResponseCode.ILLEGAL_PARAMETER);
         Set<String> seen = new HashSet<>();
         long total = 0;
@@ -81,9 +106,17 @@ public final class OrderAggregate {
      * 已支付/完成的重复付款返回原状态，退款或取消后不能再付款。
      */
     public boolean pay(Instant now) {
+        return pay(now, "WECHAT_PAY", "");
+    }
+
+    public boolean pay(Instant now, String channel, String tradeNo) {
         if (status == OrderStatusEnumVO.PAID || status == OrderStatusEnumVO.COMPLETED) return false;
         require(status == OrderStatusEnumVO.PENDING_PAYMENT, ResponseCode.ORDER_STATE_INVALID);
         require(now.isBefore(deadline), ResponseCode.ORDER_EXPIRED);
+        String normalizedChannel = channel == null || channel.isBlank() ? "WECHAT_PAY" : channel.trim().toUpperCase(Locale.ROOT);
+        require(Set.of("WECHAT_PAY", "ALIPAY", "CAMPUS_CARD").contains(normalizedChannel), ResponseCode.ILLEGAL_PARAMETER);
+        this.paymentChannel = normalizedChannel;
+        this.paymentTradeNo = optional(tradeNo, 64);
         status = OrderStatusEnumVO.PAID;
         return true;
     }
@@ -133,6 +166,22 @@ public final class OrderAggregate {
 
     public String getPickupLocation() {
         return pickupLocation;
+    }
+
+    public String getBuyerRemark() {
+        return buyerRemark;
+    }
+
+    public String getPickupSlot() {
+        return pickupSlot;
+    }
+
+    public String getPaymentChannel() {
+        return paymentChannel;
+    }
+
+    public String getPaymentTradeNo() {
+        return paymentTradeNo;
     }
 
     public List<OrderItemEntity> getItems() {

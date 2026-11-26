@@ -141,6 +141,26 @@ public class CatalogRepository implements ICatalogRepository {
         dao.category(c, n, a);
     }
 
+    @Override
+    public void addFavorite(String userId, String productId) {
+        dao.addFavorite(userId, productId);
+    }
+
+    @Override
+    public void removeFavorite(String userId, String productId) {
+        dao.removeFavorite(userId, productId);
+    }
+
+    @Override
+    public List<String> favoriteProductIds(String userId, int limit) {
+        return dao.favoriteProductIds(userId, Math.max(1, Math.min(limit, 100)));
+    }
+
+    @Override
+    public boolean isFavorited(String userId, String productId) {
+        return dao.isFavorited(userId, productId) > 0;
+    }
+
     private ProductAggregate aggregate(ProductPO p, List<SkuPO> ss) {
         return new ProductAggregate(
             p.getId(),

@@ -61,6 +61,82 @@ public class DisplayCache {
         return value;
     }
 
+    /**
+     * 带空值哨兵与短单飞锁的展示读取：防止缓存穿透（缺失 ID 写入 15s 空哨兵）和热点击穿（Redisson 短 tryLock）。
+     */
+    public <T> T readWithNullSentinel(String key, int seconds, TypeReference<T> type, Supplier<T> loader) {
+        RedisClients redis = clients.getIfAvailable();
+        if (redis == null) return loader.get();
+        String fullKey = redis.namespace() + ":display:v1:" + key;
+        var bucket = redis.cache().<String>getBucket(fullKey, StringCodec.INSTANCE);
+        String data;
+        try {
+            data = bucket.get();
+        } catch (RuntimeException error) {
+            diagnostic();
+            return loader.get();
+        }
+        if ("__NULL__".equals(data)) return null;
+        if (data != null) {
+            try {
+                T cached = mapper.readValue(data, type);
+                if (cached != null) return cached;
+            } catch (com.fasterxml.jackson.core.JsonProcessingException error) {
+                diagnostic();
+                try {
+                    bucket.compareAndSet(data, null);
+                } catch (RuntimeException ignored) {
+                    diagnostic();
+                }
+            }
+        }
+        var lock = redis.cache().getLock(redis.namespace() + ":sf:v1:" + key);
+        boolean locked = false;
+        try {
+            locked = lock.tryLock(150, 3000, java.util.concurrent.TimeUnit.MILLISECONDS);
+            if (locked) {
+                String second = bucket.get();
+                if ("__NULL__".equals(second)) return null;
+                if (second != null) {
+                    try {
+                        T cached = mapper.readValue(second, type);
+                        if (cached != null) return cached;
+                    } catch (com.fasterxml.jackson.core.JsonProcessingException ignored) {
+                        diagnostic();
+                    }
+                }
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+        } catch (RuntimeException error) {
+            diagnostic();
+        }
+        try {
+            T value = loader.get();
+            try {
+                if (value == null) {
+                    bucket.setIfAbsent("__NULL__", Duration.ofSeconds(15));
+                } else {
+                    bucket.setIfAbsent(
+                        mapper.writeValueAsString(value),
+                        Duration.ofSeconds(seconds + ThreadLocalRandom.current().nextInt(Math.max(1, seconds / 5)))
+                    );
+                }
+            } catch (Exception error) {
+                diagnostic();
+            }
+            return value;
+        } finally {
+            if (locked) {
+                try {
+                    if (lock.isHeldByCurrentThread()) lock.unlock();
+                } catch (RuntimeException ignored) {
+                    diagnostic();
+                }
+            }
+        }
+    }
+
     public void evictAfterCommit(String key) {
         Runnable action = () -> {
             RedisClients redis = clients.getIfAvailable();

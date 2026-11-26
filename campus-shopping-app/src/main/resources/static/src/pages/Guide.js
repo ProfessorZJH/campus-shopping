@@ -9,10 +9,14 @@ import { createGuideConversationTransport } from '../services/guide-conversation
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
 const prompts = [
-  { label: '30元内夜宵', icon: 'clock', query: '30元以内，推荐几样适合复习时吃的夜宵' },
-  { label: '高蛋白零食', icon: 'sparkles', query: '想买点高蛋白的零食，有什么推荐？' },
-  { label: '复习清单', icon: 'book', query: '帮我列一个考试周的购物清单' },
-  { label: '找点好喝的', icon: 'cart', query: '推荐适合夏天喝的饮料' },
+  {
+    label: '无糖饮料+营业时间',
+    icon: 'clock',
+    query: '预算20元推荐无糖饮料，顺便问自提几点关门？',
+  },
+  { label: '30元内夜宵', icon: 'sparkles', query: '30元内配一套熬夜复习泡面零食加饮料' },
+  { label: '查我的订单进度', icon: 'order', query: '帮我看看我的订单备好货了吗？' },
+  { label: '宿舍常备抽纸牛奶', icon: 'cart', query: '推荐宿舍常备抽纸和牛奶' },
 ];
 export default {
   name: 'Guide',
@@ -38,6 +42,7 @@ export default {
     const proposalFeedback = ref('');
     const streamProgress = ref(0);
     const streamStage = ref('');
+    const streamingText = ref('');
     const reconnecting = ref(false);
     const cancelRequested = ref(false);
     let conversationEpoch = 0,
@@ -105,6 +110,7 @@ export default {
         reconnecting.value = false;
         cancelRequested.value = false;
         streamProgress.value = 0;
+        streamingText.value = '';
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
@@ -241,6 +247,7 @@ export default {
       thinking.value = true;
       streamProgress.value = 0;
       streamStage.value = 'recall';
+      streamingText.value = '';
       reconnecting.value = false;
       cancelRequested.value = false;
       activeStreamController = new AbortController();
@@ -265,14 +272,19 @@ export default {
           onProgress: (bytes) => {
             streamProgress.value = bytes;
           },
+          onDelta: (chunk) => {
+            streamingText.value += chunk;
+          },
           onCompleted: (answer) => {
             completed = true;
             streamStage.value = '';
+            streamingText.value = '';
             applyChatAnswer(answer, stamp);
           },
           onCancelled: () => {
             cancelled = true;
             cancelRequested.value = true;
+            streamingText.value = '';
           },
         });
         completed = result.completed;
@@ -306,6 +318,7 @@ export default {
         if (stamp === conversationEpoch) {
           thinking.value = false;
           cancelRequested.value = false;
+          streamingText.value = '';
         }
       }
     }
@@ -364,6 +377,7 @@ export default {
       reconnecting.value = false;
       cancelRequested.value = false;
       streamProgress.value = 0;
+      streamingText.value = '';
       openingConversation.value = false;
       historyOpen.value = false;
     }
@@ -500,6 +514,7 @@ export default {
       proposalFeedback,
       streamProgress,
       streamStage,
+      streamingText,
       reconnecting,
       cancelRequested,
       cancelTurn,
@@ -518,7 +533,7 @@ export default {
         <div class="ai-workspace-main">
           <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
           <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
-          <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :error="error"/>
+          <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :streaming-text="streamingText" :error="error"/>
           <div class="chat-composer-placeholder" aria-hidden="true"></div>
           <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：预算20元买两瓶无糖乌龙茶，几点可以自提？"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="19"/></button></form>
         </div>

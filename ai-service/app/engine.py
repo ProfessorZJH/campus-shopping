@@ -44,6 +44,18 @@ UNCERTAIN=(r'(?:['+DIGITS+r'\d]*[几多来余]|['+DIGITS+r'\d]+\s*[到至~-]\s*[
            r'|(?<!['+DIGITS+r'\d])[零〇一两三四五六七八九]\s*[零〇一两三四五六七八九]+(?!['+DIGITS+r'\d]))\s*')
 FOLLOWUP=re.compile(r'这个|那个|它|换一个|换一款|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的|这些')
 BUDGET_KEEP=re.compile(r'预算不变|原预算|按预算|看看预算|看预算|预算内')
+COMBO_INTENT=re.compile(r'搭配|套餐|组合|配一|再来|加上|和|以及|两样|几样')
+FAKE_EXEC_REASON=re.compile(r'已下单|已付款|已支付|已扣款|已退款|已自动')
+FAKE_EXEC_ANSWER=re.compile(r'已下单|已付款|已支付|已扣款|已退款|完成下单|完成支付|下单成功|支付成功|退款成功')
+
+
+def iter_answer_chunks(text: str, chunk_size: int = 16):
+    """将已校验的最终回答按固定字符窗口切分为平滑流式增量块，绝不泄露未校验原始输出。"""
+    if not text:
+        return
+    step = max(1, int(chunk_size))
+    for i in range(0, len(text), step):
+        yield text[i:i + step]
 
 def budget_intent(question: str) -> tuple[int|None,str]:
     from decimal import Decimal,InvalidOperation
@@ -130,18 +142,7 @@ def recall_terms(store: KnowledgeStore, question: str, history: list[dict]) -> d
     followup=bool(re.search(r'这个|那个|它|换一个|便宜点|便宜一些|更便宜|贵一点|还有别的|类似的',question) and previous)
     context=(' '.join(previous+[question]))[-2000:] if followup else question
     query=context
-    model_terms=[]
-    if store.settings.llm_key:
-        try:
-            result=store.provider.complete(RECALL_SYSTEM,{'question':question,'recentUserQuestions':previous})
-            rewritten=result.get('query')
-            if followup and isinstance(rewritten,str) and 0<len(rewritten)<=2000 and set(re.findall(r'\d+',rewritten))<=set(re.findall(r'\d+',context)):
-                query=rewritten
-            if isinstance(result.get('terms'),list):
-                model_terms=result['terms'][:8]
-        except Exception:
-            pass
-    # 无模型时采用透明的字面二元词召回；不把这条路径误称为语义向量召回。
+    # 先执行确定性字面锚点提取；清晰独立问句直接复用结果，避免不必要的首轮阻塞 LLM 调用。
     cleaned=re.sub(r'\d+(?:\.\d+)?\s*(?:元|块|瓶|盒|包|支|个|件|份)?',' ',context)
     cleaned=re.sub(r'[一二两三四五六七八九十]+\s*(?:瓶|盒|包|支|个|件|份)',' ',cleaned)
     for noise in ('帮我','给我','请问','有没有','我想','我要','推荐','买点','想买','购买','买','预算','以内','以下','不超过','适合','最好','便宜点','便宜一些','更便宜','贵一点','换一个','还有别的','一些','几个','一款','一个','点东西','随便','那个','这个','哪些','什么','怎么','可以','谢谢','的'):
@@ -151,6 +152,17 @@ def recall_terms(store: KnowledgeStore, question: str, history: list[dict]) -> d
         if len(word)<=20:local.append(word)
         if re.search(r'[\u3400-\u9fff]',word):
             local.extend(word[i:i+2] for i in range(len(word)-1))
+    model_terms=[]
+    if store.settings.llm_key and (followup or not local):
+        try:
+            result=store.provider.complete(RECALL_SYSTEM,{'question':question,'recentUserQuestions':previous})
+            rewritten=result.get('query')
+            if followup and isinstance(rewritten,str) and 0<len(rewritten)<=2000 and set(re.findall(r'\d+',rewritten))<=set(re.findall(r'\d+',context)):
+                query=rewritten
+            if isinstance(result.get('terms'),list):
+                model_terms=result['terms'][:8]
+        except Exception:
+            pass
     terms=[]
     # 保留原始问题的词面锚点，避免模型一次返回8个无关词使真实商品全部漏召回。
     for value in model_terms[:4]+local:
@@ -200,15 +212,33 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
     scores=reciprocal_rank_fusion(*rankings)
     for i, rank in semantic:
         scores[i]=scores.get(i,0)+reciprocal_rank_contribution(rank)
+    q_ngrams={query[j:j+k] for k in (3,2) for j in range(max(0,len(query)-k+1)) if re.fullmatch(r'[\u3400-\u9fff]+',query[j:j+k])}
+    if q_ngrams:
+        for i,o in enumerate(eligible):
+            title_text=o.get('title','')
+            overlap=sum((3 if len(g)==3 else 1) for g in q_ngrams if g in title_text)
+            if overlap:scores[i]=scores.get(i,0)+0.015*overlap
     candidate_indices=stable_top_k(scores,tie_breaker=lambda i:i,limit=12)
     candidates=[eligible[i] for i in candidate_indices]
     if _trace is not None:_trace.update(eligible=[o['skuId'] for o in eligible], candidates=[o['skuId'] for o in candidates])
     recommendations=[];total=0
-    for o in candidates:
-        if len(recommendations)>=(1 if requested else 3):break
-        if limit is not None and total+o['priceCent']*quantity>limit:continue
-        recommendations.append({'skuId':o['skuId'],'quantity':quantity,'reason':'与当前需求相关，数量、库存和预算已校验'})
-        total+=o['priceCent']*quantity
+    combo_intent=(requested is None and bool(COMBO_INTENT.search(question)))
+    if combo_intent:
+        seen_titles=set()
+        for o in candidates:
+            if len(recommendations)>=3:break
+            title_prefix=(o.get('title') or '').strip()[:3]
+            if title_prefix and title_prefix in seen_titles:continue
+            if limit is not None and total+o['priceCent']*quantity>limit:continue
+            if title_prefix:seen_titles.add(title_prefix)
+            recommendations.append({'skuId':o['skuId'],'quantity':quantity,'reason':'与当前需求相关，数量、库存和预算已校验'})
+            total+=o['priceCent']*quantity
+    else:
+        for o in candidates:
+            if len(recommendations)>=(1 if requested else 3):break
+            if limit is not None and total+o['priceCent']*quantity>limit:continue
+            recommendations.append({'skuId':o['skuId'],'quantity':quantity,'reason':'与当前需求相关，数量、库存和预算已校验'})
+            total+=o['priceCent']*quantity
     local_recommendations=list(recommendations)
     mode='LOCAL_RETRIEVAL_DEMO';warning='本次为本地检索演示，未调用大语言模型。'
     text=''
@@ -234,16 +264,33 @@ def answer(store: KnowledgeStore,question: str,allowed: list[str],offers: list[d
                 q=requested or r.get('quantity',1)
                 if isinstance(q,bool) or not isinstance(q,int) or not 1<=q<=99 or q>o['available']:continue
                 if limit is not None and spent+o['priceCent']*q>limit:continue
-                seen.add(o['skuId']);spent+=o['priceCent']*q;filtered.append({'skuId':o['skuId'],'quantity':q,'reason':'规格：'+o['specKey']+'；数量、库存和预算已校验'})
+                fallback_reason='规格：'+o['specKey']+'；数量、库存和预算已校验'
+                raw_reason=r.get('reason')
+                clean_reason=' '.join(raw_reason.split()) if isinstance(raw_reason,str) else ''
+                if not specs.active and 2<=len(clean_reason)<=90 and not FAKE_EXEC_REASON.search(clean_reason):
+                    item_reason=clean_reason
+                else:
+                    item_reason=fallback_reason
+                seen.add(o['skuId']);spent+=o['priceCent']*q;filtered.append({'skuId':o['skuId'],'quantity':q,'reason':item_reason})
                 if len(filtered)>=(1 if requested else 3):break
             if not filtered and local_recommendations:
                 raise ValueError('模型未提供有效推荐，实际采用本地候选')
             if filtered:recommendations=filtered
             candidate_text=result.get('answer','')
             if not isinstance(candidate_text,str) or not candidate_text.strip() or len(candidate_text)>8000:raise ValueError('回答格式错误')
-            # 商品解释采用已过滤报价生成，模型自由文本不能重新引入排除项或虚构商业事实。
-            # 无报价/知识问答也不能把模型自述当成交易事实；正文统一由可信报价或引用生成。
-            text=''
+            cleaned_answer=candidate_text.strip()
+            # 无明确规格约束且未出现虚假交易执行声称时保留自然导购文案，同时补齐授权说明与交易安全提示。
+            if not specs.active and not FAKE_EXEC_ANSWER.search(cleaned_answer):
+                text=cleaned_answer
+                visible=[c for c in evidence if c['documentId'] in egress]
+                if has_service_inquiry(question) and visible:
+                    missing_visible=[c for c in visible[:2] if c['title'] and c['title'] not in text]
+                    if missing_visible:
+                        text='根据门店公开说明：'+'；'.join('《'+c['title']+'》：'+c['snippet'][:140] for c in missing_visible)+'\n\n'+text
+                if recommendations and ('不会自动下单' not in text and '确认后只加入购物车' not in text):
+                    text=text+'\n\n确认后只加入购物车，不会自动下单或付款。'
+            else:
+                text=''
             mode='LLM';warning=''
         except StreamCancelled:
             raise

@@ -49,7 +49,7 @@ const App = {
   },
   setup() {
     const current = computed(() => {
-      const r = store.route;
+      const r = store.route.split('?')[0] || '/';
       if (r === '/merchant/products') return 'Merchant';
       if (r === '/merchant/roles') return 'RoleManager';
       if (r === '/merchant/knowledge' || r === '/admin/knowledge') return 'Knowledge';

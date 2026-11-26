@@ -20,7 +20,9 @@ RE = re.compile(r'@(Get|Post|Put|Patch|Delete)Mapping\(\s*"([^"\n]+)"\s*\)')
 WRITES = {'POST', 'PUT', 'PATCH', 'DELETE'}
 ANON = {'GET /api/v1/auth/csrf', 'GET /api/v1/categories',
         'GET /api/v1/products', 'GET /api/v1/products/page',
-        'GET /api/v1/products/{productId}', 'GET /api/v1/merchants/public',
+        'GET /api/v1/products/{productId}', 'GET /api/v1/products/{productId}/reviews',
+        'GET /api/v1/products/{productId}/recommendations', 'GET /api/v1/discovery/home',
+        'GET /api/v1/merchants/public',
         'GET /api/v1/merchants/public/page', 'GET /api/v1/merchants/public/{merchantId}',
         'POST /api/v1/auth/login', 'POST /api/v1/auth/register'}
 REQUIRED_KEYS = {'POST /api/v1/merchant-applications', 'POST /api/v1/orders',
@@ -188,7 +190,7 @@ def openapi(rows,schemas):
                 if inp['name'] == 'q': param['schema']['maxLength'] = 100
                 allowed_states = query_enum(ROOT, row, inp['name'])
                 if allowed_states is not None: param['schema']['enum'] = allowed_states
-                if inp['name'] == 'sort': param['schema']['enum'] = ['NEWEST', 'PRICE_ASC', 'STOCK_DESC']
+                if inp['name'] == 'sort': param['schema']['enum'] = ['NEWEST', 'PRICE_ASC', 'PRICE_DESC', 'SALES_DESC', 'STOCK_DESC']
                 if inp['name'] == 'Idempotency-Key': param['schema'].update(minLength=1, maxLength=64)
                 parameters.append(param)
         if row['csrf']:

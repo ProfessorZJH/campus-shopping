@@ -25,6 +25,7 @@ const props = defineProps<{
   cancelRequested: boolean;
   streamProgress: number;
   streamStage?: string;
+  streamingText?: string;
   error: string;
 }>();
 
@@ -118,23 +119,47 @@ function splitRichLines(content: string): { kind: 'knowledge' | 'note' | 'text';
     </div>
     <div v-if="thinking" class="chat-row is-assistant">
       <span class="chat-avatar"><img :src="robotImage" alt="AI" /></span>
-      <div class="typing-bubble">
-        <div class="typing-head">
-          <i></i><i></i><i></i>
-          <small v-if="reconnecting">网络波动，正在恢复对话…</small>
-          <small v-else-if="cancelRequested">正在停止…</small>
-          <small v-else-if="streamProgress">正在为你挑选合适商品…</small>
-          <small v-else>正在分析你的需求…</small>
-        </div>
-        <div v-if="!reconnecting && !cancelRequested" class="typing-stages">
-          <span
-            v-for="(stage, idx) in STAGES"
-            :key="stage.key"
-            class="typing-stage-pill"
-            :class="{ done: idx < stageRank, active: idx === stageRank }"
+      <div class="chat-body">
+        <div v-if="streamingText" class="chat-bubble chat-rich-lines chat-streaming-bubble">
+          <p
+            v-for="(part, pi) in splitRichLines(streamingText)"
+            :key="pi"
+            class="chat-rich-line"
+            :class="
+              part.kind === 'knowledge'
+                ? 'chat-rich-knowledge'
+                : part.kind === 'note'
+                  ? 'chat-rich-note'
+                  : ''
+            "
           >
-            {{ stage.label }}
-          </span>
+            {{ part.text
+            }}<span
+              v-if="pi === splitRichLines(streamingText).length - 1"
+              class="stream-cursor"
+              aria-hidden="true"
+            ></span>
+          </p>
+        </div>
+        <div class="typing-bubble">
+          <div class="typing-head">
+            <i></i><i></i><i></i>
+            <small v-if="reconnecting">网络波动，正在恢复对话…</small>
+            <small v-else-if="cancelRequested">正在停止…</small>
+            <small v-else-if="streamingText">正在实时输出回复…</small>
+            <small v-else-if="streamProgress">正在为你挑选合适商品…</small>
+            <small v-else>正在分析你的需求…</small>
+          </div>
+          <div v-if="!reconnecting && !cancelRequested" class="typing-stages">
+            <span
+              v-for="(stage, idx) in STAGES"
+              :key="stage.key"
+              class="typing-stage-pill"
+              :class="{ done: idx < stageRank, active: idx === stageRank }"
+            >
+              {{ stage.label }}
+            </span>
+          </div>
         </div>
       </div>
     </div>

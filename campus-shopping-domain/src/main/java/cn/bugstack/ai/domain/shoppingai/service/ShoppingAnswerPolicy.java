@@ -12,8 +12,19 @@ public final class ShoppingAnswerPolicy {
     private static final Pattern SERVICE_INQUIRY = Pattern.compile(
         "几点|时间|怎么|如何|怎样|流程|规则|政策|说明|须知|多久|什么时候|哪里|在哪|地址|位置|能否|是否|能不能"
     );
+    private static final Pattern PERSONAL_ORDER_INQUIRY = Pattern.compile("我的订单|订单进度|做好了吗|备好没|取餐码|取餐号|自提进度");
+    private static final Pattern FAKE_EXECUTION = Pattern.compile("已下单|已付款|已支付|已扣款|已退款|完成下单|完成支付|已自动加购|已帮你下单");
 
     private ShoppingAnswerPolicy() {}
+
+    public static boolean personalOrderInquiry(String question) {
+        return question != null && PERSONAL_ORDER_INQUIRY.matcher(question).find();
+    }
+
+    public static boolean isSafeNaturalAnswer(String text) {
+        if (text == null || text.isBlank()) return false;
+        return !FAKE_EXECUTION.matcher(text).find();
+    }
 
     public static boolean knowledgeQuestion(String question) {
         return TOPIC.matcher(question).find() && QUESTION.matcher(question).find();

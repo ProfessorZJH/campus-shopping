@@ -2,7 +2,7 @@
 
 > 本文件由 `python scripts/generate-api-contract.py` 从当前 Controller/DTO **生成**；禁止手工追加旧版路由。
 > 路由/字段来自源码；必填、范围、枚举由 `scripts/api_contract_rules.py` 显式核对合并。业务规则见 [行为契约](behavior-v1.1.md)，
-> 机器可读的 102 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
+> 机器可读的 111 条接口、参数、返回结构见 [OpenAPI JSON](openapi.json)，可在 CI 运行 `--check` 发现漂移。
 
 ## 统一约定
 
@@ -17,7 +17,7 @@
 - 字段约束描述规范化后的输入，Java 字符长度按 UTF-16 单元；商品创建必填 skus，编辑必填 expectedVersion，退款审核必填 reason。
 - 本文件是契约，运行证据另见 docs/testing/CONTRACT-DATABASE-API-AUDIT-09.md。
 
-## 全量路由（共 102 条）
+## 全量路由（共 111 条）
 
 | 方法 | 路径 | 请求参数 / 主体 | data 类型 | 访问控制 | 实现类 |
 |---|---|---|---|---|---|
@@ -36,6 +36,7 @@
 | `GET` | `/api/v1/admin/products` | merchantId?:String、q?:String、page?:int、size?:int | `List<ProductResponseDTO>` | platform-admin | `CatalogController.java` |
 | `GET` | `/api/v1/admin/products/page` | merchantId?:String、q?:String、page?:int、size?:int | `PageResponseDTO<ProductResponseDTO>` | platform-admin | `CatalogController.java` |
 | `POST` | `/api/v1/admin/products/{productId}/unpublish` | productId:String | `Void` | platform-admin | `CatalogController.java` |
+| `GET` | `/api/v1/admin/redis-telemetry` | — | `RedisTelemetryResponseDTO` | platform-admin | `DiscoveryController.java` |
 | `GET` | `/api/v1/admin/statistics` | — | `StatisticsResponseDTO` | platform-admin | `OrderController.java` |
 | `GET` | `/api/v1/admin/statistics/operations` | periodDays?:int、to?:String | `OperationsStatisticsResponseDTO` | platform-admin | `OrderController.java` |
 | `POST` | `/api/v1/ai/chat` | body:ChatRequestDTO | `ChatResponseDTO` | authenticated + domain ACL | `ShoppingAiController.java` |
@@ -57,6 +58,8 @@
 | `PUT` | `/api/v1/cart` | body:CartSetRequestDTO | `Void` | authenticated + domain ACL | `CartController.java` |
 | `DELETE` | `/api/v1/cart/{skuId}` | skuId:String | `Void` | authenticated + domain ACL | `CartController.java` |
 | `GET` | `/api/v1/categories` | — | `List<CategoryResponseDTO>` | anonymous | `CatalogController.java` |
+| `GET` | `/api/v1/discovery/home` | — | `DiscoveryHomeResponseDTO` | anonymous | `DiscoveryController.java` |
+| `GET` | `/api/v1/favorites` | — | `List<ProductResponseDTO>` | authenticated + domain ACL | `DiscoveryController.java` |
 | `GET` | `/api/v1/invitations` | page?:int、size?:int | `List<InvitationResponseDTO>` | authenticated + domain ACL | `WorkspaceController.java` |
 | `POST` | `/api/v1/invitations/{id}/accept` | id:String | `Void` | authenticated + domain ACL | `WorkspaceController.java` |
 | `GET` | `/api/v1/knowledge/bases` | — | `List<KnowledgeBaseResponseDTO>` | authenticated + domain ACL | `KnowledgeController.java` |
@@ -87,6 +90,7 @@
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/ready` | merchantId:String、orderId:String | `Void` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/refund-decision` | merchantId:String、orderId:String、body:ReviewRequestDTO | `Void` | authenticated + domain ACL | `AfterSaleController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/orders/{orderId}/verify` | merchantId:String、orderId:String、body:VerifyPickupRequestDTO | `OrderResponseDTO` | authenticated + domain ACL | `FulfillmentController.java` |
+| `POST` | `/api/v1/merchants/{merchantId}/pickups/quick-verify` | merchantId:String、body:VerifyPickupRequestDTO | `OrderResponseDTO` | authenticated + domain ACL | `FulfillmentController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/products` | merchantId:String、page?:int、size?:int | `List<ProductResponseDTO>` | authenticated + domain ACL | `CatalogController.java` |
 | `POST` | `/api/v1/merchants/{merchantId}/products` | merchantId:String、body:ProductRequestDTO | `ProductResponseDTO` | authenticated + domain ACL | `CatalogController.java` |
 | `GET` | `/api/v1/merchants/{merchantId}/products/page` | merchantId:String、q?:String、category?:String、status?:String、page?:int、size?:int、sort?:String | `PageResponseDTO<ProductResponseDTO>` | authenticated + domain ACL | `CatalogController.java` |
@@ -116,12 +120,17 @@
 | `GET` | `/api/v1/orders/{orderId}` | orderId:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
 | `POST` | `/api/v1/orders/{orderId}/appeal` | orderId:String | `Void` | authenticated + domain ACL | `AfterSaleController.java` |
 | `POST` | `/api/v1/orders/{orderId}/cancel` | orderId:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
-| `POST` | `/api/v1/orders/{orderId}/pay` | orderId:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
+| `POST` | `/api/v1/orders/{orderId}/pay` | orderId:String、channel?:String | `OrderResponseDTO` | authenticated + domain ACL | `OrderController.java` |
 | `POST` | `/api/v1/orders/{orderId}/pickup-token` | orderId:String | `TokenResponseDTO` | authenticated + domain ACL | `FulfillmentController.java` |
 | `POST` | `/api/v1/orders/{orderId}/refunds` | orderId:String、body:RefundRequestDTO | `AfterSaleResponseDTO` | authenticated + domain ACL | `AfterSaleController.java` |
+| `POST` | `/api/v1/orders/{orderId}/reviews` | orderId:String、body:OrderReviewRequestDTO | `List<ProductReviewResponseDTO>` | authenticated + domain ACL | `OrderController.java` |
 | `GET` | `/api/v1/products` | merchantId?:String、q?:String、category?:String、minPriceCent?:Long、maxPriceCent?:Long、page?:int、size?:int | `List<ProductResponseDTO>` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/products/page` | merchantId?:String、q?:String、category?:String、minPriceCent?:Long、maxPriceCent?:Long、page?:int、size?:int、sort?:String | `PageResponseDTO<ProductResponseDTO>` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/products/{productId}` | productId:String | `ProductResponseDTO` | anonymous | `CatalogController.java` |
+| `DELETE` | `/api/v1/products/{productId}/favorite` | productId:String | `FavoriteStatusResponseDTO` | authenticated + domain ACL | `DiscoveryController.java` |
+| `POST` | `/api/v1/products/{productId}/favorite` | productId:String | `FavoriteStatusResponseDTO` | authenticated + domain ACL | `DiscoveryController.java` |
+| `GET` | `/api/v1/products/{productId}/recommendations` | productId:String | `ProductRecommendationsResponseDTO` | anonymous | `DiscoveryController.java` |
+| `GET` | `/api/v1/products/{productId}/reviews` | productId:String、limit?:int | `ProductReviewSummaryResponseDTO` | anonymous | `CatalogController.java` |
 | `GET` | `/api/v1/workspace` | — | `WorkspaceResponseDTO` | authenticated + domain ACL | `WorkspaceController.java` |
 
 ## DTO 字段索引
@@ -134,7 +143,7 @@
 
 ### `AfterSaleResponseDTO`
 
-`id`、`orderId`、`merchantId`、`status`、`reason`、`decisionReason`、`createdAt`
+`id`、`orderId`、`merchantId`、`status`、`reason`、`decisionReason`、`createdAt`、`evidenceImageUrl`
 
 ### `CartAddRequestDTO`
 
@@ -170,7 +179,7 @@
 
 ### `CheckoutRequestDTO`
 
-`merchantId`、`items`
+`merchantId`、`items`、`buyerRemark`、`pickupSlot`
 
 ### `CitationResponseDTO`
 
@@ -196,9 +205,17 @@
 
 `userId`、`username`、`displayName`、`status`
 
+### `DiscoveryHomeResponseDTO`
+
+`hotKeywords`、`hotProducts`、`recommendedProducts`、`recentProducts`、`favoriteProductIds`
+
 ### `DocumentUploadRequestDTO`
 
 `rootId`、`title`、`filename`、`contentType`、`base64`
+
+### `FavoriteStatusResponseDTO`
+
+`productId`、`favorited`
 
 ### `FileUploadRequestDTO`
 
@@ -274,7 +291,11 @@
 
 ### `OrderResponseDTO`
 
-`orderId`、`buyerId`、`merchantId`、`merchantName`、`storeId`、`pickupStoreName`、`pickupLocation`、`status`、`totalCent`、`deadline`、`createdAt`、`items`、`events`、`pickup`、`afterSale`
+`orderId`、`buyerId`、`merchantId`、`merchantName`、`storeId`、`pickupStoreName`、`pickupLocation`、`buyerRemark`、`pickupSlot`、`paymentChannel`、`paymentTradeNo`、`reviewed`、`status`、`totalCent`、`deadline`、`createdAt`、`items`、`events`、`pickup`、`afterSale`
+
+### `OrderReviewRequestDTO`
+
+`rating`、`tags`、`content`
 
 ### `PageResponseDTO`
 
@@ -286,7 +307,7 @@
 
 ### `PickupResponseDTO`
 
-`status`、`expiresAt`
+`status`、`expiresAt`、`pickupCode`
 
 ### `PriceRequestDTO`
 
@@ -296,6 +317,10 @@
 
 `url`
 
+### `ProductRecommendationsResponseDTO`
+
+`boughtTogether`、`sameStoreHot`
+
 ### `ProductRequestDTO`
 
 `title`、`description`、`categoryCode`、`imageUrl`、`imageUrls`、`skus`、`expectedVersion`
@@ -304,9 +329,17 @@
 
 `productId`、`merchantId`、`merchantName`、`merchantStoreName`、`merchantLocation`、`storeId`、`title`、`description`、`categoryCode`、`imageUrl`、`images`、`status`、`version`、`skus`
 
+### `ProductReviewResponseDTO`
+
+`id`、`productId`、`buyerDisplayName`、`rating`、`tags`、`content`、`createdAt`
+
+### `ProductReviewSummaryResponseDTO`
+
+`productId`、`averageRating`、`totalCount`、`items`
+
 ### `ProposalItemResponseDTO`
 
-`skuId`、`productId`、`merchantId`、`title`、`specKey`、`imageUrl`、`priceCent`、`quoteVersion`、`quantity`、`detailAvailable`、`detailUnavailableReason`
+`skuId`、`productId`、`merchantId`、`title`、`specKey`、`imageUrl`、`priceCent`、`quoteVersion`、`quantity`、`detailAvailable`、`detailUnavailableReason`、`reason`
 
 ### `ProposalResponseDTO`
 
@@ -316,9 +349,13 @@
 
 `published`
 
+### `RedisTelemetryResponseDTO`
+
+`redisEnabled`、`securityConnected`、`cacheConnected`、`namespace`、`crawlerBlockedCount`、`rateLimitedCount`、`orderBrushBlockedCount`、`pinLockoutCount`、`displayCacheFailures`、`topHotKeywords`、`topSellingProductIds`、`activeRealtimeSubscribers`、`delayedExpiryQueueSize`
+
 ### `RefundRequestDTO`
 
-`reason`
+`reason`、`evidenceImageUrl`
 
 ### `RegisterRequestDTO`
 
@@ -398,7 +435,7 @@
 
 ### `TokenResponseDTO`
 
-`token`、`expiresAt`
+`token`、`expiresAt`、`pickupCode`、`pinCode`、`qrPayload`
 
 ### `VerifyPickupRequestDTO`
 

@@ -44,6 +44,11 @@ public class FulfillmentRepository implements IFulfillmentRepository {
         return dao.list(merchant, status, offset, size).stream().map(this::convert).toList();
     }
 
+    @Override
+    public PickupVO findReadyByMerchantAndPinHash(String merchantId, String pinHash) {
+        return convert(dao.findReadyByMerchantAndPinHash(merchantId, pinHash));
+    }
+
     private PickupVO convert(PickupPO p) {
         return p == null
             ? null
@@ -55,7 +60,9 @@ public class FulfillmentRepository implements IFulfillmentRepository {
                   p.getBuyerId(),
                   p.getStatus(),
                   p.getCredentialHash(),
-                  p.getExpiresAt()
+                  p.getExpiresAt(),
+                  p.getPickupCode() == null ? "" : p.getPickupCode(),
+                  p.getPinHash()
               );
     }
 
@@ -69,6 +76,8 @@ public class FulfillmentRepository implements IFulfillmentRepository {
             .status(p.status())
             .credentialHash(p.credentialHash())
             .expiresAt(p.expiresAt())
+            .pickupCode(p.pickupCode() == null ? "" : p.pickupCode())
+            .pinHash(p.pinHash())
             .build();
     }
 }

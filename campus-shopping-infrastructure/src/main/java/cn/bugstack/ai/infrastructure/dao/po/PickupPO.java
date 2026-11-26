@@ -19,4 +19,6 @@ public class PickupPO {
     private String status;
     private String credentialHash;
     private Instant expiresAt;
+    private String pickupCode;
+    private String pinHash;
 }

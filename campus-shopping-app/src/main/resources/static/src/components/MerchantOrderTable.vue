@@ -7,8 +7,10 @@ interface OrderRow {
   createdAt?: string;
   totalCent: number;
   status: string;
+  buyerRemark?: string;
+  pickupSlot?: string;
   items?: { title: string }[];
-  pickup?: { status: string };
+  pickup?: { status: string; pickupCode?: string };
 }
 
 defineProps<{
@@ -39,16 +41,34 @@ defineEmits<{ select: [orderId: string] }>();
           @click="$emit('select', order.orderId)"
         >
           <td>
-            <button
-              class="row-link"
-              :aria-pressed="selectedOrder?.orderId === order.orderId"
-              @click.stop="$emit('select', order.orderId)"
-            >
-              #{{ order.orderId }}
-            </button>
+            <div class="ops-order-id-line">
+              <span v-if="order.pickup?.pickupCode" class="pickup-queue-badge compact">
+                {{ order.pickup.pickupCode }}
+              </span>
+              <button
+                class="row-link"
+                :aria-pressed="selectedOrder?.orderId === order.orderId"
+                @click.stop="$emit('select', order.orderId)"
+              >
+                #{{ order.orderId }}
+              </button>
+            </div>
             <small>{{ dateTime(order.createdAt) }}</small>
           </td>
-          <td>{{ order.items?.[0]?.title || '—' }}</td>
+          <td>
+            <div>{{ order.items?.[0]?.title || '—' }}</div>
+            <div
+              v-if="order.buyerRemark || (order.pickupSlot && order.pickupSlot !== 'IMMEDIATE')"
+              class="order-ritual-badges compact"
+            >
+              <span v-if="order.pickupSlot && order.pickupSlot !== 'IMMEDIATE'" class="slot-chip">
+                {{ order.pickupSlot }}
+              </span>
+              <span v-if="order.buyerRemark" class="remark-chip">
+                备注：{{ order.buyerRemark }}
+              </span>
+            </div>
+          </td>
           <td>{{ money(order.totalCent) }}</td>
           <td>
             <span class="status-tag" :class="order.status === 'COMPLETED' ? 'published' : 'draft'">

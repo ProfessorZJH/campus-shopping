@@ -7,7 +7,9 @@ import cn.bugstack.ai.api.IOrderApi;
 import cn.bugstack.ai.api.dto.CheckoutRequestDTO;
 import cn.bugstack.ai.api.dto.OperationsStatisticsResponseDTO;
 import cn.bugstack.ai.api.dto.OrderResponseDTO;
+import cn.bugstack.ai.api.dto.OrderReviewRequestDTO;
 import cn.bugstack.ai.api.dto.PageResponseDTO;
+import cn.bugstack.ai.api.dto.ProductReviewResponseDTO;
 import cn.bugstack.ai.api.dto.StatisticsResponseDTO;
 import cn.bugstack.ai.api.response.Response;
 import cn.bugstack.ai.cases.trading.ICheckoutCase;
@@ -61,7 +63,7 @@ public class OrderController implements IOrderApi {
                     )
                 )
                 .toList();
-            return readView(checkoutCase.checkout(actor(principal), request.getMerchantId(), items, key));
+            return readView(checkoutCase.checkout(actor(principal), request.getMerchantId(), items, key, request.getBuyerRemark(), request.getPickupSlot()));
         });
     }
 
@@ -131,9 +133,13 @@ public class OrderController implements IOrderApi {
     /** 本人模拟支付，不产生真实资金。 */
     @Override
     @PostMapping("/orders/{orderId}/pay")
-    public Response<OrderResponseDTO> pay(@PathVariable("orderId") String orderId, Principal principal) {
+    public Response<OrderResponseDTO> pay(
+        @PathVariable("orderId") String orderId,
+        @RequestParam(value = "channel", defaultValue = "WECHAT_PAY") String channel,
+        Principal principal
+    ) {
         return execute(() -> {
-            return readView(lifecycle.pay(actor(principal), orderId));
+            return readView(lifecycle.pay(actor(principal), orderId, channel));
         });
     }
 
@@ -143,6 +149,24 @@ public class OrderController implements IOrderApi {
     public Response<OrderResponseDTO> cancel(@PathVariable("orderId") String orderId, Principal principal) {
         return execute(() -> {
             return readView(lifecycle.cancel(actor(principal), orderId));
+        });
+    }
+
+    /** 已完成订单提交真实买家评价。 */
+    @Override
+    @PostMapping("/orders/{orderId}/reviews")
+    public Response<List<ProductReviewResponseDTO>> submitReview(
+        @PathVariable("orderId") String orderId,
+        @RequestBody OrderReviewRequestDTO request,
+        Principal principal
+    ) {
+        return execute(() -> {
+            required(request);
+            return lifecycle
+                .submitOrderReview(actor(principal), orderId, required(request.getRating()), request.getTags(), request.getContent())
+                .stream()
+                .map(ApiViews::review)
+                .toList();
         });
     }
 

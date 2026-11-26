@@ -12,4 +12,5 @@ import lombok.*;
 public class RefundRequestDTO {
 
     private String reason;
+    private String evidenceImageUrl;
 }
