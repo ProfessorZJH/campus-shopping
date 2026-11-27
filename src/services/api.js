@@ -1,0 +1,268 @@
+const PREFIX = '/api/v1';
+let csrf = null;
+let csrfPromise = null;
+let generation = 0;
+let unauthorized = () => {};
+let identityResolver = null;
+let identityMismatch = null;
+export function onUnauthorized(handler) {
+  unauthorized = handler;
+}
+export function setIdentityGuard({ currentActor, onMismatch } = {}) {
+  identityResolver = currentActor || null;
+  identityMismatch = onMismatch || null;
+}
+function requireIdentity(stamp) {
+  if (stamp !== generation) throw fail('登录身份已变化，请重试', 'IDENTITY_CHANGED', 0);
+}
+async function verifySessionBeforeRetry(expectedActor, stamp) {
+  if (!identityResolver || !expectedActor) return;
+  let live;
+  try {
+    live = await api('/auth/me', { retry: false });
+  } catch (err) {
+    if (err?.status === 401 || err?.code === 'A0004') {
+      requireIdentity(stamp);
+      identityMismatch?.(null);
+      throw fail('登录状态已在其他标签页失效，请重新登录', 'IDENTITY_CHANGED', 401);
+    }
+    throw err;
+  }
+  requireIdentity(stamp);
+  const liveActor = live?.userId || live?.id || live?.username || '';
+  if (liveActor !== expectedActor) {
+    identityMismatch?.(live || null);
+    throw fail('登录身份已在其他标签页切换，请确认后再操作', 'IDENTITY_CHANGED', 403);
+  }
+}
+function fail(message, code, status) {
+  return Object.assign(new Error(message), { code, status });
+}
+async function getCsrf() {
+  if (csrfPromise) return csrfPromise;
+  const stamp = generation;
+  const pending = (async () => {
+    const data = await api('/auth/csrf', { retry: false });
+    requireIdentity(stamp);
+    csrf = data;
+    return csrf;
+  })();
+  csrfPromise = pending;
+  try {
+    return await pending;
+  } finally {
+    if (csrfPromise === pending) csrfPromise = null;
+  }
+}
+export function warmCsrf() {
+  if (!csrf) getCsrf().catch(() => {});
+}
+/** 校验业务code，不能把HTTP 200当成执行成功。 */
+export async function api(path, options = {}) {
+  if ((options.method || 'GET') !== 'GET') return request(path, options);
+  const controller = new AbortController();
+  let timedOut = false;
+  const abort = () => controller.abort();
+  options.signal?.addEventListener('abort', abort, { once: true });
+  if (options.signal?.aborted) abort();
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, options.timeoutMs ?? 15000);
+  try {
+    return await request(path, { ...options, signal: controller.signal });
+  } catch (e) {
+    if (timedOut) throw fail('请求超时，请重试', 'TIMEOUT', 0);
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener('abort', abort);
+  }
+}
+
+/** 读取独立 SSE 协议；事件数据始终是 JSON，断线由调用方决定是否恢复原会话。 */
+export async function stream(path, { body, signal, onEvent, retry = true } = {}) {
+  const stamp = generation;
+  const expectedActor = identityResolver ? identityResolver() : '';
+  if (!csrf && expectedActor) {
+    await verifySessionBeforeRetry(expectedActor, stamp);
+  }
+  const token = csrf || (await getCsrf());
+  requireIdentity(stamp);
+  const headers = {
+    Accept: 'text/event-stream',
+    'Content-Type': 'application/json',
+    [token.headerName]: token.token,
+  };
+  let response;
+  try {
+    response = await fetch(PREFIX + path, {
+      method: 'POST',
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    throw fail('服务连接失败，请确认 Java 后端已启动', 'NETWORK', 0);
+  }
+  if (!response.ok) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {}
+    requireIdentity(stamp);
+    if (response.status === 403 && payload?.code === 'A0005' && retry) {
+      await verifySessionBeforeRetry(expectedActor, stamp);
+      csrf = null;
+      await getCsrf();
+      requireIdentity(stamp);
+      return stream(path, { body, signal, onEvent, retry: false });
+    }
+    if (response.status === 401 || payload?.code === 'A0004') unauthorized();
+    throw fail(payload?.info || '请求失败', payload?.code || 'HTTP', response.status);
+  }
+  const contentType = (response.headers?.get?.('content-type') || '').toLowerCase();
+  if (contentType.includes('application/json')) {
+    let payload = null;
+    try {
+      payload = await response.json();
+    } catch {}
+    requireIdentity(stamp);
+    if (payload?.code === 'A0004') unauthorized();
+    throw fail(payload?.info || '请求失败', payload?.code || 'HTTP', response.status);
+  }
+  if (!response.body) throw fail('服务器没有返回流式响应', 'RESPONSE', response.status);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let eventName = '';
+  let data = [];
+  const dispatch = async () => {
+    if (!eventName && !data.length) return;
+    const raw = data.join('\n');
+    const name = eventName || 'message';
+    eventName = '';
+    data = [];
+    if (!raw) return;
+    let payload;
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      throw fail('服务器响应格式异常', 'RESPONSE', response.status);
+    }
+    requireIdentity(stamp);
+    if (onEvent) await onEvent(name, payload);
+  };
+  const consume = async (line) => {
+    if (line.length > 65536) throw fail('流式响应超过大小限制', 'RESPONSE', response.status);
+    if (!line) return dispatch();
+    if (line.startsWith('event:')) eventName = line.slice(6).trim();
+    else if (line.startsWith('data:')) {
+      data.push(line.slice(5).trim());
+      if (data.join('\n').length > 1_000_000)
+        throw fail('流式响应超过大小限制', 'RESPONSE', response.status);
+    }
+  };
+  try {
+    while (true) {
+      let chunk;
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        if (err?.name === 'AbortError') throw err;
+        throw fail('流式连接中断，请稍后重试', 'NETWORK', 0);
+      }
+      buffer += decoder.decode(chunk.value || new Uint8Array(), { stream: !chunk.done });
+      let end;
+      while ((end = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, end).replace(/\r$/, '');
+        buffer = buffer.slice(end + 1);
+        await consume(line);
+      }
+      if (chunk.done) break;
+    }
+    if (buffer) await consume(buffer.replace(/\r$/, ''));
+    await dispatch();
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+}
+async function request(path, { method = 'GET', body, signal, key, retry = true } = {}) {
+  const stamp = generation;
+  const expectedActor = method !== 'GET' && identityResolver ? identityResolver() : '';
+  const payload = body === undefined ? undefined : JSON.stringify(body);
+  const headers = { Accept: 'application/json' };
+  if (method !== 'GET') {
+    if (!csrf && expectedActor) {
+      await verifySessionBeforeRetry(expectedActor, stamp);
+    }
+    const token = csrf || (await getCsrf());
+    requireIdentity(stamp);
+    headers[token.headerName] = token.token;
+  }
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (key) headers['Idempotency-Key'] = key;
+  let r;
+  try {
+    r = await fetch(PREFIX + path, {
+      method,
+      headers,
+      body: payload,
+      signal,
+      credentials: 'same-origin',
+      cache: 'no-store',
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') throw err;
+    throw fail('服务连接失败，请确认 Java 后端已启动', 'NETWORK', 0);
+  }
+  let j;
+  try {
+    j = await r.json();
+  } catch (e) {
+    if (e.name === 'AbortError') throw e;
+    throw fail('服务器响应格式异常', 'RESPONSE', r.status);
+  }
+  requireIdentity(stamp);
+  if (r.status === 401 || j.code === 'A0004') unauthorized();
+  if (r.status === 403 && j.code === 'A0005' && retry) {
+    await verifySessionBeforeRetry(expectedActor, stamp);
+    csrf = null;
+    await getCsrf();
+    requireIdentity(stamp);
+    return api(path, {
+      method,
+      body: payload === undefined ? undefined : JSON.parse(payload),
+      signal,
+      key,
+      retry: false,
+    });
+  }
+  if (!r.ok || j.code !== '0000') throw fail(j.info || '请求失败', j.code || 'HTTP', r.status);
+  return j.data;
+}
+export const resetCsrf = () => {
+  ++generation;
+  csrf = null;
+  csrfPromise = null;
+};
+export const query = (params) =>
+  '?' +
+  new URLSearchParams(
+    Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''),
+  ).toString();
+export const idempotency = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+    return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function')
+    crypto.getRandomValues(bytes);
+  else for (let i = 0; i < 16; i += 1) bytes[i] = Math.floor(Math.random() * 256);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+};

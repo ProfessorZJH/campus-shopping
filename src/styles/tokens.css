@@ -1,0 +1,155 @@
+/* ==========================================================================
+   青柠校园 · V8 国内大厂 1:1 结构复刻设计变量基座 (tokens.css)
+   1. 纯净大厂中性画布与字色体系 (--bg-*, --ink-*, --border-*)
+   2. 默认消费端：淘宝 2025 PC 零售设计语言 (--color-brand: #FF5000)
+   3. 企业级语义状态色、图表调色板 (--chart-1..6) 与历史变量全量兼容别名
+   ========================================================================== */
+
+:root {
+  /* 字体族 */
+  --font-sans:
+    'PingFang SC', 'HarmonyOS Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', Consolas, 'Liberation Mono', Menlo,
+    monospace;
+
+  /* 默认画布色阶（淘宝 2025 PC 白昼基底） */
+  --bg-canvas: #f4f5f7;
+  --bg-canvas-end: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-elevated: #ffffff;
+  --bg-subtle: #f7f8fa;
+  --bg-hover: #f2f3f5;
+  --bg-sidebar: #ffffff;
+
+  /* 清晰层级正文与描边色阶 */
+  --ink-primary: #1f1f1f;
+  --ink-secondary: #50607a;
+  --ink-muted: #86909c;
+
+  --border-subtle: rgba(31, 31, 31, 0.06);
+  --border-default: #e5e6eb;
+  --border-control: #c9cdd4;
+
+  /* 默认消费端主品牌（淘宝 2025 PC） */
+  --color-brand: #ff5000;
+  --color-brand-hover: #e64500;
+  --color-brand-strong: #cc3d00;
+  --color-brand-soft: #fff2e8;
+  --color-brand-border: #ffd8bf;
+  --color-focus: #ff5000;
+
+  --gradient-brand: linear-gradient(135deg, #ff6a00 0%, #ff4500 100%);
+  --gradient-buy: linear-gradient(135deg, #ff9900 0%, #ff6a00 100%);
+  --gradient-copilot: linear-gradient(145deg, #fff7f0 0%, #ffffff 56%, #f7f8fa 100%);
+
+  /* 零售价格色、卡片/按钮形态与搜索框特征色 */
+  --color-price: #ff5000;
+  --radius-card: 12px;
+  --radius-btn: 999px;
+  --search-border: #ff5000;
+  --admin-radius: 8px;
+
+  /* 品牌图形标志动态色槽 */
+  --logo-from: #ff6e00;
+  --logo-to: #ff4000;
+  --logo-accent: #ffe066;
+
+  /* 数据可视化标准色板 */
+  --chart-1: #165dff;
+  --chart-2: #14c9c9;
+  --chart-3: #f7ba1e;
+  --chart-4: #722ed1;
+  --chart-5: #f53f3f;
+  --chart-6: #86909c;
+
+  /* 企业级语义状态色 */
+  --color-success: #00b42a;
+  --color-success-bg: #e8ffea;
+  --color-success-border: #aff0b5;
+
+  --color-warning: #d25f00;
+  --color-warning-bg: #fff7e8;
+  --color-warning-border: #ffe4ba;
+
+  --color-danger: #f53f3f;
+  --color-danger-strong: #cb2634;
+  --color-danger-bg: #ffece8;
+  --color-danger-border: #fdcdc5;
+
+  --color-info: #165dff;
+  --color-info-bg: #e8f3ff;
+  --color-info-border: #bedaff;
+
+  --color-admin-accent: #165dff;
+  --color-admin-bg: #e8f3ff;
+  --color-admin-border: #bedaff;
+
+  /* 纯净多层环境阴影与缓动曲线 */
+  --shadow-card: 0 1px 3px rgba(29, 33, 41, 0.04), 0 4px 12px rgba(29, 33, 41, 0.03);
+  --shadow-panel: 0 8px 24px -4px rgba(29, 33, 41, 0.08), 0 2px 6px rgba(29, 33, 41, 0.04);
+  --shadow-elevated: 0 18px 42px -8px rgba(29, 33, 41, 0.14), 0 4px 12px rgba(29, 33, 41, 0.06);
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* 间距标尺 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+
+  /* 圆角标尺 */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --radius-pill: 999px;
+  --radius-control: 8px;
+  --radius-input: 8px;
+  --radius-panel: 12px;
+  --radius-overlay: 16px;
+
+  /* 历史变量全量兼容映射 */
+  --ink: var(--ink-primary);
+  --muted: var(--ink-muted);
+  --mint: var(--color-brand-soft);
+  --mintdark: var(--color-brand-strong);
+  --price: var(--color-price);
+  --retail-red: var(--color-price);
+  --canvas: var(--bg-canvas);
+  --canvas-subtle: var(--bg-subtle);
+  --border: var(--border-default);
+  --white: var(--bg-surface);
+  --obsidian: var(--ink-primary);
+  --obsidian-soft: #272e3b;
+  --emerald-bright: var(--color-brand);
+  --emerald-wash: var(--color-brand-soft);
+  --sky: var(--color-info);
+  --amber: var(--color-warning);
+
+  --color-surface: var(--bg-surface);
+  --color-surface-muted: var(--bg-subtle);
+  --color-text: var(--ink-primary);
+  --color-text-secondary: var(--ink-secondary);
+  --color-text-muted: var(--ink-muted);
+  --color-border: var(--border-default);
+  --color-accent: var(--color-brand);
+  --color-control-border: var(--border-control);
+  --color-control-text: var(--ink-secondary);
+  --color-error: var(--color-danger);
+  --color-error-strong: var(--color-danger-strong);
+  --color-error-border: var(--color-danger-border);
+  --color-error-surface: var(--color-danger-bg);
+  --color-error-panel: #fff5f5;
+
+  --shadow: var(--shadow-card);
+  --shadow-hover: var(--shadow-panel);
+}

@@ -1,0 +1,386 @@
+import UiPagination from '../components/UiPagination.vue';
+import { requestScope } from '../services/request-scope.js';
+import ConsumerShell from '../components/ConsumerShell.js';
+import AuthDialog from '../components/AuthDialog.js';
+import ProductImage from '../components/ProductImage.js';
+import { api, idempotency, query } from '../services/api.js';
+import { store, go, preview, notify, money, skuOf } from '../services/store.js';
+import { DEMO_APPLICATIONS } from '../services/pages-demo.js';
+import {
+  applicationStatusLabel,
+  invitationIsExpired,
+  invitationStatusLabel,
+  pathId,
+  priceSku,
+} from '../services/page-utils.js';
+const { ref, computed, onMounted, onUnmounted, watch } = Vue;
+
+export default {
+  name: 'Account',
+  components: { ConsumerShell, AuthDialog, UiPagination, ProductImage },
+  setup() {
+    const scope = requestScope();
+    const page = ref(1),
+      pageInfo = ref({ total: 0, hasNext: false });
+    const login = ref(false),
+      apps = ref([]),
+      invitations = ref([]),
+      favorites = ref([]),
+      recentProducts = ref([]),
+      shelfTab = ref('favorites'),
+      invitePage = ref(1),
+      error = ref(''),
+      busy = ref(false),
+      loading = ref(false),
+      key = ref(''),
+      fingerprint = ref('');
+    let loadEpoch = 0;
+    const form = ref({
+      merchantName: '',
+      category: '便利零售',
+      contactName: '',
+      contactPhone: '',
+      storeName: '',
+      location: '',
+    });
+    const isApply = computed(() => store.route.split('?')[0] === '/apply');
+    const isInvite = computed(() => store.route.split('?')[0] === '/invitations');
+
+    async function load() {
+      const stamp = ++loadEpoch;
+      error.value = '';
+      if (preview) {
+        apps.value = DEMO_APPLICATIONS;
+        favorites.value = store.products.slice(0, 2);
+        recentProducts.value = store.products.slice(0, 3);
+        invitations.value = [
+          {
+            id: 'INV-01',
+            merchantId: 'preview-m1',
+            status: 'PENDING',
+            expiresAt: '2026-10-30T12:00:00Z',
+          },
+        ];
+        return;
+      }
+      loading.value = true;
+      try {
+        if (stamp !== loadEpoch) return;
+        const actor = store.user?.userId;
+        if (!store.user) {
+          apps.value = [];
+          invitations.value = [];
+          favorites.value = [];
+          recentProducts.value = [];
+          return;
+        }
+        const [a, i, w, favs, disc] = await Promise.all([
+          !isApply.value && !isInvite.value
+            ? api('/merchant-applications/mine/page' + query({ page: page.value, size: 10 }))
+            : Promise.resolve({ items: [], total: 0 }),
+          !isApply.value
+            ? api('/invitations' + query({ page: invitePage.value, size: 20 }))
+            : Promise.resolve([]),
+          !isApply.value && !isInvite.value
+            ? api('/workspace').catch(() => store.workspace)
+            : Promise.resolve(store.workspace),
+          !isApply.value && !isInvite.value
+            ? api('/favorites').catch(() => [])
+            : Promise.resolve([]),
+          !isApply.value && !isInvite.value
+            ? api('/discovery/home').catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        if (stamp !== loadEpoch || actor !== store.user?.userId) return;
+        apps.value = a.items || [];
+        pageInfo.value = a;
+        invitations.value = i || [];
+        favorites.value = Array.isArray(favs) ? favs : [];
+        recentProducts.value = Array.isArray(disc?.recentProducts) ? disc?.recentProducts : [];
+        if (w) store.workspace = w;
+      } catch (e) {
+        if (stamp === loadEpoch) error.value = e.message;
+      } finally {
+        if (stamp === loadEpoch) loading.value = false;
+      }
+    }
+
+    onMounted(load);
+    watch(page, load);
+    watch(invitePage, load);
+    onUnmounted(() => ++loadEpoch);
+
+    async function removeFavorite(product) {
+      if (preview || busy.value || !product?.productId) return;
+      const current = scope.capture();
+      busy.value = true;
+      try {
+        await api('/products/' + pathId(product.productId) + '/favorite', { method: 'DELETE' });
+        if (!current()) return;
+        favorites.value = favorites.value.filter((p) => p.productId !== product.productId);
+        notify('已取消收藏');
+      } catch (e) {
+        if (current()) notify(e.message);
+      } finally {
+        if (current()) busy.value = false;
+      }
+    }
+
+    async function submit() {
+      if (preview || busy.value) return;
+      const f = { ...form.value },
+        current = scope.capture();
+      if (!Object.values(f).every((x) => String(x).trim())) {
+        notify('请补全申请资料');
+        return;
+      }
+      const next = JSON.stringify(f);
+      if (!key.value || fingerprint.value !== next) {
+        key.value = idempotency();
+        fingerprint.value = next;
+      }
+      busy.value = true;
+      try {
+        await api('/merchant-applications', { method: 'POST', body: { ...f }, key: key.value });
+        if (!current()) return;
+        key.value = '';
+        fingerprint.value = '';
+        notify('申请已提交');
+        await load();
+        if (current()) go('/account');
+      } catch (e) {
+        if (current()) notify(e.message);
+      } finally {
+        if (current()) busy.value = false;
+      }
+    }
+
+    async function accept(i) {
+      if (preview || busy.value) return;
+      if (i.status !== 'PENDING' || invitationIsExpired(i)) {
+        notify('邀请已过期或不可接受');
+        return;
+      }
+      const current = scope.capture();
+      busy.value = true;
+      try {
+        await api('/invitations/' + encodeURIComponent(i.id) + '/accept', { method: 'POST' });
+        if (!current()) return;
+        const latestWorkspace = await api('/workspace').catch(() => null);
+        if (!current()) return;
+        if (latestWorkspace) store.workspace = latestWorkspace;
+        notify('邀请已接受');
+        await load();
+      } catch (e) {
+        if (current()) notify(e.message);
+      } finally {
+        if (current()) busy.value = false;
+      }
+    }
+
+    return {
+      store,
+      go,
+      preview,
+      money,
+      skuOf,
+      priceSku,
+      pathId,
+      login,
+      apps,
+      page,
+      pageInfo,
+      invitations,
+      favorites,
+      recentProducts,
+      shelfTab,
+      invitePage,
+      error,
+      busy,
+      loading,
+      form,
+      isApply,
+      isInvite,
+      removeFavorite,
+      submit,
+      accept,
+      applicationStatusLabel,
+      invitationIsExpired,
+      invitationStatusLabel,
+      load,
+    };
+  },
+  template: `<ConsumerShell active="account">
+    <div class="mobile-page-top">
+      <button aria-label="返回" @click="go(isApply || isInvite ? '/account' : '/')"><Icon name="arrowLeft" /></button>
+      <b>{{ isApply ? '商户入驻' : isInvite ? '收到的邀请' : '个人中心' }}</b>
+      <button v-if="!isApply && !isInvite" aria-label="刷新" @click="load"><Icon name="refresh" /></button>
+    </div>
+
+    <template v-if="!isApply && !isInvite">
+      <section class="account-profile">
+        <div class="profile-avatar"><Icon name="user" :size="26" /></div>
+        <div>
+          <span class="account-member-pill"><Icon name="sparkles" :size="12" />校园自提通行证</span>
+          <h1>{{ store.user?.displayName || '同学你好' }}</h1>
+          <p>{{ store.user?.username || '登录后查看订单与收藏' }}</p>
+        </div>
+        <button v-if="!store.user && !preview" class="outline-button" @click="login = true">登录 / 注册</button>
+        <span v-if="preview" class="demo-pill">设计预览</span>
+      </section>
+
+      <div class="account-quick">
+        <button @click="go('/orders')">
+          <span class="account-quick-icon"><Icon name="order" :size="18" /></span>
+          <span>我的订单</span>
+        </button>
+        <button @click="go('/cart')">
+          <span class="account-quick-icon"><Icon name="cart" :size="18" /></span>
+          <span>购物车</span>
+        </button>
+        <button @click="go('/apply')">
+          <span class="account-quick-icon"><Icon name="store" :size="18" /></span>
+          <span>商户入驻</span>
+        </button>
+        <button @click="go('/invitations')">
+          <span class="account-quick-icon"><Icon name="users" :size="18" /></span>
+          <span>邀请</span>
+        </button>
+      </div>
+
+      <section v-if="store.user || preview" class="detail-card account-shelf-card">
+        <div class="account-shelf-tabs">
+          <button type="button" :class="{ active: shelfTab === 'favorites' }" @click="shelfTab = 'favorites'">
+            <Icon name="heart" :size="14" /> 收藏 <span>{{ favorites.length }}</span>
+          </button>
+          <button type="button" :class="{ active: shelfTab === 'recent' }" @click="shelfTab = 'recent'">
+            <Icon name="clock" :size="14" /> 足迹 <span>{{ recentProducts.length }}</span>
+          </button>
+        </div>
+        <div v-if="shelfTab === 'favorites'">
+          <div v-if="favorites.length" class="account-product-grid">
+            <article v-for="p in favorites" :key="p.productId" class="account-product-card">
+              <button type="button" class="account-product-open" @click="go('/product/' + pathId(p.productId))">
+                <div class="account-product-photo"><ProductImage :src="p.imageUrl" :alt="p.title" /></div>
+                <div class="account-product-meta">
+                  <strong>{{ p.title }}</strong>
+                  <b>{{ money((priceSku(p) || skuOf(p))?.priceCent) }}</b>
+                </div>
+              </button>
+              <button v-if="!preview" type="button" class="account-fav-remove" :disabled="busy" @click="removeFavorite(p)">取消收藏</button>
+            </article>
+          </div>
+          <p v-else class="muted-short">还没有收藏商品</p>
+        </div>
+        <div v-else>
+          <div v-if="recentProducts.length" class="account-product-grid">
+            <article v-for="p in recentProducts" :key="p.productId" class="account-product-card">
+              <button type="button" class="account-product-open" @click="go('/product/' + pathId(p.productId))">
+                <div class="account-product-photo"><ProductImage :src="p.imageUrl" :alt="p.title" /></div>
+                <div class="account-product-meta">
+                  <strong>{{ p.title }}</strong>
+                  <b>{{ money((priceSku(p) || skuOf(p))?.priceCent) }}</b>
+                </div>
+              </button>
+            </article>
+          </div>
+          <p v-else class="muted-short">暂无浏览记录</p>
+        </div>
+      </section>
+
+      <section v-if="preview || store.workspace?.merchants?.length || store.workspace?.platformAdmin" class="account-workspaces detail-card">
+        <div class="account-section-head compact"><h2>管理入口</h2></div>
+        <div class="workspace-entry-list">
+          <button v-if="preview || store.workspace?.merchants?.length" type="button" class="workspace-entry-btn" @click="go('/merchant')">
+            <span class="mini-icon"><Icon name="store" :size="18" /></span>
+            <div>
+              <strong>商家后台</strong>
+              <small>{{ store.workspace?.merchants?.[0]?.name || '管理商品、库存与订单' }}</small>
+            </div>
+            <Icon name="chevronRight" :size="16" />
+          </button>
+          <button v-if="preview || store.workspace?.platformAdmin" type="button" class="workspace-entry-btn" @click="go('/admin')">
+            <span class="mini-icon"><Icon name="shield" :size="18" /></span>
+            <div>
+              <strong>管理后台</strong>
+              <small>入驻审核、商品管理与售后处理</small>
+            </div>
+            <Icon name="chevronRight" :size="16" />
+          </button>
+        </div>
+      </section>
+
+      <div class="account-section-head">
+        <h2>入驻记录</h2>
+        <button @click="go('/apply')">申请入驻 <Icon name="chevronRight" :size="15" /></button>
+      </div>
+      <div v-if="error" class="inline-error">{{ error }}</div>
+      <div v-for="a in apps" :key="a.applicationId" class="account-application">
+        <div>
+          <strong>{{ a.merchantName }}</strong>
+          <span>{{ a.storeName }} · {{ a.location }}</span>
+        </div>
+        <b class="status-tag" :class="a.status === 'APPROVED' ? 'published' : 'draft'">{{ applicationStatusLabel(a.status) }}</b>
+        <p v-if="a.rejectionReason">{{ a.rejectionReason }}</p>
+      </div>
+      <div v-if="!loading && !apps.length && !error" class="mobile-empty">暂无入驻记录</div>
+      <UiPagination v-if="!preview && pageInfo.total > 0" :page="page" :has-next="pageInfo.hasNext" :busy="loading" @previous="page--" @next="page++">
+        {{ pageInfo.total }} 条
+      </UiPagination>
+    </template>
+
+    <form v-else-if="isApply" class="account-form detail-card" @submit.prevent="submit">
+      <div class="account-form-head">
+        <h2>申请校内商户入驻</h2>
+        <p class="muted-short">提交真实经营资料与校内自提点位置，审核通过后即可开通商家工作台。</p>
+      </div>
+      <label>经营名称<input v-model.trim="form.merchantName" required maxlength="100" placeholder="例如：学一便利店" /></label>
+      <label>
+        经营品类
+        <select v-model="form.category">
+          <option>便利零售</option>
+          <option>水果生鲜</option>
+          <option>文具用品</option>
+          <option>饮品</option>
+          <option>其他</option>
+        </select>
+      </label>
+      <label>联系人<input v-model.trim="form.contactName" required maxlength="50" placeholder="真实姓名" /></label>
+      <label>联系电话<input v-model.trim="form.contactPhone" required maxlength="30" placeholder="手机号" /></label>
+      <label>首个门店名称<input v-model.trim="form.storeName" required maxlength="100" placeholder="例如：学一食堂店" /></label>
+      <label>自提位置<input v-model.trim="form.location" required maxlength="200" placeholder="如：学一食堂一层东侧" /></label>
+      <button class="teal-button" type="submit" :disabled="preview || busy || !store.user">
+        {{ !store.user && !preview ? '请先登录' : '提交入驻申请' }}
+      </button>
+    </form>
+
+    <section v-else class="detail-card">
+      <h2>收到的邀请</h2>
+      <div v-if="error" class="inline-error">{{ error }}</div>
+      <div v-for="i in invitations" :key="i.id" class="invitation-line">
+        <div>
+          <strong>{{ i.merchantName || store.merchants.find((m) => m.merchantId === i.merchantId)?.name || i.merchantId }}</strong>
+          <small>{{ invitationIsExpired(i) ? '已过期' : invitationStatusLabel(i.status) }}</small>
+        </div>
+        <button
+          class="outline-button"
+          :disabled="preview || busy || loading || i.status !== 'PENDING' || invitationIsExpired(i)"
+          @click="accept(i)"
+        >
+          接受
+        </button>
+      </div>
+      <div v-if="!loading && !error && !invitations.length" class="mobile-empty">暂无邀请</div>
+      <UiPagination
+        v-if="!preview && (invitePage > 1 || invitations.length === 20)"
+        :page="invitePage"
+        :has-next="invitations.length >= 20"
+        :busy="loading"
+        @previous="invitePage--"
+        @next="invitePage++"
+      />
+    </section>
+
+    <AuthDialog v-if="login" @close="login = false" @success="load" />
+  </ConsumerShell>`,
+};

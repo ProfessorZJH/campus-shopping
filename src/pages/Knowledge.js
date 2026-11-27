@@ -1,0 +1,386 @@
+import UiPagination from '../components/UiPagination.vue';
+import { requestScope } from '../services/request-scope.js';
+import BackofficeShell from '../components/BackofficeShell.js';
+import { api, query } from '../services/api.js';
+import { store, go, preview, notify, hasPermission } from '../services/store.js';
+import { DEMO_BASES, DEMO_DOCS } from '../services/pages-demo.js';
+import {
+  knowledgeIndexStatusLabel,
+  knowledgeStatusLabel,
+  knowledgeVisibilityLabel,
+  dateTime,
+  pathId,
+} from '../services/page-utils.js';
+const { ref, computed, onMounted, onUnmounted, watch } = Vue;
+export default {
+  name: 'Knowledge',
+  components: { BackofficeShell, UiPagination },
+  setup() {
+    const scope = requestScope();
+    const docScope = requestScope();
+    const contentScope = requestScope();
+    const role = computed(() => (store.route.startsWith('/admin') ? 'admin' : 'merchant'));
+    const bases = ref([]),
+      docs = ref([]),
+      active = ref(''),
+      selected = ref(null),
+      text = ref('');
+    const error = ref(''),
+      busy = ref(false),
+      newBase = ref(false),
+      uploading = ref(false),
+      baseName = ref(''),
+      visibility = ref('PUBLIC'),
+      title = ref(''),
+      file = ref(null);
+    const docPage = ref(1),
+      docInfo = ref({ total: 0, hasNext: false });
+    const versionRoot = ref(null),
+      versionBase = ref(''),
+      fileVersion = ref(0);
+    function clearUpload() {
+      versionRoot.value = null;
+      versionBase.value = '';
+      title.value = '';
+      file.value = null;
+      uploading.value = false;
+      ++fileVersion.value;
+    }
+    watch(active, clearUpload);
+    const current = computed(() => bases.value.find((b) => b.id === active.value));
+    let baseEpoch = 0,
+      docEpoch = 0,
+      readEpoch = 0;
+    const canRead = computed(
+      () =>
+        preview ||
+        (role.value === 'admin'
+          ? store.workspace?.platformAdmin === true
+          : hasPermission('knowledge.read')),
+    );
+    const canManage = computed(
+      () =>
+        preview ||
+        (role.value === 'admin'
+          ? store.workspace?.platformAdmin === true
+          : hasPermission('knowledge.manage')),
+    );
+    const context = (targetRole, targetMid) =>
+      targetRole === role.value && targetMid === store.merchantId;
+    let refreshingBases = false;
+    async function load() {
+      const request = scope.begin();
+      const valid = request.current;
+      const stamp = ++baseEpoch,
+        currentRole = role.value,
+        mid = store.merchantId;
+      ++docEpoch;
+      ++readEpoch;
+      error.value = '';
+      bases.value = [];
+      docs.value = [];
+      selected.value = null;
+      text.value = '';
+      // 平台知识库可直接访问 URL，不能根据 /admin 路径推断管理员身份。
+      if (currentRole === 'admin' && !preview && !store.workspace?.platformAdmin) {
+        try {
+          const [user, workspace] = await Promise.all([api('/auth/me'), api('/workspace')]);
+          if (!valid() || stamp !== baseEpoch || !context(currentRole, mid)) return;
+          store.user = user;
+          store.workspace = workspace;
+        } catch (e) {
+          if (stamp === baseEpoch) error.value = e.message;
+          return;
+        }
+      }
+      if (!canRead.value) {
+        active.value = '';
+        return;
+      }
+      try {
+        const result = preview
+          ? DEMO_BASES
+          : await api('/knowledge/bases', { signal: request.signal });
+        if (!valid() || stamp !== baseEpoch || !context(currentRole, mid)) return;
+        // Java 返回当前登录主体有权管理的全集，商户页面只呈现正在经营的商户。
+        bases.value = (result || []).filter((b) =>
+          currentRole === 'admin' ? b.merchantId == null : b.merchantId === mid,
+        );
+        if (!bases.value.some((b) => b.id === active.value))
+          active.value = bases.value[0]?.id || '';
+        refreshingBases = true;
+        docPage.value = 1;
+        refreshingBases = false;
+        await loadDocs();
+      } catch (e) {
+        if (stamp === baseEpoch && context(currentRole, mid)) error.value = e.message;
+      }
+    }
+    async function loadDocs() {
+      const request = docScope.begin();
+      const stamp = ++docEpoch,
+        id = active.value,
+        page = docPage.value,
+        currentRole = role.value,
+        mid = store.merchantId;
+      ++readEpoch;
+      selected.value = null;
+      text.value = '';
+      docs.value = [];
+      if (!id) {
+        docInfo.value = { total: 0, hasNext: false };
+        return;
+      }
+      const valid = () =>
+        request.current() &&
+        stamp === docEpoch &&
+        active.value === id &&
+        docPage.value === page &&
+        context(currentRole, mid);
+      try {
+        const result = preview
+          ? {
+              items: DEMO_DOCS.filter((d) => d.baseId === id),
+              total: DEMO_DOCS.filter((d) => d.baseId === id).length,
+              hasNext: false,
+            }
+          : await api(
+              '/knowledge/bases/' + pathId(id) + '/documents/page' + query({ page, size: 15 }),
+              { signal: request.signal },
+            );
+        if (!valid()) return;
+        docs.value = result.items || [];
+        docInfo.value = result;
+        if (docs.value.length && !selected.value) {
+          read(docs.value[0]);
+        }
+      } catch (e) {
+        if (valid()) error.value = e.message;
+      }
+    }
+    onMounted(load);
+    onUnmounted(() => {
+      ++baseEpoch;
+      ++docEpoch;
+      ++readEpoch;
+    });
+    watch(
+      docPage,
+      () => {
+        if (!refreshingBases) loadDocs();
+      },
+      { flush: 'sync' },
+    );
+    function selectBase(id) {
+      active.value = id;
+      refreshingBases = true;
+      docPage.value = 1;
+      refreshingBases = false;
+      loadDocs();
+    }
+    async function read(d) {
+      const request = contentScope.begin();
+      const valid = request.current;
+      const stamp = ++readEpoch,
+        id = active.value,
+        mid = store.merchantId,
+        currentRole = role.value;
+      selected.value = d;
+      text.value = '';
+      if (preview) {
+        text.value = d.content || '演示文档内容';
+        return;
+      }
+      try {
+        const result = await api('/knowledge/documents/' + pathId(d.id), {
+          signal: request.signal,
+        });
+        if (
+          stamp === readEpoch &&
+          active.value === id &&
+          selected.value?.id === d.id &&
+          context(currentRole, mid)
+        ) {
+          text.value = result.content || '';
+          selected.value = result;
+        }
+      } catch (e) {
+        if (valid() && stamp === readEpoch) notify(e.message);
+      }
+    }
+    async function create() {
+      if (preview || busy.value || !canManage.value || !baseName.value.trim()) return;
+      const valid = scope.capture(),
+        base = active.value;
+      busy.value = true;
+      try {
+        await api('/knowledge/bases', {
+          method: 'POST',
+          body: {
+            merchantId: role.value === 'admin' ? null : store.merchantId,
+            name: baseName.value.trim(),
+            visibility: visibility.value,
+          },
+        });
+        if (!valid()) return;
+        newBase.value = false;
+        baseName.value = '';
+        await load();
+        notify('已创建知识库');
+      } catch (e) {
+        if (valid()) notify(e.message);
+      } finally {
+        if (valid()) busy.value = false;
+      }
+    }
+    function chooseFile(e) {
+      const selectedFile = e.target.files?.[0];
+      file.value = null;
+      if (!selectedFile) return;
+      if (selectedFile.size === 0 || selectedFile.size > 2000000) {
+        notify('文件须为1~2,000,000字节');
+        e.target.value = '';
+        return;
+      }
+      if (selectedFile.name.length > 120) {
+        notify('文件名不能超过120字符');
+        e.target.value = '';
+        return;
+      }
+      if (!/\.(txt|md|pdf)$/i.test(selectedFile.name)) {
+        notify('仅支持 TXT、Markdown、文本 PDF');
+        e.target.value = '';
+        return;
+      }
+      file.value = selectedFile;
+      title.value = title.value || selectedFile.name;
+    }
+    async function toBase64(f) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(f);
+      });
+    }
+    async function upload() {
+      if (preview || busy.value || !canManage.value || !active.value || !file.value) return;
+      const valid = scope.capture(),
+        base = active.value;
+      busy.value = true;
+      try {
+        const selectedFile = file.value,
+          root = versionRoot.value,
+          documentTitle = title.value.trim() || selectedFile.name;
+        if (
+          root &&
+          (versionBase.value !== base ||
+            !docs.value.some((d) => d.rootId === root && d.baseId === base))
+        )
+          throw Error('版本所属知识库已变化，请重新选择文档');
+        if (documentTitle.length > 120 || selectedFile.name.length > 120)
+          throw Error('标题和文件名不能超过120字符');
+        const base64 = await toBase64(selectedFile);
+        if (!valid() || active.value !== base) return;
+        await api('/knowledge/bases/' + pathId(base) + '/documents', {
+          method: 'POST',
+          body: {
+            rootId: root,
+            title: documentTitle,
+            filename: selectedFile.name,
+            contentType:
+              selectedFile.type ||
+              (selectedFile.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain'),
+            base64,
+          },
+        });
+        if (!valid() || active.value !== base) return;
+        uploading.value = false;
+        ++fileVersion.value;
+        file.value = null;
+        title.value = '';
+        versionRoot.value = null;
+        await loadDocs();
+        notify('文档已上传');
+      } catch (e) {
+        if (valid()) notify(e.message);
+      } finally {
+        if (valid()) busy.value = false;
+      }
+    }
+    function newVersion(d) {
+      if (busy.value || d.baseId !== active.value) return;
+      versionBase.value = active.value;
+      versionRoot.value = d.rootId;
+      title.value = d.title;
+      file.value = null;
+      uploading.value = true;
+    }
+    function newDocument() {
+      if (busy.value) return;
+      versionBase.value = '';
+      versionRoot.value = null;
+      file.value = null;
+      ++fileVersion.value;
+      title.value = '';
+      uploading.value = !uploading.value;
+    }
+    async function action(d, operation) {
+      if (preview || busy.value || !canManage.value) return;
+      const valid = scope.capture(),
+        base = active.value;
+      busy.value = true;
+      try {
+        await api('/knowledge/documents/' + pathId(d.id) + '/' + operation, { method: 'POST' });
+        if (!valid() || active.value !== base) return;
+        await loadDocs();
+        notify('操作成功');
+      } catch (e) {
+        if (valid()) notify(e.message);
+      } finally {
+        if (valid()) busy.value = false;
+      }
+    }
+    return {
+      role,
+      canRead,
+      canManage,
+      bases,
+      docs,
+      active,
+      selected,
+      text,
+      error,
+      busy,
+      newBase,
+      uploading,
+      baseName,
+      visibility,
+      title,
+      file,
+      current,
+      preview,
+      knowledgeIndexStatusLabel,
+      knowledgeStatusLabel,
+      knowledgeVisibilityLabel,
+      dateTime,
+      read,
+      load,
+      loadDocs,
+      selectBase,
+      docPage,
+      docInfo,
+      create,
+      chooseFile,
+      upload,
+      action,
+      newVersion,
+      newDocument,
+      versionRoot,
+      fileVersion,
+      go,
+    };
+  },
+  template: `<BackofficeShell :role="role" title="知识库"><template #actions><div v-if="canRead" class="head-actions"><button class="outline-button small" @click="go(role==='admin'?'/admin/knowledge/debug':'/merchant/knowledge/debug')"><Icon name="search" :size="15"/>检索测试</button><button v-if="canManage" class="outline-button small" @click="newBase=!newBase" :disabled="!canManage"><Icon name="plus" :size="16"/>新建知识库</button><button v-if="canManage" class="teal-button" @click="newDocument" :disabled="!canManage||!active"><Icon name="plus" :size="17"/>上传文档</button></div></template><div v-if="error" class="inline-error">{{error}}</div><div v-if="canManage&&(newBase||uploading)" class="ops-grid kb-forms"><form v-if="newBase" class="ops-card ops-sideform" @submit.prevent="create"><h2>新建知识库</h2><label class="field-label" for="knowledge-field-1">名称</label><input id="knowledge-field-1" class="admin-input" v-model="baseName" maxlength="100" required/><label class="field-label" for="knowledge-field-2">可见范围</label><select id="knowledge-field-2" class="admin-input" v-model="visibility"><option value="PUBLIC">公开</option><option :value="role==='admin'?'PLATFORM_INTERNAL':'MERCHANT_INTERNAL'">内部</option></select><button class="teal-button" type="submit" :disabled="busy||preview">创建</button></form><form v-if="uploading" class="ops-card ops-sideform" @submit.prevent="upload"><h2>{{versionRoot?'上传新版本':'上传文档'}}</h2><label class="field-label" for="knowledge-field-3">文档标题</label><input id="knowledge-field-3" class="admin-input" v-model="title" maxlength="120" required/><label class="field-label" for="knowledge-field-4">支持 TXT、Markdown、文本 PDF（不超过 2MB）</label><input id="knowledge-field-4" :key="fileVersion" class="admin-input" type="file" accept=".txt,.md,.pdf" @change="chooseFile" required/><button class="teal-button" type="submit" :disabled="busy||preview||!file">上传并索引</button></form></div>
+ <div v-if="!canRead" class="ops-card access-denied">当前账号没有知识库查看权限。</div><div v-else class="knowledge-layout"><section class="ops-card kb-list"><div class="ops-card-header"><h2>知识库</h2><span>{{bases.length}}</span></div><button v-for="b in bases" :key="b.id" class="kb-base" :class="{active:active===b.id}" :disabled="busy" :aria-pressed="active===b.id" @click="selectBase(b.id)"><span class="mini-icon"><Icon name="book"/></span><div><strong>{{b.name}}</strong><small>{{knowledgeVisibilityLabel(b.visibility)}}</small></div><Icon name="chevronRight" :size="16"/></button><div v-if="!bases.length" class="admin-empty">暂无知识库</div></section><section class="ops-card kb-docs"><div class="ops-card-header"><h2>{{current?.name||'文档'}}</h2><div><span>{{docInfo.total}} 项</span><button class="outline-button small" type="button" :disabled="busy||!active" @click="loadDocs" aria-label="刷新文档列表"><Icon name="refresh" :size="14"/>刷新</button></div></div><div class="kb-doc" v-for="d in docs" :key="d.id" :class="{active:selected?.id===d.id}"><button @click="read(d)"><span class="mini-icon"><Icon name="clipboard"/></span><span><strong>{{d.title}}</strong><small>v{{d.version}} · {{dateTime(d.createdAt)}}</small></span></button><span class="status-tag" :class="d.status==='PUBLISHED'?'published':'draft'">{{knowledgeStatusLabel(d.status)}}</span><span class="kb-doc-actions" v-if="canManage"><button :disabled="busy||preview" @click="newVersion(d)" title="上传新版本" aria-label="上传新版本"><Icon name="plus" :size="15"/></button><button :disabled="busy||preview" @click="action(d,'index')" title="重建索引" aria-label="重建索引"><Icon name="refresh" :size="15"/></button><button :disabled="busy||preview||d.indexStatus!=='READY'||d.status==='PUBLISHED'" @click="action(d,'publish')" title="发布" aria-label="发布文档"><Icon name="check" :size="15"/></button><button :disabled="busy||preview||d.status!=='PUBLISHED'" @click="action(d,'withdraw')" title="撤回" aria-label="撤回文档"><Icon name="x" :size="15"/></button></span></div><div v-if="!docs.length" class="admin-empty">暂无文档</div><UiPagination v-if="!preview&&docInfo.total>0" :page="docPage" :has-next="docInfo.hasNext" @previous="docPage--" @next="docPage++">{{docInfo.total}} 项</UiPagination></section><section class="ops-card kb-preview"><div class="ops-card-header"><h2>文档预览</h2><button v-if="selected" @click="selected=null;text=''" aria-label="关闭"><Icon name="x" :size="18"/></button></div><template v-if="selected"><div class="kb-title"><Icon name="book" :size="22"/><strong>{{selected.title}}</strong></div><div class="inspector-row"><span>版本</span><strong>v{{selected.version}}</strong></div><div class="inspector-row"><span>索引</span><strong>{{knowledgeIndexStatusLabel(selected.indexStatus)}}</strong></div><div class="inspector-row"><span>状态</span><strong>{{knowledgeStatusLabel(selected.status)}}</strong></div><p v-if="selected.error" class="inline-error">{{selected.error}}</p><pre class="document-preview">{{text||'该版本暂无可显示的正文'}}</pre></template><div v-else class="admin-empty">选择文档查看</div></section></div></BackofficeShell>`,
+};
