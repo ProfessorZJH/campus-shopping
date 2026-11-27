@@ -1,6 +1,6 @@
 # 校园智能导购及商品交易平台 · 文档索引
 
-> 当前维护日期：2026-11-21。本页只索引当前事实源。历史阶段报告继续保留在 `docs/testing/` 供审计与复现，但不作为新任务自动授权或当前验收证明。
+> 当前维护日期：2026-11-27。本页只索引当前事实源。历史阶段报告继续保留在 `docs/testing/` 供审计与复现，但不作为新任务自动授权或当前验收证明。
 
 ## 开始开发前
 
@@ -45,7 +45,7 @@
 | 最新全链路 UI/UX 验收 | [产品收束与去 AI 味验收](testing/UX-CONVERGENCE-POLISH-20261118.md) |
 | 最新隔离真实后端 | [MySQL/Redis/Spring/FastAPI/浏览器全栈](testing/FULL-STACK-ISOLATION-20261121.md) |
 | 测试范围与门禁 | [AI 开发流程](development/AI-WORKFLOW.md) · [测试证据副作用隔离](testing/TEST-EVIDENCE-ISOLATION-20261121.md) · [main 保护](development/REPOSITORY-GATES.md) |
-| AI 评测工具与数据 | [评测说明](../ai-service/evaluation/README.md) · [120 例数据集](../ai-service/evaluation/datasets/campus-shopping-v1/README.md) |
+| AI 评测工具与数据 | [评测说明](../ai-service/evaluation/README.md) · [Benchmark V2 (360+24 例)](../ai-service/evaluation/datasets/campus-shopping-v2/README.md) · [标注手册](ai/benchmark-v2-annotation-manual.md) · [数据分布](ai/benchmark-v2-data-distribution.md) · [Holdout 盲测方案](ai/benchmark-v2-holdout-protocol.md) · [V2 首轮实验](testing/AI-EVALUATION-V2-20261127.md) · [V2 可信度整改](testing/AI-EVALUATION-V2-CREDIBILITY-20261127.md) · [V1 历史基线](../ai-service/evaluation/datasets/campus-shopping-v1/README.md) |
 | 毕设总控台 | [开题、论文、图表、实验与终期答辩](thesis/README.md) |
 | 最近完成变更档案 | [产品化主变更](../openspec/changes/archive/2026-11-21-productize-campus-shopping-experience/proposal.md) |
 

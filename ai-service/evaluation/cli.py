@@ -10,7 +10,7 @@ from .runner import run
 def main(argv=None):
     parser = argparse.ArgumentParser(description='校园导购评测：默认legacy-demo；正式数据须人工冻结。')
     parser.add_argument('--dataset')
-    parser.add_argument('--split', choices=('smoke', 'dev', 'test'), default='dev')
+    parser.add_argument('--split', choices=('smoke', 'dev', 'test', 'challenge', 'holdout'), default='dev')
     parser.add_argument('--profile', choices=PROFILES, default='local')
     parser.add_argument('--adapter', choices=('python', 'java-mysql'), default='python')
     parser.add_argument('--experiments', default='K-B,K-D,K-H,R-RULE')
@@ -56,6 +56,13 @@ def main(argv=None):
             from .java_adapter import read_export
             java_rows = read_export(args.java_results, data, profile=args.profile, split=args.split, experiments=tuple(args.experiments.split(',')))
             java_metadata = json.loads(args.java_results.read_text(encoding='utf-8')).get('inputMeta')
+        if args.split == 'holdout':
+            if not args.output_dir:
+                raise DatasetError('holdout split requires explicit out-of-repo --output-dir')
+            from .reports import ROOT
+            resolved_out = args.output_dir.resolve()
+            if resolved_out == ROOT or ROOT in resolved_out.parents:
+                raise DatasetError('holdout output-dir must reside outside repository workspace')
         output = new_run(args.output_dir)
         manifest = run(data, output, split=args.split, profile=args.profile, adapter=args.adapter,
                        experiments=tuple(args.experiments.split(',')), allow_external=args.allow_external,

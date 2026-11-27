@@ -11,6 +11,9 @@ from .stubs import FakeMilvus, FakeEmbedding
 
 
 def prepare(path, data, *, split='smoke', profile='local', experiments=('P-L',), allow_external=False, budget=0):
+    from .dataset import DatasetError
+    if split not in data['splits'] or not data['splits'][split]:
+        raise DatasetError(f"split '{split}' missing or empty")
     records = []
     recorder = Recorder(profile, 1000000 if profile == 'controlled' else budget)
     resources = []
@@ -56,8 +59,9 @@ def prepare(path, data, *, split='smoke', profile='local', experiments=('P-L',),
                         start = len(recorder.events)
                         why = None
                         query = case['originalQuery']
-                        terms = fixed['terms']
+                        terms = [] if exp == 'P-D' else fixed['terms']
                         semantic_ids = []
+                        vector_search_ms = None
                         try:
                             if exp in ('P-H-R', 'P-TERMS'):
                                 dynamic = recall_terms(store, case['originalQuery'], case['conversationContext'])
@@ -68,15 +72,20 @@ def prepare(path, data, *, split='smoke', profile='local', experiments=('P-L',),
                                 if index is None:
                                     why = 'MILVUS_NOT_RUN'
                                 else:
+                                    import time as _time
+                                    t_vec = _time.perf_counter()
                                     semantic_ids = index.search(query, 80)['productIds']
+                                    vector_search_ms = (_time.perf_counter() - t_vec) * 1000.0
                         except Exception as error:
                             why = type(error).__name__
                         if any(e['outcome'] != 'SUCCESS' for e in recorder.events[start:]) and not why:
                             why = 'PROVIDER_DEGRADED'
                         provenance = recorder.snapshot(start)
+                        status = 'DEGRADED' if why == 'PROVIDER_DEGRADED' else ('NOT_RUN' if why else 'EXECUTED')
                         records.append(dict(caseId=case['caseId'], experiment=exp, query=query, terms=terms,
+                                            skipLexicalRecall=(exp == 'P-D'), vectorSearchMs=vector_search_ms,
                                             semanticIds=semantic_ids, provenance=provenance,
-                                            status='NOT_RUN' if why else 'EXECUTED', reason=why))
+                                            status=status, reason=why))
             finally:
                 if owned:
                     owned.close()
@@ -96,18 +105,22 @@ def read_export(path, data, *, profile=None, split=None, experiments=None):
         raise ValueError('Java experiment metadata mismatch')
     if export['database'] != 'campus_shopping_it' or not export['fixtureLoadedViaDomains']:
         raise ValueError('Java isolation evidence missing')
+    from .dataset import DatasetError
     from .runner import EXPERIMENTS
     selected_split = split or export.get('split')
-    if selected_split not in data['splits'] or not experiments or len(set(experiments)) != len(experiments):
-        raise ValueError('Java expected split/experiments missing or duplicated')
+    if selected_split not in data['splits'] or not data['splits'][selected_split] or not experiments or len(set(experiments)) != len(experiments):
+        raise DatasetError('Java expected split/experiments missing, empty, or duplicated')
     if any(e not in EXPERIMENTS for e in experiments):
         raise ValueError('Java unexpected experiment')
     expected = set()
     for case in data['cases']:
         if case['caseId'] not in data['splits'][selected_split]: continue
         for exp in experiments:
-            task = 'knowledge' if exp.startswith('K-') else 'recommendation' if exp.startswith('R-') else 'product'
+            task = ('knowledge' if exp.startswith('K-') else
+                    'recommendation' if exp.startswith('R-') else
+                    'streaming' if exp == 'S-SSE' else 'product')
             if task in ('knowledge', 'recommendation') and task not in case['taskScopes']: continue
+            if task == 'streaming' and not ({'recommendation', 'knowledge'} & set(case['taskScopes'])): continue
             expected.add((case['caseId'], exp))
     seen = set()
     for row in export['rows']:
@@ -115,8 +128,12 @@ def read_export(path, data, *, profile=None, split=None, experiments=None):
         if key in seen or key not in expected:
             raise ValueError('Java duplicate or unexpected case/experiment')
         seen.add(key)
-        if row['status'] not in ('EXECUTED', 'NOT_RUN', 'FAILED', 'UNSUPPORTED'):
+        if row['status'] not in ('EXECUTED', 'DEGRADED', 'NOT_RUN', 'FAILED', 'UNSUPPORTED'):
             raise ValueError('Java unknown execution status')
+        if row.get('latencyMs') is not None and (
+            isinstance(row['latencyMs'], bool) or not isinstance(row['latencyMs'], (int, float)) or row['latencyMs'] < 0
+        ):
+            raise ValueError('Java invalid latencyMs')
     if seen != expected:
         raise ValueError('Java incomplete case/experiment coverage')
     products = {p['productId']: p for p in data['products']}
@@ -135,6 +152,8 @@ def read_export(path, data, *, profile=None, split=None, experiments=None):
                 values = row.get('stages', {}).get(stage)
                 if not isinstance(values, list) or any(not isinstance(v, str) for v in values):
                     raise ValueError('Java required stage missing or malformed')
+            if row['experiment'] == 'P-D' and row.get('trace', {}).get('lexicalExecuted') is True:
+                raise ValueError('Java P-D must not execute lexical recall')
             if row['experiment'] != 'P-L':
                 source = ['STUB'] if export.get('profile') == 'controlled' else ['REAL']
                 for component in ('embedding', 'productVector'):

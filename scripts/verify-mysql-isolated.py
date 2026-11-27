@@ -513,7 +513,7 @@ def run(args, report):
             evaluation_input = args.evaluation_input.resolve() if args.evaluation_input else workspace/'shopping-evaluation-input.json'
             if not args.evaluation_input:
                 subprocess.run([sys.executable, '-X', 'utf8', str(ROOT/'ai-service/evaluate.py'),
-                            '--dataset', 'campus-shopping-v1', '--split', 'smoke', '--profile', 'controlled',
+                            '--dataset', args.dataset, '--split', 'smoke', '--profile', 'controlled',
                             '--experiments', 'P-L,P-D,P-H,P-H-R,P-TERMS', '--prepare-java-input', str(evaluation_input)],
                                cwd=ROOT, check=True)
             env.update(EVALUATION_INPUT_PATH=str(evaluation_input),
@@ -614,6 +614,7 @@ def main():
     parser.add_argument('--output', type=Path, default=evidence_path('audit-20261029', 'mysql.json'))
     parser.add_argument('--artifact-dir', type=Path, help='隔离已测 JAR/清单的保留目录，默认 var/engineering/verified-build')
     parser.add_argument('--evaluation-input', type=Path, help='本次已生成的合成Java评测计划；默认controlled smoke')
+    parser.add_argument('--dataset', default='campus-shopping-v1', help='合成Java评测数据集标识或路径，默认 campus-shopping-v1')
     args = parser.parse_args()
     if args.skip_maven and args.http_smoke:
         parser.error('--http-smoke 需要完整 Maven 构建')

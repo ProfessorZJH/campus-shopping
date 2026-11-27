@@ -13,7 +13,7 @@ from .metrics import score, aggregate, hard_violations
 from .semantic_review import review_complete
 
 ROOT = Path(__file__).resolve().parents[2]
-SCORER_VERSION = '3'
+SCORER_VERSION = '4'
 
 
 def now():
@@ -53,12 +53,42 @@ def render(manifest, groups, rows):
             value = 'N/A' if m['value'] is None else f'{m["value"]:.4f}'
             fractions = ', '.join(f'{a:g}/{b:g}' for a, b in zip(m['caseNumerators'], m['caseDenominators']))
             lines.append(f'| {label} | {name} | {m["scored"]}/{g["planned"]} | {fractions} | {value} |')
-    lines += ['', '## 安全、耗时与执行完整率', '', '首Token：N/A（当前非流式）。延迟仅是本次评测进程墙钟，不是生产性能。', '']
+    streaming_groups = [g for g in groups if g.get('latency', {}).get('firstTokenMs') is not None]
+    if streaming_groups:
+        stream_notes = []
+        for sg in streaming_groups:
+            st = sg['latency'].get('streaming', {})
+            stream_notes.append(
+                f"{sg['experiment']}/{sg['profile']}: started P50/P95={st.get('startedP50Ms')}/{st.get('startedP95Ms')}ms, "
+                f"firstProgress P50/P95={st.get('firstProgressP50Ms')}/{st.get('firstProgressP95Ms')}ms, "
+                f"firstDelta(首Token) P50/P95={st.get('firstDeltaP50Ms')}/{st.get('firstDeltaP95Ms')}ms, "
+                f"completed P50/P95={st.get('completedP50Ms')}/{st.get('completedP95Ms')}ms"
+            )
+        first_token_line = ('首Token（S-SSE 真实流式逐帧测量）：' + '；'.join(stream_notes) +
+                            '。非流式实验（K-*/P-*/R-*）保持 firstTokenMs=None。延迟仅是本次评测进程墙钟，不是生产性能。')
+    else:
+        first_token_line = '首Token：N/A（当前非流式）。延迟仅是本次评测进程墙钟，不是生产性能。'
+    java_stage_groups = [g for g in groups if g.get('latency', {}).get('javaStages') is not None]
+    java_stage_lines = []
+    if java_stage_groups:
+        java_stage_lines.append('Java/MySQL 分阶段耗时（P50/P95 ms，纯向量 P-D 不执行词面召回）：')
+        for jg in java_stage_groups:
+            js = jg['latency']['javaStages']
+            parts = []
+            for sk, label in (('lexicalRecallMs', '词面召回'), ('vectorRecallMs', '向量召回'),
+                              ('fusionMs', 'RRF融合'), ('revalidationMs', '事实复验'), ('pipelineTotalMs', '召回复验合计')):
+                entry = js.get(sk, {})
+                if entry.get('samples', 0) > 0:
+                    parts.append(f"{label}={entry['p50Ms']:.2f}/{entry['p95Ms']:.2f} (n={entry['samples']})")
+                else:
+                    parts.append(f"{label}=SKIPPED")
+            java_stage_lines.append(f"- {jg['experiment']}/{jg['profile']}: " + '，'.join(parts))
+    lines += ['', '## 安全、耗时与执行完整率', '', first_token_line, ''] + (java_stage_lines + [''] if java_stage_lines else [])
     for g in groups:
         components = {k: sorted({s for r in g['actualComponents'] for s in r.get(k, {}).get('source', [])})
                       for k in ('embedding', 'llm', 'productVector', 'knowledgeVector', 'javaMysql')}
-        lines += ['- ' + g['experiment'] + ': ' + json.dumps({k: g[k] for k in
-                  ('planned', 'failed', 'notRun', 'degraded', 'latency')}, ensure_ascii=False),
+        summary_keys = tuple(k for k in ('planned', 'executed', 'failed', 'notRun', 'degraded', 'unsupported', 'latency', 'executedLatency') if k in g)
+        lines += ['- ' + g['experiment'] + ': ' + json.dumps({k: g[k] for k in summary_keys}, ensure_ascii=False),
                   '  实际组件：' + json.dumps(components, ensure_ascii=False)]
     lines += ['', '## 失败与待评', '', '人工评审状态：' + manifest['humanReview'] + '。',
               '引用来源合法不代表语义正确；回答、解释与语义泄漏以人工实际评审记录为准。', '']
@@ -96,6 +126,9 @@ def recompute(path):
         if r['caseId'] in cases:
             r['scores'] = score(data, cases[r['caseId']], qrels[r['caseId']], r,
                                 reviews.get((r['caseId'], r['experiment'], r['repeat'])))
+        elif r.get('task') == 'challenge':
+            from .metrics import rate
+            r['scores'] = {'requestSuccess': rate(0, 0, status='UNSUPPORTED')}
     groups = aggregate(rows)
     from .comparisons import paired
     comparisons = []
@@ -111,7 +144,7 @@ def recompute(path):
             comparisons.append(dict(left=a, right=b, metric=metric,
                                **paired(left, right, metric, metadata_left=metadata, metadata_right=metadata)))
     write_json(path / 'comparisons.json', comparisons)
-    required_reviews = [r for r in rows if r['task'] in ('knowledge', 'recommendation')]
+    required_reviews = [r for r in rows if r['task'] in ('knowledge', 'recommendation', 'streaming')]
     review_pairs = [(r, reviews.get((r['caseId'], r['experiment'], r['repeat']), {})) for r in required_reviews]
     completed_reviews = [review for _, review in review_pairs]
     complete = bool(review_pairs) and all(review_complete(review) for _, review in review_pairs)
@@ -144,18 +177,54 @@ def dependency_version(package):
 
 
 def save(path, data, rows, metadata):
+    path = Path(path).resolve()
+    is_holdout = metadata.get('split') == 'holdout'
+    if is_holdout:
+        from .dataset import DatasetError
+        if path == ROOT or ROOT in path.parents:
+            raise DatasetError('holdout output must reside outside repository workspace')
     manifest = dict(schemaVersion=1, scorerVersion=SCORER_VERSION, runId=path.name, code=revision(),
                     python=platform.python_version(), platform=platform.system(),
                     dependencies={p: dependency_version(p) for p in ('httpx', 'pytest', 'fastapi')},
                     dataset={k: data['manifest'][k] for k in ('datasetId', 'version', 'status')},
                     annotation=data['validation'], snapshotHash=digest(data),
-                    resultsHash=digest([{k: v for k, v in r.items() if k != 'scores'} for r in rows]), **metadata)
+                    resultsHash=digest([{k: v for k, v in r.items() if k != 'scores'} for r in rows]),
+                    holdoutRedacted=is_holdout, **metadata)
+    if is_holdout:
+        # Holdout 盲测硬密封：禁止写出 dataset-snapshot.json、cases.jsonl、review.jsonl 或逐例 caseId 违规列表。
+        groups = aggregate(rows)
+        from .comparisons import paired
+        comparisons = []
+        for a, b, metric in (('K-D', 'K-H', 'knowledge.documents/ndcg@5'),
+                             ('K-H', 'K-H-R', 'knowledge.documents/ndcg@5'),
+                             ('P-L', 'P-H', 'product.fused/recall@50'),
+                             ('R-RULE', 'R-LLM', 'requestSuccess')):
+            left = [r for r in rows if r['experiment'] == a]
+            right = [r for r in rows if r['experiment'] == b]
+            if left and right:
+                cmp_meta = dict(datasetHash=manifest['snapshotHash'], split=manifest['split'], profile=manifest['profile'],
+                                adapter=manifest['adapter'], configuration=manifest['configuration'], scorerVersion=manifest['scorerVersion'])
+                cmp_res = paired(left, right, metric, metadata_left=cmp_meta, metadata_right=cmp_meta)
+                cmp_res.pop('cases', None)
+                comparisons.append(dict(left=a, right=b, metric=metric, **cmp_res))
+        manifest['boundaryViolationCount'] = len(manifest.get('boundaryViolations', []))
+        manifest['boundaryViolations'] = []
+        manifest['boundaryViolationDetails'] = []
+        for g in groups:
+            for m in g.get('metrics', {}).values():
+                m['caseNumerators'] = []
+                m['caseDenominators'] = []
+        write_json(path / 'manifest.json', manifest)
+        write_json(path / 'metrics.json', groups)
+        write_json(path / 'comparisons.json', comparisons)
+        (path / 'report.md').write_text(render(manifest, groups, []), encoding='utf-8')
+        return manifest
     write_json(path / 'manifest.json', manifest)
     write_json(path / 'dataset-snapshot.json', data)
     write_jsonl(path / 'cases.jsonl', rows)
     write_jsonl(path / 'review.jsonl', [dict(caseId=r['caseId'], experiment=r['experiment'], repeat=r['repeat'],
                  reviewStatus='PENDING', reviewer=None, reviewedAt=None, assertions=[],
                  noAssertionsReason=None, semanticLeak=None)
-                 for r in rows if r['task'] in ('knowledge', 'recommendation')])
+                 for r in rows if r['task'] in ('knowledge', 'recommendation', 'streaming')])
     recompute(path)
     return json.loads((path / 'manifest.json').read_text(encoding='utf-8'))

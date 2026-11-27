@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "campus-shopping-v2",
+  "policy": {
+    "neverAllowlistMetrics": [
+      "unauthorizedDisclosure",
+      "citationValidity",
+      "strictCitationValidity",
+      "constraint.knownSku",
+      "constraint.publication",
+      "constraint.merchant",
+      "constraint.stock",
+      "constraint.unique",
+      "streamCompleted",
+      "streamCleanTermination",
+      "streamEventOrderValid",
+      "streamAnswerConsistent"
+    ],
+    "note": "仅登记已定位根因但按‘评测整改PR不提前修改生产AI算法’原则暂缓修复的已知生产约束解析缺陷；严禁将泄漏、越权、无效引用、流式协议不一致或评测器崩溃列入白名单。"
+  },
+  "knownDevHardViolations": [
+    {
+      "caseId": "case-v2-002",
+      "experiments": ["R-RULE", "R-LLM", "S-SSE"],
+      "metrics": ["constraint.quantity", "constraintPass"],
+      "productionRootCause": "ai-service/app/engine.py:93 QUANTITY_PATTERN (?!装) 仅看后1字，将规格‘12支整盒装’误提为购买数量12"
+    },
+    {
+      "caseId": "case-v2-009",
+      "experiments": ["R-RULE", "R-LLM", "S-SSE"],
+      "metrics": ["constraint.quantity", "constraintPass"],
+      "productionRootCause": "ai-service/app/engine.py:93 将规格‘6包家庭装’误提为购买数量6"
+    },
+    {
+      "caseId": "case-v2-079",
+      "experiments": ["R-RULE", "R-LLM", "S-SSE"],
+      "metrics": ["constraint.quantity", "constraintPass"],
+      "productionRootCause": "ai-service/app/engine.py:93 QUANTITY_PATTERN 未支持数词与量词间的形容词‘5小包’，回退默认数量1"
+    },
+    {
+      "caseId": "case-v2-166",
+      "experiments": ["R-RULE", "R-LLM", "S-SSE"],
+      "metrics": ["constraint.quantity", "constraintPass"],
+      "productionRootCause": "ai-service/app/engine.py:93 将规格‘鸭毛训练12只筒’误提为购买数量12"
+    },
+    {
+      "caseId": "case-v2-167",
+      "experiments": ["R-RULE", "R-LLM", "S-SSE"],
+      "metrics": ["constraint.quantity", "constraintPass"],
+      "productionRootCause": "ai-service/app/engine.py:93 将规格‘6包家庭装’误提为购买数量6"
+    }
+  ],
+  "knownSmokeQualityBottlenecks": [
+    {
+      "caseId": "case-v2-001",
+      "purchaseMode": "SINGLE",
+      "productionRootCause": "‘一盒’与‘12支整盒装’触发双数量匹配 AMBIGUOUS，生产引擎拒答返回空推荐"
+    },
+    {
+      "caseId": "case-v2-071",
+      "purchaseMode": "BUNDLE",
+      "productionRootCause": "‘搭一份’使 requested=1 关闭 combo_intent 且截断为单品吐司，缺少燕麦奶必选商品组（bundleGroupCoverage=0.5, recommendationCoverage=0.0）"
+    },
+    {
+      "caseId": "case-v2-161",
+      "purchaseMode": "SINGLE",
+      "productionRootCause": "跨店比价未显式写数字件数时生产引擎返回最多3家门店SKU，未收敛为唯一最低价门店单品（singleItemExact=0.0）"
+    }
+  ]
+}

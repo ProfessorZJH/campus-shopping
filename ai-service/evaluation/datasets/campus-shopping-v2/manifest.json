@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "campus-shopping-v2",
+  "version": "2.0-draft",
+  "status": "DRAFT",
+  "synthetic": true,
+  "dataOrigin": "SYNTHETIC_BENCHMARK_ONLY",
+  "annotationVersion": "v2-draft-1",
+  "generatorVersion": "v2-full-corpus-solver-1",
+  "seed": 20261127,
+  "snapshotAt": "2026-11-27T00:00:00Z",
+  "reviewedNearDuplicates": [],
+  "chunking": {
+    "length": 700,
+    "overlap": 80
+  },
+  "summaryStats": {
+    "totalCases": 360,
+    "devCount": 144,
+    "testCount": 216,
+    "smokeCount": 24,
+    "familyCount": 281,
+    "multiMemberFamilyCases": 155,
+    "disputedCount": 22,
+    "maxCrossSplitSequenceRatio": 0.7692,
+    "crossSplitPairsAbove080": []
+  },
+  "files": {
+    "merchants.json": "363858e6120261a88372677c66183483ca08629e27f43570df08522912622aeb",
+    "products.jsonl": "64c3f71288993cd1f01182c8ae53fa983f5e7cab185d311a9baf5b0cfe78cbe2",
+    "knowledge.jsonl": "92d3a766b02d314a5460bdcac4e4d87cef0b39f51b2ec3da2b1f37a99d3a640e",
+    "cases.jsonl": "a070c58f16425b4baf35fd8ca36a1d7b9496cd58762f8fc13dc855c4460ddbac",
+    "qrels.jsonl": "ba98850acbc290da88857215143b67d9f83ccdec227538e88944ff005c63b4d9",
+    "annotations.jsonl": "26a3a6379f2f88a85a0e73fd6e1d0932b5ce6d59f63c5ae2c87921cc12324d7d",
+    "splits.json": "e7507074942c6e4a38a26c39713a1c881c0234d7366a7438f6de2bb67b995c72",
+    "challenge.jsonl": "c155a15d6553ddb55b906733a501dac7866359a8d0d2bed35b9c86d02faff1bd"
+  }
+}

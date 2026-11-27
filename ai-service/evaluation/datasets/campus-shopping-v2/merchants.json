@@ -1,0 +1,66 @@
+{
+  "merchants": [
+    {
+      "merchantId": "m0",
+      "name": "松园便利超市",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m1",
+      "name": "博雅文具书屋",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m2",
+      "name": "沁园轻食水吧",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m3",
+      "name": "极客数码工坊",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m4",
+      "name": "梅园宿管生活馆",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m5",
+      "name": "凌云体育装备店",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m6",
+      "name": "紫荆零食驿站",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m7",
+      "name": "知行办公印务社",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m8",
+      "name": "荷园夜宵能量站",
+      "status": "ACTIVE"
+    },
+    {
+      "merchantId": "m9",
+      "name": "停业清仓杂货铺",
+      "status": "SUSPENDED"
+    }
+  ],
+  "applications": [
+    {
+      "applicationId": "app-v2-01",
+      "merchantName": "竹园图文快印筹备店",
+      "status": "SUBMITTED"
+    },
+    {
+      "applicationId": "app-v2-02",
+      "merchantName": "南区鲜果切盒筹备铺",
+      "status": "SUBMITTED"
+    }
+  ]
+}

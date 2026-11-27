@@ -8,6 +8,7 @@ import cn.bugstack.ai.domain.catalog.model.entity.*;
 import cn.bugstack.ai.domain.inventory.model.valobj.SkuQuantityVO;
 import cn.bugstack.ai.domain.merchant.model.entity.AdmissionCommandEntity;
 import cn.bugstack.ai.domain.merchant.model.valobj.MerchantVO;
+import cn.bugstack.ai.domain.shoppingai.model.valobj.KnowledgeDocumentVO;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.*;
 import org.springframework.context.ApplicationContext;
@@ -21,6 +22,8 @@ final class ShoppingEvaluationFixture {
     final Map<String, String> actualToLogical = new LinkedHashMap<>();
     final Map<String, MerchantVO> merchants = new HashMap<>();
     final Map<String, String> owners = new HashMap<>();
+    final Map<String, String> clerks = new HashMap<>();
+    final Map<String, String> clerkRoleCodes = new HashMap<>();
     final ApplicationContext context;
 
     ShoppingEvaluationFixture(ApplicationContext context) {
@@ -79,15 +82,38 @@ final class ShoppingEvaluationFixture {
             "evaluation-pending"
         );
         for (JsonNode p : data.path("products")) loadProduct(p);
-        for (JsonNode d : data.path("knowledge")) {
+        List<JsonNode> docsToLoad = new ArrayList<>();
+        data.path("knowledge").forEach(docsToLoad::add);
+        docsToLoad.sort(Comparator.comparingInt(d -> d.hasNonNull("rootKey") && !d.path("rootKey").asText().isBlank() ? d.path("version").asInt(1) : 1));
+        Map<String, String> rootBaseIds = new HashMap<>();
+        Map<String, String> rootDocIds = new HashMap<>();
+        for (JsonNode d : docsToLoad) {
             String mid = d.path("merchantId").isNull() ? null : d.path("merchantId").asText();
             String actor = mid == null ? f.admin : owners.get(mid);
-            var base = f.knowledge.createBase(actor, mid == null ? null : merchants.get(mid).id(), d.path("title").asText(), d.path("visibility").asText());
-            var doc = f.aiState.createDocument(null, base.id(), d.path("title").asText(), d.path("content").asText());
+            String visibility = d.path("visibility").asText();
+            String rootKey = d.hasNonNull("rootKey") ? d.path("rootKey").asText().trim() : "";
+            KnowledgeDocumentVO doc;
+            if (!rootKey.isEmpty()) {
+                String groupKey = (mid == null ? "PLATFORM" : mid) + "|" + visibility + "|" + rootKey;
+                String baseId = rootBaseIds.computeIfAbsent(groupKey, k ->
+                    f.knowledge.createBase(actor, mid == null ? null : merchants.get(mid).id(), d.path("title").asText(), visibility).id()
+                );
+                doc = f.aiState.createDocument(rootDocIds.get(groupKey), baseId, d.path("title").asText(), d.path("content").asText());
+                rootDocIds.putIfAbsent(groupKey, doc.rootId());
+            } else {
+                var base = f.knowledge.createBase(actor, mid == null ? null : merchants.get(mid).id(), d.path("title").asText(), visibility);
+                doc = f.aiState.createDocument(null, base.id(), d.path("title").asText(), d.path("content").asText());
+            }
             f.aiState.completeIndex(f.aiState.beginIndex(doc.id()), true, "");
             if (!d.path("status").asText().equals("DRAFT")) f.knowledge.publish(actor, doc.id());
             if (d.path("status").asText().equals("WITHDRAWN")) f.knowledge.withdraw(actor, doc.id());
             map(d.path("documentId").asText(), doc.id());
+        }
+        for (JsonNode c : data.path("cases")) {
+            String ref = c.path("actorRef").asText();
+            if (ref.startsWith("merchant-clerk-read-") || ref.startsWith("merchant-clerk-noread-")) {
+                ensureClerk(ref);
+            }
         }
         for (JsonNode m : data.path("merchants").path("merchants")) {
             if (m.path("status").asText().equals("SUSPENDED")) f.admission.setActive(
@@ -145,8 +171,39 @@ final class ShoppingEvaluationFixture {
         });
     }
 
+    String ensureClerk(String actorRef) {
+        return clerks.computeIfAbsent(actorRef, ref -> {
+            boolean canReadKnowledge = ref.startsWith("merchant-clerk-read-");
+            String prefix = canReadKnowledge ? "merchant-clerk-read-" : "merchant-clerk-noread-";
+            String mid = ref.substring(prefix.length());
+            MerchantVO merchant = Objects.requireNonNull(merchants.get(mid), "unknown clerk merchant: " + mid);
+            String owner = Objects.requireNonNull(owners.get(mid), "unknown clerk owner: " + mid);
+            String username = (canReadKnowledge ? "eval_cr_" : "eval_cn_") + mid;
+            String clerkUser = f.accounts.register(username, CommerceMySqlIntegrationTest.PASSWORD, "合成店员").getUserId();
+            var invitation = f.access.invite(owner, merchant.id(), username);
+            f.access.accept(clerkUser, invitation.id());
+            String roleKey = mid + "|" + (canReadKnowledge ? "read" : "noread");
+            String roleCode = clerkRoleCodes.computeIfAbsent(roleKey, k ->
+                f.roles
+                    .saveRole(
+                        owner,
+                        merchant.id(),
+                        null,
+                        canReadKnowledge ? "评测知识可读店员" : "评测商品只读店员",
+                        canReadKnowledge ? Set.of("knowledge.read") : Set.of("product.read")
+                    )
+                    .code()
+            );
+            f.roles.assignRole(owner, merchant.id(), clerkUser, roleCode);
+            return clerkUser;
+        });
+    }
+
     String actor(JsonNode c) {
         String actor = c.path("actorRef").asText();
-        return actor.equals("platform-admin") ? f.admin : actor.startsWith("merchant-owner-") ? owners.get(actor.substring(15)) : f.buyer;
+        if (actor.equals("platform-admin")) return f.admin;
+        if (actor.startsWith("merchant-owner-")) return owners.get(actor.substring(15));
+        if (actor.startsWith("merchant-clerk-read-") || actor.startsWith("merchant-clerk-noread-")) return ensureClerk(actor);
+        return f.buyer;
     }
 }
