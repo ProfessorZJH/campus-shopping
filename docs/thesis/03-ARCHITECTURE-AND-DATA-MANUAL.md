@@ -1,4 +1,4 @@
-# 论文图表、代码规模、44张数据表与102路由权威速查手册
+# 论文图表、代码规模、46张数据表与111路由权威速查手册
 
 > 本手册中的所有表名、路由数量、模块行数与状态转换均直接提取自当前仓库源码（[schema.sql](../../campus-shopping-app/src/main/resources/schema.sql)、[route-manifest.json](../api/route-manifest.json) 与各模块源码），撰写论文第 3 章、第 4 章时可直接引用，保证与代码 100% 一致。
 
@@ -8,18 +8,19 @@
 
 | 子系统 / 模块 | 文件数 | 核心代码/配置行数 | 职责定位 |
 |---|---:|---:|---|
-| `campus-shopping-domain` | 164 | ~5,460 | 7 大限界上下文领域聚合、实体、值对象、领域服务、仓储接口与窄 Port |
-| `campus-shopping-infrastructure` | 95 | ~4,910 | MyBatis DAO/PO、仓储实现、Redisson 缓存/锁/配额、AI/Agent/七牛网关 |
-| `campus-shopping-case` | 55 | ~3,590 | 跨领域本地事务编排、确定性锁序控制、AI 无事务会话与提案确认编排 |
-| `campus-shopping-trigger` | 31 | ~3,440 | 12 个 REST Controller、独立 SSE 与媒体端点、安全限流过滤器、逾期关单与向量同步任务 |
-| `campus-shopping-api` | 85 | ~1,385 | HTTP 契约接口（`I...Api`）、请求/响应 DTO 与通用 `Response<T>` 信封 |
-| `campus-shopping-app`（主配置 + Mapper + SQL） | 12 | ~502 | Spring Boot 启动装配、Security/CSP/生产守卫；另有 Mapper XML、schema 与 21 份版本迁移 |
-| `campus-shopping-types` | 7 | ~210 | 统一业务错误码枚举 `ResponseCode`、`AppException`、参数断言与指纹工具 |
-| **Java 测试套件（`src/test`）** | **79** | **~13,400** | 领域/用例单测、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例与评测桥接 |
-| **Python 智能导购（`ai-service/app`）** | **25** | **~3,450** | FastAPI 接入、BM25/本地哈希/Qdrant/Milvus REST 混合检索、规格状态机、Runtime Bridge |
-| **Python 测试与评测（`tests` + `evaluation`）** | **72** | **~8,150** | 419+ 项 pytest 回归套件 + Scorer v3 消融与硬约束评测框架 + 120 例数据集 |
-| **Vue 3 三端前端（`frontend/src`）** | **54** | **~11,900** | 13 个三端业务页面、16 个组件、Epoch 状态隔离、有界 SSE 解析与主题样式系统 |
-| **前端与工程化门禁（`frontend/tests` + `scripts`）** | **100** | **~15,900** | 39+ 项 Node 单测、32 个 Playwright 浏览器脚本、契约/DDL/Mapper/DDD 自动化门禁 |
+| `campus-shopping-domain` | 170 | ~7,069 | 7 大限界上下文领域聚合、实体、值对象、领域服务、仓储接口与窄 Port |
+| `campus-shopping-infrastructure` | 98 | ~7,062 | MyBatis DAO/PO、仓储实现、双 Redis 缓存/锁/延迟队列/配额、AI/Agent/七牛网关 |
+| `campus-shopping-case` | 57 | ~4,770 | 跨领域本地事务编排、确定性锁序控制、AI 无事务会话与提案确认编排 |
+| `campus-shopping-trigger` | 34 | ~3,912 | 13 个 REST Controller、3 类独立流式/媒体端点、防爬与安全限流过滤器、逾期关单与向量同步任务 |
+| `campus-shopping-api` | 93 | ~1,795 | HTTP 契约接口（`I...Api`）、请求/响应 DTO 与通用 `Response<T>` 信封 |
+| `campus-shopping-app`（主配置 + Mapper + SQL） | 12 | ~520 | Spring Boot 启动装配、Security/RedisSession/CSP/生产守卫；另有 Mapper XML、`schema.sql` 与 22 份版本迁移 |
+| `campus-shopping-types` | 7 | ~258 | 统一业务错误码枚举 `ResponseCode`、`AppException`、参数断言与指纹工具 |
+| **Java 主源码小计（`src/main/java`）** | **471** | **~25,386** | Java 七模块核心生产代码小计（含测试合计 **554 个 `.java` / ~39,777 行**） |
+| **Java 测试套件（`src/test/java`）** | **83** | **~14,391** | 领域/用例单测（领域规则 56 项）、协议边界、隔离 MySQL 并发事务竞争、Redis 双实例故障隔离与评测桥接 |
+| **Python 智能导购（`ai-service/app`）** | **26** | **~4,258** | FastAPI 接入、BM25/本地哈希/Qdrant/Milvus REST 混合检索、24h Redis 向量缓存、规格状态机、Runtime Bridge |
+| **Python 测试与评测（`tests` + `evaluation`）** | **74** | **~9,107** | 432 项 pytest 回归套件 + Scorer v3 消融与硬约束评测框架 + 120 例数据集 |
+| **Vue 3 三端前端（`frontend/src`）** | **59** | **~28,535** | 36 `.js`（11,815 行）、11 `.vue`（1,733 行）、9 `.css`（14,889 行，0 `!important`）、3 `.ts`（98 行）；13 个业务页面、20 个组件、Epoch 状态隔离与淘宝 2025 + 千牛视觉体系 |
+| **前端与工程化门禁（`frontend/tests` + `scripts`）** | **94** | **~16,630** | 39 项前端 Node 单测、43 项门禁脚本单测、Playwright 浏览器脚本、契约/DDL/Mapper/DDD 自动化门禁 |
 
 ---
 
@@ -47,9 +48,9 @@ flowchart TB
 
 ---
 
-## 三、MySQL 44 张数据表完整分类字典（论文表 3-3 素材）
+## 三、MySQL 46 张数据表完整分类字典（论文表 3-3 素材）
 
-全库共 **44 张表**，严格按 **8 大领域表前缀**归属，由 `verify-ddd-boundaries.py` 静态门禁强制禁止跨领域越权写表：
+全库共 **46 张表**，严格按 **8 大领域表前缀**归属，由 `verify-ddd-boundaries.py` 静态门禁强制禁止跨领域越权写表：
 
 ### 1. 身份与访问上下文 `iam_`（6 张表）
 | 表名 | 核心主键 / 唯一约束 | 业务职责说明 |
@@ -68,7 +69,7 @@ flowchart TB
 | `mer_merchant` | `id` (PK), `source_application_id` (UK) | 商户主体与营业资格状态（`ACTIVE`/`SUSPENDED`）及展示缓存版本号 `version` |
 | `mer_store` | `id` (PK), `merchant_id` (UK) | 商户线下自提门店信息（店名、校内自提位置、营业时间、门店实拍图） |
 
-### 3. 商品目录上下文 `cat_`（5 张表）
+### 3. 商品目录上下文 `cat_`（6 张表）
 | 表名 | 核心主键 / 唯一约束 | 业务职责说明 |
 |---|---|---|
 | `cat_category` | `code` (PK) | 平台统一商品类目字典与启停状态 |
@@ -76,6 +77,7 @@ flowchart TB
 | `cat_sku` | `id` (PK), `(product_id, spec_key)` (UK) | 商品多规格 SKU 表（以“分”为单位的 `price_cent`、独立启停状态与版本号 `version`） |
 | `cat_product_image` | `image_id` (PK), `(product_id, sort_order)` (UK), `(product_id, object_key)` (UK) | 商品多图相册有序引用表（最多 8 张，仅存稳定相对路径引用） |
 | `cat_product_image_upload` | `(object_key, merchant_id)` (PK) | 商户已上传图片归属登记表（防止跨商户盗用未公开上传资产） |
+| `cat_product_favorite` | `(user_id, product_id)` (PK), `ix_favorite_user` | 消费者商品收藏表（支撑个人收藏夹幂等增删与按收藏时间倒序分页） |
 
 ### 4. 库存管理上下文 `inv_`（3 张表）
 | 表名 | 核心主键 / 唯一约束 | 业务职责说明 |
@@ -84,7 +86,7 @@ flowchart TB
 | `inv_reservation` | `(order_id, sku_id)` (PK) | 订单级库存预占明细单（支撑幂等释放 `RELEASED` 与核销扣减 `CONSUMED`） |
 | `inv_stock_movement` | `id` (PK) | 不可变库存变动审计流水（补货 `REPLENISH`、预占 `RESERVE`、释放 `RELEASE`、核销 `CONSUME`） |
 
-### 5. 交易与售后上下文 `trd_`（9 张表）
+### 5. 交易与售后上下文 `trd_`（10 张表）
 | 表名 | 核心主键 / 唯一约束 | 业务职责说明 |
 |---|---|---|
 | `trd_cart_owner` | `user_id` (PK) | 买家购物车并发串行化专用锁行表（避免加购与结算互相覆盖） |
@@ -96,6 +98,7 @@ flowchart TB
 | `trd_after_sale` | `id` (PK), `order_id` (UK) | 未提货售后退款与平台争议申诉单（`REQUESTED`/`REJECTED`/`DISPUTED`/`APPROVED`） |
 | `trd_refund` | `order_id` (PK) | 退款完成记账凭证表 |
 | `trd_order_event` | `id` (PK) | 订单与售后全生命周期事件时间线审计表 |
+| `trd_order_review` | `id` (PK), `(order_id, product_id)` (UK), `ix_review_product` | 订单完成后买家实购商品评价表（1～5 分评分约束、评价标签与正文，每单每商品限评一次） |
 
 ### 6. 自提履约上下文 `ful_`（2 张表）
 | 表名 | 核心主键 / 唯一约束 | 业务职责说明 |
@@ -124,30 +127,33 @@ flowchart TB
 |---|---|---|
 | `sys_audit` | `id` (PK) | 关键管理、审核、核销与外发操作安全审计表 |
 | `sys_schema_version` | `version` (PK) | 基础结构版本标识表 |
-| `sys_schema_migration` | `version` (PK) | 21 个不可变数据库迁移脚本的版本号与 SHA-256 校验和登记表 |
+| `sys_schema_migration` | `version` (PK) | 22 个不可变数据库迁移脚本（`V20261028_01`～`V20261126_01`）的版本号与 SHA-256 校验和登记表 |
 | `sys_schema_migration_drift` | `id` (PK) | 历史库结构漂移人工准入责任人与原因审计表 |
 
 ---
 
 ## 四、HTTP API 路由分布与核心时序/状态机图（论文第 3、4 章直接可用）
 
-### 4.1 102 条 JSON 契约路由 + 独立端点分布
+### 4.1 111 条 JSON 契约路由 + 3 类独立流式/媒体端点分布
+
+> 全栈共暴露 **114 个** Spring MVC 端点（分布于 **16 个** `@RestController` 类）：**13 个** `*Controller.java` 提供 **111 条** JSON 业务契约路由（覆盖 **102 个**唯一路径），另设 **3 个**独立非 JSON/流式 `*Endpoint.java`。
 
 | 控制器（`campus-shopping-trigger`） | 路由条数 | 覆盖领域能力 |
 |---|---:|---|
-| `CatalogController` | 17 | 公开商品搜索/全局排序分页、详情、类目、商户商品与 SKU 维护、图片上传、违规下架 |
+| `CatalogController` | 18 | 公开商品搜索/全局排序分页、详情、公开商品评价查询（`GET /api/v1/products/{productId}/reviews`）、类目、商户商品与 SKU 维护、图片上传、违规下架 |
+| `OrderController` | 15 | 幂等结算建单、买家/商户/平台订单分页与搜索、模拟支付、取消订单、完单后评价提交（`POST /api/v1/orders/{orderId}/reviews`）、经营看板与趋势统计 |
 | `MerchantApplicationController` | 14 | 入驻申请提交与分页、平台审核、商户启停、公开商户分页与详情、门店资料设置与门店图片上传 |
-| `OrderController` | 14 | 幂等结算建单、买家/商户/平台订单分页与搜索、模拟支付、取消订单、经营看板与趋势统计 |
 | `AfterSaleController` | 9 | 未提货退款申请、买家申诉、商户审核、平台争议裁决、售后处理时间线 |
-| `ShoppingAiController` | 9 | 同步导购对话、只读 RAG 命中调试、会话列表与历史、轮次状态与取消、提案列表/确认/拒绝 |
 | `KnowledgeController` | 9 | 商户/平台知识库创建、文档上传提取、新版本提交、索引重建、发布与撤回 |
-| `WorkspaceController` | 6 | 当前登录人多商户工作台上下文、成员列表、店员邀请发送/接受与撤销 |
+| `ShoppingAiController` | 9 | 同步导购对话、只读 RAG 命中调试、会话列表与历史、轮次状态与取消、提案列表/确认/拒绝 |
+| `DiscoveryController` | 6 | 商品收藏增删（`POST/DELETE /api/v1/products/{productId}/favorite`）、我的收藏列表（`GET /api/v1/favorites`）、首页热销/热搜与个性化发现（`GET /api/v1/discovery/home`）、商详共现推荐（`GET /api/v1/products/{productId}/recommendations`）、管理员双 Redis 与风控遥测（`GET /api/v1/admin/redis-telemetry`） |
 | `RoleController` | 6 | 商户自定义 RBAC 角色查询、新增/修改、删除与成员改派 |
+| `WorkspaceController` | 6 | 当前登录人多商户工作台上下文、成员列表、店员邀请发送/接受与撤销 |
 | `AuthController` | 5 | CSRF 令牌获取、用户注册、会话登录、安全退出、当前身份查询 |
+| `FulfillmentController` | 5 | 商户开始备货、标记待取货、买家签发动态自提码、店员常规核销与 6 位取餐码快捷核销完成交易 |
 | `InventoryController` | 5 | 商户 SKU 补货、库存余额列表、低可售库存筛选、库存变动流水查询 |
 | `CartController` | 4 | 购物车实时报价视图读取、新增商品、修改数量、移除单项 |
-| `FulfillmentController` | 4 | 商户开始备货、标记待取货、买家签发动态自提码、店员核销完成交易 |
-| *独立流式与媒体端点* | *+2 类* | `AiStreamEndpoint`（`POST /api/v1/ai/chat/stream` SSE 流式导购）、`MediaAssetEndpoint`（`GET /media/qiniu/{filename}` 七牛 302 受控重定向；本地 `/media/**` 由 `WebAssetsConfig` 提供） |
+| *独立非 JSON / 流式与媒体端点（3 个 `*Endpoint.java`）* | *+3 类* | `AiStreamEndpoint`（`POST /api/v1/ai/chat/stream` AI SSE 流式导购）、`RealtimeEventEndpoint`（`GET /api/v1/events/stream` 基于 Redis `RTopic` 的商家新单与买家出餐实时 SSE 推送）、`MediaAssetEndpoint`（`GET /media/qiniu/{filename}` 七牛 302 受控重定向；本地 `/media/**` 由 `WebAssetsConfig` 提供） |
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **用途**：本文档专为毕业论文撰写（第 3 章架构设计、第 4 章核心实现、第 5 章安全与高并发测试）与毕业答辩现场提问准备，集中阐述本系统 **为什么采用物理隔离的双 Redis 架构**、**7 大核心业务与 AI 协同场景**、**多层防刷防爬虫风控体系** 以及 **高频评委追问标准应答**。
 >
-> **关联规格与实现**：[SDD-REDIS-12](../specs/SDD-REDIS-12.md) · [Docker 编排配置](../../compose.yml)
+> **关联规格、论文正文与实现**：[SDD-REDIS-12](../specs/SDD-REDIS-12.md) · [07 · 第 4 章详细设计与实现正文定稿](07-CHAPTER-04-DETAILED-DESIGN-AND-IMPLEMENTATION.md) · [Docker 编排配置](../../compose.yml)
 
 ---
 
@@ -77,9 +77,9 @@ flowchart LR
 
 | 防护层级 | 核心机制与 Redis 数据结构 | 拦截效果与响应契约 |
 | :--- | :--- | :--- |
-| **L1 · 公开接口防爬虫网关**<br>(`PublicAntiCrawlerFilter`) | 1. **UA 特征与自动化探针识别**：拦截空 UA 或显式恶意抓取器特征（`sqlmap`、`nikto`、`masscan`、`scrapy` 等）；<br>2. **IP 突发速率令牌桶**（`redis-security` `RRateLimiter` `public-api-ip`）；<br>3. **深分页拦截**：拒绝超大 `page` 恶意扫尾页；<br>4. **阶梯惩罚封禁盒（Penalty Box）**：短时间内连续多次触发 `429` 的来源 IP 自动写入 `{ns}:sec:ban:ip:{fp}` 临时封禁并计入安全大盘。 | 返回标准 `HTTP 429` + 错误码 `A0007` + `Retry-After` 响应头；平台管理员可在后台实时查看防爬拦截计数与活跃封禁数。 |
+| **L1 · 公开接口防爬虫网关**<br>(`PublicAntiCrawlerFilter`) | 1. **UA 特征与自动化探针识别**：拦截空 UA 或显式恶意抓取器特征（`sqlmap`、`nikto`、`masscan`、`scrapy` 等）；<br>2. **IP 突发速率令牌桶**（`redis-security` `RRateLimiter` `public-browse-ip`）：校园 NAT 友好阈值 **`600 次 / 60s`**；<br>3. **深分页拦截**：拒绝 `page > 100` 或 `size > 100` 的恶意扫尾页；<br>4. **阶梯惩罚封禁盒（Penalty Box）**：`60s` 内连续触发 **`3` 次**限流违规的来源 IP 自动升级为 **`300s` 临时封禁**（写入 `{ns}:sec:ban:ip:{fp}`）并计入安全大盘。 | 返回标准 `HTTP 429` + 错误码 `A0007` + `Retry-After` 响应头（封禁态为 `300`）；平台管理员可在后台实时查看防爬拦截计数与活跃封禁数。 |
 | **L2 · 缓存防穿透 / 防击穿 / 防雪崩**<br>(`DisplayCache`) | 1. **防穿透**：数据库查无此商品/门店时写入短 TTL `"__NULL__"` 空值哨兵（15s），随机 UUID 扫描 0 次落库；<br>2. **防击穿**：热点 Key 重建采用 Redisson 短锁 Singleflight 互斥回源；<br>3. **防雪崩**：基础 TTL 叠加 `0~20%` 随机抖动；<br>4. **防脏读**：版本号参与 Key（`product:{id}:{version}`）+ 事务 `afterCommit` 精准淘汰。 | 恶意扫库流量被挡在内存层，单次商详静态元数据读取零重复回源。 |
-| **L3 · 交易防恶意占坑与核销防爆破**<br>(`CheckoutCase` + `CampusRedisHub`) | 1. **未支付在途单上限**：单买家同时处于 `PENDING_PAYMENT` 状态的未付订单超过阈值（如 5 单）直接拒绝新下单，提示先完成支付或取消旧单；<br>2. **下单突发频控**：单用户高频刷单限流；<br>3. **6 位取餐码防重放与防爆破**：核销走 Lua 脚本原子读取校验，连续输错取件码触发短期冷却锁定。 | 彻底杜绝“零成本恶意锁空全店库存”与“穷举冒领他人自提餐品”。 |
+| **L3 · 交易防恶意占坑与核销防爆破**<br>(`CheckoutCase` + `CampusRedisHub`) | 1. **24 小时未支付在途单上限**：单买家近 24 小时处于 `PENDING_PAYMENT` 状态的未付订单达到 **`10` 单**（`MAX_PENDING_ORDERS_24H = 10`）直接拒绝新下单，提示先完成支付或取消旧单；<br>2. **下单突发频控**：单用户高频刷单限流；<br>3. **6 位取餐码防重放与防爆破**：核销走 Lua 脚本原子读取校验与 `MessageDigest.isEqual` 恒定时间摘要比对，**`300s` 内连续核销失败 `5` 次即自动锁定 `180s`**。 | 彻底杜绝“零成本恶意锁空全店库存”与“穷举冒领他人自提餐品”。 |
 | **L4 · AI 算力防刷与熔断降级**<br>(`ProtectedQuotaFilter` + `ai-service`) | 1. **双级并发与频率门禁**：用户级 `10次/分` + 全局级 `120次/分` + Redisson 跨节点可过期信号量 `RPermitExpirableSemaphore`；<br>2. **单用户日度算力配额桶**（`{ns}:sec:ai-budget:{uid}:{day}`）；<br>3. **2048 维 Query Embedding 缓存 + 上游 5xx 熔断器**：相同问题直接命中 `redis-cache`，外部接口抖动毫秒级平滑切本地 BM25。 | 既防刷爆大模型账单，又消除重复向量计算带来的 2~4 秒额外延迟。 |
 
 ---
@@ -91,8 +91,9 @@ flowchart LR
 1. **门店每日递增取餐叫号（`INCR`）+ 动态二维码/6 位短码核销**：
    - 买家付款成功瞬间，通过 `INCR {ns}:pickup:seq:{storeId}:{yyyyMMdd}` 原子签发人性化门店取餐号（如 `A-101`、`A-102`），落库快照保存；
    - 领码时同时生成前端纯 `<svg>` 矢量二维码与 **6 位数字口述码（如 `682 914`）**，店员在工作台输入 6 位短码即可一键定位订单完成核销。
-2. **15 分钟未支付秒级自动关单（Redisson `RDelayedQueue`）**：
-   - 下单事务 `afterCommit` 后立即向延迟队列投递精确到秒的到期任务，到点自动触发 `OrderLifecycleCase.expire(orderId)` 释放预占库存；同时保留降频后的数据库巡检任务作为极端宕机兜底（扫描游标同样持久化在 Redis）。
+2. **15 分钟未支付秒级自动关单与提交后双队列精准驱逐（Redisson `RDelayedQueue`）**：
+   - 下单事务 `afterCommit` 后立即通过 `OrderDelayCoordinator` 向 `RDelayedQueue` 投递精确到秒的到期任务，到点自动触发 `OrderLifecycleCase.expire(orderId)` 释放预占库存；同时保留降频后的数据库巡检任务作为极端宕机兜底（扫描游标同样持久化在 Redis）；
+   - **提交后双队列精准驱逐**：在 `OrderLifecycleCaseImpl` 的 `pay`、`cancel`、`expire` 三条终态流转路径中均接入 `OrderDelayCoordinator.cancelOrderExpiryAfterCommit(orderId)`，待事务提交后同步将 `orderId` 从 `RDelayedQueue` 与 `RBlockingDeque` 双重移除，确保已结单或已取消订单不遗留幽灵到期任务，避免平台运维大盘中 `待超时关单` 遥测计数虚高（详见 [07-CHAPTER-04-DETAILED-DESIGN-AND-IMPLEMENTATION.md](07-CHAPTER-04-DETAILED-DESIGN-AND-IMPLEMENTATION.md) 第 4.3 节）。
 3. **实时热销榜、真实热搜词与个性化推荐（`ZSET`）**：
    - 搜索行为实时更新 `ZINCRBY {ns}:rank:hotwords`，订单成交实时更新 `ZINCRBY {ns}:rank:sales:campus` 与同单共现矩阵 `{ns}:rec:copurchase:{productId}`，商品浏览实时记录 `{ns}:footprint:{userId}`；
    - 结合协同过滤（ItemCF 共现）与用户近期品类偏好，为首页提供“猜你喜欢 / 校园实时热销榜”，为商详页提供“买了又买”，且所有推荐结果返回前均经 Java/MySQL 实时校验上架状态与可用库存。
@@ -113,9 +114,9 @@ flowchart LR
 
 ### Q3：如果有人写 Python 脚本爬你们的商品库，或者恶意刷单把食堂库存占光，系统怎么防？
 - **答**：我们做了四层联动防御：
-  1. **入口层**（`PublicAntiCrawlerFilter`）基于 `redis-security` 对公开目录接口做 IP 突发限流、异常爬虫 UA 拦截、深分页阻断，对连续触发 `429` 的恶意 IP 自动关进临时封禁黑名单（Penalty Box）；
+  1. **入口层**（`PublicAntiCrawlerFilter`）基于 `redis-security` 对公开目录接口做 `600 次 / 60s` IP 突发限流、异常爬虫 UA 拦截、深分页（`page > 100` / `size > 100`）阻断，对 `60s` 内连续触发 `3` 次限流违规的恶意 IP 自动关进 `300s` 临时封禁黑名单（Penalty Box）；
   2. **缓存层**（`DisplayCache`）加了 15 秒空值哨兵与 Singleflight 互斥锁，爬虫扫随机不存在的商品 ID 会被 Redis 0.3ms 直接拦住，0 次打到 MySQL；
-  3. **交易层**（`CheckoutCaseImpl`）限制单个买家同时未付款的在途订单上限（防零成本恶意占坑锁库存），配合 Redisson `RDelayedQueue` 到期秒级自动关单释放预占库存；
+  3. **交易层**（`CheckoutCaseImpl` + `OrderLifecycleCaseImpl`）限制单个买家 24 小时内未付款在途订单上限为 `10` 单（防零成本恶意占坑锁库存），配合 Redisson `RDelayedQueue` 到期秒级自动关单释放预占库存，并在 `pay`/`cancel`/`expire` 事务提交后通过 `cancelOrderExpiryAfterCommit` 双队列精准驱逐，6 位取餐码在 `300s` 内连续失败 `5` 次即锁定 `180s`；
   4. **AI 层**做用户+全局双级限流、每日算力预算桶和 Embedding 向量缓存，防止恶意请求刷爆大模型 API 账单。
 
 ### Q4：AI 导购既要速度快、回答自然，又要防止大模型胡编价格或越权泄露内部文档，怎么兼顾的？
