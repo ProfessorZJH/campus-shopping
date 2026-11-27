@@ -47,13 +47,13 @@
 
 ### D3. 评分统计修复与真实 SSE 首 Token 延迟专项
 
-- **统计口径修复（保持 `SCORER_VERSION = '3'` 既有兼容结构，增量补充诚实字段）**：
-  - `FAILED` 案例因未完成输出生成，`unauthorizedDisclosure` 在失败空输出上标为 `status="FAILED", value=None`，不再计入“已验证零泄漏”。
-  - `evidenceCoverage` 在存在 `grade == 2` 核心证据分块时要求全部核心分块被合法引用且无任何非法引用（无 `grade == 2` 时退回全部 `grade > 0`），避免全语料背景 `grade=1` 分块造成误判，同时兼容 V1 全部单测。
-  - `aggregate()` 增加 `unsupported` 计数与仅统计 `EXECUTED` 样本的 `executedLatency`（保留原 `latency` 字段兼容既有契约，同时消除 `<1ms` 预算耗尽 `DEGRADED` 对真实延迟的掩盖）；`comparisons.paired()` 输出 `leftDegraded` / `rightDegraded` 计数；`java_adapter` 支持保留并传递 `DEGRADED` 状态及 Java 逐例墙钟 `latencyMs`。
-- **独立 SSE 首 Token 延迟测量（`S-SSE`）**：
-  - 新增 `evaluation/streaming.py` 并在 `evaluate.py` 支持 `S-SSE` 实验：启动隔离临时 SQLite 与真实 `uvicorn` 本地回环 HTTP 服务（或受控 Mock 上游流式 SSE 传输），使用 `httpx.Client.stream("POST", "/v1/query/stream", json={..., "streamText": True})` 逐帧读取真实 SSE 事件流。
-  - 逐例独立记录 `startedMs`（`event: started`）、`firstProgressMs`（首个 `event: progress` 上游原始流式字节到达）、`firstDeltaMs`（首个 `event: delta` 用户可见文本块到达）与 `completedMs`（`event: completed`），并在流式实验组的 `latency.firstTokenMs` 报告 nearest-rank P50/P95；非流式实验继续保持 `firstTokenMs = None`。
+- **统计与评分可信度整改（升级 `SCORER_VERSION = '4'`）**：
+  - 区分 `BUNDLE`（二分图不重叠匹配校验全部 `requiredGroups` 必选商品组，杜绝“两款吐司缺燕麦奶”凑数得分）、`ALTERNATIVES`（逐备选单品预算校验 + `1..3` 相关候选防凑数）与 `SINGLE`（唯一 `grade=2` 目标单品精确交付），兼容 V1 历史提案口径。
+  - `FAILED` 空输出在无流式已发送帧时标 `unauthorizedDisclosure` 为 `FAILED (null)`，但若流式 `S-SSE` 中途已发出含泄漏内容的 `delta` 后异常终止，严格保留 `unauthorizedDisclosure = 1.0` 并记入硬违规。
+  - 静态近似检查显式标注 `leakageDetectionScope = "LEXICAL_CHAR_SIMILARITY_AND_DECLARED_FAMILY_ONLY"`、`semanticLeakageVerified = false`，并配套仓库外独立 `holdout` 盲测治理规范。
+  - Java/MySQL 实验拆分为 `lexicalRecallMs`、`vectorRecallMs`、`fusionMs`、`revalidationMs` 四阶段独立计时，纯向量 `P-D` 禁止执行词面 SQL 召回，并通过真实 MySQL 8 `PREPARE` / `EXECUTE` / `EXPLAIN ANALYZE` 核验 SQL 瓶颈归因。
+- **独立 SSE 首 Token、事件顺序与增量安全评测（`S-SSE`）**：
+  - `evaluation/streaming.py` 逐帧核验 `started -> [progress*] -> [delta*] -> terminal` 事件顺序、正常终止（`streamCleanTermination`）、`"".join(deltas) == completed.answer` 最终答案逐字一致性（`streamAnswerConsistent`），并将全部 `delta` 与非 `completed` 帧纳入 `unauthorizedDisclosure` 安全门禁。
 
 ## Risks / Trade-offs
 

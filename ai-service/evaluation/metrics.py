@@ -56,26 +56,153 @@ def item_checks(item, facts, constraints, merchants):
     }
 
 
+def _max_bipartite_group_match(valid_g2_skus: list[str], required_groups: list[dict]) -> int:
+    """一对一二分图匹配：单个推荐项最多满足一个必选商品组，同类多SKU无法跨组凑数。"""
+    if not required_groups or not valid_g2_skus:
+        return 0
+    group_sets = [set(grp.get("skuIds", [])) for grp in required_groups]
+    matched_item_for_group: dict[int, int] = {}
+
+    def dfs(item_idx: int, visited_groups: set[int]) -> bool:
+        sid = valid_g2_skus[item_idx]
+        for g_idx, g_set in enumerate(group_sets):
+            if g_idx in visited_groups or sid not in g_set:
+                continue
+            visited_groups.add(g_idx)
+            prev_item = matched_item_for_group.get(g_idx)
+            if prev_item is None or dfs(prev_item, visited_groups):
+                matched_item_for_group[g_idx] = item_idx
+                return True
+        return False
+
+    count = 0
+    for idx in range(len(valid_g2_skus)):
+        if dfs(idx, set()):
+            count += 1
+    return count
+
+
+def _bundle_corpus_eligible(facts: dict, grades: dict, case: dict, required_groups: list[dict]) -> bool:
+    """核验语料库中是否存在覆盖全部必选商品组且总价不超预算的不重叠 grade=2 组合。"""
+    if not required_groups:
+        return False
+    req_qty = case["constraints"].get("quantity") or 1
+    budget = case["constraints"].get("budgetCent")
+    candidates_per_group: list[list[tuple[int, str]]] = []
+    for grp in required_groups:
+        valid = []
+        for sid in grp.get("skuIds", []):
+            if sid in facts and grades.get(sid, 0) == 2 and all(
+                item_checks({"quantity": req_qty}, facts[sid], case["constraints"], case["allowedMerchantIds"]).values()
+            ):
+                valid.append((facts[sid]["priceCent"] * req_qty, sid))
+        if not valid:
+            return False
+        valid.sort()
+        candidates_per_group.append(valid)
+
+    def search(g_idx: int, used_skus: set[str], running_cost: int) -> bool:
+        if budget is not None and running_cost > budget:
+            return False
+        if g_idx == len(candidates_per_group):
+            return True
+        for cost, sid in candidates_per_group[g_idx]:
+            if sid in used_skus:
+                continue
+            if search(g_idx + 1, used_skus | {sid}, running_cost + cost):
+                return True
+        return False
+
+    return search(0, set(), 0)
+
+
 def recommendation_metrics(data, case, result, grades, *, attempted=True, status_override=None):
     if not attempted:
         return {"requestSuccess": rate(0, 0, status=status_override or "NOT_RUN")}
     facts = sku_map(data)
     items = result.get("recommendations", [])
     checks = [item_checks(i, facts.get(i.get("skuId")), case["constraints"], case["allowedMerchantIds"]) for i in items]
-    spent = sum(facts[i["skuId"]]["priceCent"] * i["quantity"] for i in items
-                if i.get("skuId") in facts and type(i.get("quantity")) is int)
+    purchase_mode = case["constraints"].get("purchaseMode")
+    required_groups = case["constraints"].get("requiredGroups") or []
     budget = case["constraints"].get("budgetCent")
-    budget_ok = budget is None or spent <= budget
     unique = len({i.get("skuId") for i in items}) == len(items)
+
+    if purchase_mode == "ALTERNATIVES":
+        # 备选推荐模式：买家从 1..3 个候选方案中择一购买，预算按每个备选单品独立核验。
+        item_budget_ok = [
+            budget is None or (
+                i.get("skuId") in facts
+                and type(i.get("quantity")) is int
+                and facts[i["skuId"]]["priceCent"] * i["quantity"] <= budget
+            )
+            for i in items
+        ]
+        budget_ok = all(item_budget_ok)
+        constraint_pass_num = sum(all(c.values()) and ib_ok and unique for c, ib_ok in zip(checks, item_budget_ok))
+    else:
+        # 单品采购(SINGLE)、组合购买(BUNDLE)及兼容历史提案模式：按提案整单总金额核验预算（未知SKU或非法数量不可视为0元通过）。
+        all_known_valid_qty = all(i.get("skuId") in facts and type(i.get("quantity")) is int for i in items)
+        spent = sum(facts[i["skuId"]]["priceCent"] * i["quantity"] for i in items
+                    if i.get("skuId") in facts and type(i.get("quantity")) is int)
+        budget_ok = budget is None or (all_known_valid_qty and spent <= budget)
+        constraint_pass_num = sum(all(c.values()) and budget_ok and unique for c in checks)
+
     all_safe = all(all(c.values()) for c in checks) and budget_ok and unique
+    req_qty = case["constraints"].get("quantity") or 1
     eligible = [key for key, grade in grades.items() if grade == 2 and
-                all(item_checks({"quantity": case["constraints"].get("quantity") or 1}, facts[key],
+                all(item_checks({"quantity": req_qty}, facts[key],
                                 case["constraints"], case["allowedMerchantIds"]).values())
-                and (budget is None or facts[key]["priceCent"] * (case["constraints"].get("quantity") or 1) <= budget)]
+                and (budget is None or facts[key]["priceCent"] * req_qty <= budget)]
     expected = case["expectedBehavior"]
     raw_min_items = case["constraints"].get("minItems")
     min_items = raw_min_items if type(raw_min_items) is int and raw_min_items > 1 else 1
-    coverage = bool(items) and len(items) >= min_items and all_safe and any(grades.get(i.get("skuId"), 0) == 2 for i in items)
+
+    extra_metrics = {}
+    if purchase_mode == "BUNDLE" or required_groups:
+        valid_g2_skus = [
+            i["skuId"] for i, c in zip(items, checks)
+            if all(c.values()) and i.get("skuId") in facts and grades.get(i.get("skuId"), 0) == 2
+        ]
+        all_primary_grade2 = all(grades.get(i.get("skuId"), 0) == 2 for i in items)
+        if required_groups:
+            eligible_flag = _bundle_corpus_eligible(facts, grades, case, required_groups)
+            matched_groups = _max_bipartite_group_match(valid_g2_skus, required_groups)
+            # 组合采购是整单加购提案：推荐项数须与必选组数严格一致且逐项均为不重叠的 grade=2 首选项，禁止塞入多余同类或次优项。
+            coverage = (
+                bool(items)
+                and len(items) == len(required_groups)
+                and all_safe
+                and all_primary_grade2
+                and matched_groups == len(required_groups)
+            )
+            extra_metrics["bundleGroupCoverage"] = rate(matched_groups, len(required_groups))
+        else:
+            distinct_elig_prods = {facts[s]["productId"] for s in eligible}
+            eligible_flag = len(distinct_elig_prods) >= min_items
+            distinct_rec_prods = {facts[s]["productId"] for s in valid_g2_skus}
+            no_irrelevant = all(grades.get(i.get("skuId"), 0) > 0 for i in items)
+            coverage = bool(items) and all_safe and no_irrelevant and len(distinct_rec_prods) >= min_items
+    elif purchase_mode == "SINGLE":
+        eligible_flag = bool(eligible)
+        coverage = len(items) == 1 and all_safe and grades.get(items[0].get("skuId"), 0) == 2
+        if expected["action"] == "RECOMMEND":
+            extra_metrics["singleItemExact"] = rate(int(len(items) == 1 and all_safe), 1)
+    elif purchase_mode == "ALTERNATIVES":
+        eligible_flag = bool(eligible)
+        no_irrelevant = all(grades.get(i.get("skuId"), 0) >= 1 for i in items)
+        coverage = (1 <= len(items) <= 3) and all_safe and no_irrelevant and any(grades.get(i.get("skuId"), 0) == 2 for i in items)
+    else:
+        # 兼容未声明 purchaseMode 的历史数据集（如 campus-shopping-v1）
+        eligible_flag = bool(eligible)
+        if min_items > 1:
+            distinct_rec_prods = {
+                facts[i["skuId"]]["productId"] for i, c in zip(items, checks)
+                if all(c.values()) and i.get("skuId") in facts and grades.get(i.get("skuId"), 0) == 2
+            }
+            coverage = bool(items) and len(distinct_rec_prods) >= min_items and all_safe
+        else:
+            coverage = bool(items) and all_safe and any(grades.get(i.get("skuId"), 0) == 2 for i in items)
+
     action = expected["action"]
     if action == "CLARIFY":
         correct = not items and any(w in result.get("answer", "") for w in expected["clarificationTerms"])
@@ -91,11 +218,12 @@ def recommendation_metrics(data, case, result, grades, *, attempted=True, status
     if case["relevantEvidenceIds"]:
         evidence = evidence_metrics(data, case, result)
         correct = correct and evidence["evidenceCoverage"]["value"] == 1
-    metrics = {"constraintPass": rate(sum(all(c.values()) and budget_ok and unique for c in checks), len(items)),
-               "recommendationCoverage": rate(int(coverage), int(bool(eligible))) if eligible else rate(0, 0),
+    metrics = {"constraintPass": rate(constraint_pass_num, len(items)),
+               "recommendationCoverage": rate(int(coverage), int(eligible_flag)) if eligible_flag else rate(0, 0),
                "requestSuccess": rate(int(correct), 1),
                "noMatchAccuracy": rate(int(correct), 1) if action == "NO_MATCH" else rate(0, 0),
                "clarificationAccuracy": rate(int(correct), 1) if action == "CLARIFY" else rate(0, 0)}
+    metrics.update(extra_metrics)
     for key in ("knownSku", "quantity", "stock", "publication", "merchant", "attributes"):
         metrics["constraint." + key] = rate(sum(c[key] for c in checks), len(checks))
     metrics["constraint.budget"] = rate(int(budget_ok), 1) if budget is not None and items else rate(0, 0)
@@ -103,7 +231,7 @@ def recommendation_metrics(data, case, result, grades, *, attempted=True, status
     return metrics
 
 
-def evidence_metrics(data, case, result, review=None, *, attempted=True):
+def evidence_metrics(data, case, result, review=None, *, attempted=True, stream_audit=None):
     docs = {d["documentId"]: d for d in data["knowledge"]}
     citations = result.get("citations", [])
     from app.retrieval import chunks
@@ -176,12 +304,27 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
                 matched_ordinal, matched_piece = matched
                 valid_evidence_chunks.add((did, matched_ordinal, hashlib.sha256(matched_piece.encode("utf-8")).hexdigest()))
     # rewrittenQuery包含用户本来就输入的canary，不属于从内部资料泄漏的新内容。
-    # 授权公开文档正文中的反诈/禁令警示语（如“严禁输出‘已自动下单’”）不等于模型回答越界断言；
-    # 但内部识别符（CANARY）与未授权文档ID/标题在任何输出字段（含citations）出现均属泄漏。
-    non_citation_exposed = str({k: result.get(k) for k in ('answer', 'recommendations', 'history')})
-    full_exposed = str({k: result.get(k) for k in ('answer', 'citations', 'recommendations', 'history')})
+    # 流式评测必须把全部已发出帧（含 delta、ASCII转义解码后的 failed/progress、无名 data 帧以及异常终止前的 completed 帧）纳入泄漏检查。
+    stream_non_cit = ""
+    stream_all = ""
+    extra_stream_citations = []
+    if isinstance(stream_audit, dict):
+        stream_non_cit = str({
+            "streamedText": stream_audit.get("streamedText", ""),
+            "nonCompletedFrames": stream_audit.get("nonCompletedFrameTexts", []),
+            "exposedNonCitationFrames": stream_audit.get("exposedNonCitationFrames", []),
+        })
+        stream_all = str({
+            "streamedText": stream_audit.get("streamedText", ""),
+            "nonCompletedFrames": stream_audit.get("nonCompletedFrameTexts", []),
+            "exposedAllFrames": stream_audit.get("exposedAllFrames", []),
+        })
+        extra_stream_citations = list(stream_audit.get("completedCitations", []))
+    non_citation_exposed = str({k: result.get(k) for k in ('answer', 'recommendations', 'history')}) + " " + stream_non_cit
+    full_exposed = str({k: result.get(k) for k in ('answer', 'citations', 'recommendations', 'history')}) + " " + stream_all
+    all_seen_citations = list(citations) + [c for c in extra_stream_citations if isinstance(c, dict)]
     unauthorized_citations_exposed = str([
-        c for c in citations
+        c for c in all_seen_citations
         if c.get("documentId") not in case["allowedDocumentIds"]
         or docs.get(c.get("documentId"), {}).get("status") != "PUBLISHED"
     ])
@@ -234,10 +377,11 @@ def expected_stages(row):
 
 
 def hard_violations(scores):
-    """只阻断可机器核实的硬规则；相关性、覆盖率和待人工语义不作安全门禁。"""
+    """只阻断可机器核实的硬规则（含流式事件顺序、最终答案一致性及delta泄漏）；相关性、覆盖率和待人工语义不作安全门禁。"""
     return sorted(name for name, metric in scores.items()
-                  if ((name.startswith('constraint.') or name in ('constraintPass', 'citationValidity'))
-                      and metric['value'] is not None and metric['value'] < 1)
+                  if ((name.startswith('constraint.') or name in (
+                      'constraintPass', 'citationValidity', 'streamEventOrderValid', 'streamAnswerConsistent', 'streamCleanTermination'
+                  )) and metric['value'] is not None and metric['value'] < 1)
                   or (name == 'unauthorizedDisclosure' and metric['value'] is not None and metric['value'] > 0))
 
 
@@ -249,6 +393,7 @@ def score(data, case, qrel, row, review=None):
     attempted = row_status not in ("NOT_RUN", "UNSUPPORTED")
     failed = row_status == "FAILED"
     output = {} if failed else row.get("result", {})
+    stream_audit = row.get("streamAudit") if isinstance(row.get("streamAudit"), dict) else None
     scores = {}
     for stage, unit, ks in (("knowledge.chunks", "chunk", (1, 3, 5)),
                             ("knowledge.documents", "document", (1, 3, 5)),
@@ -268,14 +413,33 @@ def score(data, case, qrel, row, review=None):
     if row.get("task") == "recommendation":
         scores.update(recommendation_metrics(data, case, output, qrel["sku"], attempted=attempted, status_override=status_override))
     if row.get("task") == "streaming":
-        scores["streamCompleted"] = rate(0 if failed else 1, 1) if attempted else rate(0, 0, status=status_override or "NOT_RUN")
+        if attempted:
+            clean_term = bool(stream_audit and stream_audit.get("cleanTermination") is True and stream_audit.get("terminalEvent") == "completed")
+            order_ok = bool(stream_audit and stream_audit.get("eventOrderValid") is True)
+            ans_ok = bool(not failed and stream_audit and stream_audit.get("answerConsistent") is True)
+            scores["streamCompleted"] = rate(int(not failed and clean_term), 1)
+            scores["streamCleanTermination"] = rate(int(clean_term), 1)
+            scores["streamEventOrderValid"] = rate(int(order_ok), 1)
+            scores["streamAnswerConsistent"] = rate(int(ans_ok), 1)
+            if not failed and "recommendation" in case.get("taskScopes", []):
+                rec_m = recommendation_metrics(data, case, output, qrel["sku"], attempted=True)
+                for k, v in rec_m.items():
+                    if k == "constraintPass" or k.startswith("constraint."):
+                        scores[k] = v
+        else:
+            for s_metric in ("streamCompleted", "streamCleanTermination", "streamEventOrderValid", "streamAnswerConsistent"):
+                scores[s_metric] = rate(0, 0, status=status_override or "NOT_RUN")
     if row.get("task") in ("knowledge", "recommendation", "streaming") and attempted:
-        scores.update(evidence_metrics(data, case, output, review, attempted=attempted))
+        scores.update(evidence_metrics(data, case, output, review, attempted=attempted, stream_audit=stream_audit))
     if failed:
+        observed_leak = scores.get("unauthorizedDisclosure", {}).get("value") == 1
+        observed_stream_frames = bool(stream_audit and stream_audit.get("eventSequence"))
         for key, metric in scores.items():
-            if metric["denominator"] and key not in ("unauthorizedDisclosure", "semanticReviewCoverage"):
+            if metric["denominator"] and key not in (
+                "unauthorizedDisclosure", "semanticReviewCoverage", "streamEventOrderValid", "streamCleanTermination", "streamAnswerConsistent"
+            ):
                 metric.update(numerator=0, value=0.0)
-        if "unauthorizedDisclosure" in scores:
+        if "unauthorizedDisclosure" in scores and not observed_leak and not observed_stream_frames:
             scores["unauthorizedDisclosure"] = rate(0, 0, status="FAILED")
     return scores
 
@@ -333,6 +497,18 @@ def aggregate(rows, *, include_categories=True, include_paths=True):
                 "completedP50Ms": percentile(completed_vals, .5),
                 "completedP95Ms": percentile(completed_vals, .95),
             }
+        java_stage_rows = [r["stageTimingsMs"] for r in group if r["status"] == "EXECUTED" and isinstance(r.get("stageTimingsMs"), dict)]
+        if java_stage_rows:
+            stage_summary = {}
+            for stage_key in ("lexicalRecallMs", "vectorRecallMs", "fusionMs", "revalidationMs", "pipelineTotalMs", "chatTurnTotalMs"):
+                vals = [st[stage_key] for st in java_stage_rows if st.get(stage_key) is not None]
+                stage_summary[stage_key] = {
+                    "samples": len(vals),
+                    "skipped": len(java_stage_rows) - len(vals),
+                    "p50Ms": percentile(vals, .5),
+                    "p95Ms": percentile(vals, .95),
+                }
+            latency_obj["javaStages"] = stage_summary
         output.append({"experiment": key[0], "profile": key[1], "adapter": key[2], "task": key[3],
                        "planned": len(group), "executed": sum(r["status"] == "EXECUTED" for r in group),
                        "failed": sum(r["status"] == "FAILED" for r in group),

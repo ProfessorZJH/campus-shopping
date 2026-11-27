@@ -13,7 +13,7 @@
 | 主评测场景 | **360 条** | 12 个主分类精确配比；按 `281` 个问题家族（含 `76` 个多成员改写/变体家族共 `155` 例）整族切分为 **144 开发集（`dev`）** 与 **216 测试集（`test`）**；从 `dev` 每类抽取 2 例共 **24 条 `smoke`** |
 | 独立挑战集 | **24 条**（`challenge.jsonl`） | 覆盖独立神经 Reranker、优惠券满减、跨商户合单支付、外卖配送、已提货退货/部分退款、图片/扫描 PDF OCR、自动写操作 Agent 等未实现能力，显式标记 `UNSUPPORTED` |
 
-完整分布统计见 [V2 数据分布报告](../../../../docs/ai/benchmark-v2-data-distribution.md)，标注规则与争议裁决流程见 [V2 Gold 标注手册](../../../../docs/ai/benchmark-v2-annotation-manual.md)。
+完整分布统计见 [V2 数据分布报告](../../../../docs/ai/benchmark-v2-data-distribution.md)，标注规则与争议裁决流程见 [V2 Gold 标注手册](../../../../docs/ai/benchmark-v2-annotation-manual.md)，词面近似检测边界与仓库外独立盲测治理见 [Holdout 盲测方案](../../../../docs/ai/benchmark-v2-holdout-protocol.md)。
 
 ## 二、十二主类与划分明细
 
@@ -57,4 +57,4 @@ python ai-service/evaluate.py --dataset campus-shopping-v2 --split smoke --profi
 python ai-service/evaluate.py --dataset campus-shopping-v2 --split challenge --profile local --experiments R-RULE
 ```
 
-**严禁将 `test` 划分用于 Prompt 调优、词表扩充或阈值搜索。** 调整任何语料文本或 `qrels` 标签必须同步升级 `version` / `annotationVersion` 并重算 `manifest.json` 的 SHA-256 摘要。
+**严禁将 `test` 或未来独立 `holdout` 盲测集用于 Prompt 调优、词表扩充或阈值搜索。** 仓库内 `SequenceMatcher` 与字符二元组 Jaccard 仅作词面近重复筛查（`semanticLeakageVerified = false`），不代表完整语义等价防泄漏检测；调整任何语料文本或 `qrels` 标签必须同步升级 `version` / `annotationVersion` 并重算 `manifest.json` 的 SHA-256 摘要。

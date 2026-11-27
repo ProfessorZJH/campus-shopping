@@ -45,7 +45,18 @@ V2 的 Gold 相关性标签 SHALL 基于完整商品、SKU 与知识分块语料
 ### Requirement: Independent SSE streaming first-token latency measurement
 当评测 SSE 流式导购首 Token 延迟时，系统 SHALL 通过真实流式 HTTP/SSE 链路逐帧采集事件到达时间，MUST NOT 从非流式 JSON 接口耗时推导或估算首 Token 延迟。
 
-#### Scenario: Measure real streaming chain milestones
-- **WHEN** 执行流式延迟专项实验（`S-SSE`）
-- **THEN** 系统独立记录 `started`、`progress`（如适用）、首个用户可见文本 `delta` 及 `completed` 的墙钟分位数（P50/P95）与错误计数
-- **AND** 非流式实验的 `firstTokenMs` 继续保持 `N/A`（`null`）
+#### Scenario: Measure real streaming chain milestones and audit delta safety
+- **WHEN** 执行流式专项实验（`S-SSE`）
+- **THEN** 系统独立记录 `started`、`progress`（如适用）、首个用户可见文本 `delta` 及 `completed` 的墙钟分位数（P50/P95），非流式实验的 `firstTokenMs` 保持 `N/A`（`null`）
+- **AND** 系统 MUST 将全部 `delta` 帧纳入泄漏与伪造执行安全检查（含中途异常终止流），并核验事件状态机顺序与 `delta` 拼接全文同 `completed.answer` 的逐字一致性
+
+### Requirement: Purchase-mode-aware recommendation scoring and pure stage timing
+推荐评测 SHALL 区分组合购买（`BUNDLE`）、备选推荐（`ALTERNATIVES`）与单品采购（`SINGLE`），且 Java/MySQL 商品实验 SHALL 分别测量词面召回、向量召回、融合和事实复验耗时。
+
+#### Scenario: Reject same-category SKU padding in bundle purchase
+- **WHEN** 组合购买案例要求覆盖多个必选商品组（如吐司+燕麦奶），而模型仅返回两款吐司 SKU、缺少燕麦奶
+- **THEN** 二分图必选组覆盖度低于 100%，`recommendationCoverage` 与 `requestSuccess` MUST 判定为 `0`
+
+#### Scenario: Pure vector recall skips lexical SQL and records stage breakdown
+- **WHEN** 在隔离真实 MySQL 上执行 `P-D` 与 `P-L`/`P-H` 实验
+- **THEN** `P-D` 不得执行词面 SQL 召回，且导出产物独立记录词面召回、向量召回、RRF 融合与事实复验耗时及真实 SQL 执行计划诊断

@@ -22,6 +22,7 @@
 - [x] 4.1 在 `campus-shopping-v2` 上执行本地与受控可比实验（`K-B`、`K-D`、`K-H`、`K-D-R`、`K-H-R`、`R-RULE`、`R-LLM` 受控对照、`S-SSE` 流式首字延迟、`challenge` 与 `E4` `UNSUPPORTED` 核验），以及隔离真实 MySQL 的 `P-L`、`P-D`、`P-H`、`P-H-R`、`P-TERMS` 与 `SAFE` 安全回归；未获授权的外部供应商实验诚实保持 `NOT_RUN`。
 - [x] 4.2 基于真实失败样本完成 10 类错误归因与 AI 质量瓶颈分析，区分数据、评测器、生产实现与环境问题，汇总正式实验文档至 `docs/testing/AI-EVALUATION-V2-20261127.md`。
 - [x] 4.3 执行 Python `pytest`、`verify-release.py`、API/Schema/UI 契约与隔离 MySQL 门禁，清理全部临时数据库、进程与评测临时目录，提交分支并创建或准备 Draft PR。
+- [x] 4.4 完成评测可信度专项整改：区分 `BUNDLE`/`ALTERNATIVES`/`SINGLE` 评分语义并补充 `case-v2-071` 负向测试；完善 `S-SSE` 增量 `delta` 安全、答案一致性与事件顺序核验；明确词面近似检测边界并建立独立 Holdout 盲测方案；拆分 Java/MySQL 四阶段计时、隔离 `P-D` 词面调用并输出真实 SQL `EXPLAIN ANALYZE`；接入 V2 Smoke 持续回归门禁并保留 V1 兼容与原始实验证据。
 
 ## 5. 正式业务评测验收（需实际人工复核与外部预算授权，未完成前保持未勾选）
 

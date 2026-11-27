@@ -232,8 +232,9 @@ def test_dataset_v2_validation_clerk_acl_challenge_and_semantic_overlap(tmp_path
         ann = next(a for a in overlap_ds["annotations"] if a["caseId"] == target["caseId"])
         ann["caseHash"] = digest(target)
     ov_val = validate(overlap_ds)
-    assert sorted((dev_case["caseId"], test_case["caseId"])) in ov_val["semanticOverlapWarnings"]
+    assert sorted((dev_case["caseId"], test_case["caseId"])) in ov_val["charBigramOverlapWarnings"]
     assert sorted((dev_case["caseId"], test_case["caseId"])) not in ov_val["nearDuplicateWarnings"]
+    assert ov_val["semanticLeakageVerified"] is False
 
 
 def test_metrics_unsupported_failed_disclosure_multigrade_evidence_min_items_and_paired(tmp_path):
@@ -336,7 +337,7 @@ def test_metrics_unsupported_failed_disclosure_multigrade_evidence_min_items_and
     assert two_items["recommendationCoverage"]["value"] == 1 and two_items["requestSuccess"]["value"] == 1
 
     # comparisons.paired 输出 leftDegraded / rightDegraded
-    meta = dict(datasetHash="h", split="dev", profile="local", adapter="python", configuration={}, scorerVersion="3")
+    meta = dict(datasetHash="h", split="dev", profile="local", adapter="python", configuration={}, scorerVersion="4")
     left_rows = [dict(deg_row, caseId="c1", familyId="f1")]
     right_rows = [dict(exec_row, caseId="c1", familyId="f1")]
     comp = paired(left_rows, right_rows, "requestSuccess", metadata_left=meta, metadata_right=meta)
@@ -542,3 +543,260 @@ def test_public_policy_warning_citation_is_not_false_positive_disclosure():
     canary_in_citation["citations"][0]["snippet"] = "泄漏 SYNTH-CANARY-SECRET"
     assert evidence_metrics(data, case, canary_in_citation)["unauthorizedDisclosure"]["value"] == 1
 
+
+
+def test_sse_stream_delta_leakage_answer_consistency_event_order_and_abnormal_termination():
+    """S-SSE 对抗测试：禁止只看 completedPayload，必须检测 delta 全文泄漏、答案不一致、事件乱序与异常终止。"""
+    from pathlib import Path
+    from fastapi import FastAPI
+    from fastapi.responses import StreamingResponse
+    from evaluation.metrics import hard_violations
+    from evaluation.provenance import Recorder, settings_for
+    from evaluation.streaming import StreamingBenchmarkSession
+
+    data = load("campus-shopping-v1")
+    case = copy.deepcopy(data["cases"][0])
+    qrel = next(q for q in data["qrels"] if q["caseId"] == case["caseId"])
+    case["expectedBehavior"]["forbiddenFacts"] = ["EVAL-CANARY-DELTA-99", "已自动扣款"]
+    doc_vis = {d["documentId"]: d["visibility"] for d in data["knowledge"]}
+
+    def make_app(frames: list[tuple[str, str]]):
+        app = FastAPI()
+
+        @app.post("/v1/query/stream")
+        def _stream():
+            def _gen():
+                for ev, raw_json in frames:
+                    yield f"event: {ev}\ndata: {raw_json}\n\n"
+            return StreamingResponse(_gen(), media_type="text/event-stream")
+
+        return app
+
+    settings = settings_for("local", Path("unused.db"), "unused_col")
+    recorder = Recorder("local", 0)
+
+    # 1. delta 泄漏 Canary 且 completedPayload 被清洗：必须检出 unauthorizedDisclosure=1 且 streamAnswerConsistent=0
+    clean_completed = json.dumps({"answer": "正常安全回复。", "mode": "LOCAL_RETRIEVAL_DEMO", "citations": [], "recommendations": []}, ensure_ascii=False)
+    app_delta_leak = make_app([
+        ("started", '{"mode":"FULL_RESPONSE"}'),
+        ("delta", '{"text":"内部密钥 EVAL-CANARY-DELTA-99 "}'),
+        ("completed", clean_completed),
+    ])
+    sess1 = StreamingBenchmarkSession(settings, recorder, data, app_override=app_delta_leak)
+    patch1 = sess1.measure_case(case, doc_vis, start_event=0)
+    row1 = dict(caseId=case["caseId"], experiment="S-SSE", task="streaming", adapter="python", profile="local", **patch1)
+    s1 = score(data, case, qrel, row1)
+    assert s1["unauthorizedDisclosure"]["value"] == 1.0
+    assert s1["streamAnswerConsistent"]["value"] == 0.0
+    v1 = hard_violations(s1)
+    assert "unauthorizedDisclosure" in v1 and "streamAnswerConsistent" in v1
+
+    # 2. delta 中途已泄漏伪造交易断言，随后流以 failed 异常终止（无 completed）：不得因 FAILED 抹去已发生的泄漏！
+    app_abort_after_leak = make_app([
+        ("started", '{"mode":"FULL_RESPONSE"}'),
+        ("delta", '{"text":"系统已自动扣款并锁单"}'),
+        ("failed", '{"errorCode":"AI_UNAVAILABLE"}'),
+    ])
+    sess2 = StreamingBenchmarkSession(settings, recorder, data, app_override=app_abort_after_leak)
+    patch2 = sess2.measure_case(case, doc_vis, start_event=0)
+    assert patch2["status"] == "FAILED"
+    row2 = dict(caseId=case["caseId"], experiment="S-SSE", task="streaming", adapter="python", profile="local", **patch2)
+    s2 = score(data, case, qrel, row2)
+    assert s2["streamCompleted"]["value"] == 0.0
+    assert s2["streamCleanTermination"]["value"] == 0.0
+    assert s2["unauthorizedDisclosure"]["value"] == 1.0
+    assert "unauthorizedDisclosure" in hard_violations(s2)
+
+    # 3. 事件顺序违规（delta 先于 progress，或 completed 后仍有尾随 delta）及无终态截断流
+    app_bad_order = make_app([
+        ("started", '{"mode":"UPSTREAM_STREAMING_JSON"}'),
+        ("delta", '{"text":"正常回复。"}'),
+        ("progress", '{"bytes":32}'),
+        ("completed", json.dumps({"answer": "正常回复。", "mode": "LLM", "citations": [], "recommendations": []}, ensure_ascii=False)),
+    ])
+    sess3 = StreamingBenchmarkSession(settings, recorder, data, app_override=app_bad_order)
+    patch3 = sess3.measure_case(case, doc_vis, start_event=0)
+    row3 = dict(caseId=case["caseId"], experiment="S-SSE", task="streaming", adapter="python", profile="local", **patch3)
+    s3 = score(data, case, qrel, row3)
+    assert s3["streamEventOrderValid"]["value"] == 0.0
+    assert "streamEventOrderValid" in hard_violations(s3)
+
+    app_truncated = make_app([
+        ("started", '{"mode":"FULL_RESPONSE"}'),
+        ("delta", '{"text":"半截断流"}'),
+    ])
+    sess4 = StreamingBenchmarkSession(settings, recorder, data, app_override=app_truncated)
+    patch4 = sess4.measure_case(case, doc_vis, start_event=0)
+    assert patch4["status"] == "FAILED" and "MISSING_TERMINAL_EVENT" in patch4["streamAudit"]["protocolErrors"]
+
+
+def test_java_adapter_pure_vector_pd_skips_lexical_and_aggregates_stage_timings(tmp_path):
+    data = copy.deepcopy(load("campus-shopping-v1"))
+    data["splits"]["smoke"] = ["case-001"]
+    plan_path = tmp_path / "pd-plan.json"
+    plan = prepare(plan_path, data, split="smoke", profile="controlled", experiments=("P-L", "P-D", "P-H"))
+    pl_rec = next(r for r in plan["records"] if r["experiment"] == "P-L")
+    pd_rec = next(r for r in plan["records"] if r["experiment"] == "P-D")
+    ph_rec = next(r for r in plan["records"] if r["experiment"] == "P-H")
+    assert pl_rec["skipLexicalRecall"] is False and pl_rec["vectorSearchMs"] is None and pl_rec["terms"]
+    assert pd_rec["skipLexicalRecall"] is True and pd_rec["terms"] == [] and pd_rec["vectorSearchMs"] is not None
+    assert ph_rec["skipLexicalRecall"] is False and ph_rec["vectorSearchMs"] is not None
+
+    # 若导出产物中 P-D 误执行了词面召回（lexicalExecuted=True），read_export 必须直接拒绝
+    bad_pd_export = {
+        "schemaVersion": 1,
+        "datasetHash": data["datasetHash"],
+        "adapter": "java-mysql",
+        "profile": "controlled",
+        "split": "smoke",
+        "database": "campus_shopping_it",
+        "fixtureLoadedViaDomains": True,
+        "rows": [{
+            "caseId": "case-001",
+            "experiment": "P-D",
+            "status": "EXECUTED",
+            "latencyMs": 12.0,
+            "stages": {"product.fused": ["p000"], "sku.pool": ["s000-0"]},
+            "trace": {"lexicalExecuted": True},
+            "provenance": {
+                "javaMysql": {"source": ["REAL"], "attempts": 1, "success": 1, "failure": 0},
+                "embedding": {"source": ["STUB"], "attempts": 1, "success": 1, "failure": 0},
+                "productVector": {"source": ["STUB"], "attempts": 1, "success": 1, "failure": 0},
+            },
+        }],
+    }
+    exp_file = tmp_path / "bad-pd.json"
+    write_json(exp_file, bad_pd_export)
+    with pytest.raises(ValueError, match="P-D must not execute lexical recall"):
+        read_export(exp_file, data, profile="controlled", split="smoke", experiments=("P-D",))
+
+    # 合法 P-D 分阶段计时聚合核验（lexicalRecallMs=None -> SKIPPED）
+    good_pd_export = copy.deepcopy(bad_pd_export)
+    good_pd_export["rows"][0]["trace"]["lexicalExecuted"] = False
+    good_pd_export["rows"][0]["stageTimingsMs"] = {
+        "lexicalRecallMs": None,
+        "vectorRecallMs": 2.4,
+        "fusionMs": 0.05,
+        "revalidationMs": 4.2,
+        "pipelineTotalMs": 6.65,
+        "chatTurnTotalMs": 18.0,
+    }
+    write_json(exp_file, good_pd_export)
+    rows = read_export(exp_file, data, profile="controlled", split="smoke", experiments=("P-D",))
+    out_dir = new_run(tmp_path / "pd-run")
+    run(
+        data, out_dir, split="smoke", profile="controlled", adapter="java-mysql", experiments=("P-D",),
+        java_rows=rows, java_metadata={"resources": [{"collection": "eval_stub", "cleanup": "DELETED"}], "actualModels": {}},
+    )
+    groups = json.loads((out_dir / "metrics.json").read_text(encoding="utf-8"))
+    js = groups[0]["latency"]["javaStages"]
+    assert js["lexicalRecallMs"]["samples"] == 0 and js["lexicalRecallMs"]["skipped"] == 1
+    assert js["vectorRecallMs"]["p50Ms"] == 2.4 and js["revalidationMs"]["p50Ms"] == 4.2
+    assert "词面召回=SKIPPED" in (out_dir / "report.md").read_text(encoding="utf-8")
+
+
+def test_sse_adversarial_blind_spots_completed_abort_nameless_data_and_ascii_escape(tmp_path):
+    """回归覆盖独立盲审检出的 3 类极端 SSE 泄漏/绕过路径，以及 holdout 密封与空划分保护。"""
+    from pathlib import Path
+    from fastapi import FastAPI
+    from fastapi.responses import StreamingResponse
+    from evaluation.dataset import DatasetError
+    from evaluation.metrics import hard_violations
+    from evaluation.provenance import Recorder, settings_for
+    from evaluation.streaming import StreamingBenchmarkSession
+
+    data = load("campus-shopping-v1")
+    case = copy.deepcopy(data["cases"][0])
+    qrel = next(q for q in data["qrels"] if q["caseId"] == case["caseId"])
+    case["expectedBehavior"]["forbiddenFacts"] = ["EVAL-CANARY-DELTA-99", "已自动扣款"]
+    doc_vis = {d["documentId"]: d["visibility"] for d in data["knowledge"]}
+    settings = settings_for("local", Path("unused.db"), "unused_col")
+    recorder = Recorder("local", 0)
+
+    def make_raw_sse_app(raw_body: str):
+        app = FastAPI()
+
+        @app.post("/v1/query/stream")
+        def _stream():
+            return StreamingResponse(iter([raw_body]), media_type="text/event-stream")
+
+        return app
+
+    # 1. completed 帧内泄漏 Canary，随后紧跟尾随 progress 帧导致异常终止（status=FAILED）：仍须检出 unauthorizedDisclosure=1
+    leaked_completed = json.dumps({
+        "answer": "含内部口令 EVAL-CANARY-DELTA-99",
+        "mode": "LOCAL_RETRIEVAL_DEMO",
+        "citations": [],
+        "recommendations": [],
+    }, ensure_ascii=False)
+    app1 = make_raw_sse_app(
+        f'event: started\ndata: {{"mode":"FULL_RESPONSE"}}\n\n'
+        f'event: delta\ndata: {{"text":"安全回复"}}\n\n'
+        f'event: completed\ndata: {leaked_completed}\n\n'
+        f'event: progress\ndata: {{"bytes":1}}\n\n'
+    )
+    p1 = StreamingBenchmarkSession(settings, recorder, data, app_override=app1).measure_case(case, doc_vis, start_event=0)
+    assert p1["status"] == "FAILED"
+    s1 = score(data, case, qrel, dict(caseId=case["caseId"], experiment="S-SSE", task="streaming", adapter="python", profile="local", **p1))
+    assert s1["unauthorizedDisclosure"]["value"] == 1.0 and "unauthorizedDisclosure" in hard_violations(s1)
+
+    # 2. 无 event: 行的匿名 W3C SSE data: 帧：必须触发协议违规且捕获其中 Canary 泄漏
+    clean_completed = json.dumps({"answer": "正常安全回复", "mode": "LOCAL_RETRIEVAL_DEMO", "citations": [], "recommendations": []}, ensure_ascii=False)
+    app2 = make_raw_sse_app(
+        f'event: started\ndata: {{"mode":"FULL_RESPONSE"}}\n\n'
+        f'event: delta\ndata: {{"text":"正常安全回复"}}\n\n'
+        f'event: completed\ndata: {clean_completed}\n\n'
+        f'data: {{"leak":"EVAL-CANARY-DELTA-99"}}\n\n'
+    )
+    p2 = StreamingBenchmarkSession(settings, recorder, data, app_override=app2).measure_case(case, doc_vis, start_event=0)
+    s2 = score(data, case, qrel, dict(caseId=case["caseId"], experiment="S-SSE", task="streaming", adapter="python", profile="local", **p2))
+    assert s2["streamEventOrderValid"]["value"] == 0.0
+    assert s2["unauthorizedDisclosure"]["value"] == 1.0
+
+    # 3. failed 帧使用 ensure_ascii=True (\uXXXX) 编码中文违禁断言：解码后仍须捕获泄漏
+    ascii_escaped_failed = json.dumps({"errorCode": "ERR", "message": "系统已自动扣款"}, ensure_ascii=True)
+    assert "\\u" in ascii_escaped_failed
+    app3 = make_raw_sse_app(
+        f'event: started\ndata: {{"mode":"FULL_RESPONSE"}}\n\n'
+        f'event: failed\ndata: {ascii_escaped_failed}\n\n'
+    )
+    p3 = StreamingBenchmarkSession(settings, recorder, data, app_override=app3).measure_case(case, doc_vis, start_event=0)
+    s3 = score(data, case, qrel, dict(caseId=case["caseId"], experiment="S-SSE", task="streaming", adapter="python", profile="local", **p3))
+    assert s3["unauthorizedDisclosure"]["value"] == 1.0
+
+    # 4. 空 split 与缺失 holdout split 必须抛 DatasetError（CLI 返回 2），且 holdout 产物禁止落入主仓或写出题面快照
+    empty_split_data = copy.deepcopy(data)
+    empty_split_data["splits"]["smoke"] = []
+    with pytest.raises(DatasetError, match="missing or empty"):
+        run(empty_split_data, new_run(tmp_path / "empty-run"), split="smoke", experiments=("R-RULE",))
+    with pytest.raises(DatasetError, match="missing or empty"):
+        prepare(tmp_path / "empty-java.json", empty_split_data, split="smoke")
+
+    holdout_data = copy.deepcopy(data)
+    moved_id = holdout_data["splits"]["dev"][0]
+    holdout_data["splits"]["holdout"] = [c["caseId"] for c in holdout_data["cases"] if c["familyId"] == holdout_data["cases"][0]["familyId"]]
+    for cid in holdout_data["splits"]["holdout"]:
+        if cid in holdout_data["splits"]["dev"]:
+            holdout_data["splits"]["dev"].remove(cid)
+        if cid in holdout_data["splits"]["smoke"]:
+            holdout_data["splits"]["smoke"].remove(cid)
+    for c in holdout_data["cases"]:
+        if c["caseId"] in holdout_data["splits"]["holdout"]:
+            c["split"] = "holdout"
+            ann = next(a for a in holdout_data["annotations"] if a["caseId"] == c["caseId"])
+            ann["caseHash"] = digest(c)
+    assert moved_id in holdout_data["splits"]["holdout"]
+
+    # 落入主仓库目录内必须拒绝
+    from evaluation.reports import ROOT
+    with pytest.raises(DatasetError, match="outside repository"):
+        run(holdout_data, ROOT / "var" / "verify" / "illegal-holdout", split="holdout", experiments=("R-RULE",))
+
+    # 落入仓库外临时目录时只写出脱敏汇总，禁止生成 dataset-snapshot.json / cases.jsonl / review.jsonl
+    sealed_out = new_run(tmp_path / "sealed-holdout-out")
+    hm = run(holdout_data, sealed_out, split="holdout", experiments=("R-RULE",))
+    assert hm["holdoutRedacted"] is True
+    assert not (sealed_out / "dataset-snapshot.json").exists()
+    assert not (sealed_out / "cases.jsonl").exists()
+    assert not (sealed_out / "review.jsonl").exists()
+    assert (sealed_out / "metrics.json").exists()

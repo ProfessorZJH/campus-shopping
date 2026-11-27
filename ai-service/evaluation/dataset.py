@@ -127,14 +127,16 @@ def validate(data, *, formal=False):
         require(ch.get("reviewStatus") == "DRAFT", "invalid challenge reviewStatus")
     chunking = manifest.get("chunking") or {"length": 700, "overlap": 80}
     chunk_length, chunk_overlap = chunking.get("length", 700), chunking.get("overlap", 80)
-    families, queries, near, semantic_overlap = {}, {}, [], []
+    families, queries, near, char_bigram_overlap = {}, {}, [], []
     split_ids = data["splits"]
     require(set(split_ids["dev"]).isdisjoint(split_ids["test"]), "split overlap")
-    require(set(split_ids["dev"] + split_ids["test"]) == set(cases), "split coverage")
+    holdout_ids = set(split_ids.get("holdout", []))
+    require(holdout_ids.isdisjoint(split_ids["dev"]) and holdout_ids.isdisjoint(split_ids["test"]), "holdout split overlap")
+    require(set(split_ids["dev"] + split_ids["test"]) | holdout_ids == set(cases), "split coverage")
     require(set(split_ids["smoke"]) <= set(split_ids["dev"]), "smoke outside dev")
     for case in cases.values():
         cid, split = case["caseId"], case["split"]
-        require(cid in split_ids[split], "case split mismatch")
+        require(split in ("dev", "test", "holdout") and cid in split_ids[split], "case split mismatch")
         family = case["familyId"]
         require(families.setdefault(family, split) == split, "family split leakage")
         query = re.sub(r"[\W_]+", "", case["originalQuery"]).lower()
@@ -186,6 +188,25 @@ def validate(data, *, formal=False):
                         and merchants[product["merchantId"]]["status"] == "ACTIVE", "ineligible gold sku")
                 if grade == 2:
                     require(sku["status"] == "ACTIVE", "ineligible gold sku")
+        purchase_mode = case["constraints"].get("purchaseMode")
+        require(purchase_mode in (None, "SINGLE", "ALTERNATIVES", "BUNDLE"), "invalid purchaseMode")
+        req_groups = case["constraints"].get("requiredGroups")
+        if purchase_mode == "BUNDLE" and case["expectedBehavior"]["action"] == "RECOMMEND":
+            require(isinstance(req_groups, list) and len(req_groups) >= 2, "bundle missing requiredGroups")
+            seen_gids, seen_skus = set(), set()
+            for grp in req_groups:
+                gid = grp.get("groupId")
+                g_skus = grp.get("skuIds")
+                g_prods = grp.get("productIds")
+                require(isinstance(gid, str) and gid.strip() and gid not in seen_gids, "invalid or duplicate bundle groupId")
+                require(isinstance(g_skus, list) and bool(g_skus) and set(g_skus) <= set(skus), "invalid bundle group skuIds")
+                require(isinstance(g_prods, list) and bool(g_prods) and set(g_prods) <= set(products), "invalid bundle group productIds")
+                require(all(qrels[cid]["sku"].get(s) == 2 for s in g_skus), "bundle group sku must be grade=2")
+                require(seen_skus.isdisjoint(g_skus), "overlapping bundle group skuIds")
+                seen_gids.add(gid)
+                seen_skus.update(g_skus)
+        elif req_groups is not None:
+            require(isinstance(req_groups, list), "invalid requiredGroups")
         ann = annotations[cid]
         require(ann["datasetVersion"] == manifest["version"] and ann["caseHash"] == digest(case)
                 and ann["qrelsHash"] == digest(qrels[cid]), "annotation snapshot mismatch")
@@ -193,7 +214,7 @@ def validate(data, *, formal=False):
             require(not human_review_metadata_errors(ann), "invalid human review")
         if formal:
             require(ann["reviewStatus"] == "HUMAN_REVIEWED", "unreviewed gold: " + cid)
-    # 仅跨split近似问题提示人工处理；精确问题上面已拒绝。
+    # 仅做词面/字符二元组近似筛查（非完整语义等价防泄漏检测；深层语义同义改写须依赖familyId人工复核与独立Holdout盲测）。
     from difflib import SequenceMatcher
     rows = list(cases.values())
     reviewed_pairs = manifest.get("reviewedNearDuplicates", [])
@@ -206,18 +227,22 @@ def validate(data, *, formal=False):
                         near.append(pair)
                 if _char_bigram_jaccard(a["originalQuery"], b["originalQuery"]) >= .78:
                     if pair not in reviewed_pairs:
-                        semantic_overlap.append(pair)
+                        char_bigram_overlap.append(pair)
     if formal:
         require(manifest["status"] == "ACCEPTED" and not near, "dataset not frozen or unresolved near duplicates")
     family_counts = Counter(c["familyId"] for c in cases.values())
+    purchase_modes = Counter(c["constraints"].get("purchaseMode") or "NONE" for c in cases.values())
     return {"caseCount": len(cases), "productCount": len(products), "skuCount": len(skus),
             "documentCount": len(docs), "merchantCount": len(merchants), "familyCount": len(families),
             "multiCaseFamilyCount": sum(v > 1 for v in family_counts.values()),
+            "purchaseModes": dict(purchase_modes),
             "disputedCount": sum(a.get("disputed") is True for a in annotations.values()),
             "challengeCount": len(challenge_rows),
             "categories": dict(Counter(c["queryType"] for c in cases.values())),
             "reviewed": sum(a["reviewStatus"] == "HUMAN_REVIEWED" for a in annotations.values()),
-            "nearDuplicateWarnings": near, "semanticOverlapWarnings": semantic_overlap,
+            "nearDuplicateWarnings": near, "charBigramOverlapWarnings": char_bigram_overlap,
+            "leakageDetectionScope": "LEXICAL_CHAR_SIMILARITY_AND_DECLARED_FAMILY_ONLY",
+            "semanticLeakageVerified": False,
             "status": manifest["status"]}
 
 

@@ -9,8 +9,11 @@
 
 1. **独立于被测系统输出**：Gold 相关性标签（`qrels.jsonl`）与预期行为（`cases.jsonl`）只能依据冻结的全量商品快照（`products.jsonl`）、商户经营状态（`merchants.json`）、知识文档原文（`knowledge.jsonl`）和已接受业务规格（[RELEASE-01.md](../specs/RELEASE-01.md)、[SDD-AI-RECALL-07.md](../specs/SDD-AI-RECALL-07.md)）确定，**严禁直接拷贝当前规则引擎或大模型的返回结果充当标准答案**。
 2. **全语料完备性**：评审时必须对照全库 480 款商品、1,020 个 SKU 和 80 篇知识文档版本，不得只对某次检索召回的前几名打分，防止同品类合规商品沦为未标注假阴性。
-3. **允许多个正确答案**：只要推荐组合来自 `grade=2` 可行相关集、满足整组预算/数量/规格/库存/状态硬约束且引用证据合法，均视为有效推荐；澄清与无匹配响应按语义要点核验，不要求与示例措辞逐字一致。
-4. **诚实标注状态**：所有程序或 AI 辅助起草的记录固定保持 `annotationSource = "AI_ASSISTED"`、`reviewStatus = "DRAFT"`、`reviewer = null`、`reviewedAt = null`。只有真实人类逐例审阅并解决争议后，方可填写审阅人标识与 ISO-8601 时间戳；严禁脚本批量刷写 `HUMAN_REVIEWED` 或 `ACCEPTED`。
+3. **区分三类采购语义（`purchaseMode`）**：
+   - `BUNDLE`（组合购买）：`constraints.requiredGroups` 显式列出全部必选商品组（如 `case-v2-071` 的 `whole_wheat_toast` + `oat_milk`），推荐结果须以不重叠 `grade=2` SKU 100% 覆盖全部必选组且整单总价 `<= budgetCent`，严禁以同类多款 SKU 凑数；
+   - `ALTERNATIVES`（备选推荐）：允许返回 `1..3` 个相关候选（全为 `grade >= 1` 且至少含 1 个 `grade=2`）供买家择一，预算按单品方案逐项核验；
+   - `SINGLE`（单品采购）：要求精确交付唯一 `grade=2` 目标单品（`len(recommendations) == 1`）且总价不超预算。
+4. **诚实标注状态与防泄漏边界**：所有程序或 AI 辅助起草的记录固定保持 `annotationSource = "AI_ASSISTED"`、`reviewStatus = "DRAFT"`、`reviewer = null`、`reviewedAt = null`。静态字符相似度检测仅筛查表面词面重复，深层同义泄漏须在人工审阅时核查 `familyId` 归并，并配合仓库外独立盲测集（[Holdout 方案](benchmark-v2-holdout-protocol.md)）。
 
 ---
 

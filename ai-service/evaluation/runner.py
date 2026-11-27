@@ -84,6 +84,9 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                                indexHash=digest(data['products']), promptHash=prompt_hash()),
         )
         return save(path, data, rows, metadata)
+    from .dataset import DatasetError
+    if split not in data['splits'] or not data['splits'][split]:
+        raise DatasetError(f"split '{split}' missing or empty")
     ids = set(data['splits'][split])
     cases = [c for c in data['cases'] if c['caseId'] in ids]
     recorder = Recorder(profile, 1000000 if profile == 'controlled' else budget)

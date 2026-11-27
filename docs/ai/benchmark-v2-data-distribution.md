@@ -15,7 +15,7 @@
 | 商品 / SKU 数量 | 240 / 360（仅 2 种 `specKey`） | **480 / 1,020**（60 原型 × 多维中文规格词元） | 消除标题串号，Python `attributes` 与 MySQL `spec_key` 100% 对齐 |
 | 知识文档版本数 | 24（全 `version=1`，仅 2 篇重复套话长文） | **80**（含 10 组 `v1->v2` 演进、22 篇真实多块长文） | 覆盖 `ordinal=1` 深层分块定位、撤回旧版与草稿隔离 |
 | 问题家族（`familyId`） | 120 个单样本家族（实质无跨族约束） | **281 个家族**（**76 个多成员家族覆盖 155 例**） | 真正按语义改写/变体整族切分，`0` 跨 split 家族泄漏 |
-| 跨 split 近重复预警 | 模板槽位换名落在 `0.88~0.89` | `nearDuplicateWarnings = []`、`semanticOverlapWarnings = []` | 全集 360 例跨 split 最大 `SequenceMatcher` 比值 `< 0.80` |
+| 跨 split 词面近似预警 | 模板槽位换名落在 `0.88~0.89` | `nearDuplicateWarnings = []`、`charBigramOverlapWarnings = []` | 仅代表词面/字符二元组筛查（`semanticLeakageVerified=false`），完整防过拟合配合 [独立 Holdout 盲测](benchmark-v2-holdout-protocol.md) |
 | 多轮知识改写有效样本 | **0 例**（`K-H` 与 `K-H-R` 全集恒等） | **12 例**（含指代词跨轮次门店/政策追问） | `K-D-R` / `K-H-R` 首次具备真实非空消融对照 |
 | 角色权限覆盖 | 3 类（`buyer` / `owner` / `admin`） | **5 类**（新增有/无 `knowledge.read` 店员对照） | 完整检验细粒度店员 RBAC 边界 |
 | Gold 审核状态 | `DRAFT`（`reviewed=0/120`） | **`DRAFT`**（`reviewed=0/360`，`disputed=22`） | 保持诚实草稿标记并显式标出 22 条待人工裁决争议样本 |
@@ -69,7 +69,8 @@
 
 ## 四、场景动作、角色与挑战集分布
 
-- **预期行为（`expectedBehavior.action`）**：覆盖 `RECOMMEND`（常规单品/组合/多轮/比价推荐）、`KNOWLEDGE_ONLY`（单证据/多证据/深层分块/多轮政策问答）、`NO_MATCH`（超目录、无货、停售、停业店、超预算拒答）与 `CLARIFY`（模糊区间预算、多商品异量、越界数量、未知/矛盾属性主动澄清）。
+- **采购语义模式（`constraints.purchaseMode`）**：`SINGLE`（单品确定性采购）**177 例**、`ALTERNATIVES`（备选推荐）**78 例**、`BUNDLE`（跨品类组合购买，含必选商品组 `requiredGroups`）**12 例**、纯知识无商品采购 **93 例**。
+- **预期行为（`expectedBehavior.action`）**：覆盖 `RECOMMEND`（210 例）、`KNOWLEDGE_ONLY`（93 例）、`CLARIFY`（29 例）与 `NO_MATCH`（28 例）。
 - **独立挑战集（`challenge.jsonl`，共 24 例 `UNSUPPORTED`）**：
   1. `INDEPENDENT_NEURAL_RERANKER`：3 例
   2. `COUPON_AND_TIERED_DISCOUNT`：4 例

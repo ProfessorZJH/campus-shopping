@@ -43,6 +43,42 @@ def compute_allowed_documents(
     return sorted(allowed)
 
 
+def _classify_purchase_mode(bp: dict[str, Any]) -> str | None:
+    """区分组合购买(BUNDLE)、备选推荐(ALTERNATIVES)与单品采购(SINGLE)，纯知识问答返回 None。"""
+    import re
+
+    act = bp["expectedBehavior"]["action"]
+    qtype = bp["queryType"]
+    spec = bp["goldSpec"]
+    query = bp["originalQuery"]
+    if act == "KNOWLEDGE_ONLY" and not spec.get("targetArchetypes"):
+        return None
+    if spec.get("comboArchetypes"):
+        return "BUNDLE"
+    if qtype == "fuzzy-need-scenario":
+        return "ALTERNATIVES"
+    if qtype in (
+        "exact-product-spec",
+        "attribute-quantity-negation",
+        "cross-merchant-compare",
+        "proposal-safety-mutation",
+        "prompt-injection-hallucination",
+        "knowledge-acl-privacy",
+    ):
+        return "SINGLE"
+    qty = bp["constraints"].get("quantity")
+    if isinstance(qty, int) and qty > 1:
+        return "SINGLE"
+    if re.search(
+        r"(?:买|拿|来|整|要|下单|锁单)\s*(?:\d+|[一二两三四五六七八九十]+)?\s*[个件份瓶盒包本支杯袋斤条双把台张根套箱桶罐卷只副对盏枚]"
+        r"|选[^\s，。！？]*这个",
+        query,
+    ):
+        return "SINGLE"
+    return "ALTERNATIVES"
+
+
+
 def _sku_satisfies_constraints(
     sku: dict[str, Any],
     constraints: dict[str, Any],
@@ -195,6 +231,7 @@ def solve_dataset_gold(
                     feasible_by_arch = filtered_by_arch
 
                 grade2_sku_ids: set[str] = set()
+                selected_by_arch: dict[str, list[tuple[dict[str, Any], dict[str, Any]]]] = {}
                 for a, pairs in feasible_by_arch.items():
                     selected_pairs = pairs
                     if preferred_merchants is not None:
@@ -206,11 +243,24 @@ def solve_dataset_gold(
                         # 同最低价梯队（容许 <=8% 或 <=80 分微差并列最优，跨店明显高价款降为 grade=1）
                         ceiling = min_price + max(80, int(min_price * 0.08))
                         selected_pairs = [(p, s) for p, s in selected_pairs if s["priceCent"] <= ceiling]
+                    selected_by_arch[a] = selected_pairs
                     for _, s in selected_pairs:
                         grade2_sku_ids.add(s["skuId"])
 
                 if not grade2_sku_ids:
                     raise ValueError(f"{cid} ({qtype}): RECOMMEND case produced 0 grade=2 SKUs across full corpus")
+                if is_combo:
+                    required_groups = []
+                    for a in combo_group:
+                        grp_pairs = selected_by_arch.get(a, [])
+                        if not grp_pairs:
+                            raise ValueError(f"{cid}: combo required group {a} produced 0 grade=2 SKUs")
+                        required_groups.append({
+                            "groupId": a,
+                            "productIds": sorted({p["productId"] for p, _ in grp_pairs}),
+                            "skuIds": sorted({s["skuId"] for _, s in grp_pairs}),
+                        })
+                    constraints["requiredGroups"] = required_groups
                 if constraints.get("minItems", 1) and int(constraints.get("minItems", 1)) > 1:
                     if len(grade2_sku_ids) < int(constraints["minItems"]):
                         raise ValueError(f"{cid}: fewer grade=2 SKUs than minItems")
@@ -283,6 +333,10 @@ def solve_dataset_gold(
         task_scopes = list(bp["taskScopes"])
         if doc_grades and "knowledge" not in task_scopes:
             task_scopes.append("knowledge")
+
+        purchase_mode = _classify_purchase_mode(bp)
+        if purchase_mode is not None:
+            constraints["purchaseMode"] = purchase_mode
 
         case_row = {
             "caseId": cid,
