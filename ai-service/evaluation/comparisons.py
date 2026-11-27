@@ -24,8 +24,11 @@ def paired(left, right, metric, *, metadata_left, metadata_right):
     families = defaultdict(list)
     for k in keys:
         families[k[1]].append(b[k] - a[k])
+    left_degraded = sum(r.get('status') == 'DEGRADED' for r in left)
+    right_degraded = sum(r.get('status') == 'DEGRADED' for r in right)
     if not keys:
-        return {'pairedCases': 0, 'meanDelta': None, 'interval': None}
+        return {'pairedCases': 0, 'meanDelta': None, 'interval': None,
+                'leftDegraded': left_degraded, 'rightDegraded': right_degraded}
     randomizer = random.Random(20261031)
     groups = list(families.values())
     trials = []
@@ -33,6 +36,7 @@ def paired(left, right, metric, *, metadata_left, metadata_right):
         sample = [d for group in randomizer.choices(groups, k=len(groups)) for d in group]
         trials.append(sum(sample) / len(sample))
     return {'pairedCases': len(keys), 'leftUnpaired': len(a.keys() - b.keys()),
-            'rightUnpaired': len(b.keys() - a.keys()), 'meanDelta': sum(b[k] - a[k] for k in keys) / len(keys),
+            'rightUnpaired': len(b.keys() - a.keys()), 'leftDegraded': left_degraded,
+            'rightDegraded': right_degraded, 'meanDelta': sum(b[k] - a[k] for k in keys) / len(keys),
             'interval': [percentile(trials, .025), percentile(trials, .975)],
             'method': 'family-paired-bootstrap-1000-seed-20261031', 'interpretation': 'EXPLORATORY'}

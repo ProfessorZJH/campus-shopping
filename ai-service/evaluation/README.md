@@ -1,6 +1,6 @@
 # 智能导购评测工具
 
-范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 为准。 本轮 evidence recall 与引用完整性增量见 [ShoppingAI / RAG 批次 A+B 实施记录](../../docs/testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)。复用生产 KnowledgeStore、engine、ProductIndex 和 Java RecommendationPolicy，不提供交易写接口。数据目前为 **DRAFT，120例均待人工复核**；执行成功不等于正式业务效果通过。
+范围与行为以 [OpenSpec变更](../../openspec/changes/evaluate-shopping-retrieval-recommendations/specs/shopping-ai-evaluation/spec.md) 及 [Benchmark V2 增量规格](../../openspec/changes/campus-shopping-benchmark-v2/specs/shopping-ai-evaluation-v2/spec.md) 为准。本轮 evidence recall 与引用完整性增量见 [ShoppingAI / RAG 批次 A+B 实施记录](../../docs/testing/SHOPPINGAI-RAG-CORRECTIONS-20261101.md)；Benchmark V2 全语料数据集与实验证据见 [V2 评测报告](../../docs/testing/AI-EVALUATION-V2-20261127.md)、[V2 数据说明](datasets/campus-shopping-v2/README.md)、[V2 标注手册](../../docs/ai/benchmark-v2-annotation-manual.md) 与 [V2 数据分布](../../docs/ai/benchmark-v2-data-distribution.md)。复用生产 KnowledgeStore、engine、ProductIndex、`/v1/query/stream` 和 Java RecommendationPolicy，不提供交易写接口。`campus-shopping-v1`（120例）与 `campus-shopping-v2`（360主例 + 24挑战例）当前均为 **DRAFT，待人工复核**；执行成功不等于正式业务效果通过。
 
 当前评分器为v3，修复待评记录被计入评审覆盖率、重复评审覆盖及未完成评审时报告误为PASS的问题。此前v2修复异常案例漏出分母和硬约束门禁；门禁曾检出case-041～044规格违规，原始FAILED证据保留在[审查收口](../../docs/testing/AI-EVALUATION-REVIEW-20261031.md)。经补充授权，生产规格/否定过滤已按[SDD-07第7节](../../docs/specs/SDD-AI-RECALL-07.md)修复；当时120例DRAFT的本地/受控执行退出0，报告仍PARTIAL。不能以历史CI或DRAFT执行成功替代正式业务效果验收。
 
@@ -57,8 +57,9 @@ python ai-service/evaluate.py --dataset campus-shopping-v1 --split dev --profile
 | P-H-R | 固定P-H的terms，仅改变语义query | 当前recall_terms的上下文改写 |
 | P-TERMS | 单列可选模型terms变化 | 不能归因于仅query改写 |
 | R-RULE / R-LLM | 固定offers、query、semantic和授权证据 | 只切推荐/解释；LLM预设3次均保留 |
+| S-SSE | 真实 `/v1/query/stream` 流式SSE逐帧采集 | 独立测量 `started`/`firstProgress`/`firstDelta`/`completed`，不从非流式推导 |
 | SAFE | JUnit真实事务/ACL + 标明模型替身 | 撤权、撤稿、旧历史、陈旧确认、竞争、回滚 |
-| E4 / reranker | UNSUPPORTED | 当前没有独立reranker |
+| E4 / reranker / `--split challenge` | UNSUPPORTED | 当前没有独立reranker及挑战集未实现产品能力 |
 
 旧E0→K-D、E1→K-D-R、E2→K-H、E3→K-H-R。知识向量库是SQLite（可选Qdrant不在本轮实验）；商品向量库才是Milvus。离线 `R-RULE`/`R-LLM` 的 `offers_for` 注入当前快照全部符合上架/商户/SKU状态的候选报价（不再在 300 处截断后段商品），但仍不能把离线报价内排序冒充 Java/MySQL 全目录召回；同时知识建索引与搜索严格遵循生产默认外发策略（仅 `PUBLIC` 文档允许外发，`MERCHANT_INTERNAL` 与 `PLATFORM_INTERNAL` 仅走本地特征向量）。
 

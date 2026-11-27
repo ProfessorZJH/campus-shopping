@@ -7,6 +7,7 @@ from dataclasses import replace
 import json
 import os
 import socket
+import threading
 from unittest.mock import patch
 from urllib.parse import urlsplit
 
@@ -105,6 +106,13 @@ def controlled_response(request):
         result = {'query': payload['question'], 'terms': ['校园', '商品']}
     else:
         result = {'query': payload['question']}
+    if body.get('stream') is True:
+        serialized = json.dumps(result, ensure_ascii=False)
+        mid = max(1, len(serialized) // 2)
+        first = json.dumps({'choices': [{'delta': {'content': serialized[:mid]}, 'finish_reason': None}]}, ensure_ascii=False)
+        second = json.dumps({'choices': [{'delta': {'content': serialized[mid:]}, 'finish_reason': 'stop'}]}, ensure_ascii=False)
+        sse = f'data: {first}\n\ndata: {second}\n\ndata: [DONE]\n\n'.encode('utf-8')
+        return httpx.Response(200, headers={'content-type': 'text/event-stream'}, content=sse)
     return httpx.Response(200, json={'choices': [{'message': {'content': json.dumps(result, ensure_ascii=False)}}]})
 
 
@@ -152,10 +160,28 @@ def transport_scope(settings, recorder, handler=None):
     with ExitStack() as stack:
         stack.enter_context(patch('httpx.Client', client))
         if offline:
-            def blocked(*args, **kwargs):
+            orig_connect = socket.socket.connect
+            orig_socketpair = socket.socketpair
+            in_socketpair = threading.local()
+
+            def safe_socketpair(*args, **kwargs):
+                in_socketpair.active = True
+                try:
+                    return orig_socketpair(*args, **kwargs)
+                finally:
+                    in_socketpair.active = False
+
+            def blocked(sock, *args, **kwargs):
+                if getattr(in_socketpair, 'active', False):
+                    return orig_connect(sock, *args, **kwargs)
                 raise OSError('evaluation offline network blocked')
+
+            def blocked_create_connection(*args, **kwargs):
+                raise OSError('evaluation offline network blocked')
+
+            stack.enter_context(patch.object(socket, 'socketpair', safe_socketpair))
             stack.enter_context(patch.object(socket.socket, 'connect', blocked))
-            stack.enter_context(patch('socket.create_connection', blocked))
+            stack.enter_context(patch('socket.create_connection', blocked_create_connection))
         yield
 
 
@@ -178,6 +204,10 @@ class RecordedProvider:
         result = self.inner.complete(system, payload)
         self.recorder.models['llm'] = {'model': self.inner.settings.llm_model}
         return result
+
+    def stream_complete(self, system, payload):
+        yield from self.inner.stream_complete(system, payload)
+        self.recorder.models['llm'] = {'model': self.inner.settings.llm_model}
 
 
 class RecordedClient:

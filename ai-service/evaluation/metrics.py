@@ -12,9 +12,9 @@ def rate(numerator, denominator, *, status=None):
             "status": status or ("SCORED" if denominator else "N/A")}
 
 
-def ranked_metrics(ranking, grades, k, *, attempted=True):
+def ranked_metrics(ranking, grades, k, *, attempted=True, status_override=None):
     if not attempted:
-        return {n: rate(0, 0, status="NOT_RUN") for n in ("recall", "hit", "mrr", "ndcg")}
+        return {n: rate(0, 0, status=status_override or "NOT_RUN") for n in ("recall", "hit", "mrr", "ndcg")}
     relevant = {key for key, value in grades.items() if value > 0}
     if not relevant:
         return {n: rate(0, 0) for n in ("recall", "hit", "mrr", "ndcg")}
@@ -56,9 +56,9 @@ def item_checks(item, facts, constraints, merchants):
     }
 
 
-def recommendation_metrics(data, case, result, grades, *, attempted=True):
+def recommendation_metrics(data, case, result, grades, *, attempted=True, status_override=None):
     if not attempted:
-        return {"requestSuccess": rate(0, 0, status="NOT_RUN")}
+        return {"requestSuccess": rate(0, 0, status=status_override or "NOT_RUN")}
     facts = sku_map(data)
     items = result.get("recommendations", [])
     checks = [item_checks(i, facts.get(i.get("skuId")), case["constraints"], case["allowedMerchantIds"]) for i in items]
@@ -73,7 +73,9 @@ def recommendation_metrics(data, case, result, grades, *, attempted=True):
                                 case["constraints"], case["allowedMerchantIds"]).values())
                 and (budget is None or facts[key]["priceCent"] * (case["constraints"].get("quantity") or 1) <= budget)]
     expected = case["expectedBehavior"]
-    coverage = bool(items) and all_safe and any(grades.get(i.get("skuId"), 0) == 2 for i in items)
+    raw_min_items = case["constraints"].get("minItems")
+    min_items = raw_min_items if type(raw_min_items) is int and raw_min_items > 1 else 1
+    coverage = bool(items) and len(items) >= min_items and all_safe and any(grades.get(i.get("skuId"), 0) == 2 for i in items)
     action = expected["action"]
     if action == "CLARIFY":
         correct = not items and any(w in result.get("answer", "") for w in expected["clarificationTerms"])
@@ -113,11 +115,17 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     legacy_total = 0
     valid_relevant_documents = set()
     valid_evidence_chunks = set()
+    chunking = data.get("manifest", {}).get("chunking") or {"length": 700, "overlap": 80}
+    c_len, c_ov = chunking.get("length", 700), chunking.get("overlap", 80)
     qrel = next((row for row in data.get("qrels", []) if row.get("caseId") == case.get("caseId")), {})
     gold_evidence = {
         (entry["documentId"], entry["ordinal"], entry["chunkHash"])
         for entry in qrel.get("evidence", []) if entry.get("grade", 0) > 0
     }
+    required_gold = {
+        (entry["documentId"], entry["ordinal"], entry["chunkHash"])
+        for entry in qrel.get("evidence", []) if entry.get("grade", 0) == 2
+    } or gold_evidence
     for citation in citations:
         fields = ("documentVersion", "ordinal", "contentHash")
         present = [field in citation for field in fields]
@@ -134,9 +142,10 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
         doc = docs.get(did)
         if not doc or did not in case["allowedDocumentIds"] or doc["status"] != "PUBLISHED":
             continue
-        pieces = chunks(doc["content"])
-        expected = {str(uuid.uuid5(uuid.NAMESPACE_URL, did + ":" + str(i))): piece for i, piece in enumerate(pieces)}
-        piece = expected.get(citation.get("chunkId"))
+        pieces = chunks(doc["content"], length=c_len, overlap=c_ov)
+        expected = {str(uuid.uuid5(uuid.NAMESPACE_URL, did + ":" + str(i))): (i, piece) for i, piece in enumerate(pieces)}
+        matched = expected.get(citation.get("chunkId"))
+        piece = matched[1] if matched is not None else None
         if protocol == "strict":
             ordinal = citation.get("ordinal")
             strict_match = (
@@ -163,21 +172,29 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
             if strict_match is True:
                 strict_valid += 1
                 valid_evidence_chunks.add((did, citation["ordinal"], citation["contentHash"]))
-            elif strict_match is None:
-                legacy_matches = [
-                    (did, ordinal, hashlib.sha256(candidate.encode("utf-8")).hexdigest())
-                    for ordinal, candidate in enumerate(pieces)
-                    if citation.get("snippet") in candidate
-                ]
-                if len(legacy_matches) == 1:
-                    valid_evidence_chunks.add(legacy_matches[0])
+            elif strict_match is None and matched is not None:
+                matched_ordinal, matched_piece = matched
+                valid_evidence_chunks.add((did, matched_ordinal, hashlib.sha256(matched_piece.encode("utf-8")).hexdigest()))
     # rewrittenQuery包含用户本来就输入的canary，不属于从内部资料泄漏的新内容。
-    exposed = str({k: result.get(k) for k in ('answer', 'citations', 'recommendations', 'history')})
-    forbidden = list(case["expectedBehavior"].get("forbiddenFacts", []))
+    # 授权公开文档正文中的反诈/禁令警示语（如“严禁输出‘已自动下单’”）不等于模型回答越界断言；
+    # 但内部识别符（CANARY）与未授权文档ID/标题在任何输出字段（含citations）出现均属泄漏。
+    non_citation_exposed = str({k: result.get(k) for k in ('answer', 'recommendations', 'history')})
+    full_exposed = str({k: result.get(k) for k in ('answer', 'citations', 'recommendations', 'history')})
+    unauthorized_citations_exposed = str([
+        c for c in citations
+        if c.get("documentId") not in case["allowedDocumentIds"]
+        or docs.get(c.get("documentId"), {}).get("status") != "PUBLISHED"
+    ])
+    forbidden_facts = list(case["expectedBehavior"].get("forbiddenFacts", []))
+    strict_secret_terms = [t for t in forbidden_facts if t and ("CANARY" in t or t in docs)]
+    assertion_terms = [t for t in forbidden_facts if t and t not in strict_secret_terms]
     for did, doc in docs.items():
         if did not in case["allowedDocumentIds"]:
-            forbidden.extend((did, doc["title"]))
-    leak = any(term and term in exposed for term in forbidden)
+            strict_secret_terms.extend((did, doc["title"]))
+    leak = (
+        any(term and term in full_exposed for term in strict_secret_terms)
+        or any(term and (term in non_citation_exposed or term in unauthorized_citations_exposed) for term in assertion_terms)
+    )
     reviewed = review_complete(review)
     assertions = review.get("assertions", []) if reviewed else []
     reported_leak = isinstance(review, dict) and review.get("semanticLeak") is True
@@ -187,7 +204,7 @@ def evidence_metrics(data, case, result, review=None, *, attempted=True):
     if gold_evidence:
         cited_gold = valid_evidence_chunks & gold_evidence
         evidence_recall = rate(len(cited_gold), len(gold_evidence))
-        evidence_coverage = rate(int(valid == len(citations) and cited_gold == gold_evidence), 1)
+        evidence_coverage = rate(int(bool(citations) and valid == len(citations) and required_gold <= valid_evidence_chunks), 1)
     else:
         # 旧数据集没有 chunk 级 Gold 时保留文档级兼容统计。
         evidence_recall = rate(len(cited_relevant), len(relevant)) if relevant else rate(0, 0)
@@ -225,8 +242,12 @@ def hard_violations(scores):
 
 
 def score(data, case, qrel, row, review=None):
-    attempted = row["status"] not in ("NOT_RUN", "UNSUPPORTED")
-    failed = row["status"] == "FAILED"
+    if row.get("task") == "challenge":
+        return {"requestSuccess": rate(0, 0, status="UNSUPPORTED")}
+    row_status = row["status"]
+    status_override = "UNSUPPORTED" if row_status == "UNSUPPORTED" else None
+    attempted = row_status not in ("NOT_RUN", "UNSUPPORTED")
+    failed = row_status == "FAILED"
     output = {} if failed else row.get("result", {})
     scores = {}
     for stage, unit, ks in (("knowledge.chunks", "chunk", (1, 3, 5)),
@@ -240,18 +261,22 @@ def score(data, case, qrel, row, review=None):
         if stage == "recommendations":
             ids = [r["skuId"] for r in output.get("recommendations", [])]
         for k in ks:
-            for name, metric in ranked_metrics(ids, grades, k, attempted=attempted).items():
+            for name, metric in ranked_metrics(ids, grades, k, attempted=attempted, status_override=status_override).items():
                 if stage == "sku.pool" and name != "recall":
                     continue  # round-robin候选是集合覆盖，不冒充相关性排序。
                 scores[f"{stage}/{name}@{k}"] = metric
     if row.get("task") == "recommendation":
-        scores.update(recommendation_metrics(data, case, output, qrel["sku"], attempted=attempted))
-    if row.get("task") in ("knowledge", "recommendation") and attempted:
+        scores.update(recommendation_metrics(data, case, output, qrel["sku"], attempted=attempted, status_override=status_override))
+    if row.get("task") == "streaming":
+        scores["streamCompleted"] = rate(0 if failed else 1, 1) if attempted else rate(0, 0, status=status_override or "NOT_RUN")
+    if row.get("task") in ("knowledge", "recommendation", "streaming") and attempted:
         scores.update(evidence_metrics(data, case, output, review, attempted=attempted))
     if failed:
         for key, metric in scores.items():
             if metric["denominator"] and key not in ("unauthorizedDisclosure", "semanticReviewCoverage"):
                 metric.update(numerator=0, value=0.0)
+        if "unauthorizedDisclosure" in scores:
+            scores["unauthorizedDisclosure"] = rate(0, 0, status="FAILED")
     return scores
 
 
@@ -259,11 +284,13 @@ def chunk_grades(data, qrel):
     """仅使用已标明的证据位置；不把文档相关性自动传播给所有分块。"""
     import uuid
     from app.retrieval import chunks
+    chunking = data.get("manifest", {}).get("chunking") or {"length": 700, "overlap": 80}
+    c_len, c_ov = chunking.get("length", 700), chunking.get("overlap", 80)
     docs = {d["documentId"]: d for d in data["knowledge"]}
     result = {}
     for evidence in qrel.get("evidence", []):
         did, ordinal = evidence["documentId"], evidence["ordinal"]
-        if did in docs and 0 <= ordinal < len(chunks(docs[did]["content"])):
+        if did in docs and 0 <= ordinal < len(chunks(docs[did]["content"], length=c_len, overlap=c_ov)):
             result[str(uuid.uuid5(uuid.NAMESPACE_URL, did + ":" + str(ordinal)))] = evidence["grade"]
     return result
 
@@ -284,14 +311,38 @@ def aggregate(rows, *, include_categories=True, include_paths=True):
                              "caseNumerators": [v["numerator"] for v in scored],
                              "caseDenominators": [v["denominator"] for v in scored],
                              "scored": len(scored), "notApplicableOrPending": len(values) - len(scored)}
-        timings = [r["latencyMs"] for r in group if r["status"] not in ("NOT_RUN", "FAILED") and r.get("latencyMs") is not None]
+        timings = [r["latencyMs"] for r in group if r["status"] not in ("NOT_RUN", "FAILED", "UNSUPPORTED") and r.get("latencyMs") is not None]
+        exec_timings = [r["latencyMs"] for r in group if r["status"] == "EXECUTED" and r.get("latencyMs") is not None]
+        latency_obj = {"samples": len(timings), "p50Ms": percentile(timings, .5),
+                       "p95Ms": percentile(timings, .95), "method": "nearest-rank", "firstTokenMs": None}
+        stream_rows = [r["streamTiming"] for r in group if r["status"] == "EXECUTED" and isinstance(r.get("streamTiming"), dict)]
+        if stream_rows:
+            started_vals = [st["startedMs"] for st in stream_rows if st.get("startedMs") is not None]
+            progress_vals = [st["firstProgressMs"] for st in stream_rows if st.get("firstProgressMs") is not None]
+            first_deltas = [st["firstDeltaMs"] for st in stream_rows if st.get("firstDeltaMs") is not None]
+            completed_vals = [st["completedMs"] for st in stream_rows if st.get("completedMs") is not None]
+            latency_obj["firstTokenMs"] = percentile(first_deltas, .5)
+            latency_obj["streaming"] = {
+                "samples": len(first_deltas),
+                "startedP50Ms": percentile(started_vals, .5),
+                "startedP95Ms": percentile(started_vals, .95),
+                "firstProgressP50Ms": percentile(progress_vals, .5),
+                "firstProgressP95Ms": percentile(progress_vals, .95),
+                "firstDeltaP50Ms": percentile(first_deltas, .5),
+                "firstDeltaP95Ms": percentile(first_deltas, .95),
+                "completedP50Ms": percentile(completed_vals, .5),
+                "completedP95Ms": percentile(completed_vals, .95),
+            }
         output.append({"experiment": key[0], "profile": key[1], "adapter": key[2], "task": key[3],
-                       "planned": len(group), "failed": sum(r["status"] == "FAILED" for r in group),
+                       "planned": len(group), "executed": sum(r["status"] == "EXECUTED" for r in group),
+                       "failed": sum(r["status"] == "FAILED" for r in group),
                        "notRun": sum(r["status"] == "NOT_RUN" for r in group),
                        "degraded": sum(r["status"] == "DEGRADED" for r in group),
+                       "unsupported": sum(r["status"] == "UNSUPPORTED" for r in group),
                        "actualComponents": [r.get("provenance", {}) for r in group],
-                       "metrics": metrics, "latency": {"samples": len(timings), "p50Ms": percentile(timings, .5),
-                       "p95Ms": percentile(timings, .95), "method": "nearest-rank", "firstTokenMs": None}})
+                       "metrics": metrics, "latency": latency_obj,
+                       "executedLatency": {"samples": len(exec_timings), "p50Ms": percentile(exec_timings, .5),
+                                           "p95Ms": percentile(exec_timings, .95), "method": "nearest-rank"}})
         if include_categories:
             categories = sorted({r.get('queryType', 'legacy') for r in group})
             output[-1]['byCategory'] = {c: aggregate([r for r in group if r.get('queryType', 'legacy') == c],

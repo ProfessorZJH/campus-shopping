@@ -53,12 +53,27 @@ def render(manifest, groups, rows):
             value = 'N/A' if m['value'] is None else f'{m["value"]:.4f}'
             fractions = ', '.join(f'{a:g}/{b:g}' for a, b in zip(m['caseNumerators'], m['caseDenominators']))
             lines.append(f'| {label} | {name} | {m["scored"]}/{g["planned"]} | {fractions} | {value} |')
-    lines += ['', '## 安全、耗时与执行完整率', '', '首Token：N/A（当前非流式）。延迟仅是本次评测进程墙钟，不是生产性能。', '']
+    streaming_groups = [g for g in groups if g.get('latency', {}).get('firstTokenMs') is not None]
+    if streaming_groups:
+        stream_notes = []
+        for sg in streaming_groups:
+            st = sg['latency'].get('streaming', {})
+            stream_notes.append(
+                f"{sg['experiment']}/{sg['profile']}: started P50/P95={st.get('startedP50Ms')}/{st.get('startedP95Ms')}ms, "
+                f"firstProgress P50/P95={st.get('firstProgressP50Ms')}/{st.get('firstProgressP95Ms')}ms, "
+                f"firstDelta(首Token) P50/P95={st.get('firstDeltaP50Ms')}/{st.get('firstDeltaP95Ms')}ms, "
+                f"completed P50/P95={st.get('completedP50Ms')}/{st.get('completedP95Ms')}ms"
+            )
+        first_token_line = ('首Token（S-SSE 真实流式逐帧测量）：' + '；'.join(stream_notes) +
+                            '。非流式实验（K-*/P-*/R-*）保持 firstTokenMs=None。延迟仅是本次评测进程墙钟，不是生产性能。')
+    else:
+        first_token_line = '首Token：N/A（当前非流式）。延迟仅是本次评测进程墙钟，不是生产性能。'
+    lines += ['', '## 安全、耗时与执行完整率', '', first_token_line, '']
     for g in groups:
         components = {k: sorted({s for r in g['actualComponents'] for s in r.get(k, {}).get('source', [])})
                       for k in ('embedding', 'llm', 'productVector', 'knowledgeVector', 'javaMysql')}
-        lines += ['- ' + g['experiment'] + ': ' + json.dumps({k: g[k] for k in
-                  ('planned', 'failed', 'notRun', 'degraded', 'latency')}, ensure_ascii=False),
+        summary_keys = tuple(k for k in ('planned', 'executed', 'failed', 'notRun', 'degraded', 'unsupported', 'latency', 'executedLatency') if k in g)
+        lines += ['- ' + g['experiment'] + ': ' + json.dumps({k: g[k] for k in summary_keys}, ensure_ascii=False),
                   '  实际组件：' + json.dumps(components, ensure_ascii=False)]
     lines += ['', '## 失败与待评', '', '人工评审状态：' + manifest['humanReview'] + '。',
               '引用来源合法不代表语义正确；回答、解释与语义泄漏以人工实际评审记录为准。', '']
@@ -96,6 +111,9 @@ def recompute(path):
         if r['caseId'] in cases:
             r['scores'] = score(data, cases[r['caseId']], qrels[r['caseId']], r,
                                 reviews.get((r['caseId'], r['experiment'], r['repeat'])))
+        elif r.get('task') == 'challenge':
+            from .metrics import rate
+            r['scores'] = {'requestSuccess': rate(0, 0, status='UNSUPPORTED')}
     groups = aggregate(rows)
     from .comparisons import paired
     comparisons = []

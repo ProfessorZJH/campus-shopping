@@ -15,7 +15,7 @@ from .resources import collection_name, OwnedIndex
 from .reports import now, save
 
 EXPERIMENTS = ('K-B', 'K-D', 'K-H', 'K-D-R', 'K-H-R', 'R-RULE', 'R-LLM',
-               'P-L', 'P-D', 'P-H', 'P-H-R', 'P-TERMS', 'SAFE')
+               'P-L', 'P-D', 'P-H', 'P-H-R', 'P-TERMS', 'SAFE', 'S-SSE')
 
 
 def offers_for(data, case):
@@ -38,13 +38,60 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
         from .dataset import validate
         validate(data, formal=True)
     started = now()
+    requested = list(experiments)
+    if split == 'challenge':
+        from .dataset import DatasetError
+        from .metrics import rate
+        challenge_cases = list(data.get('challenge') or [])
+        if not challenge_cases:
+            raise DatasetError('challenge split not available')
+        recorder = Recorder(profile, 1000000 if profile == 'controlled' else budget)
+        rows = []
+        for experiment in requested:
+            for c in challenge_cases:
+                rows.append(dict(
+                    caseId=c['caseId'],
+                    familyId=c.get('familyId', 'challenge-' + c['caseId']),
+                    queryType=c['category'],
+                    split='challenge',
+                    experiment=experiment,
+                    repeat=0,
+                    profile=profile,
+                    adapter=adapter,
+                    task='challenge',
+                    status='UNSUPPORTED',
+                    reason=c['unsupportedCapability'],
+                    stages={},
+                    result={},
+                    latencyMs=None,
+                    labelVersion=data['manifest']['annotationVersion'],
+                    provenance=recorder.snapshot(0),
+                    scores={'requestSuccess': rate(0, 0, status='UNSUPPORTED')},
+                ))
+        metadata = dict(
+            startedAt=started, endedAt=now(), split=split, profile=profile, adapter=adapter,
+            experiments=requested, warmup=0, warmupStages=[],
+            providerRequests=0, requestBudget=budget, boundaryViolations=[],
+            boundaryViolationDetails=[],
+            actualComponents=recorder.snapshot(), resources=[], humanReview='PENDING',
+            actualModels={}, usage=dict(tokens='UNKNOWN', cost='UNKNOWN', providerSeedSupport='UNKNOWN'),
+            status='FAILED' if release_strict else 'PARTIAL', exitCode=2,
+            releaseStrict=release_strict, cleanupSuccessful=True,
+            configuration=dict(pythonHashSeed=os.environ.get('PYTHONHASHSEED', 'UNCONTROLLED'),
+                               rrfConstant=60, knowledgeSelectionDepth=6, skuPoolLimit=300,
+                               fixtureOfferPool='ALL_ELIGIBLE', knowledgeEgressPolicy='PUBLIC_ONLY',
+                               candidateLimit=12, recommendationLimit=3, llmRepetitions=3,
+                               indexHash=digest(data['products']), promptHash=prompt_hash()),
+        )
+        return save(path, data, rows, metadata)
     ids = set(data['splits'][split])
     cases = [c for c in data['cases'] if c['caseId'] in ids]
     recorder = Recorder(profile, 1000000 if profile == 'controlled' else budget)
     rows, resources = [], []
-    requested = list(experiments)
     index = None
     owned = None
+    stream_session = None
+    warmup_stages = ['knowledge.search']
     with tempfile.TemporaryDirectory(prefix='campus-eval-') as tmp:
         importing = adapter == 'java-mysql' and java_rows is not None
         settings = settings_for('local' if importing else profile, Path(tmp) / 'knowledge.db', collection_name(data['datasetHash']))
@@ -77,13 +124,23 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                     warm_public = [did for did in warm['allowedDocumentIds'] if doc_visibility.get(did) == 'PUBLIC']
                     for _ in range(2):
                         store.search(warm['originalQuery'], warm['allowedDocumentIds'], external_document_ids=warm_public)
+                    if 'S-SSE' in requested and adapter == 'python':
+                        from .streaming import StreamingBenchmarkSession
+                        stream_session = StreamingBenchmarkSession(settings, recorder, data)
+                        stream_session.warmup(warm, doc_visibility, count=2)
+                        warmup_stages.append('query.stream')
             except Exception as error:
                 reason = 'SETUP_' + type(error).__name__
             try:
                 for experiment in requested:
-                    task = 'knowledge' if experiment.startswith('K-') else 'product' if experiment.startswith('P-') else 'safety' if experiment == 'SAFE' else 'recommendation'
+                    task = ('knowledge' if experiment.startswith('K-') else
+                            'product' if experiment.startswith('P-') else
+                            'safety' if experiment == 'SAFE' else
+                            'streaming' if experiment == 'S-SSE' else 'recommendation')
                     for case in cases:
                         if task in ('knowledge', 'recommendation') and task not in case['taskScopes']:
+                            continue
+                        if task == 'streaming' and not ({'recommendation', 'knowledge'} & set(case['taskScopes'])):
                             continue
                         for repeat in range(3 if experiment == 'R-LLM' else 1):
                             r = dict(caseId=case['caseId'], familyId=case['familyId'], queryType=case['queryType'], split=split,
@@ -141,22 +198,30 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
                                     r['status'] = 'DEGRADED' if failures or 'DEGRADED' in r['returnedMode'] or r['returnedMode'] == 'LOCAL_FALLBACK' else 'EXECUTED'
                                 except Exception as error:
                                     r['status'], why = 'FAILED', type(error).__name__
+                            elif why is None and r['status'] == 'NOT_RUN' and task == 'streaming' and adapter == 'python':
+                                try:
+                                    r.update(stream_session.measure_case(case, doc_visibility, start_event=start_event))
+                                    why = r.get('reason')
+                                except Exception as error:
+                                    r['status'], why = 'FAILED', type(error).__name__
                             if why:
                                 r['reason'] = why
                             r['provenance'] = r.get('provenance') or recorder.snapshot(start_event)
                             required = []
                             if task == 'knowledge' and experiment != 'K-B' and profile in ('real-embedding', 'real-milvus', 'live-full'):
                                 required.append('embedding')
-                            if experiment == 'R-LLM' and profile in ('real-llm', 'live-full'):
+                            if experiment in ('R-LLM', 'S-SSE') and profile in ('real-llm', 'live-full'):
                                 required.append('llm')
                             if r['status'] == 'EXECUTED' and any(
                                 r['provenance'].get(c, {}).get('source') != ['REAL'] or not r['provenance'][c]['success']
                                 for c in required):
                                 r['status'], r['reason'] = 'DEGRADED', 'REQUIRED_REAL_COMPONENT_NOT_EXECUTED'
-                            if r['status'] not in ('NOT_RUN', 'UNSUPPORTED') and adapter == 'python':
+                            if r['status'] not in ('NOT_RUN', 'UNSUPPORTED') and adapter == 'python' and r.get('latencyMs') is None:
                                 r['latencyMs'] = (time.perf_counter() - t) * 1000
                             rows.append(r)
             finally:
+                if stream_session:
+                    stream_session.close()
                 if owned:
                     owned.close()
                     resources.append(owned.manifest())
@@ -183,7 +248,7 @@ def run(data, path, *, split='dev', profile='local', adapter='python', experimen
         or any(r['experiment'] not in ('P-L', 'R-RULE', 'K-B') and profile in ('local', 'controlled') for r in rows))
     exit_code = 2 if unsupported else 1 if incomplete or boundary_violations or cleanup_failed or strict_failed else 0
     metadata = dict(startedAt=started, endedAt=now(), split=split, profile=profile, adapter=adapter,
-                    experiments=requested, warmup=2, warmupStages=['knowledge.search'],
+                    experiments=requested, warmup=2, warmupStages=warmup_stages,
                     providerRequests=recorder.used, requestBudget=budget, boundaryViolations=boundary_violations,
                     boundaryViolationDetails=boundary_details,
                     actualComponents=recorder.snapshot(), resources=resources, humanReview='PENDING',

@@ -74,9 +74,10 @@ def prepare(path, data, *, split='smoke', profile='local', experiments=('P-L',),
                         if any(e['outcome'] != 'SUCCESS' for e in recorder.events[start:]) and not why:
                             why = 'PROVIDER_DEGRADED'
                         provenance = recorder.snapshot(start)
+                        status = 'DEGRADED' if why == 'PROVIDER_DEGRADED' else ('NOT_RUN' if why else 'EXECUTED')
                         records.append(dict(caseId=case['caseId'], experiment=exp, query=query, terms=terms,
                                             semanticIds=semantic_ids, provenance=provenance,
-                                            status='NOT_RUN' if why else 'EXECUTED', reason=why))
+                                            status=status, reason=why))
             finally:
                 if owned:
                     owned.close()
@@ -106,8 +107,11 @@ def read_export(path, data, *, profile=None, split=None, experiments=None):
     for case in data['cases']:
         if case['caseId'] not in data['splits'][selected_split]: continue
         for exp in experiments:
-            task = 'knowledge' if exp.startswith('K-') else 'recommendation' if exp.startswith('R-') else 'product'
+            task = ('knowledge' if exp.startswith('K-') else
+                    'recommendation' if exp.startswith('R-') else
+                    'streaming' if exp == 'S-SSE' else 'product')
             if task in ('knowledge', 'recommendation') and task not in case['taskScopes']: continue
+            if task == 'streaming' and not ({'recommendation', 'knowledge'} & set(case['taskScopes'])): continue
             expected.add((case['caseId'], exp))
     seen = set()
     for row in export['rows']:
@@ -115,8 +119,12 @@ def read_export(path, data, *, profile=None, split=None, experiments=None):
         if key in seen or key not in expected:
             raise ValueError('Java duplicate or unexpected case/experiment')
         seen.add(key)
-        if row['status'] not in ('EXECUTED', 'NOT_RUN', 'FAILED', 'UNSUPPORTED'):
+        if row['status'] not in ('EXECUTED', 'DEGRADED', 'NOT_RUN', 'FAILED', 'UNSUPPORTED'):
             raise ValueError('Java unknown execution status')
+        if row.get('latencyMs') is not None and (
+            isinstance(row['latencyMs'], bool) or not isinstance(row['latencyMs'], (int, float)) or row['latencyMs'] < 0
+        ):
+            raise ValueError('Java invalid latencyMs')
     if seen != expected:
         raise ValueError('Java incomplete case/experiment coverage')
     products = {p['productId']: p for p in data['products']}

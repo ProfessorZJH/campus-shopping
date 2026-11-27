@@ -1,6 +1,6 @@
 # 当前状态与剩余工作
 
-> 更新日期：2026-11-21。本页替代早期“下一批/已完成阶段”流水账；历史验收仍见 `docs/testing/`。
+> 更新日期：2026-11-27。本页替代早期“下一批/已完成阶段”流水账；历史验收仍见 `docs/testing/`。
 
 ## 已完成的主线能力
 
@@ -16,11 +16,11 @@
 
 ### P0：正式 AI 质量结论
 
-- 120 例数据集仍是 `DRAFT`，需人工复核 case/qrels、裁决争议并冻结 `ACCEPTED` 数据。
-- 需人工复核回答断言、推荐解释和语义泄漏，再基于保存结果重算正式配对报告。
-- 真实 Embedding、LLM、Milvus 和 Java/MySQL 组合已有一次实际执行证据；稳定质量、成本和多轮效果尚未形成可重复发布结论。
+- `campus-shopping-v2`（360 条主场景 + 24 条 `UNSUPPORTED` 挑战场景、480 商品 / 1,020 SKU / 80 知识版本）与 `campus-shopping-v1`（120 例历史基线）当前均保持 `DRAFT`，需人工复核 `cases`/`qrels`、裁决争议样本（V2 共 22 条争议样本）后方可冻结为 `ACCEPTED`。
+- 需人工复核回答断言支撑性（`citationGrounded`）、推荐解释与语义级隐式泄漏，再基于已保存结果重算正式配对报告。
+- V2 已完成本地、受控、独立 SSE 流式首字延迟（`S-SSE`）及隔离真实 MySQL 召回复验与 10 项事务/权限安全套件；V2 上的真实外部 Embedding、真实 LLM 与真实 Milvus 实验仍待单独预算与凭据授权执行（保持 `NOT_RUN`）。
 
-对应入口：[评测说明](../ai-service/evaluation/README.md)、[未完成评测变更](../openspec/changes/evaluate-shopping-retrieval-recommendations/tasks.md)。
+对应入口：[评测说明](../ai-service/evaluation/README.md)、[V2 实验报告](testing/AI-EVALUATION-V2-20261127.md)、[Benchmark V2 变更任务](../openspec/changes/campus-shopping-benchmark-v2/tasks.md)、[V1 历史评测变更](../openspec/changes/evaluate-shopping-retrieval-recommendations/tasks.md)。
 
 ### P1：生产化与运行治理
 

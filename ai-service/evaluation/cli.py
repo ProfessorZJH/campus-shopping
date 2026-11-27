@@ -10,7 +10,7 @@ from .runner import run
 def main(argv=None):
     parser = argparse.ArgumentParser(description='校园导购评测：默认legacy-demo；正式数据须人工冻结。')
     parser.add_argument('--dataset')
-    parser.add_argument('--split', choices=('smoke', 'dev', 'test'), default='dev')
+    parser.add_argument('--split', choices=('smoke', 'dev', 'test', 'challenge'), default='dev')
     parser.add_argument('--profile', choices=PROFILES, default='local')
     parser.add_argument('--adapter', choices=('python', 'java-mysql'), default='python')
     parser.add_argument('--experiments', default='K-B,K-D,K-H,R-RULE')

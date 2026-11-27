@@ -120,7 +120,10 @@ class ShoppingEvaluationMySqlTest {
                 provenance.put("javaMysql", Map.of("source", List.of("REAL"), "attempts", 1, "success", 1, "failure", 0));
                 row.put("provenance", provenance);
                 if (record.path("status").asText().equals("EXECUTED")) {
+                    long t0 = System.nanoTime();
                     fixture.f.ai.chat(fixture.actor(c), null, c.path("originalQuery").asText());
+                    double latencyMs = (System.nanoTime() - t0) / 1_000_000.0;
+                    row.put("latencyMs", latencyMs);
                     assertEquals(1, lexical.size());
                     assertEquals(1, verified.size());
                     assertEquals(1, sampled.size());
@@ -167,8 +170,13 @@ class ShoppingEvaluationMySqlTest {
                 }
                 rows.add(row);
             }
-            assertEquals(240, fixture.f.jdbc.queryForObject("SELECT COUNT(*) FROM cat_product", Integer.class));
-            assertEquals(360, fixture.f.jdbc.queryForObject("SELECT COUNT(*) FROM cat_sku", Integer.class));
+            int expectedProducts = plan.path("dataset").path("products").size();
+            int expectedSkus = 0;
+            for (JsonNode p : plan.path("dataset").path("products")) {
+                expectedSkus += p.path("skus").size();
+            }
+            assertEquals(expectedProducts, fixture.f.jdbc.queryForObject("SELECT COUNT(*) FROM cat_product", Integer.class));
+            assertEquals(expectedSkus, fixture.f.jdbc.queryForObject("SELECT COUNT(*) FROM cat_sku", Integer.class));
             Path output = Path.of(System.getenv().getOrDefault("EVALUATION_OUTPUT_PATH", "target/shopping-evaluation-java.json"));
             Files.createDirectories(output.toAbsolutePath().getParent());
             mapper
