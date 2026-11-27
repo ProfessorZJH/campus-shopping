@@ -48,7 +48,7 @@ export default {
   },
   setup() {
     const scope = requestScope();
-    const adminTheme = computed(() => designTheme.admin || 'arco');
+    const adminTheme = computed(() => designTheme.admin || 'antd');
     const route = computed(() => store.route.split('?')[0] || '/admin'),
       title = computed(() => titles[route.value] || '平台总览');
     const stats = ref(null),

@@ -660,6 +660,39 @@ html[data-admin-theme='meituan'] .merchant-shell {
   background: #ffbd00;
 }
 
+.variant-workspace-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.variant-workspace-btn {
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #f7f8fa;
+  color: #1d2129;
+  font-size: 12px;
+  font-weight: 600;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.variant-workspace-btn:hover {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+  background: #ffffff;
+}
+
+.variant-workspace-btn.is-active {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+
 @media (max-width: 640px) {
   .variant-trigger-prefix {
     display: none;

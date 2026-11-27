@@ -8,7 +8,7 @@ export const CONSUMER_THEMES = [
     name: '淘宝 2025 PC',
     label: '淘宝 2025 PC',
     shortName: '淘宝2025',
-    desc: '顶栏+橙色大搜索+三栏好店+5列猜你喜欢',
+    desc: '顶栏+橙色大搜索+三栏好店+6列猜你喜欢（默认）',
     swatchClass: 'swatch-taobao',
   },
   {
@@ -39,20 +39,20 @@ export const CONSUMER_THEMES = [
 
 export const ADMIN_THEMES = [
   {
+    id: 'antd',
+    name: '阿里 AntD / 千牛',
+    label: '阿里 AntD / 千牛',
+    shortName: 'AntD 千牛',
+    desc: '深海蓝顶栏+4张分析卡+趋势&热销双拼卡（默认）',
+    swatchClass: 'swatch-antd',
+  },
+  {
     id: 'arco',
     name: '字节 Arco Pro',
     label: '字节 Arco Pro',
     shortName: 'Arco Pro',
     desc: '通栏白顶栏+左7右3工作台+一体式指标卡',
     swatchClass: 'swatch-arco',
-  },
-  {
-    id: 'antd',
-    name: '阿里 AntD / 千牛',
-    label: '阿里 AntD / 千牛',
-    shortName: 'AntD 千牛',
-    desc: '深海蓝顶栏+4张分析卡+趋势&热销双拼卡',
-    swatchClass: 'swatch-antd',
   },
   {
     id: 'meituan',
@@ -66,7 +66,7 @@ export const ADMIN_THEMES = [
 
 const DEFAULTS = {
   consumer: 'taobao',
-  admin: 'arco',
+  admin: 'antd',
 };
 
 const VALID_CONSUMER = new Set(CONSUMER_THEMES.map((item) => item.id));
@@ -75,8 +75,23 @@ const VALID_ADMIN = new Set(ADMIN_THEMES.map((item) => item.id));
 export const designTheme = reactive({
   consumer: DEFAULTS.consumer,
   admin: DEFAULTS.admin,
+  showcase: false,
   searchDraft: '',
 });
+
+function detectShowcaseMode(searchParams, hashParams) {
+  if (typeof document !== 'undefined' && document.documentElement?.dataset?.showcaseEntry === '1') {
+    return true;
+  }
+  return (
+    searchParams.get('showcase') === '1' ||
+    hashParams.get('showcase') === '1' ||
+    searchParams.has('ct') ||
+    searchParams.has('at') ||
+    hashParams.has('ct') ||
+    hashParams.has('at')
+  );
+}
 
 function normalizeConsumer(id) {
   return VALID_CONSUMER.has(id) ? id : DEFAULTS.consumer;
@@ -127,7 +142,11 @@ function applyDataset() {
 let hashListenerInstalled = false;
 
 function syncFromHashQuery() {
+  const searchParams = new URLSearchParams(window.location.search || '');
   const hashParams = parseHashQuery();
+  if (detectShowcaseMode(searchParams, hashParams)) {
+    designTheme.showcase = true;
+  }
   let changed = false;
 
   if (hashParams.has('ct')) {
@@ -148,21 +167,29 @@ function syncFromHashQuery() {
 
   if (changed) {
     applyDataset();
-    persistTheme();
+    if (designTheme.showcase) persistTheme();
   } else if (hashParams.has('ct') || hashParams.has('at')) {
     applyDataset();
-    persistTheme();
+    if (designTheme.showcase) persistTheme();
   }
 }
 
 export function initDesignTheme() {
-  const saved = readStoredTheme();
   const searchParams = new URLSearchParams(window.location.search || '');
   const hashParams = parseHashQuery();
+  const showcase = detectShowcaseMode(searchParams, hashParams);
+  designTheme.showcase = showcase;
 
-  const rawConsumer =
-    hashParams.get('ct') ?? searchParams.get('ct') ?? saved?.consumer ?? DEFAULTS.consumer;
-  const rawAdmin = hashParams.get('at') ?? searchParams.get('at') ?? saved?.admin ?? DEFAULTS.admin;
+  // 正式环境默认锁定为淘宝 2025 PC + 阿里 AntD/千牛，不读取历史实验缓存，保持单品牌视觉纯净；
+  // 仅在 GitHub Pages 展示页或显式传入 ?showcase=1 / ?ct= / ?at= 时启用多套大厂复刻切换。
+  const saved = showcase ? readStoredTheme() : null;
+
+  const rawConsumer = showcase
+    ? (hashParams.get('ct') ?? searchParams.get('ct') ?? saved?.consumer ?? DEFAULTS.consumer)
+    : DEFAULTS.consumer;
+  const rawAdmin = showcase
+    ? (hashParams.get('at') ?? searchParams.get('at') ?? saved?.admin ?? DEFAULTS.admin)
+    : DEFAULTS.admin;
 
   designTheme.consumer = normalizeConsumer(rawConsumer);
   designTheme.admin = normalizeAdmin(rawAdmin);
@@ -170,10 +197,11 @@ export function initDesignTheme() {
   applyDataset();
 
   if (
-    hashParams.has('ct') ||
-    hashParams.has('at') ||
-    searchParams.has('ct') ||
-    searchParams.has('at')
+    showcase &&
+    (hashParams.has('ct') ||
+      hashParams.has('at') ||
+      searchParams.has('ct') ||
+      searchParams.has('at'))
   ) {
     persistTheme();
   }

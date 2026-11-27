@@ -1,4 +1,4 @@
-import { preview } from '../services/store.js';
+import { go, store, preview } from '../services/store.js';
 import {
   CONSUMER_THEMES,
   ADMIN_THEMES,
@@ -16,7 +16,14 @@ const SHORT_CONSUMER_BADGES = {
   xiaohongshu: '小红书',
 };
 
-/** 嵌入式大厂 1:1 复刻切换器：内嵌于顶栏或侧栏底部，零 fixed 悬浮遮挡，预览模式自动隐藏。 */
+const SHOWCASE_WORKSPACES = [
+  { path: '/', label: '消费端首页' },
+  { path: '/ai', label: 'AI 导购' },
+  { path: '/merchant', label: '商家工作台' },
+  { path: '/admin', label: '平台管理台' },
+];
+
+/** 嵌入式大厂 1:1 复刻切换器：正式环境默认隐藏，仅在 GitHub Pages 展示页或 ?showcase=1 下开启。 */
 export default {
   name: 'DesignVariantSwitcher',
   props: {
@@ -37,6 +44,15 @@ export default {
     const currentShortBadge = computed(
       () => SHORT_CONSUMER_BADGES[designTheme.consumer] || '淘宝2025',
     );
+
+    const showSwitcher = computed(() => Boolean(designTheme.showcase));
+
+    const currentRouteBase = computed(() => (store.route || '/').split('?')[0] || '/');
+
+    function jumpWorkspace(path) {
+      go(path);
+      open.value = false;
+    }
 
     function toggleOpen() {
       open.value = !open.value;
@@ -67,6 +83,10 @@ export default {
 
     return {
       preview,
+      showSwitcher,
+      currentRouteBase,
+      SHOWCASE_WORKSPACES,
+      jumpWorkspace,
       open,
       rootRef,
       alignClass,
@@ -82,7 +102,7 @@ export default {
   },
   template: `
     <div
-      v-if="!preview"
+      v-if="showSwitcher"
       ref="rootRef"
       :class="['variant-switcher-inline', alignClass, { 'is-compact': compact, 'is-open': open }]"
     >
@@ -147,6 +167,21 @@ export default {
             </button>
           </div>
         </div>
+
+        <section v-if="preview" class="variant-section">
+          <h3 class="variant-section-label">演示端侧直达（免登录纯前端预览）</h3>
+          <div class="variant-workspace-grid">
+            <button
+              v-for="ws in SHOWCASE_WORKSPACES"
+              :key="ws.path"
+              type="button"
+              :class="['variant-workspace-btn', { 'is-active': currentRouteBase === ws.path }]"
+              @click="jumpWorkspace(ws.path)"
+            >
+              {{ ws.label }}
+            </button>
+          </div>
+        </section>
 
         <section class="variant-section">
           <h3 class="variant-section-label">消费端 1:1 大厂复刻（4 套完整布局）</h3>

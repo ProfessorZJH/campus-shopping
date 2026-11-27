@@ -5,6 +5,7 @@
   * (c) 2018-present Yuxi (Evan) You and Vue contributors
   * @license MIT
   **/
+  var _a, _b;
   // @__NO_SIDE_EFFECTS__
   function makeMap(str) {
     const map = /* @__PURE__ */ Object.create(null);
@@ -293,11 +294,11 @@
     return val;
   };
   const stringifySymbol = (v, i = "") => {
-    var _a;
+    var _a2;
     return (
       // Symbol.description in es2019+ so we need to cast here to pass
       // the lib: es2016 check
-      isSymbol(v) ? `Symbol(${(_a = v.description) != null ? _a : i})` : v
+      isSymbol(v) ? `Symbol(${(_a2 = v.description) != null ? _a2 : i})` : v
     );
   };
   function normalizeCssVarValue(value) {
@@ -2096,8 +2097,8 @@
         [
           // eslint-disable-next-line no-restricted-syntax
           msg + args.map((a) => {
-            var _a, _b;
-            return (_b = (_a = a.toString) == null ? void 0 : _a.call(a)) != null ? _b : JSON.stringify(a);
+            var _a2, _b2;
+            return (_b2 = (_a2 = a.toString) == null ? void 0 : _a2.call(a)) != null ? _b2 : JSON.stringify(a);
           }).join(""),
           instance && instance.proxy,
           trace.map(
@@ -2486,7 +2487,7 @@
   let devtools$1;
   let buffer = [];
   function setDevtoolsHook$1(hook, target) {
-    var _a, _b;
+    var _a2, _b2;
     devtools$1 = hook;
     if (devtools$1) {
       devtools$1.enabled = true;
@@ -2499,7 +2500,7 @@
       typeof window !== "undefined" && // some envs mock window but not fully
       window.HTMLElement && // also exclude jsdom
       // eslint-disable-next-line no-restricted-syntax
-      !((_b = (_a = window.navigator) == null ? void 0 : _a.userAgent) == null ? void 0 : _b.includes("jsdom"))
+      !((_b2 = (_a2 = window.navigator) == null ? void 0 : _a2.userAgent) == null ? void 0 : _b2.includes("jsdom"))
     ) {
       const replay = target.__VUE_DEVTOOLS_HOOK_REPLAY__ = target.__VUE_DEVTOOLS_HOOK_REPLAY__ || [];
       replay.push((newHook) => {
@@ -11511,13 +11512,13 @@
     });
   }
   async function api(path, options = {}) {
-    var _a, _b, _c;
+    var _a2, _b2, _c;
     if ((options.method || "GET") !== "GET") return request(path, options);
     const controller = new AbortController();
     let timedOut = false;
     const abort = () => controller.abort();
-    (_a = options.signal) == null ? void 0 : _a.addEventListener("abort", abort, { once: true });
-    if ((_b = options.signal) == null ? void 0 : _b.aborted) abort();
+    (_a2 = options.signal) == null ? void 0 : _a2.addEventListener("abort", abort, { once: true });
+    if ((_b2 = options.signal) == null ? void 0 : _b2.aborted) abort();
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
@@ -11533,7 +11534,7 @@
     }
   }
   async function stream(path, { body, signal, onEvent, retry = true } = {}) {
-    var _a, _b;
+    var _a2, _b2;
     const stamp = generation;
     const expectedActor = identityResolver ? identityResolver() : "";
     if (!csrf && expectedActor) {
@@ -11577,7 +11578,7 @@
       if (response.status === 401 || (payload == null ? void 0 : payload.code) === "A0004") unauthorized();
       throw fail((payload == null ? void 0 : payload.info) || "请求失败", (payload == null ? void 0 : payload.code) || "HTTP", response.status);
     }
-    const contentType = (((_b = (_a = response.headers) == null ? void 0 : _a.get) == null ? void 0 : _b.call(_a, "content-type")) || "").toLowerCase();
+    const contentType = (((_b2 = (_a2 = response.headers) == null ? void 0 : _a2.get) == null ? void 0 : _b2.call(_a2, "content-type")) || "").toLowerCase();
     if (contentType.includes("application/json")) {
       let payload = null;
       try {
@@ -11730,10 +11731,10 @@
         (el) => !el.disabled && el.getClientRects().length
       );
       const keydown = (event) => {
-        var _a;
+        var _a2;
         if (event.key === "Escape") {
           event.preventDefault();
-          (_a = binding.value) == null ? void 0 : _a.call(binding);
+          (_a2 = binding.value) == null ? void 0 : _a2.call(binding);
         }
         if (event.key !== "Tab") return;
         const list = controls(), first = list[0] || dialog, last = list.at(-1) || dialog;
@@ -11753,8 +11754,8 @@
       };
     },
     unmounted(element) {
-      var _a;
-      (_a = element.__disposeModal) == null ? void 0 : _a.call(element);
+      var _a2;
+      (_a2 = element.__disposeModal) == null ? void 0 : _a2.call(element);
     }
   };
   function installCustomSelects() {
@@ -12261,35 +12262,56 @@
   const DEMO_MERCHANTS = [
     {
       merchantId: "preview-m1",
-      name: "东湖便利",
-      storeName: "学一食堂店",
+      name: "东湖校内严选店",
+      storeName: "学一食堂一层店",
       location: "东湖校区 · 学一食堂一层",
       category: "便利零售",
       status: "ACTIVE",
-      image: "./images/merch-convenience.webp"
+      image: "./images/store-campus-hub.jpg",
+      imageUrl: "./images/store-campus-hub.jpg",
+      businessHours: "每日 07:30 - 23:00",
+      description: "校内零食饮品、应急日用一站式自提，下单 5 分钟即取。"
     },
     {
       merchantId: "preview-m2",
-      name: "青果时间",
-      storeName: "生活区店",
-      location: "生活区 B 栋",
+      name: "青果鲜切果汁吧",
+      storeName: "生活区 B 栋鲜果店",
+      location: "生活区 B 栋一层",
       category: "水果生鲜",
       status: "ACTIVE",
-      image: "./images/merch-fruit.webp"
+      image: "./images/store-fruit-bar.jpg",
+      imageUrl: "./images/store-fruit-bar.jpg",
+      businessHours: "每日 09:00 - 22:00",
+      description: "当晨现切水果杯、冷榨鲜果饮，冷链恒温直供。"
     },
     {
       merchantId: "preview-m3",
-      name: "学伴文具",
-      storeName: "图书馆店",
-      location: "图书馆一层",
+      name: "图书馆咖啡文创屋",
+      storeName: "主图书馆一层西厅",
+      location: "主图书馆一层西厅",
       category: "文具用品",
       status: "ACTIVE",
-      image: "./images/merch-supermarket.webp"
+      image: "./images/store-library-cafe.jpg",
+      imageUrl: "./images/store-library-cafe.jpg",
+      businessHours: "每日 08:00 - 22:30",
+      description: "手冲冷萃、拿铁与考试文具、护眼台灯一站备齐。"
+    },
+    {
+      merchantId: "preview-m4",
+      name: "宿舍夜宵补给站",
+      storeName: "南苑 5 号楼底商",
+      location: "南苑宿舍区 5 号楼一层",
+      category: "夜宵日用",
+      status: "ACTIVE",
+      image: "./images/store-dorm-mart.jpg",
+      imageUrl: "./images/store-dorm-mart.jpg",
+      businessHours: "每日 10:00 - 24:00",
+      description: "宿舍刚需桶面、纯奶、抽纸与夜间快取补给。"
     }
   ];
   const DEMO_CATEGORIES = [
+    { code: "drink", name: "饮品", active: true, image: "./images/category-drinks.webp" },
     { code: "food", name: "零食", active: true, image: "./images/category-snacks.webp" },
-    { code: "drink", name: "饮料", active: true, image: "./images/category-drinks.webp" },
     { code: "fruit", name: "水果", active: true, image: "./images/category-fruit.webp" },
     { code: "stationery", name: "文具", active: true, image: "./images/category-stationery.webp" },
     { code: "daily", name: "日用", active: true, image: "./images/category-daily.webp" }
@@ -12306,88 +12328,88 @@
     {
       productId: "preview-p1",
       merchantId: "preview-m1",
-      title: "红烧牛肉面 · 经典桶",
-      description: "经典浓香，随时享用。",
+      title: "红烧牛肉方便面 · 宿舍夜宵桶",
+      description: "经典醇厚汤底，3 分钟即享热腾腾夜宵。",
       categoryCode: "food",
-      imageUrl: "./images/noodles.webp",
+      imageUrl: "./images/prod-instant-noodles.jpg",
       status: "PUBLISHED",
       version: 1,
-      skus: [sku(1, "109g", 450, 320)],
+      skus: [sku(1, "单桶 109g", 450, 320), sku("1b", "6 桶宿舍装", 2490, 45)],
       tag: "热卖",
-      sub: "109g"
+      sub: "单桶 / 6桶装"
     },
     {
       productId: "preview-p2",
       merchantId: "preview-m1",
-      title: "纯牛奶 250ml",
-      description: "原味纯牛奶",
+      title: "低温鲜牛乳 · 250ml 营养早餐奶",
+      description: "每日冷链直达，高蛋白顺滑原味纯牛奶。",
       categoryCode: "drink",
-      imageUrl: "./images/milk.webp",
+      imageUrl: "./images/prod-fresh-milk.jpg",
       status: "PUBLISHED",
       version: 1,
-      skus: [sku(2, "250ml", 280, 86)],
+      skus: [sku(2, "单盒 250ml", 350, 86), sku("2b", "6 盒周享装", 1890, 28)],
       tag: "精选",
       sub: "250ml"
     },
     {
       productId: "preview-p3",
       merchantId: "preview-m1",
-      title: "经典原味薯片",
-      description: "香脆轻食",
+      title: "校内爆款海盐原味薯片大礼包",
+      description: "宿舍追剧刷题必备，香脆不腻口。",
       categoryCode: "food",
-      imageUrl: "./images/chips.webp",
+      imageUrl: "./images/prod-campus-snacks.jpg",
       status: "PUBLISHED",
       version: 1,
-      skus: [sku(3, "70g", 420, 168)],
+      skus: [sku(3, "经典 70g", 490, 168), sku("3b", "3 袋分享装", 1350, 52)],
       tag: "热卖",
       sub: "70g"
     },
     {
       productId: "preview-p4",
       merchantId: "preview-m2",
-      title: "鲜脆青苹果",
-      description: "新鲜水果",
+      title: "当晨现切草莓奇异果缤纷水果杯",
+      description: "当日鲜果现切现装，配独立水果叉。",
       categoryCode: "fruit",
-      imageUrl: "./images/category-fruit.webp",
+      imageUrl: "./images/prod-fruit-cup.jpg",
       status: "PUBLISHED",
       version: 2,
-      skus: [sku(4, "单个", 180, 76)],
+      skus: [sku(4, "中杯 260g", 1390, 76), sku("4b", "大杯 400g", 1990, 34)],
       tag: "当季",
-      sub: "约200g"
+      sub: "现切直供"
     },
     {
       productId: "preview-p5",
       merchantId: "preview-m3",
-      title: "考试中性笔",
-      description: "顺滑书写",
+      title: "速干考试中性笔 0.5mm 礼盒装",
+      description: "子弹头顺滑不断墨，备考刷题手感轻盈。",
       categoryCode: "stationery",
-      imageUrl: "./images/category-stationery.webp",
+      imageUrl: "./images/prod-gel-pens.jpg",
       status: "PUBLISHED",
       version: 2,
-      skus: [sku(5, "0.5mm", 250, 123)],
+      skus: [sku(5, "6 支黑墨装", 990, 123), sku("5b", "12 支备考箱", 1790, 40)],
       tag: "常备",
-      sub: "单支"
+      sub: "0.5mm 速干"
     },
     {
       productId: "preview-p6",
-      merchantId: "preview-m1",
-      title: "牛奶 250ml · 整箱",
-      description: "12盒装",
+      merchantId: "preview-m3",
+      title: "冰萃生椰拿铁 · 图书馆现磨大杯",
+      description: "中深烘现磨意式浓缩搭配清甜生椰乳。",
       categoryCode: "drink",
-      imageUrl: "./images/milk.webp",
+      imageUrl: "./images/prod-iced-latte.jpg",
       status: "PUBLISHED",
       version: 3,
-      skus: [sku(6, "12盒装", 3150, 12)],
-      tag: "好价",
-      sub: "12盒装"
+      skus: [sku(6, "标准冰 450ml", 1490, 62), sku("6b", "双份浓缩 550ml", 1790, 29)],
+      tag: "人气",
+      sub: "现磨即取"
     },
     {
       productId: "preview-p7",
       merchantId: "preview-m1",
-      title: "经典桶面 · 香辣",
-      description: "更浓郁的味道",
+      title: "经典桶面 · 香辣牛肉味（待上架）",
+      description: "浓郁香辣口感",
       categoryCode: "food",
-      imageUrl: "./images/noodles.webp",
+      imageUrl: "./images/prod-instant-noodles.jpg",
       status: "UNPUBLISHED",
       version: 3,
       skus: [sku(7, "109g", 450, 0)],
@@ -12395,39 +12417,93 @@
     },
     {
       productId: "preview-p8",
-      merchantId: "preview-m1",
-      title: "洗护旅行装",
-      description: "便携日用",
+      merchantId: "preview-m4",
+      title: "4 层加厚柔韧原生木浆抽纸提装",
+      description: "湿水不易破，宿舍书桌常备实惠提装。",
       categoryCode: "daily",
-      imageUrl: "./images/category-daily.webp",
+      imageUrl: "./images/prod-soft-tissues.jpg",
       status: "PUBLISHED",
       version: 1,
-      skus: [sku(8, "100ml", 690, 16)],
-      sub: "100ml"
+      skus: [sku(8, "4 包实惠提", 1290, 94), sku("8b", "8 包囤货装", 2390, 32)],
+      tag: "刚需",
+      sub: "4层加厚"
     },
     {
       productId: "preview-p9",
       merchantId: "preview-m1",
-      title: "红烧牛肉面 · 整箱",
-      description: "整箱囤货",
-      categoryCode: "food",
-      imageUrl: "./images/noodles.webp",
+      title: "冷泡无糖凤凰单丛乌龙茶 500ml",
+      description: "0 糖 0 卡冷泡茶汤，清香回甘解腻提神。",
+      categoryCode: "drink",
+      imageUrl: "./images/prod-oolong-tea.jpg",
       status: "PUBLISHED",
       version: 1,
-      skus: [sku(9, "12桶装", 4950, 8)],
-      sub: "12桶装"
+      skus: [sku(9, "单瓶 500ml", 550, 148), sku("9b", "两瓶冰爽装", 990, 66)],
+      tag: "0糖",
+      sub: "500ml"
     },
     {
       productId: "preview-p10",
       merchantId: "preview-m1",
-      title: "青苹果 · 礼盒",
+      title: "青苹果 · 礼盒（草稿）",
       description: "节日礼盒",
       categoryCode: "fruit",
-      imageUrl: "./images/category-fruit.webp",
+      imageUrl: "./images/prod-fruit-cup.jpg",
       status: "DRAFT",
       version: 1,
       skus: [sku(10, "8枚装", 2280, 0)],
       sub: "8枚装"
+    },
+    {
+      productId: "preview-p11",
+      merchantId: "preview-m3",
+      title: "国AA级全光谱充电折叠护眼台灯",
+      description: "无频闪三档调光，宿舍断电也能续航 8 小时。",
+      categoryCode: "stationery",
+      imageUrl: "./images/prod-desk-lamp.jpg",
+      status: "PUBLISHED",
+      version: 1,
+      skus: [sku(11, "象牙白充电版", 6900, 18), sku("11b", "高配数显版", 8900, 9)],
+      tag: "自习",
+      sub: "国AA护眼"
+    },
+    {
+      productId: "preview-p12",
+      merchantId: "preview-m3",
+      title: "主动降噪蓝牙头戴耳机 · 图书馆静音版",
+      description: "42dB 深度降噪 + 40 小时续航，沉浸自习不打扰。",
+      categoryCode: "daily",
+      imageUrl: "./images/prod-headphones.jpg",
+      status: "PUBLISHED",
+      version: 1,
+      skus: [sku(12, "月光银标准版", 15900, 14), sku("12b", "曜石黑高配版", 18900, 7)],
+      tag: "严选",
+      sub: "42dB降噪"
+    },
+    {
+      productId: "preview-p13",
+      merchantId: "preview-m3",
+      title: "慢萃冰滴冷萃黑咖啡 · 玻璃瓶装",
+      description: "12 小时低温慢萃，清爽柑橘尾韵提神醒脑。",
+      categoryCode: "drink",
+      imageUrl: "./images/prod-cold-brew.jpg",
+      status: "PUBLISHED",
+      version: 1,
+      skus: [sku(13, "单瓶 330ml", 1290, 54)],
+      tag: "冷萃",
+      sub: "330ml"
+    },
+    {
+      productId: "preview-p14",
+      merchantId: "preview-m4",
+      title: "长白山天然弱碱性矿泉水 550ml",
+      description: "运动课堂与宿舍常备，清爽甘冽。",
+      categoryCode: "drink",
+      imageUrl: "./images/prod-mineral-water.jpg",
+      status: "PUBLISHED",
+      version: 1,
+      skus: [sku(14, "单瓶 550ml", 200, 420), sku("14b", "12 瓶宿舍提", 2190, 64)],
+      tag: "好价",
+      sub: "550ml"
     }
   ];
   const DEMO_STOCKS = DEMO_PRODUCTS.filter((p2) => p2.merchantId === "preview-m1").flatMap(
@@ -12441,11 +12517,15 @@
     }))
   );
   const DEMO_CHAT = [
-    { role: "user", content: "我想买点夜宵，预算 30 元以内，吃得饱一点。" },
-    { role: "assistant", content: "给你挑了 3 件方便自提的好物。", demo: true }
+    { role: "user", content: "预算 20 元以内买夜宵和无糖饮料，顺便问自提几点关门？" },
+    {
+      role: "assistant",
+      content: "已为你筛选 3 件校内现货好物（合计 ¥14.90，均支持下课 5 分钟自提）。东湖校内严选店营业至 23:00，南苑宿舍补给站营业至 24:00。",
+      demo: true
+    }
   ];
   const { reactive: reactive$1 } = Vue;
-  const preview = window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get("demo") === "1";
+  const preview = window.__CAMPUS_TEST_DEMO__ === true || typeof document !== "undefined" && ((_b = (_a = document.documentElement) == null ? void 0 : _a.dataset) == null ? void 0 : _b.demoEntry) === "1" || new URLSearchParams(location.search).get("demo") === "1";
   const store = reactive$1({
     preview,
     route: window.__CAMPUS_TEST_ROUTE__ || location.hash.replace(/^#/, "") || "/",
@@ -12471,16 +12551,16 @@
   });
   const money = (cent) => "¥" + (Number(cent || 0) / 100).toFixed(2).replace(/\.00$/, "");
   const skuOf = (p2) => {
-    var _a, _b;
-    return ((_a = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE")) || ((_b = p2 == null ? void 0 : p2.skus) == null ? void 0 : _b[0]) || {};
+    var _a2, _b2;
+    return ((_a2 = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a2.find((s) => s.status === "ACTIVE")) || ((_b2 = p2 == null ? void 0 : p2.skus) == null ? void 0 : _b2[0]) || {};
   };
   const available = (p2) => {
-    var _a;
-    return ((_a = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a.filter((s) => s.status === "ACTIVE").reduce((n, s) => n + Number(s.available || 0), 0)) || 0;
+    var _a2;
+    return ((_a2 = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a2.filter((s) => s.status === "ACTIVE").reduce((n, s) => n + Number(s.available || 0), 0)) || 0;
   };
   const shopName = (id) => {
-    var _a;
-    return ((_a = store.merchants.find((m) => m.merchantId === id)) == null ? void 0 : _a.name) || "校内商户";
+    var _a2;
+    return ((_a2 = store.merchants.find((m) => m.merchantId === id)) == null ? void 0 : _a2.name) || "校内商户";
   };
   let toastTimer;
   let merchantEpoch = 0, sessionEpoch = 0, publicEpoch = 0, baseEpoch = 0;
@@ -12615,7 +12695,7 @@
     contextOnly = false,
     signal
   } = {}) {
-    var _a, _b, _c;
+    var _a2, _b2, _c;
     const stamp = ++merchantEpoch, authStamp = sessionEpoch;
     const requested = store.merchantId, originalActor = actorId(store.user);
     let target = requested;
@@ -12646,7 +12726,7 @@
       ]);
       if (!current()) return;
       const options = (workspace == null ? void 0 : workspace.merchants) || [];
-      const next = ((_a = options.find((m) => m.merchantId === requested)) == null ? void 0 : _a.merchantId) || ((_b = options[0]) == null ? void 0 : _b.merchantId) || "";
+      const next = ((_a2 = options.find((m) => m.merchantId === requested)) == null ? void 0 : _a2.merchantId) || ((_b2 = options[0]) == null ? void 0 : _b2.merchantId) || "";
       store.user = user;
       if (user) warmCsrf();
       store.workspace = workspace;
@@ -12703,12 +12783,12 @@
     }
   }
   function hasPermission(code, merchantId = store.merchantId) {
-    var _a, _b, _c;
-    return preview || !!((_c = (_b = (_a = store.workspace) == null ? void 0 : _a.merchantPermissions) == null ? void 0 : _b[merchantId]) == null ? void 0 : _c.includes(code));
+    var _a2, _b2, _c;
+    return preview || !!((_c = (_b2 = (_a2 = store.workspace) == null ? void 0 : _a2.merchantPermissions) == null ? void 0 : _b2[merchantId]) == null ? void 0 : _c.includes(code));
   }
   function isOwner() {
-    var _a, _b;
-    return preview || !!((_b = (_a = store.workspace) == null ? void 0 : _a.memberships) == null ? void 0 : _b.some(
+    var _a2, _b2;
+    return preview || !!((_b2 = (_a2 = store.workspace) == null ? void 0 : _a2.memberships) == null ? void 0 : _b2.some(
       (m) => m.merchantId === store.merchantId && m.role === "OWNER" && m.status === "ACTIVE"
     ));
   }
@@ -12879,8 +12959,8 @@
   }
   function coverSku(skuId) {
     const p2 = store.products.find((p3) => {
-      var _a;
-      return (_a = p3.skus) == null ? void 0 : _a.some((s) => s.skuId === skuId);
+      var _a2;
+      return (_a2 = p3.skus) == null ? void 0 : _a2.some((s) => s.skuId === skuId);
     });
     return (p2 == null ? void 0 : p2.imageUrl) || "";
   }
@@ -12895,7 +12975,7 @@
       name: "淘宝 2025 PC",
       label: "淘宝 2025 PC",
       shortName: "淘宝2025",
-      desc: "顶栏+橙色大搜索+三栏好店+5列猜你喜欢",
+      desc: "顶栏+橙色大搜索+三栏好店+6列猜你喜欢（默认）",
       swatchClass: "swatch-taobao"
     },
     {
@@ -12925,20 +13005,20 @@
   ];
   const ADMIN_THEMES = [
     {
+      id: "antd",
+      name: "阿里 AntD / 千牛",
+      label: "阿里 AntD / 千牛",
+      shortName: "AntD 千牛",
+      desc: "深海蓝顶栏+4张分析卡+趋势&热销双拼卡（默认）",
+      swatchClass: "swatch-antd"
+    },
+    {
       id: "arco",
       name: "字节 Arco Pro",
       label: "字节 Arco Pro",
       shortName: "Arco Pro",
       desc: "通栏白顶栏+左7右3工作台+一体式指标卡",
       swatchClass: "swatch-arco"
-    },
-    {
-      id: "antd",
-      name: "阿里 AntD / 千牛",
-      label: "阿里 AntD / 千牛",
-      shortName: "AntD 千牛",
-      desc: "深海蓝顶栏+4张分析卡+趋势&热销双拼卡",
-      swatchClass: "swatch-antd"
     },
     {
       id: "meituan",
@@ -12951,15 +13031,23 @@
   ];
   const DEFAULTS = {
     consumer: "taobao",
-    admin: "arco"
+    admin: "antd"
   };
   const VALID_CONSUMER = new Set(CONSUMER_THEMES.map((item) => item.id));
   const VALID_ADMIN = new Set(ADMIN_THEMES.map((item) => item.id));
   const designTheme = reactive({
     consumer: DEFAULTS.consumer,
     admin: DEFAULTS.admin,
+    showcase: false,
     searchDraft: ""
   });
+  function detectShowcaseMode(searchParams, hashParams) {
+    var _a2, _b2;
+    if (typeof document !== "undefined" && ((_b2 = (_a2 = document.documentElement) == null ? void 0 : _a2.dataset) == null ? void 0 : _b2.showcaseEntry) === "1") {
+      return true;
+    }
+    return searchParams.get("showcase") === "1" || hashParams.get("showcase") === "1" || searchParams.has("ct") || searchParams.has("at") || hashParams.has("ct") || hashParams.has("at");
+  }
   function normalizeConsumer(id) {
     return VALID_CONSUMER.has(id) ? id : DEFAULTS.consumer;
   }
@@ -13001,7 +13089,11 @@
   }
   let hashListenerInstalled = false;
   function syncFromHashQuery() {
+    const searchParams = new URLSearchParams(window.location.search || "");
     const hashParams = parseHashQuery();
+    if (detectShowcaseMode(searchParams, hashParams)) {
+      designTheme.showcase = true;
+    }
     let changed = false;
     if (hashParams.has("ct")) {
       const nextConsumer = normalizeConsumer(hashParams.get("ct"));
@@ -13019,22 +13111,24 @@
     }
     if (changed) {
       applyDataset();
-      persistTheme();
+      if (designTheme.showcase) persistTheme();
     } else if (hashParams.has("ct") || hashParams.has("at")) {
       applyDataset();
-      persistTheme();
+      if (designTheme.showcase) persistTheme();
     }
   }
   function initDesignTheme() {
-    const saved = readStoredTheme();
     const searchParams = new URLSearchParams(window.location.search || "");
     const hashParams = parseHashQuery();
-    const rawConsumer = hashParams.get("ct") ?? searchParams.get("ct") ?? (saved == null ? void 0 : saved.consumer) ?? DEFAULTS.consumer;
-    const rawAdmin = hashParams.get("at") ?? searchParams.get("at") ?? (saved == null ? void 0 : saved.admin) ?? DEFAULTS.admin;
+    const showcase = detectShowcaseMode(searchParams, hashParams);
+    designTheme.showcase = showcase;
+    const saved = showcase ? readStoredTheme() : null;
+    const rawConsumer = showcase ? hashParams.get("ct") ?? searchParams.get("ct") ?? (saved == null ? void 0 : saved.consumer) ?? DEFAULTS.consumer : DEFAULTS.consumer;
+    const rawAdmin = showcase ? hashParams.get("at") ?? searchParams.get("at") ?? (saved == null ? void 0 : saved.admin) ?? DEFAULTS.admin : DEFAULTS.admin;
     designTheme.consumer = normalizeConsumer(rawConsumer);
     designTheme.admin = normalizeAdmin(rawAdmin);
     applyDataset();
-    if (hashParams.has("ct") || hashParams.has("at") || searchParams.has("ct") || searchParams.has("at")) {
+    if (showcase && (hashParams.has("ct") || hashParams.has("at") || searchParams.has("ct") || searchParams.has("at"))) {
       persistTheme();
     }
     if (!hashListenerInstalled && typeof window !== "undefined") {
@@ -13368,27 +13462,27 @@
       });
       const hasWorkbench = computed$i(
         () => {
-          var _a, _b, _c;
-          return preview || !!((_a = store.workspace) == null ? void 0 : _a.platformAdmin) || Boolean((_c = (_b = store.workspace) == null ? void 0 : _b.merchants) == null ? void 0 : _c.length);
+          var _a2, _b2, _c;
+          return preview || !!((_a2 = store.workspace) == null ? void 0 : _a2.platformAdmin) || Boolean((_c = (_b2 = store.workspace) == null ? void 0 : _b2.merchants) == null ? void 0 : _c.length);
         }
       );
       const workbenchPath = computed$i(
         () => {
-          var _a, _b;
-          return ((_b = (_a = store.workspace) == null ? void 0 : _a.merchants) == null ? void 0 : _b.length) ? "/merchant" : "/admin";
+          var _a2, _b2;
+          return ((_b2 = (_a2 = store.workspace) == null ? void 0 : _a2.merchants) == null ? void 0 : _b2.length) ? "/merchant" : "/admin";
         }
       );
       const workbenchLabel = computed$i(
         () => {
-          var _a, _b;
-          return ((_b = (_a = store.workspace) == null ? void 0 : _a.merchants) == null ? void 0 : _b.length) ? "商家后台" : "管理后台";
+          var _a2, _b2;
+          return ((_b2 = (_a2 = store.workspace) == null ? void 0 : _a2.merchants) == null ? void 0 : _b2.length) ? "商家后台" : "管理后台";
         }
       );
       const currentZone = computed$i(() => CAMPUS_ZONES[zoneIndex.value]);
       const userInitial = computed$i(
         () => {
-          var _a, _b;
-          return (((_a = store.user) == null ? void 0 : _a.displayName) || ((_b = store.user) == null ? void 0 : _b.username) || "同").slice(0, 1).toUpperCase();
+          var _a2, _b2;
+          return (((_a2 = store.user) == null ? void 0 : _a2.displayName) || ((_b2 = store.user) == null ? void 0 : _b2.username) || "同").slice(0, 1).toUpperCase();
         }
       );
       const xhsSwitcherAlign = computed$i(() => isDesktopXhs.value ? "up-left" : "right");
@@ -14459,8 +14553,8 @@
       );
       const url = computed$h(
         () => {
-          var _a;
-          return !broken.value && ((_a = props.src) == null ? void 0 : _a.trim()) ? props.src : "./images/product-placeholder.svg";
+          var _a2;
+          return !broken.value && ((_a2 = props.src) == null ? void 0 : _a2.trim()) ? props.src : "./images/product-placeholder.svg";
         }
       );
       function handleError2() {
@@ -14516,9 +14610,9 @@
     return { int: formatted.slice(0, dot), dec: formatted.slice(dot) };
   }
   function readSearchHistory() {
-    var _a;
+    var _a2;
     try {
-      const raw = (_a = window.localStorage) == null ? void 0 : _a.getItem(HISTORY_STORAGE_KEY);
+      const raw = (_a2 = window.localStorage) == null ? void 0 : _a2.getItem(HISTORY_STORAGE_KEY);
       const parsed = raw ? JSON.parse(raw) : [];
       return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string" && x.trim()).slice(0, 5) : [];
     } catch {
@@ -14526,9 +14620,9 @@
     }
   }
   function writeSearchHistory(list) {
-    var _a;
+    var _a2;
     try {
-      (_a = window.localStorage) == null ? void 0 : _a.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list.slice(0, 5)));
+      (_a2 = window.localStorage) == null ? void 0 : _a2.setItem(HISTORY_STORAGE_KEY, JSON.stringify(list.slice(0, 5)));
     } catch {
     }
   }
@@ -14586,8 +14680,8 @@
       });
       const keywords = computed$g(
         () => {
-          var _a, _b;
-          return ((_b = (_a = discovery.value) == null ? void 0 : _a.hotKeywords) == null ? void 0 : _b.length) ? discovery.value.hotKeywords : DEFAULT_KEYWORDS;
+          var _a2, _b2;
+          return ((_b2 = (_a2 = discovery.value) == null ? void 0 : _a2.hotKeywords) == null ? void 0 : _b2.length) ? discovery.value.hotKeywords : DEFAULT_KEYWORDS;
         }
       );
       const categories = computed$g(() => store.categories.filter((c) => c.active));
@@ -14621,14 +14715,14 @@
       const seckillProducts = computed$g(() => shown.value.slice(0, 4));
       const userGreeting = computed$g(
         () => {
-          var _a, _b;
-          return ((_a = store.user) == null ? void 0 : _a.displayName) || ((_b = store.user) == null ? void 0 : _b.username) || "同学你好";
+          var _a2, _b2;
+          return ((_a2 = store.user) == null ? void 0 : _a2.displayName) || ((_b2 = store.user) == null ? void 0 : _b2.username) || "同学你好";
         }
       );
       const userInitial = computed$g(
         () => {
-          var _a, _b;
-          return (((_a = store.user) == null ? void 0 : _a.displayName) || ((_b = store.user) == null ? void 0 : _b.username) || "Hi").slice(0, 1).toUpperCase();
+          var _a2, _b2;
+          return (((_a2 = store.user) == null ? void 0 : _a2.displayName) || ((_b2 = store.user) == null ? void 0 : _b2.username) || "Hi").slice(0, 1).toUpperCase();
         }
       );
       function categorySubKeywords(c) {
@@ -14736,8 +14830,8 @@
       );
       const chosen = computed$g(
         () => {
-          var _a, _b;
-          return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosenSku.value)) || skuOf(selected.value);
+          var _a2, _b2;
+          return ((_b2 = (_a2 = selected.value) == null ? void 0 : _a2.skus) == null ? void 0 : _b2.find((s) => s.skuId === chosenSku.value)) || skuOf(selected.value);
         }
       );
       const currentShop = (p2) => store.merchants.find((m) => m.merchantId === p2.merchantId) || {};
@@ -14883,13 +14977,13 @@
         loadSearch({ syncUrl: true });
       }
       function showDetail(p2) {
-        var _a, _b;
+        var _a2, _b2;
         selected.value = p2;
-        chosenSku.value = ((_b = (_a = p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available) > 0)) == null ? void 0 : _b.skuId) || "";
+        chosenSku.value = ((_b2 = (_a2 = p2.skus) == null ? void 0 : _a2.find((s) => s.status === "ACTIVE" && Number(s.available) > 0)) == null ? void 0 : _b2.skuId) || "";
         count.value = 1;
       }
       async function quickAdd(p2) {
-        var _a;
+        var _a2;
         if (preview || hasMultipleActiveSkus(p2)) {
           showDetail(p2);
           return;
@@ -14908,7 +15002,7 @@
         quickAddingId.value = p2.productId;
         try {
           const current = await api("/products/" + pathId(p2.productId));
-          const real = (_a = current.skus) == null ? void 0 : _a.find((s) => s.skuId === targetSku.skuId);
+          const real = (_a2 = current.skus) == null ? void 0 : _a2.find((s) => s.skuId === targetSku.skuId);
           if (!real || real.status !== "ACTIVE" || Number(real.available) < 1)
             throw new Error("该商品暂时缺货");
           if (!valid()) return;
@@ -14928,14 +15022,14 @@
       }
       const canAdd = computed$g(
         () => {
-          var _a;
-          return ((_a = chosen.value) == null ? void 0 : _a.status) === "ACTIVE" && positiveInt(count.value, 99) && Number(count.value) <= Number(chosen.value.available);
+          var _a2;
+          return ((_a2 = chosen.value) == null ? void 0 : _a2.status) === "ACTIVE" && positiveInt(count.value, 99) && Number(count.value) <= Number(chosen.value.available);
         }
       );
       async function addCart() {
-        var _a;
+        var _a2;
         if (!selected.value || saving.value || previewGuard()) return;
-        if (!((_a = chosen.value) == null ? void 0 : _a.skuId) || !canAdd.value) {
+        if (!((_a2 = chosen.value) == null ? void 0 : _a2.skuId) || !canAdd.value) {
           notify("请选择有效规格及库存范围内的数量");
           return;
         }
@@ -15745,7 +15839,7 @@
                       _Fragment,
                       null,
                       _renderList(_ctx.seckillProducts, (fp) => {
-                        var _a;
+                        var _a2;
                         return _openBlock(), _createElementBlock("div", {
                           key: "sk-" + fp.productId,
                           class: "jd-seckill-tile",
@@ -15767,7 +15861,7 @@
                           _createElementVNode(
                             "b",
                             { class: "jd-seckill-price" },
-                            _toDisplayString(_ctx.money((_a = _ctx.cardSku(fp)) == null ? void 0 : _a.priceCent)),
+                            _toDisplayString(_ctx.money((_a2 = _ctx.cardSku(fp)) == null ? void 0 : _a2.priceCent)),
                             1
                             /* TEXT */
                           )
@@ -16301,7 +16395,7 @@
                     _Fragment,
                     null,
                     _renderList(_ctx.shown, (p2) => {
-                      var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+                      var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k;
                       return _openBlock(), _createElementBlock("article", {
                         key: p2.productId,
                         class: _normalizeClass(["home-product", "card-" + _ctx.consumerMode]),
@@ -16362,7 +16456,7 @@
                             _createElementVNode(
                               "span",
                               null,
-                              _toDisplayString(((_a = _ctx.cardSku(p2)) == null ? void 0 : _a.specKey) || "标准装"),
+                              _toDisplayString(((_a2 = _ctx.cardSku(p2)) == null ? void 0 : _a2.specKey) || "标准装"),
                               1
                               /* TEXT */
                             )
@@ -16375,7 +16469,7 @@
                                 _createElementVNode(
                                   "span",
                                   null,
-                                  _toDisplayString(((_b = _ctx.cardSku(p2)) == null ? void 0 : _b.specKey) || "标准装"),
+                                  _toDisplayString(((_b2 = _ctx.cardSku(p2)) == null ? void 0 : _b2.specKey) || "标准装"),
                                   1
                                   /* TEXT */
                                 ),
@@ -17002,7 +17096,7 @@
             Fragment,
             null,
             renderList(__props.messages, (message, index) => {
-              var _a;
+              var _a2;
               return openBlock(), createElementBlock(
                 "div",
                 {
@@ -17101,7 +17195,7 @@
                       1
                       /* TEXT */
                     )) : createCommentVNode("v-if", true),
-                    ((_a = message.citations) == null ? void 0 : _a.length) ? (openBlock(), createElementBlock("div", _hoisted_15$3, [
+                    ((_a2 = message.citations) == null ? void 0 : _a2.length) ? (openBlock(), createElementBlock("div", _hoisted_15$3, [
                       (openBlock(true), createElementBlock(
                         Fragment,
                         null,
@@ -17489,7 +17583,7 @@
               Fragment,
               null,
               renderList(__props.items, (item) => {
-                var _a;
+                var _a2;
                 return openBlock(), createElementBlock(
                   "article",
                   {
@@ -17519,7 +17613,7 @@
                       onClick: ($event) => _ctx.$emit("toggle", item.skuId)
                     }, [
                       createVNode(unref(ProductImage), {
-                        src: item.imageUrl || ((_a = item.product) == null ? void 0 : _a.imageUrl),
+                        src: item.imageUrl || ((_a2 = item.product) == null ? void 0 : _a2.imageUrl),
                         alt: item.title
                       }, null, 8, ["src", "alt"])
                     ], 8, _hoisted_7$4),
@@ -17688,8 +17782,8 @@
     return knownLastIndex < 0 || knownLastIndex < lastQuestion;
   }
   function failedEventError(payload) {
-    var _a;
-    const code = (payload == null ? void 0 : payload.errorCode) || ((_a = payload == null ? void 0 : payload.data) == null ? void 0 : _a.errorCode) || "AI0001";
+    var _a2;
+    const code = (payload == null ? void 0 : payload.errorCode) || ((_a2 = payload == null ? void 0 : payload.data) == null ? void 0 : _a2.errorCode) || "AI0001";
     return Object.assign(new Error("智能服务暂不可用，请稍后重试"), { code });
   }
   function disconnectedError() {
@@ -17777,15 +17871,15 @@
         signal,
         body: { question, conversationId: conversationId || null },
         onEvent: async (event, payload) => {
-          var _a, _b, _c, _d;
+          var _a2, _b2, _c, _d;
           if (!isCurrent()) return;
-          const id = (payload == null ? void 0 : payload.conversationId) || ((_a = payload == null ? void 0 : payload.data) == null ? void 0 : _a.conversationId);
+          const id = (payload == null ? void 0 : payload.conversationId) || ((_a2 = payload == null ? void 0 : payload.data) == null ? void 0 : _a2.conversationId);
           if (id) {
             activeConversationId = id;
             onConversationId == null ? void 0 : onConversationId(id);
           }
           if (event === "stage") {
-            onStage == null ? void 0 : onStage(String(((_b = payload == null ? void 0 : payload.data) == null ? void 0 : _b.stage) || (payload == null ? void 0 : payload.stage) || ""));
+            onStage == null ? void 0 : onStage(String(((_b2 = payload == null ? void 0 : payload.data) == null ? void 0 : _b2.stage) || (payload == null ? void 0 : payload.stage) || ""));
           } else if (event === "progress") {
             onProgress == null ? void 0 : onProgress(Number(((_c = payload == null ? void 0 : payload.data) == null ? void 0 : _c.bytes) || (payload == null ? void 0 : payload.bytes) || 0));
           } else if (event === "delta") {
@@ -17849,7 +17943,7 @@
       const examples = computed$f(() => DEMO_PRODUCTS.slice(0, 3));
       const items2 = computed$f(
         () => {
-          var _a;
+          var _a2;
           return preview ? examples.value.map((p2) => ({
             skuId: skuOf(p2).skuId,
             productId: p2.productId,
@@ -17860,15 +17954,15 @@
             quantity: 1,
             merchantId: p2.merchantId,
             detailAvailable: true
-          })) : (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => ({ ...i }));
+          })) : (((_a2 = proposal.value) == null ? void 0 : _a2.items) || []).map((i) => ({ ...i }));
         }
       );
       const total = computed$f(
         () => items2.value.filter((i) => selectedIds.value.includes(i.skuId)).reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity || 1), 0)
       );
       const showProposal = computed$f(() => {
-        var _a, _b;
-        return preview || !!((_b = (_a = proposal.value) == null ? void 0 : _a.items) == null ? void 0 : _b.length);
+        var _a2, _b2;
+        return preview || !!((_b2 = (_a2 = proposal.value) == null ? void 0 : _a2.items) == null ? void 0 : _b2.length);
       });
       const formatTime = () => (/* @__PURE__ */ new Date()).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
       const formatHistoryTime = (value) => {
@@ -17884,8 +17978,8 @@
       };
       watch$b(
         () => {
-          var _a;
-          return (_a = store.user) == null ? void 0 : _a.userId;
+          var _a2;
+          return (_a2 = store.user) == null ? void 0 : _a2.userId;
         },
         (now, was) => {
           if (preview || now === was) return;
@@ -17928,7 +18022,7 @@
         activeStreamController = null;
       }
       function applyChatAnswer(answer, stamp) {
-        var _a;
+        var _a2;
         if (stamp !== conversationEpoch || !answer) return;
         store.conversationId = answer.conversationId || store.conversationId;
         mode.value = answer.mode || "";
@@ -17940,7 +18034,7 @@
           time: formatTime()
         });
         proposal.value = answer.proposal || null;
-        selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+        selectedIds.value = (((_a2 = proposal.value) == null ? void 0 : _a2.items) || []).map((i) => i.skuId);
         proposalFeedback.value = "";
       }
       async function loadConversationSnapshot(id, stamp, expectedQuestion = null, knownLastMessage = null) {
@@ -17954,7 +18048,7 @@
         return true;
       }
       function applyConversationSnapshot(snapshot, id, stamp) {
-        var _a;
+        var _a2;
         if (stamp !== conversationEpoch || !snapshot) return false;
         const messageHistory = snapshot.messages;
         store.conversationId = id;
@@ -17966,19 +18060,19 @@
           time: "历史消息"
         }));
         proposal.value = snapshot.proposal;
-        selectedIds.value = (((_a = proposal.value) == null ? void 0 : _a.items) || []).map((i) => i.skuId);
+        selectedIds.value = (((_a2 = proposal.value) == null ? void 0 : _a2.items) || []).map((i) => i.skuId);
         return true;
       }
       async function recoverAfterDisconnect(stamp, actor, id, expectedQuestion, knownLastMessage, knownCount) {
-        var _a;
-        if (!id || actor !== ((_a = store.user) == null ? void 0 : _a.userId)) return false;
+        var _a2;
+        if (!id || actor !== ((_a2 = store.user) == null ? void 0 : _a2.userId)) return false;
         reconnecting.value = true;
         try {
           const recovered = await conversationTransport.recoverAfterDisconnect({
             id,
             isCurrent: () => {
-              var _a2;
-              return stamp === conversationEpoch && actor === ((_a2 = store.user) == null ? void 0 : _a2.userId);
+              var _a3;
+              return stamp === conversationEpoch && actor === ((_a3 = store.user) == null ? void 0 : _a3.userId);
             },
             expectedQuestion,
             knownLastMessage,
@@ -18007,7 +18101,7 @@
         }
       }
       async function ask(question = input.value) {
-        var _a;
+        var _a2;
         const text = String(question || "").trim();
         if (!text || thinking.value || openingConversation.value || proposalBusy.value) return;
         if (text.length > 500) {
@@ -18039,7 +18133,7 @@
         cancelRequested.value = false;
         activeStreamController = new AbortController();
         const controller = activeStreamController;
-        const actor = (_a = store.user) == null ? void 0 : _a.userId;
+        const actor = (_a2 = store.user) == null ? void 0 : _a2.userId;
         let streamConversationId = store.conversationId || null;
         let completed = false;
         let cancelled = false;
@@ -18200,17 +18294,17 @@
         return messages2[err == null ? void 0 : err.code] || (err == null ? void 0 : err.message) || "确认加购失败，请保留选择后重试。";
       }
       function currentProposal(stamp, actor, proposalId) {
-        var _a, _b;
-        return stamp === conversationEpoch && actor === ((_a = store.user) == null ? void 0 : _a.userId) && ((_b = proposal.value) == null ? void 0 : _b.id) === proposalId;
+        var _a2, _b2;
+        return stamp === conversationEpoch && actor === ((_a2 = store.user) == null ? void 0 : _a2.userId) && ((_b2 = proposal.value) == null ? void 0 : _b2.id) === proposalId;
       }
       function currentRequest(stamp, actor) {
-        var _a;
-        return stamp === conversationEpoch && actor === ((_a = store.user) == null ? void 0 : _a.userId);
+        var _a2;
+        return stamp === conversationEpoch && actor === ((_a2 = store.user) == null ? void 0 : _a2.userId);
       }
       async function confirm() {
-        var _a, _b;
-        if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value || proposalBusy.value) return;
-        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id, chosen = [...selectedIds.value];
+        var _a2, _b2;
+        if (previewGuard() || !((_a2 = proposal.value) == null ? void 0 : _a2.id) || thinking.value || proposalBusy.value) return;
+        const stamp = conversationEpoch, actor = (_b2 = store.user) == null ? void 0 : _b2.userId, proposalId = proposal.value.id, chosen = [...selectedIds.value];
         if (!selectedIds.value.length) {
           notify("至少选择一件商品");
           return;
@@ -18237,9 +18331,9 @@
         }
       }
       async function reject() {
-        var _a, _b;
-        if (previewGuard() || !((_a = proposal.value) == null ? void 0 : _a.id) || thinking.value || proposalBusy.value) return;
-        const stamp = conversationEpoch, actor = (_b = store.user) == null ? void 0 : _b.userId, proposalId = proposal.value.id;
+        var _a2, _b2;
+        if (previewGuard() || !((_a2 = proposal.value) == null ? void 0 : _a2.id) || thinking.value || proposalBusy.value) return;
+        const stamp = conversationEpoch, actor = (_b2 = store.user) == null ? void 0 : _b2.userId, proposalId = proposal.value.id;
         proposalFeedback.value = "";
         rejectingProposal.value = true;
         try {
@@ -18312,7 +18406,7 @@
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "ai" }, {
           default: _withCtx(() => {
-            var _a;
+            var _a2;
             return [
               _createElementVNode(
                 "div",
@@ -18492,7 +18586,7 @@
                           thinking: _ctx.thinking,
                           confirming: _ctx.confirmingProposal,
                           rejecting: _ctx.rejectingProposal,
-                          "proposal-status": (_a = _ctx.proposal) == null ? void 0 : _a.status,
+                          "proposal-status": (_a2 = _ctx.proposal) == null ? void 0 : _a2.status,
                           onToggle: _ctx.toggle,
                           onDetail: _ctx.openDetail,
                           onReject: _ctx.reject,
@@ -19178,8 +19272,8 @@
         emit2("update:modelValue", "");
       }
       async function choose(event) {
-        var _a;
-        const file = (_a = event.target.files) == null ? void 0 : _a[0];
+        var _a2;
+        const file = (_a2 = event.target.files) == null ? void 0 : _a2[0];
         event.target.value = "";
         if (!file || props.disabled || busy.value) return;
         error.value = "";
@@ -19388,16 +19482,16 @@
     setup(props) {
       const loginOpen = ref$c(false), mobileNav = ref$c(null), soundOn = ref$c(true);
       let eventSource = null;
-      const adminTheme = computed$c(() => designTheme.admin || "arco");
+      const adminTheme = computed$c(() => designTheme.admin || "antd");
       const currentPath = computed$c(() => store.route.split("?")[0] || "/");
       const visibleMerchantNav = computed$c(
         () => merchantNav.filter(([, , path]) => hasPermission(merchantPermissions[path]))
       );
       const alignMobileNav = () => {
-        var _a;
+        var _a2;
         const nav = mobileNav.value;
         if (nav == null ? void 0 : nav.clientWidth)
-          (_a = nav.querySelector("button.active")) == null ? void 0 : _a.scrollIntoView({ inline: "center", block: "nearest" });
+          (_a2 = nav.querySelector("button.active")) == null ? void 0 : _a2.scrollIntoView({ inline: "center", block: "nearest" });
       };
       function closeStream() {
         if (eventSource) {
@@ -19440,8 +19534,8 @@
       );
       watch$8(
         [() => props.role, () => store.merchantId, () => {
-          var _a;
-          return (_a = store.user) == null ? void 0 : _a.userId;
+          var _a2;
+          return (_a2 = store.user) == null ? void 0 : _a2.userId;
         }],
         () => {
           connectStream();
@@ -19534,7 +19628,7 @@
     render: (() => {
       const { resolveComponent: _resolveComponent, createVNode: _createVNode2, createElementVNode: _createElementVNode, toDisplayString: _toDisplayString, normalizeClass: _normalizeClass, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, createTextVNode: _createTextVNode, renderList: _renderList, Fragment: _Fragment, renderSlot: _renderSlot, createBlock: _createBlock } = Vue;
       return function render2(_ctx, _cache) {
-        var _a;
+        var _a2;
         const _component_BrandLogo = _resolveComponent("BrandLogo");
         const _component_Icon = _resolveComponent("Icon");
         const _component_DesignVariantSwitcher = _resolveComponent("DesignVariantSwitcher");
@@ -19698,7 +19792,7 @@
                     name: "user",
                     size: 15
                   }),
-                  ((_a = _ctx.store.user) == null ? void 0 : _a.displayName) ? (_openBlock(), _createElementBlock(
+                  ((_a2 = _ctx.store.user) == null ? void 0 : _a2.displayName) ? (_openBlock(), _createElementBlock(
                     "span",
                     {
                       key: 0,
@@ -20004,14 +20098,14 @@
       );
       const selectedSku = computed$b(
         () => {
-          var _a, _b;
-          return ((_b = (_a = selected.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === selectedSkuId.value)) || skuOf(selected.value);
+          var _a2, _b2;
+          return ((_b2 = (_a2 = selected.value) == null ? void 0 : _a2.skus) == null ? void 0 : _b2.find((s) => s.skuId === selectedSkuId.value)) || skuOf(selected.value);
         }
       );
       const stock = computed$b(
         () => store.stocks.find((s) => {
-          var _a;
-          return s.skuId === ((_a = selectedSku.value) == null ? void 0 : _a.skuId);
+          var _a2;
+          return s.skuId === ((_a2 = selectedSku.value) == null ? void 0 : _a2.skuId);
         }) || null
       );
       const activeSkuCount = (p2) => ((p2 == null ? void 0 : p2.skus) || []).filter((s) => s.status === "ACTIVE").length;
@@ -20040,20 +20134,20 @@
       );
       const inventoryPercent = computed$b(
         () => {
-          var _a, _b;
+          var _a2, _b2;
           return Math.min(
             100,
-            Number(((_a = stock.value) == null ? void 0 : _a.available) || 0) / Math.max(1, Number(((_b = stock.value) == null ? void 0 : _b.onHand) || 0)) * 100
+            Number(((_a2 = stock.value) == null ? void 0 : _a2.available) || 0) / Math.max(1, Number(((_b2 = stock.value) == null ? void 0 : _b2.onHand) || 0)) * 100
           );
         }
       );
       const tableCategory = (p2) => {
-        var _a;
-        return ((_a = store.categories.find((c) => c.code === p2.categoryCode)) == null ? void 0 : _a.name) || p2.categoryCode;
+        var _a2;
+        return ((_a2 = store.categories.find((c) => c.code === p2.categoryCode)) == null ? void 0 : _a2.name) || p2.categoryCode;
       };
       const choose = (p2) => {
-        var _a;
-        if (p2.productId !== ((_a = selected.value) == null ? void 0 : _a.productId)) editImageInvalid.value = false;
+        var _a2;
+        if (p2.productId !== ((_a2 = selected.value) == null ? void 0 : _a2.productId)) editImageInvalid.value = false;
         selectedId.value = p2.productId;
         selectedSkuId.value = skuOf(p2).skuId || "";
         drawerTab.value = "stock";
@@ -20061,7 +20155,7 @@
       watch$7(
         selected,
         (p2, previous) => {
-          var _a;
+          var _a2;
           if ((p2 == null ? void 0 : p2.productId) !== (previous == null ? void 0 : previous.productId)) {
             editImageInvalid.value = false;
             editImageUploading.value = false;
@@ -20074,7 +20168,7 @@
               description: p2.description || "",
               categoryCode: p2.categoryCode,
               imageUrl: p2.imageUrl || "",
-              imageUrls: ((_a = p2.images) == null ? void 0 : _a.length) ? p2.images.map((i) => i.url) : p2.imageUrl ? [p2.imageUrl] : []
+              imageUrls: ((_a2 = p2.images) == null ? void 0 : _a2.length) ? p2.images.map((i) => i.url) : p2.imageUrl ? [p2.imageUrl] : []
             };
           }
         },
@@ -20117,13 +20211,13 @@
         { flush: "sync" }
       );
       function openCreate() {
-        var _a;
+        var _a2;
         createImageUploading.value = false;
         createImageInvalid.value = false;
         form.value = {
           title: "",
           description: "",
-          categoryCode: ((_a = store.categories.find((c) => c.active)) == null ? void 0 : _a.code) || "food",
+          categoryCode: ((_a2 = store.categories.find((c) => c.active)) == null ? void 0 : _a2.code) || "food",
           imageUrl: "",
           imageUrls: [],
           skus: [{ specKey: "默认规格", price: "" }]
@@ -20275,8 +20369,8 @@
         }
       }
       async function replenish() {
-        var _a;
-        if (previewGuard() || saving.value || !canReplenish.value || !((_a = selectedSku.value) == null ? void 0 : _a.skuId))
+        var _a2;
+        if (previewGuard() || saving.value || !canReplenish.value || !((_a2 = selectedSku.value) == null ? void 0 : _a2.skuId))
           return;
         const n = Number(adjustment.value);
         if (!Number.isInteger(n) || n < 1 || n > 1e6) {
@@ -20476,7 +20570,7 @@
             ])
           ]),
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e, _f, _g;
+            var _a2, _b2, _c, _d, _e, _f, _g;
             return [
               _ctx.store.error ? (_openBlock(), _createElementBlock("div", {
                 key: 0,
@@ -20761,10 +20855,10 @@
                               _Fragment,
                               null,
                               _renderList(_ctx.pageRows, (p2) => {
-                                var _a2, _b2, _c2;
+                                var _a3, _b3, _c2;
                                 return _openBlock(), _createElementBlock("tr", {
                                   key: p2.productId,
-                                  class: _normalizeClass({ "row-selected": ((_a2 = _ctx.selected) == null ? void 0 : _a2.productId) === p2.productId }),
+                                  class: _normalizeClass({ "row-selected": ((_a3 = _ctx.selected) == null ? void 0 : _a3.productId) === p2.productId }),
                                   onClick: ($event) => _ctx.choose(p2)
                                 }, [
                                   _createElementVNode("td", null, [
@@ -20777,7 +20871,7 @@
                                         _createElementVNode("button", {
                                           class: "row-link",
                                           onClick: _withModifiers(($event) => _ctx.choose(p2), ["stop"]),
-                                          "aria-pressed": ((_b2 = _ctx.selected) == null ? void 0 : _b2.productId) === p2.productId
+                                          "aria-pressed": ((_b3 = _ctx.selected) == null ? void 0 : _b3.productId) === p2.productId
                                         }, _toDisplayString(p2.title), 9, ["onClick", "aria-pressed"]),
                                         _createElementVNode(
                                           "span",
@@ -21018,7 +21112,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_a = _ctx.stock) == null ? void 0 : _a.onHand) ?? "—"),
+                              _toDisplayString(((_a2 = _ctx.stock) == null ? void 0 : _a2.onHand) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -21028,7 +21122,7 @@
                             _createElementVNode(
                               "strong",
                               null,
-                              _toDisplayString(((_b = _ctx.stock) == null ? void 0 : _b.reserved) ?? "—"),
+                              _toDisplayString(((_b2 = _ctx.stock) == null ? void 0 : _b2.reserved) ?? "—"),
                               1
                               /* TEXT */
                             )
@@ -21489,25 +21583,25 @@
       const scope = requestScope();
       const product = ref$a(null), shop = ref$a(null), chosen = ref$a(""), count = ref$a(1), busy = ref$a(false), loading = ref$a(true), error = ref$a(""), errorCode = ref$a(""), imageIndex = ref$a(0), touchStartX = ref$a(null), lightboxOpen = ref$a(false), favorited = ref$a(false), favBusy = ref$a(false), activeSection = ref$a("detail"), detailSectionEl = ref$a(null), reviewsSectionEl = ref$a(null), recoSectionEl = ref$a(null), reviewSummary = ref$a(null), recommendations = ref$a({ boughtTogether: [], sameStoreHot: [] });
       const defaultSku = (p2) => {
-        var _a;
-        return ((_a = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a.find((s) => s.status === "ACTIVE" && Number(s.available || 0) > 0)) || skuOf(p2);
+        var _a2;
+        return ((_a2 = p2 == null ? void 0 : p2.skus) == null ? void 0 : _a2.find((s) => s.status === "ACTIVE" && Number(s.available || 0) > 0)) || skuOf(p2);
       };
       const id = computed$a(() => safeDecodeId(store.route.split("?")[0].split("/")[2] || ""));
       const sku2 = computed$a(
         () => {
-          var _a, _b;
-          return ((_b = (_a = product.value) == null ? void 0 : _a.skus) == null ? void 0 : _b.find((s) => s.skuId === chosen.value)) || defaultSku(product.value);
+          var _a2, _b2;
+          return ((_b2 = (_a2 = product.value) == null ? void 0 : _a2.skus) == null ? void 0 : _b2.find((s) => s.skuId === chosen.value)) || defaultSku(product.value);
         }
       );
       const merchant = computed$a(
         () => store.merchants.find((m) => {
-          var _a;
-          return m.merchantId === ((_a = product.value) == null ? void 0 : _a.merchantId);
+          var _a2;
+          return m.merchantId === ((_a2 = product.value) == null ? void 0 : _a2.merchantId);
         }) || shop.value || {}
       );
       const merchantPhoto = computed$a(() => {
-        var _a, _b, _c;
-        const explicit = ((_a = merchant.value) == null ? void 0 : _a.imageUrl) || ((_b = merchant.value) == null ? void 0 : _b.image);
+        var _a2, _b2, _c;
+        const explicit = ((_a2 = merchant.value) == null ? void 0 : _a2.imageUrl) || ((_b2 = merchant.value) == null ? void 0 : _b2.image);
         if (explicit) return explicit;
         const raw = String(((_c = product.value) == null ? void 0 : _c.merchantId) || "");
         let hash = 0;
@@ -21518,25 +21612,25 @@
       });
       const categoryName = computed$a(
         () => {
-          var _a;
-          return ((_a = store.categories.find((c) => {
-            var _a2;
-            return c.code === ((_a2 = product.value) == null ? void 0 : _a2.categoryCode);
-          })) == null ? void 0 : _a.name) || "商品分类";
+          var _a2;
+          return ((_a2 = store.categories.find((c) => {
+            var _a3;
+            return c.code === ((_a3 = product.value) == null ? void 0 : _a3.categoryCode);
+          })) == null ? void 0 : _a2.name) || "商品分类";
         }
       );
       const detailImages = computed$a(
         () => {
-          var _a, _b, _c;
-          return ((_b = (_a = product.value) == null ? void 0 : _a.images) == null ? void 0 : _b.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
+          var _a2, _b2, _c;
+          return ((_b2 = (_a2 = product.value) == null ? void 0 : _a2.images) == null ? void 0 : _b2.length) ? product.value.images : [{ url: ((_c = product.value) == null ? void 0 : _c.imageUrl) || "" }];
         }
       );
       const relatedProducts = computed$a(() => {
-        var _a, _b, _c;
-        const seen = /* @__PURE__ */ new Set([(_a = product.value) == null ? void 0 : _a.productId]);
+        var _a2, _b2, _c;
+        const seen = /* @__PURE__ */ new Set([(_a2 = product.value) == null ? void 0 : _a2.productId]);
         const combined = [];
         for (const list of [
-          ((_b = recommendations.value) == null ? void 0 : _b.boughtTogether) || [],
+          ((_b2 = recommendations.value) == null ? void 0 : _b2.boughtTogether) || [],
           ((_c = recommendations.value) == null ? void 0 : _c.sameStoreHot) || []
         ]) {
           for (const item of list) {
@@ -21556,14 +21650,14 @@
         return error.value || "商品加载失败，请重试";
       });
       function jumpSection(sectionKey) {
-        var _a, _b;
+        var _a2, _b2;
         activeSection.value = sectionKey;
         const map = {
           detail: detailSectionEl.value,
           reviews: reviewsSectionEl.value,
           reco: recoSectionEl.value
         };
-        (_b = (_a = map[sectionKey]) == null ? void 0 : _a.scrollIntoView) == null ? void 0 : _b.call(_a, { behavior: "smooth", block: "start" });
+        (_b2 = (_a2 = map[sectionKey]) == null ? void 0 : _a2.scrollIntoView) == null ? void 0 : _b2.call(_a2, { behavior: "smooth", block: "start" });
       }
       async function load() {
         const request2 = scope.begin();
@@ -21631,8 +21725,8 @@
       }
       onMounted$a(load);
       async function add(goCart = false) {
-        var _a;
-        if (preview || busy.value || !((_a = sku2.value) == null ? void 0 : _a.skuId)) return;
+        var _a2;
+        if (preview || busy.value || !((_a2 = sku2.value) == null ? void 0 : _a2.skuId)) return;
         const current = scope.capture(), productId = product.value.productId, skuId = sku2.value.skuId, requested = Number(count.value);
         busy.value = true;
         try {
@@ -21654,8 +21748,8 @@
         }
       }
       async function toggleFavorite() {
-        var _a;
-        if (preview || favBusy.value || !((_a = product.value) == null ? void 0 : _a.productId)) return;
+        var _a2;
+        if (preview || favBusy.value || !((_a2 = product.value) == null ? void 0 : _a2.productId)) return;
         if (!store.user) {
           notify("请先登录后再收藏商品");
           return;
@@ -21686,13 +21780,13 @@
         imageIndex.value = (imageIndex.value + 1) % detailImages.value.length;
       }
       function touchStart(event) {
-        var _a, _b;
-        touchStartX.value = ((_b = (_a = event.touches) == null ? void 0 : _a[0]) == null ? void 0 : _b.clientX) ?? null;
+        var _a2, _b2;
+        touchStartX.value = ((_b2 = (_a2 = event.touches) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.clientX) ?? null;
       }
       function touchEnd(event) {
-        var _a, _b;
+        var _a2, _b2;
         if (touchStartX.value == null || detailImages.value.length < 2) return;
-        const end = (_b = (_a = event.changedTouches) == null ? void 0 : _a[0]) == null ? void 0 : _b.clientX;
+        const end = (_b2 = (_a2 = event.changedTouches) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.clientX;
         const delta = typeof end === "number" ? end - touchStartX.value : 0;
         touchStartX.value = null;
         if (Math.abs(delta) < 36) return;
@@ -21753,7 +21847,7 @@
         const _directive_modal = _resolveDirective("modal");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e;
+            var _a2, _b2, _c, _d, _e;
             return [
               _createElementVNode("div", { class: "mobile-page-top" }, [
                 _createElementVNode("button", {
@@ -22181,7 +22275,7 @@
                       _createElementVNode(
                         "span",
                         null,
-                        "(" + _toDisplayString(((_a = _ctx.reviewSummary) == null ? void 0 : _a.totalCount) || 0) + ")",
+                        "(" + _toDisplayString(((_a2 = _ctx.reviewSummary) == null ? void 0 : _a2.totalCount) || 0) + ")",
                         1
                         /* TEXT */
                       )
@@ -22262,7 +22356,7 @@
                           _createElementVNode(
                             "h2",
                             null,
-                            "商品评价 (" + _toDisplayString(((_b = _ctx.reviewSummary) == null ? void 0 : _b.totalCount) || 0) + ")",
+                            "商品评价 (" + _toDisplayString(((_b2 = _ctx.reviewSummary) == null ? void 0 : _b2.totalCount) || 0) + ")",
                             1
                             /* TEXT */
                           ),
@@ -22380,7 +22474,7 @@
                             _Fragment,
                             null,
                             _renderList(_ctx.relatedProducts, (rp) => {
-                              var _a2, _b2, _c2;
+                              var _a3, _b3, _c2;
                               return _openBlock(), _createElementBlock("button", {
                                 key: rp.productId,
                                 type: "button",
@@ -22405,11 +22499,11 @@
                                   _createElementVNode(
                                     "b",
                                     { class: "int" },
-                                    _toDisplayString(_ctx.splitPrice((_a2 = _ctx.priceSku(rp) || _ctx.skuOf(rp)) == null ? void 0 : _a2.priceCent).int),
+                                    _toDisplayString(_ctx.splitPrice((_a3 = _ctx.priceSku(rp) || _ctx.skuOf(rp)) == null ? void 0 : _a3.priceCent).int),
                                     1
                                     /* TEXT */
                                   ),
-                                  _ctx.splitPrice((_b2 = _ctx.priceSku(rp) || _ctx.skuOf(rp)) == null ? void 0 : _b2.priceCent).dec ? (_openBlock(), _createElementBlock(
+                                  _ctx.splitPrice((_b3 = _ctx.priceSku(rp) || _ctx.skuOf(rp)) == null ? void 0 : _b3.priceCent).dec ? (_openBlock(), _createElementBlock(
                                     "i",
                                     {
                                       key: 0,
@@ -22513,12 +22607,12 @@
       );
       let loadVersion = 0;
       async function load() {
-        var _a;
+        var _a2;
         const stamp = ++loadVersion, current = id.value, currentPage = page.value;
         const valid = () => stamp === loadVersion && current === id.value && currentPage === page.value;
         error.value = "";
         loading.value = true;
-        if (((_a = merchant.value) == null ? void 0 : _a.merchantId) !== current) merchant.value = null;
+        if (((_a2 = merchant.value) == null ? void 0 : _a2.merchantId) !== current) merchant.value = null;
         products.value = [];
         hasNext.value = false;
         try {
@@ -22574,7 +22668,7 @@
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "home" }, {
           default: _withCtx(() => {
-            var _a, _b;
+            var _a2, _b2;
             return [
               _createElementVNode("div", { class: "mobile-page-top" }, [
                 _createElementVNode("button", {
@@ -22586,7 +22680,7 @@
                 _createElementVNode(
                   "b",
                   null,
-                  _toDisplayString(((_a = _ctx.merchant) == null ? void 0 : _a.name) || "门店主页"),
+                  _toDisplayString(((_a2 = _ctx.merchant) == null ? void 0 : _a2.name) || "门店主页"),
                   1
                   /* TEXT */
                 ),
@@ -22601,7 +22695,7 @@
                 _createElementVNode(
                   "strong",
                   null,
-                  _toDisplayString(((_b = _ctx.merchant) == null ? void 0 : _b.name) || "门店主页"),
+                  _toDisplayString(((_b2 = _ctx.merchant) == null ? void 0 : _b2.name) || "门店主页"),
                   1
                   /* TEXT */
                 )
@@ -22713,7 +22807,7 @@
                         _Fragment,
                         null,
                         _renderList(_ctx.products, (p2) => {
-                          var _a2, _b2, _c, _d;
+                          var _a3, _b3, _c, _d;
                           return _openBlock(), _createElementBlock("button", {
                             key: p2.productId,
                             class: _normalizeClass(["shop-product-card", "card-" + _ctx.consumerMode]),
@@ -22735,7 +22829,7 @@
                             _createElementVNode(
                               "small",
                               null,
-                              _toDisplayString(((_a2 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _a2.specKey) || "标准装"),
+                              _toDisplayString(((_a3 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _a3.specKey) || "标准装"),
                               1
                               /* TEXT */
                             ),
@@ -22745,7 +22839,7 @@
                                 _createElementVNode(
                                   "b",
                                   { class: "int" },
-                                  _toDisplayString(_ctx.splitPrice((_b2 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _b2.priceCent).int),
+                                  _toDisplayString(_ctx.splitPrice((_b3 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _b3.priceCent).int),
                                   1
                                   /* TEXT */
                                 ),
@@ -22804,18 +22898,18 @@
   const items = [
     {
       skuId: "preview-sku-1",
-      title: "红烧牛肉面 · 经典桶",
-      specKey: "109g",
-      imageUrl: "./images/noodles.webp",
+      title: "红烧牛肉方便面 · 宿舍夜宵桶",
+      specKey: "单桶 109g",
+      imageUrl: "./images/prod-instant-noodles.jpg",
       unitPriceCent: 450,
       quantity: 1
     },
     {
       skuId: "preview-sku-2",
-      title: "纯牛奶 · 250ml",
-      specKey: "250ml",
-      imageUrl: "./images/milk.webp",
-      unitPriceCent: 280,
+      title: "低温鲜牛乳 · 250ml 营养早餐奶",
+      specKey: "单盒 250ml",
+      imageUrl: "./images/prod-fresh-milk.jpg",
+      unitPriceCent: 350,
       quantity: 2
     }
   ];
@@ -22824,8 +22918,8 @@
       merchantId: "preview-m1",
       skuId: "preview-sku-1",
       title: items[0].title,
-      specKey: "109g",
-      imageUrl: "./images/noodles.webp",
+      specKey: "单桶 109g",
+      imageUrl: "./images/prod-instant-noodles.jpg",
       quantity: 1,
       priceCent: 450,
       quoteVersion: 1,
@@ -22836,24 +22930,24 @@
       merchantId: "preview-m1",
       skuId: "preview-sku-2",
       title: items[1].title,
-      specKey: "250ml",
-      imageUrl: "./images/milk.webp",
+      specKey: "单盒 250ml",
+      imageUrl: "./images/prod-fresh-milk.jpg",
       quantity: 2,
-      priceCent: 280,
+      priceCent: 350,
       quoteVersion: 1,
-      available: 18,
+      available: 86,
       sellable: true
     },
     {
       merchantId: "preview-m2",
-      skuId: "preview-sku-3",
-      title: "苹果 · 清甜脆爽",
-      specKey: "单个",
-      imageUrl: "./images/category-fruit.webp",
-      quantity: 2,
-      priceCent: 190,
+      skuId: "preview-sku-4",
+      title: "当晨现切草莓奇异果缤纷水果杯",
+      specKey: "中杯 260g",
+      imageUrl: "./images/prod-fruit-cup.jpg",
+      quantity: 1,
+      priceCent: 1390,
       quoteVersion: 1,
-      available: 46,
+      available: 76,
       sellable: true
     }
   ];
@@ -22880,12 +22974,12 @@
       createdAt: "2026-10-26T10:30:00Z",
       items: [
         {
-          skuId: "preview-sku-3",
-          title: "苹果 · 清甜脆爽",
-          specKey: "单个",
-          imageUrl: "./images/category-fruit.webp",
-          unitPriceCent: 190,
-          quantity: 3
+          skuId: "preview-sku-4",
+          title: "当晨现切草莓奇异果缤纷水果杯",
+          specKey: "中杯 260g",
+          imageUrl: "./images/prod-fruit-cup.jpg",
+          unitPriceCent: 1390,
+          quantity: 1
         }
       ],
       pickup: { status: "COMPLETED" }
@@ -22976,7 +23070,30 @@
     paidCount: 28,
     completedCount: 128,
     refundedCount: 3,
-    completedAmountCent: 286050
+    completedAmountCent: 286050,
+    trend: [
+      { day: "2026-11-21", orderCount: 18 },
+      { day: "2026-11-22", orderCount: 24 },
+      { day: "2026-11-23", orderCount: 21 },
+      { day: "2026-11-24", orderCount: 29 },
+      { day: "2026-11-25", orderCount: 26 },
+      { day: "2026-11-26", orderCount: 34 },
+      { day: "2026-11-27", orderCount: 31 }
+    ],
+    products: [
+      { productId: "preview-p9", title: "冷泡无糖凤凰单丛乌龙茶 500ml", quantity: 64 },
+      { productId: "preview-p6", title: "冰萃生椰拿铁 · 图书馆现磨大杯", quantity: 52 },
+      { productId: "preview-p4", title: "当晨现切草莓奇异果缤纷水果杯", quantity: 47 },
+      { productId: "preview-p1", title: "红烧牛肉方便面 · 宿舍夜宵桶", quantity: 41 },
+      { productId: "preview-p2", title: "低温鲜牛乳 · 250ml 营养早餐奶", quantity: 36 },
+      { productId: "preview-p5", title: "速干考试中性笔 0.5mm 礼盒装", quantity: 29 }
+    ],
+    statuses: [
+      { status: "COMPLETED", orderCount: 128, amountCent: 286050 },
+      { status: "PAID", orderCount: 28, amountCent: 49200 },
+      { status: "PENDING_PAYMENT", orderCount: 12, amountCent: 16800 },
+      { status: "REFUNDED", orderCount: 3, amountCent: 4250 }
+    ]
   };
   const DEMO_MERCHANT_ORDERS = DEMO_ORDERS.map((o, i) => ({
     ...o,
@@ -23077,8 +23194,8 @@
       const groups = computed$8(
         () => Object.entries(
           Object.groupBy ? Object.groupBy(items2.value, (i) => i.merchantId) : items2.value.reduce((a, i) => {
-            var _a;
-            (a[_a = i.merchantId] ?? (a[_a] = [])).push(i);
+            var _a2;
+            (a[_a2 = i.merchantId] ?? (a[_a2] = [])).push(i);
             return a;
           }, {})
         ).map(([id, rows]) => ({
@@ -23099,8 +23216,8 @@
         () => selected.value.reduce((n, i) => n + Number(i.priceCent) * Number(i.quantity), 0)
       );
       const merchantName = (id) => {
-        var _a, _b;
-        return ((_a = items2.value.find((i) => i.merchantId === id)) == null ? void 0 : _a.merchantName) || ((_b = store.merchants.find((m) => m.merchantId === id)) == null ? void 0 : _b.name) || "校内门店";
+        var _a2, _b2;
+        return ((_a2 = items2.value.find((i) => i.merchantId === id)) == null ? void 0 : _a2.merchantName) || ((_b2 = store.merchants.find((m) => m.merchantId === id)) == null ? void 0 : _b2.name) || "校内门店";
       };
       function selectStore(id) {
         merchantId.value = id;
@@ -23126,7 +23243,7 @@
         if (next.length <= 200) buyerRemark.value = next;
       }
       async function load() {
-        var _a;
+        var _a2;
         const request2 = scope.begin();
         loading.value = true;
         error.value = "";
@@ -23147,7 +23264,7 @@
         loading.value = false;
         store.cartCount = items2.value.reduce((n, i) => n + Number(i.quantity || 0), 0);
         if (!items2.value.some((i) => i.merchantId === merchantId.value))
-          merchantId.value = ((_a = items2.value[0]) == null ? void 0 : _a.merchantId) || "";
+          merchantId.value = ((_a2 = items2.value[0]) == null ? void 0 : _a2.merchantId) || "";
         const validIds = new Set(items2.value.map((i) => i.skuId));
         const kept = checkedSkus.value.filter((id) => validIds.has(id));
         const activeStoreSkus = items2.value.filter((i) => i.merchantId === merchantId.value).map((i) => i.skuId);
@@ -24007,25 +24124,25 @@
       );
       const refundPending = computed$7(
         () => {
-          var _a;
-          return !!((_a = detail.value) == null ? void 0 : _a.afterSale) && ["REQUESTED", "DISPUTED", "APPROVED"].includes(detail.value.afterSale.status);
+          var _a2;
+          return !!((_a2 = detail.value) == null ? void 0 : _a2.afterSale) && ["REQUESTED", "DISPUTED", "APPROVED"].includes(detail.value.afterSale.status);
         }
       );
       const deadlineCountdown = computed$7(
         () => {
-          var _a;
-          return ((_a = detail.value) == null ? void 0 : _a.status) === "PENDING_PAYMENT" ? formatCountdown(detail.value.deadline, nowMs.value) : "";
+          var _a2;
+          return ((_a2 = detail.value) == null ? void 0 : _a2.status) === "PENDING_PAYMENT" ? formatCountdown(detail.value.deadline, nowMs.value) : "";
         }
       );
       const tokenCountdown = computed$7(
         () => {
-          var _a;
-          return ((_a = token.value) == null ? void 0 : _a.expiresAt) ? formatCountdown(token.value.expiresAt, nowMs.value) : "";
+          var _a2;
+          return ((_a2 = token.value) == null ? void 0 : _a2.expiresAt) ? formatCountdown(token.value.expiresAt, nowMs.value) : "";
         }
       );
       const merchantName = (id2, record) => {
-        var _a;
-        return (record == null ? void 0 : record.merchantName) || ((_a = store.merchants.find((m) => m.merchantId === id2)) == null ? void 0 : _a.name) || "校内门店";
+        var _a2;
+        return (record == null ? void 0 : record.merchantName) || ((_a2 = store.merchants.find((m) => m.merchantId === id2)) == null ? void 0 : _a2.name) || "校内门店";
       };
       async function load() {
         const request2 = scope.begin();
@@ -24082,7 +24199,7 @@
         if (!id.value) load();
       });
       async function action(endpoint, method = "POST", body) {
-        var _a, _b;
+        var _a2, _b2;
         if (preview || busy.value || loading.value || !!error.value || !detail.value)
           return { ok: false };
         const current = scope.capture(), orderId = detail.value.orderId;
@@ -24092,14 +24209,14 @@
             method,
             body
           });
-          if (!current() || ((_a = detail.value) == null ? void 0 : _a.orderId) !== orderId) return { ok: false };
+          if (!current() || ((_a2 = detail.value) == null ? void 0 : _a2.orderId) !== orderId) return { ok: false };
           if (endpoint === "/pickup-token") {
             token.value = result;
             return { ok: true, refreshed: true };
           }
           notify("操作成功");
           const refreshed = await load();
-          if (!current() || ((_b = detail.value) == null ? void 0 : _b.orderId) !== orderId) return { ok: true, refreshed: false };
+          if (!current() || ((_b2 = detail.value) == null ? void 0 : _b2.orderId) !== orderId) return { ok: true, refreshed: false };
           if (!refreshed) notify("操作成功，但页面刷新失败，请稍后手动刷新");
           return { ok: true, refreshed };
         } catch (e) {
@@ -24113,14 +24230,14 @@
         await action("/pay" + query({ channel: selectedChannel.value }));
       }
       async function submitRefund() {
-        var _a, _b;
+        var _a2, _b2;
         if (!reason.value.trim()) {
           notify("请输入退款原因");
           return;
         }
-        const current = scope.capture(), orderId = (_a = detail.value) == null ? void 0 : _a.orderId;
+        const current = scope.capture(), orderId = (_a2 = detail.value) == null ? void 0 : _a2.orderId;
         const result = await action("/refunds", "POST", { reason: reason.value.trim() });
-        if (!result.ok || !current() || ((_b = detail.value) == null ? void 0 : _b.orderId) !== orderId) return;
+        if (!result.ok || !current() || ((_b2 = detail.value) == null ? void 0 : _b2.orderId) !== orderId) return;
         refundOpen.value = false;
         reason.value = "";
       }
@@ -24130,18 +24247,18 @@
         else reviewTags.value = [...reviewTags.value, tag];
       }
       async function submitReview() {
-        var _a, _b;
+        var _a2, _b2;
         if (!reviewContent.value.trim()) {
           notify("请填写评价内容");
           return;
         }
-        const current = scope.capture(), orderId = (_a = detail.value) == null ? void 0 : _a.orderId;
+        const current = scope.capture(), orderId = (_a2 = detail.value) == null ? void 0 : _a2.orderId;
         const result = await action("/reviews", "POST", {
           rating: reviewRating.value,
           tags: reviewTags.value.join(","),
           content: reviewContent.value.trim()
         });
-        if (!result.ok || !current() || ((_b = detail.value) == null ? void 0 : _b.orderId) !== orderId) return;
+        if (!result.ok || !current() || ((_b2 = detail.value) == null ? void 0 : _b2.orderId) !== orderId) return;
         reviewOpen.value = false;
         reviewContent.value = "";
         reviewTags.value = [];
@@ -24151,22 +24268,22 @@
         return ["PAID", "COMPLETED"].includes(s) ? "ok" : ["CANCELED", "REFUNDED"].includes(s) ? "muted" : "warn";
       }
       function cardActionText(o) {
-        var _a;
+        var _a2;
         if (o.status === "PENDING_PAYMENT") return "去付款";
-        if (o.status === "PAID" && ((_a = o.pickup) == null ? void 0 : _a.status) === "READY") return "看取件码";
+        if (o.status === "PAID" && ((_a2 = o.pickup) == null ? void 0 : _a2.status) === "READY") return "看取件码";
         if (o.status === "PAID") return "看进度";
         if (o.status === "COMPLETED" && !o.reviewed) return "写评价";
         return "查看详情";
       }
       const allowToken = computed$7(
         () => {
-          var _a, _b, _c, _d, _e;
-          return ((_a = detail.value) == null ? void 0 : _a.status) === "PAID" && ((_c = (_b = detail.value) == null ? void 0 : _b.pickup) == null ? void 0 : _c.status) === "READY" && !["REQUESTED", "DISPUTED", "APPROVED"].includes((_e = (_d = detail.value) == null ? void 0 : _d.afterSale) == null ? void 0 : _e.status);
+          var _a2, _b2, _c, _d, _e;
+          return ((_a2 = detail.value) == null ? void 0 : _a2.status) === "PAID" && ((_c = (_b2 = detail.value) == null ? void 0 : _b2.pickup) == null ? void 0 : _c.status) === "READY" && !["REQUESTED", "DISPUTED", "APPROVED"].includes((_e = (_d = detail.value) == null ? void 0 : _d.afterSale) == null ? void 0 : _e.status);
         }
       );
       async function copyToken() {
-        var _a, _b;
-        const value = ((_a = token.value) == null ? void 0 : _a.pinCode) || ((_b = token.value) == null ? void 0 : _b.token);
+        var _a2, _b2;
+        const value = ((_a2 = token.value) == null ? void 0 : _a2.pinCode) || ((_b2 = token.value) == null ? void 0 : _b2.token);
         if (!value) return;
         try {
           await navigator.clipboard.writeText(value);
@@ -24185,12 +24302,12 @@
         }
       }
       const progressStep = computed$7(() => {
-        var _a;
+        var _a2;
         const o = detail.value;
         if (!o || o.status === "CANCELED" || o.status === "REFUNDED") return -1;
         if (o.status === "PENDING_PAYMENT") return 0;
         if (o.status === "COMPLETED") return 3;
-        return ((_a = o.pickup) == null ? void 0 : _a.status) === "READY" ? 2 : 1;
+        return ((_a2 = o.pickup) == null ? void 0 : _a2.status) === "READY" ? 2 : 1;
       });
       const shortId = (raw) => raw && raw.length > 12 ? raw.slice(0, 8).toUpperCase() : raw || "";
       return {
@@ -24257,7 +24374,7 @@
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "orders" }, {
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
+            var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l;
             return [
               _createElementVNode("div", { class: "mobile-page-top" }, [
                 _createElementVNode("button", {
@@ -24367,7 +24484,7 @@
                       _Fragment,
                       null,
                       _renderList(_ctx.filtered, (o) => {
-                        var _a2, _b2, _c2, _d2, _e2, _f2, _g2, _h2, _i2, _j2, _k2, _l2, _m;
+                        var _a3, _b3, _c2, _d2, _e2, _f2, _g2, _h2, _i2, _j2, _k2, _l2, _m;
                         return _openBlock(), _createElementBlock("button", {
                           key: o.orderId,
                           class: "consumer-order-card",
@@ -24394,7 +24511,7 @@
                               {
                                 class: _normalizeClass(_ctx.statusClass(o.status))
                               },
-                              _toDisplayString(o.status === "PAID" && ((_a2 = o.pickup) == null ? void 0 : _a2.status) === "READY" ? "待自提" : o.status === "PAID" && ((_b2 = o.pickup) == null ? void 0 : _b2.status) === "PREPARING" ? "备餐中" : _ctx.orderStatusLabel(o.status)),
+                              _toDisplayString(o.status === "PAID" && ((_a3 = o.pickup) == null ? void 0 : _a3.status) === "READY" ? "待自提" : o.status === "PAID" && ((_b3 = o.pickup) == null ? void 0 : _b3.status) === "PREPARING" ? "备餐中" : _ctx.orderStatusLabel(o.status)),
                               3
                               /* TEXT, CLASS */
                             )
@@ -24532,12 +24649,12 @@
                   _createElementVNode(
                     "section",
                     {
-                      class: _normalizeClass(["pickup-hero", { complete: _ctx.detail.status === "COMPLETED", ready: _ctx.detail.status === "PAID" && ((_a = _ctx.detail.pickup) == null ? void 0 : _a.status) === "READY" }])
+                      class: _normalizeClass(["pickup-hero", { complete: _ctx.detail.status === "COMPLETED", ready: _ctx.detail.status === "PAID" && ((_a2 = _ctx.detail.pickup) == null ? void 0 : _a2.status) === "READY" }])
                     },
                     [
                       _createElementVNode("div", { class: "pickup-status-icon" }, [
                         _createVNode2(_component_Icon, {
-                          name: _ctx.detail.status === "COMPLETED" ? "check" : ((_b = _ctx.detail.pickup) == null ? void 0 : _b.status) === "READY" ? "scan" : "clock",
+                          name: _ctx.detail.status === "COMPLETED" ? "check" : ((_b2 = _ctx.detail.pickup) == null ? void 0 : _b2.status) === "READY" ? "scan" : "clock",
                           size: 24
                         }, null, 8, ["name"])
                       ]),
@@ -25275,7 +25392,7 @@
       const isApply = computed$6(() => store.route.split("?")[0] === "/apply");
       const isInvite = computed$6(() => store.route.split("?")[0] === "/invitations");
       async function load() {
-        var _a, _b;
+        var _a2, _b2;
         const stamp = ++loadEpoch;
         error.value = "";
         if (preview) {
@@ -25295,7 +25412,7 @@
         loading.value = true;
         try {
           if (stamp !== loadEpoch) return;
-          const actor = (_a = store.user) == null ? void 0 : _a.userId;
+          const actor = (_a2 = store.user) == null ? void 0 : _a2.userId;
           if (!store.user) {
             apps.value = [];
             invitations.value = [];
@@ -25310,7 +25427,7 @@
             !isApply.value && !isInvite.value ? api("/favorites").catch(() => []) : Promise.resolve([]),
             !isApply.value && !isInvite.value ? api("/discovery/home").catch(() => null) : Promise.resolve(null)
           ]);
-          if (stamp !== loadEpoch || actor !== ((_b = store.user) == null ? void 0 : _b.userId)) return;
+          if (stamp !== loadEpoch || actor !== ((_b2 = store.user) == null ? void 0 : _b2.userId)) return;
           apps.value = a.items || [];
           pageInfo.value = a;
           invitations.value = i || [];
@@ -25433,7 +25550,7 @@
         const _component_ConsumerShell = _resolveComponent("ConsumerShell");
         return _openBlock(), _createBlock(_component_ConsumerShell, { active: "account" }, {
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k;
+            var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k;
             return [
               _createElementVNode("div", { class: "mobile-page-top" }, [
                 _createElementVNode("button", {
@@ -25479,14 +25596,14 @@
                       _createElementVNode(
                         "h1",
                         null,
-                        _toDisplayString(((_a = _ctx.store.user) == null ? void 0 : _a.displayName) || "同学你好"),
+                        _toDisplayString(((_a2 = _ctx.store.user) == null ? void 0 : _a2.displayName) || "同学你好"),
                         1
                         /* TEXT */
                       ),
                       _createElementVNode(
                         "p",
                         null,
-                        _toDisplayString(((_b = _ctx.store.user) == null ? void 0 : _b.username) || "登录后查看订单与收藏"),
+                        _toDisplayString(((_b2 = _ctx.store.user) == null ? void 0 : _b2.username) || "登录后查看订单与收藏"),
                         1
                         /* TEXT */
                       )
@@ -25598,7 +25715,7 @@
                           _Fragment,
                           null,
                           _renderList(_ctx.favorites, (p2) => {
-                            var _a2;
+                            var _a3;
                             return _openBlock(), _createElementBlock("article", {
                               key: p2.productId,
                               class: "account-product-card"
@@ -25625,7 +25742,7 @@
                                   _createElementVNode(
                                     "b",
                                     null,
-                                    _toDisplayString(_ctx.money((_a2 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _a2.priceCent)),
+                                    _toDisplayString(_ctx.money((_a3 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _a3.priceCent)),
                                     1
                                     /* TEXT */
                                   )
@@ -25656,7 +25773,7 @@
                           _Fragment,
                           null,
                           _renderList(_ctx.recentProducts, (p2) => {
-                            var _a2;
+                            var _a3;
                             return _openBlock(), _createElementBlock("article", {
                               key: p2.productId,
                               class: "account-product-card"
@@ -25683,7 +25800,7 @@
                                   _createElementVNode(
                                     "b",
                                     null,
-                                    _toDisplayString(_ctx.money((_a2 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _a2.priceCent)),
+                                    _toDisplayString(_ctx.money((_a3 = _ctx.priceSku(p2) || _ctx.skuOf(p2)) == null ? void 0 : _a3.priceCent)),
                                     1
                                     /* TEXT */
                                   )
@@ -25977,7 +26094,7 @@
                   _Fragment,
                   null,
                   _renderList(_ctx.invitations, (i) => {
-                    var _a2;
+                    var _a3;
                     return _openBlock(), _createElementBlock("div", {
                       key: i.id,
                       class: "invitation-line"
@@ -25986,7 +26103,7 @@
                         _createElementVNode(
                           "strong",
                           null,
-                          _toDisplayString(i.merchantName || ((_a2 = _ctx.store.merchants.find((m) => m.merchantId === i.merchantId)) == null ? void 0 : _a2.name) || i.merchantId),
+                          _toDisplayString(i.merchantName || ((_a3 = _ctx.store.merchants.find((m) => m.merchantId === i.merchantId)) == null ? void 0 : _a3.name) || i.merchantId),
                           1
                           /* TEXT */
                         ),
@@ -26102,15 +26219,15 @@
                 Fragment,
                 null,
                 renderList(__props.orders, (order) => {
-                  var _a, _b, _c, _d, _e, _f, _g;
+                  var _a2, _b2, _c, _d, _e, _f, _g;
                   return openBlock(), createElementBlock("tr", {
                     key: order.orderId,
-                    class: normalizeClass({ active: ((_a = __props.selectedOrder) == null ? void 0 : _a.orderId) === order.orderId }),
+                    class: normalizeClass({ active: ((_a2 = __props.selectedOrder) == null ? void 0 : _a2.orderId) === order.orderId }),
                     onClick: ($event) => _ctx.$emit("select", order.orderId)
                   }, [
                     createBaseVNode("td", null, [
                       createBaseVNode("div", _hoisted_4$3, [
-                        ((_b = order.pickup) == null ? void 0 : _b.pickupCode) ? (openBlock(), createElementBlock(
+                        ((_b2 = order.pickup) == null ? void 0 : _b2.pickupCode) ? (openBlock(), createElementBlock(
                           "span",
                           _hoisted_5$2,
                           toDisplayString(order.pickup.pickupCode),
@@ -26264,7 +26381,7 @@
                 renderList(__props.preview ? __props.rows.filter(
                   (r) => !__props.query || r.product.title.includes(__props.query) || r.sku.specKey.includes(__props.query)
                 ) : __props.rows, (row) => {
-                  var _a, _b, _c, _d;
+                  var _a2, _b2, _c, _d;
                   return openBlock(), createElementBlock(
                     "tr",
                     {
@@ -26299,14 +26416,14 @@
                       createBaseVNode(
                         "td",
                         null,
-                        toDisplayString(((_a = row.stock) == null ? void 0 : _a.onHand) ?? "—"),
+                        toDisplayString(((_a2 = row.stock) == null ? void 0 : _a2.onHand) ?? "—"),
                         1
                         /* TEXT */
                       ),
                       createBaseVNode(
                         "td",
                         null,
-                        toDisplayString(((_b = row.stock) == null ? void 0 : _b.reserved) ?? "—"),
+                        toDisplayString(((_b2 = row.stock) == null ? void 0 : _b2.reserved) ?? "—"),
                         1
                         /* TEXT */
                       ),
@@ -26705,19 +26822,19 @@
       }
       const trendModel = computed$j(
         () => {
-          var _a;
-          return buildTrendGeometry(((_a = props.stats) == null ? void 0 : _a.trend) || [], 36, 308, 124, 86, 24);
+          var _a2;
+          return buildTrendGeometry(((_a2 = props.stats) == null ? void 0 : _a2.trend) || [], 36, 308, 124, 86, 24);
         }
       );
       const wideTrendModel = computed$j(
         () => {
-          var _a;
-          return buildTrendGeometry(((_a = props.stats) == null ? void 0 : _a.trend) || [], 42, 518, 146, 108, 30);
+          var _a2;
+          return buildTrendGeometry(((_a2 = props.stats) == null ? void 0 : _a2.trend) || [], 42, 518, 146, 108, 30);
         }
       );
       const topProducts = computed$j(() => {
-        var _a;
-        const list = ((_a = props.stats) == null ? void 0 : _a.products) || [];
+        var _a2;
+        const list = ((_a2 = props.stats) == null ? void 0 : _a2.products) || [];
         const maxQty = Math.max(1, ...list.map((p2) => Number(p2.quantity || 0)));
         return list.slice(0, 6).map((p2, idx) => {
           const pct = Math.max(10, Math.round(Number(p2.quantity || 0) / maxQty * 100));
@@ -26731,8 +26848,8 @@
         });
       });
       const donutModel = computed$j(() => {
-        var _a;
-        const list = ((_a = props.stats) == null ? void 0 : _a.statuses) || [];
+        var _a2;
+        const list = ((_a2 = props.stats) == null ? void 0 : _a2.statuses) || [];
         const totalOrders = list.reduce((sum, item) => sum + Number(item.orderCount || 0), 0);
         const safeTotal = Math.max(1, totalOrders);
         const circumference = 2 * Math.PI * 40;
@@ -28027,7 +28144,7 @@
     },
     setup() {
       const scope = requestScope();
-      const adminTheme = computed$5(() => designTheme.admin || "arco");
+      const adminTheme = computed$5(() => designTheme.admin || "antd");
       const route = computed$5(() => store.route.split("?")[0] || "/merchant");
       const title = computed$5(() => names[route.value] || "经营概览");
       const filter = ref$5("");
@@ -28068,10 +28185,10 @@
       const visibleOrders = computed$5(
         () => !preview ? orders.value : orders.value.filter(
           (o) => {
-            var _a, _b, _c;
-            return (!filter.value || o.status === filter.value) && (!pickupState.value || ((_a = o.pickup) == null ? void 0 : _a.status) === pickupState.value) && (!q.value || ((_b = o.orderId) == null ? void 0 : _b.toLowerCase().includes(q.value.toLowerCase())) || ((_c = o.items) == null ? void 0 : _c.some((i) => {
-              var _a2;
-              return (_a2 = i.title) == null ? void 0 : _a2.includes(q.value);
+            var _a2, _b2, _c;
+            return (!filter.value || o.status === filter.value) && (!pickupState.value || ((_a2 = o.pickup) == null ? void 0 : _a2.status) === pickupState.value) && (!q.value || ((_b2 = o.orderId) == null ? void 0 : _b2.toLowerCase().includes(q.value.toLowerCase())) || ((_c = o.items) == null ? void 0 : _c.some((i) => {
+              var _a3;
+              return (_a3 = i.title) == null ? void 0 : _a3.includes(q.value);
             })));
           }
         )
@@ -28099,7 +28216,7 @@
       );
       let loadVersion = 0;
       async function load() {
-        var _a, _b;
+        var _a2, _b2;
         const request2 = scope.begin();
         const read = (path) => api(path, { signal: request2.signal });
         const stamp = ++loadVersion;
@@ -28133,10 +28250,10 @@
           return;
         }
         const base = "/merchants/" + pathId(mid);
-        const actor = (_a = store.user) == null ? void 0 : _a.userId;
+        const actor = (_a2 = store.user) == null ? void 0 : _a2.userId;
         const current = () => {
-          var _a2;
-          return stamp === loadVersion && route.value === section && store.merchantId === mid && ((_a2 = store.user) == null ? void 0 : _a2.userId) === actor;
+          var _a3;
+          return stamp === loadVersion && route.value === section && store.merchantId === mid && ((_a3 = store.user) == null ? void 0 : _a3.userId) === actor;
         };
         loading.value = true;
         try {
@@ -28161,7 +28278,7 @@
               })
             );
             if (!current()) return;
-            if (((_b = result.items) == null ? void 0 : _b.length) === 0 && page.value > 1 && result.total > 0) {
+            if (((_b2 = result.items) == null ? void 0 : _b2.length) === 0 && page.value > 1 && result.total > 0) {
               page.value = Math.max(1, Math.ceil(result.total / 10));
               return;
             }
@@ -28270,15 +28387,15 @@
         return "/merchants/" + pathId(store.merchantId);
       }
       function orderReminder(o) {
-        var _a, _b;
+        var _a2, _b2;
         const now = Date.now();
         const deadline = (o == null ? void 0 : o.deadline) ? Date.parse(o.deadline) : NaN;
         if ((o == null ? void 0 : o.status) === "PENDING_PAYMENT" && Number.isFinite(deadline)) {
           if (deadline <= now) return "付款已超时";
           if (deadline - now <= 15 * 60 * 1e3) return "付款即将超时";
         }
-        const pickupExpires = ((_a = o == null ? void 0 : o.pickup) == null ? void 0 : _a.expiresAt) ? Date.parse(o.pickup.expiresAt) : NaN;
-        if (((_b = o == null ? void 0 : o.pickup) == null ? void 0 : _b.status) === "READY" && Number.isFinite(pickupExpires) && pickupExpires <= now)
+        const pickupExpires = ((_a2 = o == null ? void 0 : o.pickup) == null ? void 0 : _a2.expiresAt) ? Date.parse(o.pickup.expiresAt) : NaN;
+        if (((_b2 = o == null ? void 0 : o.pickup) == null ? void 0 : _b2.status) === "READY" && Number.isFinite(pickupExpires) && pickupExpires <= now)
           return "自提凭证已过期";
         return "";
       }
@@ -28295,7 +28412,7 @@
         });
       }
       async function quickVerify() {
-        var _a;
+        var _a2;
         const code = quickToken.value.trim();
         if (!code) {
           notify("请输入 6 位取件码或扫码凭证");
@@ -28311,7 +28428,7 @@
           });
           if (!current()) return;
           quickToken.value = "";
-          const qCode = ((_a = res == null ? void 0 : res.pickup) == null ? void 0 : _a.pickupCode) ? `（取餐号 ${res.pickup.pickupCode}）` : "";
+          const qCode = ((_a2 = res == null ? void 0 : res.pickup) == null ? void 0 : _a2.pickupCode) ? `（取餐号 ${res.pickup.pickupCode}）` : "";
           notify("极速核销成功" + qCode);
           await load();
         } catch (e) {
@@ -28323,8 +28440,8 @@
       function pickSkuForReplenish(id) {
         sku2.value = id;
         nextTick(() => {
-          var _a;
-          return (_a = document.getElementById("merchantops-field-2")) == null ? void 0 : _a.focus();
+          var _a2;
+          return (_a2 = document.getElementById("merchantops-field-2")) == null ? void 0 : _a2.focus();
         });
       }
       async function replenish() {
@@ -28400,10 +28517,10 @@
         }
       }
       async function uploadStoreImage(event) {
-        var _a;
+        var _a2;
         if (!canOwner.value || !canAct.value || busy.value) return;
         const input = event.target;
-        const file = (_a = input.files) == null ? void 0 : _a[0];
+        const file = (_a2 = input.files) == null ? void 0 : _a2[0];
         input.value = "";
         if (!file) return;
         if (!["image/jpeg", "image/png"].includes(file.type) || !file.size || file.size > 2e6) {
@@ -28457,9 +28574,9 @@
         }
       }
       async function decisionAction(s, approved) {
-        var _a;
+        var _a2;
         if (!hasPermission("aftersale.review") || !s) return;
-        if (((_a = afterSales.value.find((row) => row.id === s.id)) == null ? void 0 : _a.status) !== "REQUESTED") {
+        if (((_a2 = afterSales.value.find((row) => row.id === s.id)) == null ? void 0 : _a2.status) !== "REQUESTED") {
           notify("该售后已不处于待审核状态，请刷新列表");
           return;
         }
@@ -28478,14 +28595,14 @@
       const merchantName = computed$5(() => merchant.value.name || "校内商户");
       const pendingPrepCount = computed$5(
         () => orders.value.filter((o) => {
-          var _a;
-          return o.status === "PAID" && ((_a = o.pickup) == null ? void 0 : _a.status) !== "READY";
+          var _a2;
+          return o.status === "PAID" && ((_a2 = o.pickup) == null ? void 0 : _a2.status) !== "READY";
         }).length
       );
       const pendingPickupCount = computed$5(
         () => orders.value.filter((o) => {
-          var _a;
-          return o.status === "PAID" && ((_a = o.pickup) == null ? void 0 : _a.status) === "READY";
+          var _a2;
+          return o.status === "PAID" && ((_a2 = o.pickup) == null ? void 0 : _a2.status) === "READY";
         }).length
       );
       const pendingPaymentCount = computed$5(
@@ -28493,19 +28610,19 @@
       );
       const pendingAfterSaleCount = computed$5(
         () => {
-          var _a;
-          return afterSales.value.filter((s) => s.status === "REQUESTED").length || Number(((_a = stats.value) == null ? void 0 : _a.refundedOrders) || 0);
+          var _a2;
+          return afterSales.value.filter((s) => s.status === "REQUESTED").length || Number(((_a2 = stats.value) == null ? void 0 : _a2.refundedOrders) || 0);
         }
       );
       const avgOrderCent = computed$5(() => {
-        var _a, _b, _c;
-        const denom = Number(((_a = stats.value) == null ? void 0 : _a.paidOrders) || ((_b = stats.value) == null ? void 0 : _b.totalOrders) || 0);
+        var _a2, _b2, _c;
+        const denom = Number(((_a2 = stats.value) == null ? void 0 : _a2.paidOrders) || ((_b2 = stats.value) == null ? void 0 : _b2.totalOrders) || 0);
         return denom > 0 ? Math.round(Number(((_c = stats.value) == null ? void 0 : _c.completedAmountCent) || 0) / denom) : 0;
       });
       const peakDayOrders = computed$5(
         () => {
-          var _a;
-          return Math.max(0, ...(((_a = stats.value) == null ? void 0 : _a.trend) || []).map((t2) => Number(t2.orderCount || 0)));
+          var _a2;
+          return Math.max(0, ...(((_a2 = stats.value) == null ? void 0 : _a2.trend) || []).map((t2) => Number(t2.orderCount || 0)));
         }
       );
       const readyRatePct = computed$5(() => {
@@ -28513,8 +28630,8 @@
         return totalActive > 0 ? Math.round(pendingPickupCount.value / totalActive * 100) : 100;
       });
       const sparkPaths = computed$5(() => {
-        var _a;
-        const list = (((_a = stats.value) == null ? void 0 : _a.trend) || []).slice(-7);
+        var _a2;
+        const list = (((_a2 = stats.value) == null ? void 0 : _a2.trend) || []).slice(-7);
         if (!list.length) {
           return {
             line: "M 4 22 L 56 18 L 112 20 L 176 12",
@@ -28652,7 +28769,7 @@
             ], 8, ["onClick"])
           ]),
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
+            var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p;
             return [
               _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
                 key: 0,
@@ -28758,7 +28875,7 @@
                               _createElementVNode("span", null, "总订单数"),
                               _createElementVNode("strong", null, [
                                 _createTextVNode(
-                                  _toDisplayString(((_a = _ctx.stats) == null ? void 0 : _a.totalOrders) ?? _ctx.orders.length) + " ",
+                                  _toDisplayString(((_a2 = _ctx.stats) == null ? void 0 : _a2.totalOrders) ?? _ctx.orders.length) + " ",
                                   1
                                   /* TEXT */
                                 ),
@@ -28836,7 +28953,7 @@
                           _Fragment,
                           null,
                           _renderList(_ctx.topOrders, (o) => {
-                            var _a2, _b2, _c2;
+                            var _a3, _b3, _c2;
                             return _openBlock(), _createElementBlock("div", {
                               class: "ops-list-line",
                               key: o.orderId
@@ -28849,7 +28966,7 @@
                               ]),
                               _createElementVNode("div", null, [
                                 _createElementVNode("strong", null, [
-                                  ((_a2 = o.pickup) == null ? void 0 : _a2.pickupCode) ? (_openBlock(), _createElementBlock(
+                                  ((_a3 = o.pickup) == null ? void 0 : _a3.pickupCode) ? (_openBlock(), _createElementBlock(
                                     "span",
                                     {
                                       key: 0,
@@ -28860,7 +28977,7 @@
                                     /* TEXT */
                                   )) : _createCommentVNode("v-if", true),
                                   _createTextVNode(
-                                    " " + _toDisplayString(((_c2 = (_b2 = o.items) == null ? void 0 : _b2[0]) == null ? void 0 : _c2.title) || "校园订单"),
+                                    " " + _toDisplayString(((_c2 = (_b3 = o.items) == null ? void 0 : _b3[0]) == null ? void 0 : _c2.title) || "校园订单"),
                                     1
                                     /* TEXT */
                                   )
@@ -29066,7 +29183,7 @@
                             _createElementVNode(
                               "em",
                               { class: "arco-todo-pill is-ok" },
-                              _toDisplayString(((_c = (_b = _ctx.stats) == null ? void 0 : _b.products) == null ? void 0 : _c.length) || 0) + " 款",
+                              _toDisplayString(((_c = (_b2 = _ctx.stats) == null ? void 0 : _b2.products) == null ? void 0 : _c.length) || 0) + " 款",
                               1
                               /* TEXT */
                             )
@@ -29309,7 +29426,7 @@
                           "order-status-label": _ctx.orderStatusLabel
                         }, {
                           besideDonut: _withCtx(() => {
-                            var _a2, _b2;
+                            var _a3, _b3;
                             return [
                               _createElementVNode("section", { class: "ops-card antd-qianniu-card" }, [
                                 _createElementVNode("div", { class: "ops-card-header" }, [
@@ -29360,7 +29477,7 @@
                                     _createElementVNode(
                                       "strong",
                                       null,
-                                      _toDisplayString(((_b2 = (_a2 = _ctx.stats) == null ? void 0 : _a2.products) == null ? void 0 : _b2.length) || 0),
+                                      _toDisplayString(((_b3 = (_a3 = _ctx.stats) == null ? void 0 : _a3.products) == null ? void 0 : _b3.length) || 0),
                                       1
                                       /* TEXT */
                                     )
@@ -29377,7 +29494,7 @@
                                   _Fragment,
                                   null,
                                   _renderList(_ctx.topOrders.slice(0, 4), (o) => {
-                                    var _a3, _b3, _c2;
+                                    var _a4, _b4, _c2;
                                     return _openBlock(), _createElementBlock("div", {
                                       class: "ops-list-line",
                                       key: o.orderId
@@ -29390,7 +29507,7 @@
                                       ]),
                                       _createElementVNode("div", null, [
                                         _createElementVNode("strong", null, [
-                                          ((_a3 = o.pickup) == null ? void 0 : _a3.pickupCode) ? (_openBlock(), _createElementBlock(
+                                          ((_a4 = o.pickup) == null ? void 0 : _a4.pickupCode) ? (_openBlock(), _createElementBlock(
                                             "span",
                                             {
                                               key: 0,
@@ -29401,7 +29518,7 @@
                                             /* TEXT */
                                           )) : _createCommentVNode("v-if", true),
                                           _createTextVNode(
-                                            " " + _toDisplayString(((_c2 = (_b3 = o.items) == null ? void 0 : _b3[0]) == null ? void 0 : _c2.title) || "校园订单"),
+                                            " " + _toDisplayString(((_c2 = (_b4 = o.items) == null ? void 0 : _b4[0]) == null ? void 0 : _c2.title) || "校园订单"),
                                             1
                                             /* TEXT */
                                           )
@@ -29465,7 +29582,7 @@
                             _Fragment,
                             null,
                             _renderList(_ctx.topOrders, (o) => {
-                              var _a2, _b2;
+                              var _a3, _b3;
                               return _openBlock(), _createElementBlock("div", {
                                 class: "ops-list-line",
                                 key: o.orderId
@@ -29480,7 +29597,7 @@
                                   _createElementVNode(
                                     "strong",
                                     null,
-                                    _toDisplayString(((_b2 = (_a2 = o.items) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.title) || "校园订单"),
+                                    _toDisplayString(((_b3 = (_a3 = o.items) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.title) || "校园订单"),
                                     1
                                     /* TEXT */
                                   ),
@@ -29709,7 +29826,7 @@
                               _Fragment,
                               null,
                               _renderList(_ctx.topOrders, (o) => {
-                                var _a2, _b2, _c2;
+                                var _a3, _b3, _c2;
                                 return _openBlock(), _createElementBlock("div", {
                                   class: "ops-list-line",
                                   key: o.orderId
@@ -29722,7 +29839,7 @@
                                   ]),
                                   _createElementVNode("div", null, [
                                     _createElementVNode("strong", null, [
-                                      ((_a2 = o.pickup) == null ? void 0 : _a2.pickupCode) ? (_openBlock(), _createElementBlock(
+                                      ((_a3 = o.pickup) == null ? void 0 : _a3.pickupCode) ? (_openBlock(), _createElementBlock(
                                         "span",
                                         {
                                           key: 0,
@@ -29733,7 +29850,7 @@
                                         /* TEXT */
                                       )) : _createCommentVNode("v-if", true),
                                       _createTextVNode(
-                                        " " + _toDisplayString(((_c2 = (_b2 = o.items) == null ? void 0 : _b2[0]) == null ? void 0 : _c2.title) || "校园订单"),
+                                        " " + _toDisplayString(((_c2 = (_b3 = o.items) == null ? void 0 : _b3[0]) == null ? void 0 : _c2.title) || "校园订单"),
                                         1
                                         /* TEXT */
                                       )
@@ -30521,7 +30638,7 @@
                     _Fragment,
                     null,
                     _renderList(_ctx.members, (m) => {
-                      var _a2;
+                      var _a3;
                       return _openBlock(), _createElementBlock("div", {
                         class: "ops-list-line",
                         key: m.userId
@@ -30540,7 +30657,7 @@
                           _createElementVNode(
                             "small",
                             null,
-                            _toDisplayString(((_a2 = _ctx.roles.find((r) => r.code === m.role)) == null ? void 0 : _a2.name) || m.role) + " · " + _toDisplayString(_ctx.membershipStatusLabel(m.status)),
+                            _toDisplayString(((_a3 = _ctx.roles.find((r) => r.code === m.role)) == null ? void 0 : _a3.name) || m.role) + " · " + _toDisplayString(_ctx.membershipStatusLabel(m.status)),
                             1
                             /* TEXT */
                           )
@@ -30751,20 +30868,20 @@
       let baseEpoch2 = 0, docEpoch = 0, readEpoch = 0;
       const canRead = computed$4(
         () => {
-          var _a;
-          return preview || (role.value === "admin" ? ((_a = store.workspace) == null ? void 0 : _a.platformAdmin) === true : hasPermission("knowledge.read"));
+          var _a2;
+          return preview || (role.value === "admin" ? ((_a2 = store.workspace) == null ? void 0 : _a2.platformAdmin) === true : hasPermission("knowledge.read"));
         }
       );
       const canManage = computed$4(
         () => {
-          var _a;
-          return preview || (role.value === "admin" ? ((_a = store.workspace) == null ? void 0 : _a.platformAdmin) === true : hasPermission("knowledge.manage"));
+          var _a2;
+          return preview || (role.value === "admin" ? ((_a2 = store.workspace) == null ? void 0 : _a2.platformAdmin) === true : hasPermission("knowledge.manage"));
         }
       );
       const context = (targetRole, targetMid) => targetRole === role.value && targetMid === store.merchantId;
       let refreshingBases = false;
       async function load() {
-        var _a, _b;
+        var _a2, _b2;
         const request2 = scope.begin();
         const valid = request2.current;
         const stamp = ++baseEpoch2, currentRole = role.value, mid = store.merchantId;
@@ -30775,7 +30892,7 @@
         docs.value = [];
         selected.value = null;
         text.value = "";
-        if (currentRole === "admin" && !preview && !((_a = store.workspace) == null ? void 0 : _a.platformAdmin)) {
+        if (currentRole === "admin" && !preview && !((_a2 = store.workspace) == null ? void 0 : _a2.platformAdmin)) {
           try {
             const [user, workspace] = await Promise.all([api("/auth/me"), api("/workspace")]);
             if (!valid() || stamp !== baseEpoch2 || !context(currentRole, mid)) return;
@@ -30797,7 +30914,7 @@
             (b) => currentRole === "admin" ? b.merchantId == null : b.merchantId === mid
           );
           if (!bases.value.some((b) => b.id === active.value))
-            active.value = ((_b = bases.value[0]) == null ? void 0 : _b.id) || "";
+            active.value = ((_b2 = bases.value[0]) == null ? void 0 : _b2.id) || "";
           refreshingBases = true;
           docPage.value = 1;
           refreshingBases = false;
@@ -30858,7 +30975,7 @@
         loadDocs();
       }
       async function read(d) {
-        var _a;
+        var _a2;
         const request2 = contentScope.begin();
         const valid = request2.current;
         const stamp = ++readEpoch, id = active.value, mid = store.merchantId, currentRole = role.value;
@@ -30872,7 +30989,7 @@
           const result = await api("/knowledge/documents/" + pathId(d.id), {
             signal: request2.signal
           });
-          if (stamp === readEpoch && active.value === id && ((_a = selected.value) == null ? void 0 : _a.id) === d.id && context(currentRole, mid)) {
+          if (stamp === readEpoch && active.value === id && ((_a2 = selected.value) == null ? void 0 : _a2.id) === d.id && context(currentRole, mid)) {
             text.value = result.content || "";
             selected.value = result;
           }
@@ -30906,8 +31023,8 @@
         }
       }
       function chooseFile(e) {
-        var _a;
-        const selectedFile = (_a = e.target.files) == null ? void 0 : _a[0];
+        var _a2;
+        const selectedFile = (_a2 = e.target.files) == null ? void 0 : _a2[0];
         file.value = null;
         if (!selectedFile) return;
         if (selectedFile.size === 0 || selectedFile.size > 2e6) {
@@ -31096,7 +31213,7 @@
             ])) : _createCommentVNode("v-if", true)
           ]),
           default: _withCtx(() => {
-            var _a;
+            var _a2;
             return [
               _ctx.error ? (_openBlock(), _createElementBlock(
                 "div",
@@ -31265,7 +31382,7 @@
                     _createElementVNode(
                       "h2",
                       null,
-                      _toDisplayString(((_a = _ctx.current) == null ? void 0 : _a.name) || "文档"),
+                      _toDisplayString(((_a2 = _ctx.current) == null ? void 0 : _a2.name) || "文档"),
                       1
                       /* TEXT */
                     ),
@@ -31296,11 +31413,11 @@
                     _Fragment,
                     null,
                     _renderList(_ctx.docs, (d) => {
-                      var _a2;
+                      var _a3;
                       return _openBlock(), _createElementBlock(
                         "div",
                         {
-                          class: _normalizeClass(["kb-doc", { active: ((_a2 = _ctx.selected) == null ? void 0 : _a2.id) === d.id }]),
+                          class: _normalizeClass(["kb-doc", { active: ((_a3 = _ctx.selected) == null ? void 0 : _a3.id) === d.id }]),
                           key: d.id
                         },
                         [
@@ -31563,7 +31680,7 @@
             ], 8, ["onClick"])
           ]),
           default: _withCtx(() => {
-            var _a;
+            var _a2;
             return [
               _createElementVNode("section", { class: "ops-card knowledge-debug-page" }, [
                 _createElementVNode("p", { class: "kb-debug-desc" }, "输入顾客常问的问题，验证当前已发布知识文档能否准确命中（仅做测试，不会写入导购记录）。"),
@@ -31652,7 +31769,7 @@
                     1
                     /* TEXT */
                   )) : _createCommentVNode("v-if", true),
-                  ((_a = _ctx.result.hits) == null ? void 0 : _a.length) ? (_openBlock(), _createElementBlock("div", {
+                  ((_a2 = _ctx.result.hits) == null ? void 0 : _a2.length) ? (_openBlock(), _createElementBlock("div", {
                     key: 2,
                     class: "ops-table-wrap"
                   }, [
@@ -31923,7 +32040,7 @@
     },
     setup() {
       const scope = requestScope();
-      const adminTheme = computed$2(() => designTheme.admin || "arco");
+      const adminTheme = computed$2(() => designTheme.admin || "antd");
       const route = computed$2(() => store.route.split("?")[0] || "/admin"), title = computed$2(() => titles[route.value] || "平台总览");
       const stats = ref$2(null), telemetry = ref$2(null), applications = ref$2([]), merchants = ref$2([]), products = ref$2([]), orders = ref$2([]), aftersales = ref$2([]), categories = ref$2([]), merchantTotal = ref$2(0), productTotal = ref$2(0);
       const selectedId = ref$2(""), search = ref$2(""), statsPeriod = ref$2(7), state = ref$2(route.value === "/admin/disputes" ? "DISPUTED" : ""), page = ref$2(1), pageInfo = ref$2({ total: 0, hasNext: false }), reason = ref$2(""), historyEvents = ref$2([]), historyLoading = ref$2(false), historyError = ref$2(""), category = ref$2({ code: "", name: "", active: true }), loading = ref$2(false), busy = ref$2(false), error = ref$2(""), allowed = ref$2(preview);
@@ -31944,7 +32061,7 @@
       });
       let loadVersion = 0;
       async function load() {
-        var _a, _b, _c;
+        var _a2, _b2, _c;
         const request2 = scope.begin();
         const read = (path) => api(path, { signal: request2.signal });
         const stamp = ++loadVersion;
@@ -31982,10 +32099,10 @@
         loading.value = true;
         try {
           if (stamp !== loadVersion) return;
-          const actor = (_a = store.user) == null ? void 0 : _a.userId;
+          const actor = (_a2 = store.user) == null ? void 0 : _a2.userId;
           const valid = () => {
-            var _a2;
-            return stamp === loadVersion && route.value === current && ((_a2 = store.user) == null ? void 0 : _a2.userId) === actor;
+            var _a3;
+            return stamp === loadVersion && route.value === current && ((_a3 = store.user) == null ? void 0 : _a3.userId) === actor;
           };
           const work = store.workspace || await read("/workspace");
           if (!valid()) return;
@@ -32006,7 +32123,7 @@
             merchantTotal.value = Number((m == null ? void 0 : m.total) || merchants.value.length);
             orders.value = o.items || [];
             telemetry.value = t2;
-            if ((_b = p2 == null ? void 0 : p2.items) == null ? void 0 : _b.length) products.value = p2.items;
+            if ((_b2 = p2 == null ? void 0 : p2.items) == null ? void 0 : _b2.length) products.value = p2.items;
             if ((p2 == null ? void 0 : p2.total) != null) productTotal.value = Number(p2.total);
           }
           if (current === "/admin/applications") {
@@ -32163,8 +32280,8 @@
         }
       }
       function decideRefund(a, approved) {
-        var _a;
-        if (((_a = aftersales.value.find((row) => row.id === (a == null ? void 0 : a.id))) == null ? void 0 : _a.status) !== "DISPUTED") {
+        var _a2;
+        if (((_a2 = aftersales.value.find((row) => row.id === (a == null ? void 0 : a.id))) == null ? void 0 : _a2.status) !== "DISPUTED") {
           notify("该售后已不处于争议状态，请刷新列表");
           return;
         }
@@ -32195,17 +32312,17 @@
         reason.value = "";
       }
       const categoryName = (code) => {
-        var _a, _b;
-        return ((_a = categories.value.find((c) => c.code === code)) == null ? void 0 : _a.name) || ((_b = store.categories.find((c) => c.code === code)) == null ? void 0 : _b.name) || code || "—";
+        var _a2, _b2;
+        return ((_a2 = categories.value.find((c) => c.code === code)) == null ? void 0 : _a2.name) || ((_b2 = store.categories.find((c) => c.code === code)) == null ? void 0 : _b2.name) || code || "—";
       };
       const merchantName = (id, row) => {
-        var _a, _b;
-        return (row == null ? void 0 : row.merchantName) || ((_a = merchants.value.find((m) => m.merchantId === id)) == null ? void 0 : _a.storeName) || ((_b = merchants.value.find((m) => m.merchantId === id)) == null ? void 0 : _b.name) || (id && id.length > 12 ? "商户 #" + id.slice(0, 8).toUpperCase() : id) || "—";
+        var _a2, _b2;
+        return (row == null ? void 0 : row.merchantName) || ((_a2 = merchants.value.find((m) => m.merchantId === id)) == null ? void 0 : _a2.storeName) || ((_b2 = merchants.value.find((m) => m.merchantId === id)) == null ? void 0 : _b2.name) || (id && id.length > 12 ? "商户 #" + id.slice(0, 8).toUpperCase() : id) || "—";
       };
       const resolveProductTitle = (pid) => {
-        var _a, _b, _c, _d;
+        var _a2, _b2, _c, _d;
         if (!pid) return "热销单品";
-        const fromStats = (_b = (((_a = stats.value) == null ? void 0 : _a.products) || []).find((p2) => p2.productId === pid)) == null ? void 0 : _b.title;
+        const fromStats = (_b2 = (((_a2 = stats.value) == null ? void 0 : _a2.products) || []).find((p2) => p2.productId === pid)) == null ? void 0 : _b2.title;
         if (fromStats) return fromStats;
         const fromProducts = (_c = products.value.find((p2) => p2.productId === pid)) == null ? void 0 : _c.title;
         if (fromProducts) return fromProducts;
@@ -32218,8 +32335,8 @@
       );
       const disputedCount = computed$2(
         () => {
-          var _a;
-          return aftersales.value.filter((a) => a.status === "DISPUTED").length || Number(((_a = stats.value) == null ? void 0 : _a.refundedOrders) || 0);
+          var _a2;
+          return aftersales.value.filter((a) => a.status === "DISPUTED").length || Number(((_a2 = stats.value) == null ? void 0 : _a2.refundedOrders) || 0);
         }
       );
       const displayMerchantCount = computed$2(
@@ -32230,19 +32347,19 @@
       );
       const peakDayOrders = computed$2(
         () => {
-          var _a;
-          return Math.max(0, ...(((_a = stats.value) == null ? void 0 : _a.trend) || []).map((t2) => Number(t2.orderCount || 0)));
+          var _a2;
+          return Math.max(0, ...(((_a2 = stats.value) == null ? void 0 : _a2.trend) || []).map((t2) => Number(t2.orderCount || 0)));
         }
       );
       const securityInterceptTotal = computed$2(
         () => {
-          var _a, _b, _c, _d;
-          return Number(((_a = telemetry.value) == null ? void 0 : _a.crawlerBlockedCount) || 0) + Number(((_b = telemetry.value) == null ? void 0 : _b.rateLimitedCount) || 0) + Number(((_c = telemetry.value) == null ? void 0 : _c.orderBrushBlockedCount) || 0) + Number(((_d = telemetry.value) == null ? void 0 : _d.pinLockoutCount) || 0);
+          var _a2, _b2, _c, _d;
+          return Number(((_a2 = telemetry.value) == null ? void 0 : _a2.crawlerBlockedCount) || 0) + Number(((_b2 = telemetry.value) == null ? void 0 : _b2.rateLimitedCount) || 0) + Number(((_c = telemetry.value) == null ? void 0 : _c.orderBrushBlockedCount) || 0) + Number(((_d = telemetry.value) == null ? void 0 : _d.pinLockoutCount) || 0);
         }
       );
       const sparkPaths = computed$2(() => {
-        var _a;
-        const list = (((_a = stats.value) == null ? void 0 : _a.trend) || []).slice(-7);
+        var _a2;
+        const list = (((_a2 = stats.value) == null ? void 0 : _a2.trend) || []).slice(-7);
         if (!list.length) {
           return {
             line: "M 4 22 L 56 18 L 112 20 L 176 12",
@@ -32358,7 +32475,7 @@
             ], 8, ["onClick"])
           ]),
           default: _withCtx(() => {
-            var _a, _b, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
+            var _a2, _b2, _c, _d, _e, _f, _g, _h, _i, _j, _k, _l, _m, _n, _o, _p, _q, _r, _s, _t, _u, _v, _w;
             return [
               _ctx.loading ? (_openBlock(), _createBlock(_component_StatusPanel, {
                 key: 0,
@@ -32406,7 +32523,7 @@
                               _createElementVNode("h2", null, "欢迎回来，实时同步校园经营数据"),
                               _createElementVNode("p", null, [
                                 _createTextVNode("青柠校园平台治理中心"),
-                                ((_a = _ctx.stats) == null ? void 0 : _a.periodStart) && ((_b = _ctx.stats) == null ? void 0 : _b.periodEnd) ? (_openBlock(), _createElementBlock(
+                                ((_a2 = _ctx.stats) == null ? void 0 : _a2.periodStart) && ((_b2 = _ctx.stats) == null ? void 0 : _b2.periodEnd) ? (_openBlock(), _createElementBlock(
                                   _Fragment,
                                   { key: 0 },
                                   [
@@ -32951,7 +33068,7 @@
                           _Fragment,
                           null,
                           _renderList(_ctx.orders.slice(0, 4), (o) => {
-                            var _a2, _b2;
+                            var _a3, _b3;
                             return _openBlock(), _createElementBlock("div", {
                               class: "ops-list-line compact-rail-line",
                               key: o.orderId
@@ -32960,7 +33077,7 @@
                                 _createElementVNode(
                                   "strong",
                                   null,
-                                  _toDisplayString(((_b2 = (_a2 = o.items) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.title) || o.orderId),
+                                  _toDisplayString(((_b3 = (_a3 = o.items) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.title) || o.orderId),
                                   1
                                   /* TEXT */
                                 ),
@@ -33265,7 +33382,7 @@
                                 _Fragment,
                                 null,
                                 _renderList(_ctx.orders.slice(0, 4), (o) => {
-                                  var _a2, _b2;
+                                  var _a3, _b3;
                                   return _openBlock(), _createElementBlock("div", {
                                     class: "ops-list-line",
                                     key: o.orderId
@@ -33280,7 +33397,7 @@
                                       _createElementVNode(
                                         "strong",
                                         null,
-                                        _toDisplayString(((_b2 = (_a2 = o.items) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.title) || o.orderId),
+                                        _toDisplayString(((_b3 = (_a3 = o.items) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.title) || o.orderId),
                                         1
                                         /* TEXT */
                                       ),
@@ -33981,7 +34098,7 @@
                               _Fragment,
                               null,
                               _renderList(_ctx.orders.slice(0, 6), (o) => {
-                                var _a2, _b2;
+                                var _a3, _b3;
                                 return _openBlock(), _createElementBlock("div", {
                                   class: "ops-list-line",
                                   key: o.orderId
@@ -33993,7 +34110,7 @@
                                     _createElementVNode(
                                       "strong",
                                       null,
-                                      _toDisplayString(((_b2 = (_a2 = o.items) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.title) || o.orderId),
+                                      _toDisplayString(((_b3 = (_a3 = o.items) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.title) || o.orderId),
                                       1
                                       /* TEXT */
                                     ),
@@ -34131,17 +34248,17 @@
                           _Fragment,
                           null,
                           _renderList(_ctx.filtered, (a) => {
-                            var _a2, _b2;
+                            var _a3, _b3;
                             return _openBlock(), _createElementBlock("tr", {
                               key: a.applicationId,
-                              class: _normalizeClass({ active: ((_a2 = _ctx.pickedApplication) == null ? void 0 : _a2.applicationId) === a.applicationId }),
+                              class: _normalizeClass({ active: ((_a3 = _ctx.pickedApplication) == null ? void 0 : _a3.applicationId) === a.applicationId }),
                               onClick: ($event) => _ctx.selectApplication(a)
                             }, [
                               _createElementVNode("td", null, [
                                 _createElementVNode("button", {
                                   class: "row-link",
                                   onClick: _withModifiers(($event) => _ctx.selectApplication(a), ["stop"]),
-                                  "aria-pressed": ((_b2 = _ctx.pickedApplication) == null ? void 0 : _b2.applicationId) === a.applicationId
+                                  "aria-pressed": ((_b3 = _ctx.pickedApplication) == null ? void 0 : _b3.applicationId) === a.applicationId
                                 }, _toDisplayString(a.merchantName), 9, ["onClick", "aria-pressed"]),
                                 _createElementVNode(
                                   "small",
@@ -34348,7 +34465,7 @@
                         _Fragment,
                         null,
                         _renderList(_ctx.filtered, (p2) => {
-                          var _a2;
+                          var _a3;
                           return _openBlock(), _createElementBlock("tr", {
                             key: p2.productId
                           }, [
@@ -34366,7 +34483,7 @@
                                     1
                                     /* TEXT */
                                   ),
-                                  ((_a2 = p2.skus) == null ? void 0 : _a2.length) ? (_openBlock(), _createElementBlock(
+                                  ((_a3 = p2.skus) == null ? void 0 : _a3.length) ? (_openBlock(), _createElementBlock(
                                     "span",
                                     { key: 0 },
                                     _toDisplayString(p2.skus.length) + " 个规格",
@@ -34465,7 +34582,7 @@
                         _Fragment,
                         null,
                         _renderList(_ctx.filtered, (o) => {
-                          var _a2, _b2;
+                          var _a3, _b3;
                           return _openBlock(), _createElementBlock("tr", {
                             key: o.orderId
                           }, [
@@ -34477,7 +34594,7 @@
                               _createElementVNode(
                                 "small",
                                 null,
-                                _toDisplayString(((_b2 = (_a2 = o.items) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.title) || "—"),
+                                _toDisplayString(((_b3 = (_a3 = o.items) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.title) || "—"),
                                 1
                                 /* TEXT */
                               )
@@ -34951,8 +35068,8 @@
         grants.value = [...values];
       }
       async function load() {
-        var _a, _b, _c;
-        const stamp = ++epoch, mid = store.merchantId, actor = (_a = store.user) == null ? void 0 : _a.userId;
+        var _a2, _b2, _c;
+        const stamp = ++epoch, mid = store.merchantId, actor = (_a2 = store.user) == null ? void 0 : _a2.userId;
         reset();
         error.value = "";
         if (preview) {
@@ -34965,7 +35082,7 @@
         loading.value = true;
         try {
           if (!mid) await loadMerchant();
-          const id = store.merchantId, uid2 = (_b = store.user) == null ? void 0 : _b.userId;
+          const id = store.merchantId, uid2 = (_b2 = store.user) == null ? void 0 : _b2.userId;
           if (stamp !== epoch || (!mid ? false : mid !== id) || !hasPermission("role.manage")) return;
           const [rs, ps, ms] = await Promise.all([
             api(prefix() + "/roles"),
@@ -34985,13 +35102,13 @@
         }
       }
       async function save() {
-        var _a, _b, _c;
-        if (preview || busy.value || !canManage.value || ((_a = current.value) == null ? void 0 : _a.builtin)) return;
+        var _a2, _b2, _c;
+        if (preview || busy.value || !canManage.value || ((_a2 = current.value) == null ? void 0 : _a2.builtin)) return;
         if (!name.value.trim() || grants.value.length === 0) {
           notify("请输入角色名称并选择至少一项权限");
           return;
         }
-        const id = store.merchantId, uid2 = (_b = store.user) == null ? void 0 : _b.userId, stamp = epoch;
+        const id = store.merchantId, uid2 = (_b2 = store.user) == null ? void 0 : _b2.userId, stamp = epoch;
         busy.value = true;
         try {
           const code = selected.value;
@@ -35013,10 +35130,10 @@
         }
       }
       async function remove2() {
-        var _a, _b, _c, _d;
-        if (preview || busy.value || !canManage.value || !selected.value || ((_a = current.value) == null ? void 0 : _a.builtin))
+        var _a2, _b2, _c, _d;
+        if (preview || busy.value || !canManage.value || !selected.value || ((_a2 = current.value) == null ? void 0 : _a2.builtin))
           return;
-        if (!window.confirm("确定删除角色「" + ((_b = current.value) == null ? void 0 : _b.name) + "」？")) return;
+        if (!window.confirm("确定删除角色「" + ((_b2 = current.value) == null ? void 0 : _b2.name) + "」？")) return;
         const id = store.merchantId, uid2 = (_c = store.user) == null ? void 0 : _c.userId, stamp = epoch;
         busy.value = true;
         try {
@@ -35033,8 +35150,8 @@
       onMounted$1(load);
       onUnmounted$1(() => ++epoch);
       watch([() => store.merchantId, () => {
-        var _a;
-        return (_a = store.user) == null ? void 0 : _a.userId;
+        var _a2;
+        return (_a2 = store.user) == null ? void 0 : _a2.userId;
       }, canManage], load);
       return {
         store,
@@ -35082,7 +35199,7 @@
             ], 8, ["onClick", "disabled"])) : _createCommentVNode("v-if", true)
           ]),
           default: _withCtx(() => {
-            var _a, _b, _c;
+            var _a2, _b2, _c;
             return [
               _ctx.error ? (_openBlock(), _createElementBlock(
                 "div",
@@ -35175,7 +35292,7 @@
                       1
                       /* TEXT */
                     ),
-                    ((_a = _ctx.current) == null ? void 0 : _a.builtin) ? (_openBlock(), _createElementBlock("span", {
+                    ((_a2 = _ctx.current) == null ? void 0 : _a2.builtin) ? (_openBlock(), _createElementBlock("span", {
                       key: 0,
                       class: "status-tag"
                     }, "系统内置")) : _createCommentVNode("v-if", true)
@@ -35190,7 +35307,7 @@
                     "onUpdate:modelValue": ($event) => _ctx.name = $event,
                     maxlength: "40",
                     required: "",
-                    disabled: _ctx.preview || !!((_b = _ctx.current) == null ? void 0 : _b.builtin) || _ctx.busy,
+                    disabled: _ctx.preview || !!((_b2 = _ctx.current) == null ? void 0 : _b2.builtin) || _ctx.busy,
                     placeholder: "例如：商品管理员"
                   }, null, 8, ["onUpdate:modelValue", "disabled"]), [
                     [
@@ -35215,7 +35332,7 @@
                       _Fragment,
                       null,
                       _renderList(_ctx.permissions, (p2) => {
-                        var _a2;
+                        var _a3;
                         return _openBlock(), _createElementBlock("label", {
                           key: p2.code,
                           "data-permission": p2.code,
@@ -35224,7 +35341,7 @@
                           _createElementVNode("input", {
                             type: "checkbox",
                             checked: _ctx.checked(p2.code),
-                            disabled: _ctx.preview || !!((_a2 = _ctx.current) == null ? void 0 : _a2.builtin) || !p2.grantable || _ctx.busy,
+                            disabled: _ctx.preview || !!((_a3 = _ctx.current) == null ? void 0 : _a3.builtin) || !p2.grantable || _ctx.busy,
                             onChange: ($event) => _ctx.toggle(p2.code, $event.target.checked)
                           }, null, 40, ["checked", "disabled", "onChange"]),
                           _createElementVNode("span", null, [
@@ -35282,6 +35399,12 @@
     youpin: "小米有品",
     xiaohongshu: "小红书"
   };
+  const SHOWCASE_WORKSPACES = [
+    { path: "/", label: "消费端首页" },
+    { path: "/ai", label: "AI 导购" },
+    { path: "/merchant", label: "商家工作台" },
+    { path: "/admin", label: "平台管理台" }
+  ];
   const DesignVariantSwitcher = {
     name: "DesignVariantSwitcher",
     props: {
@@ -35300,6 +35423,12 @@
       const currentShortBadge = computed(
         () => SHORT_CONSUMER_BADGES[designTheme.consumer] || "淘宝2025"
       );
+      const showSwitcher = computed(() => Boolean(designTheme.showcase));
+      const currentRouteBase = computed(() => (store.route || "/").split("?")[0] || "/");
+      function jumpWorkspace(path) {
+        go(path);
+        open.value = false;
+      }
       function toggleOpen() {
         open.value = !open.value;
       }
@@ -35324,6 +35453,10 @@
       });
       return {
         preview,
+        showSwitcher,
+        currentRouteBase,
+        SHOWCASE_WORKSPACES,
+        jumpWorkspace,
         open,
         rootRef,
         alignClass,
@@ -35341,7 +35474,7 @@
       const { createElementVNode: _createElementVNode, openBlock: _openBlock, createElementBlock: _createElementBlock, createCommentVNode: _createCommentVNode, toDisplayString: _toDisplayString, createTextVNode: _createTextVNode, resolveComponent: _resolveComponent, createVNode: _createVNode2, normalizeClass: _normalizeClass, renderList: _renderList, Fragment: _Fragment } = Vue;
       return function render2(_ctx, _cache) {
         const _component_Icon = _resolveComponent("Icon");
-        return !_ctx.preview ? (_openBlock(), _createElementBlock(
+        return _ctx.showSwitcher ? (_openBlock(), _createElementBlock(
           "div",
           {
             key: 0,
@@ -35444,6 +35577,28 @@
                   ], 8, ["onClick"])
                 ])
               ]),
+              _ctx.preview ? (_openBlock(), _createElementBlock("section", {
+                key: 0,
+                class: "variant-section"
+              }, [
+                _createElementVNode("h3", { class: "variant-section-label" }, "演示端侧直达（免登录纯前端预览）"),
+                _createElementVNode("div", { class: "variant-workspace-grid" }, [
+                  (_openBlock(true), _createElementBlock(
+                    _Fragment,
+                    null,
+                    _renderList(_ctx.SHOWCASE_WORKSPACES, (ws) => {
+                      return _openBlock(), _createElementBlock("button", {
+                        key: ws.path,
+                        type: "button",
+                        class: _normalizeClass(["variant-workspace-btn", { "is-active": _ctx.currentRouteBase === ws.path }]),
+                        onClick: ($event) => _ctx.jumpWorkspace(ws.path)
+                      }, _toDisplayString(ws.label), 11, ["onClick"]);
+                    }),
+                    128
+                    /* KEYED_FRAGMENT */
+                  ))
+                ])
+              ])) : _createCommentVNode("v-if", true),
               _createElementVNode("section", { class: "variant-section" }, [
                 _createElementVNode("h3", { class: "variant-section-label" }, "消费端 1:1 大厂复刻（4 套完整布局）"),
                 _createElementVNode("div", { class: "variant-grid-1" }, [

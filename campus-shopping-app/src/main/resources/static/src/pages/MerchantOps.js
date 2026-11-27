@@ -63,7 +63,7 @@ export default {
   },
   setup() {
     const scope = requestScope();
-    const adminTheme = computed(() => designTheme.admin || 'arco');
+    const adminTheme = computed(() => designTheme.admin || 'antd');
     const route = computed(() => store.route.split('?')[0] || '/merchant');
     const title = computed(() => names[route.value] || '经营概览');
     const filter = ref('');

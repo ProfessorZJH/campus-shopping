@@ -45,7 +45,7 @@ export default {
       mobileNav = ref(null),
       soundOn = ref(true);
     let eventSource = null;
-    const adminTheme = computed(() => designTheme.admin || 'arco');
+    const adminTheme = computed(() => designTheme.admin || 'antd');
     const currentPath = computed(() => store.route.split('?')[0] || '/');
     const visibleMerchantNav = computed(() =>
       merchantNav.filter(([, , path]) => hasPermission(merchantPermissions[path])),

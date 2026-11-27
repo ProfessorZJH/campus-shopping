@@ -2,7 +2,9 @@ import { DEMO_MERCHANTS, DEMO_CATEGORIES, DEMO_PRODUCTS, DEMO_STOCKS } from './d
 import { api, query, resetCsrf, warmCsrf, onUnauthorized, setIdentityGuard } from './api.js';
 const { reactive } = Vue;
 export const preview =
-  window.__CAMPUS_TEST_DEMO__ === true || new URLSearchParams(location.search).get('demo') === '1';
+  window.__CAMPUS_TEST_DEMO__ === true ||
+  (typeof document !== 'undefined' && document.documentElement?.dataset?.demoEntry === '1') ||
+  new URLSearchParams(location.search).get('demo') === '1';
 export const store = reactive({
   preview,
   route: window.__CAMPUS_TEST_ROUTE__ || location.hash.replace(/^#/, '') || '/',
