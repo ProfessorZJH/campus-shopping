@@ -12,10 +12,15 @@
 }
 
 /* ---------- 1. Global Min-Width & Fixed-Containing-Block Guards ---------- */
-.consumer-shell,
+/* 保留 .consumer-width / .xhs-app-frame 在 consumer.css 中的居中版心最大宽度，绝不用 100% 覆盖导致大屏卡片撑大 */
 .consumer-width,
+.xhs-app-frame {
+  min-width: 0;
+  width: 100%;
+}
+
+.consumer-shell,
 .consumer-main,
-.xhs-app-frame,
 .xhs-main-column,
 .guide-shell,
 .ai-workspace,
