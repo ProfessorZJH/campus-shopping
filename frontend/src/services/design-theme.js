@@ -1,83 +1,90 @@
 const { reactive } = Vue;
 
-const STORAGE_KEY = 'campus_ui_theme_v7';
+const STORAGE_KEY = 'campus_ui_theme_v8';
 
 export const CONSUMER_THEMES = [
   {
     id: 'taobao',
-    label: '淘宝 2025 / 京东',
-    desc: '橙红高转化潮流零售',
+    name: '淘宝 2025 PC',
+    label: '淘宝 2025 PC',
+    shortName: '淘宝2025',
+    desc: '顶栏+橙色大搜索+三栏好店+5列猜你喜欢',
     swatchClass: 'swatch-taobao',
   },
   {
+    id: 'jd',
+    name: '京东 PC 版',
+    label: '京东 PC 版',
+    shortName: '京东PC',
+    desc: '京东红方正搜索+秒杀横条+4块货架首屏',
+    swatchClass: 'swatch-jd',
+  },
+  {
     id: 'youpin',
-    label: '小米有品 / 严选',
-    desc: '黑金极简精品生活',
+    name: '小米有品 PC',
+    label: '小米有品 PC',
+    shortName: '小米有品',
+    desc: '深黑顶栏+深棕悬浮分类大图+极简画廊',
     swatchClass: 'swatch-youpin',
   },
   {
-    id: 'hema',
-    label: '盒马 / 山姆',
-    desc: '品质生鲜蓝橙双色',
-    swatchClass: 'swatch-hema',
-  },
-  {
-    id: 'dingdong',
-    label: '叮咚买菜 / 小象',
-    desc: '明快即时鲜绿零售',
-    swatchClass: 'swatch-dingdong',
-  },
-];
-
-export const HOME_LAYOUTS = [
-  {
-    id: 'classic',
-    label: '经典三栏大片首屏',
-    desc: '分类侧栏 + 摄影轮播 + AI 导购舱',
-  },
-  {
-    id: 'feed',
-    label: '逛逛极简高密流',
-    desc: '小红书 / 逛逛首屏直出五列商品流',
+    id: 'xiaohongshu',
+    name: '小红书 Web',
+    label: '小红书 Web',
+    shortName: '小红书',
+    desc: '左侧固定竖导航+无横幅4:5笔记瀑布流',
+    swatchClass: 'swatch-xiaohongshu',
   },
 ];
 
 export const ADMIN_THEMES = [
   {
     id: 'arco',
-    label: '字节 Arco / 抖店后台',
-    desc: '纯白侧栏 · 科技蓝 #165DFF',
+    name: '字节 Arco Pro',
+    label: '字节 Arco Pro',
+    shortName: 'Arco Pro',
+    desc: '通栏白顶栏+左7右3工作台+一体式指标卡',
     swatchClass: 'swatch-arco',
   },
   {
     id: 'antd',
-    label: '阿里 AntD 5 / 千牛工作台',
-    desc: '纯白侧栏 · 右侧竖标企业蓝',
+    name: '阿里 AntD / 千牛',
+    label: '阿里 AntD / 千牛',
+    shortName: 'AntD 千牛',
+    desc: '深海蓝顶栏+4张分析卡+趋势&热销双拼卡',
     swatchClass: 'swatch-antd',
   },
   {
     id: 'meituan',
-    label: '美团商家工具风',
-    desc: '深蓝灰侧栏 · 金黄高光焦点',
+    name: '美团商家版',
+    label: '美团商家版',
+    shortName: '美团商家',
+    desc: '深蓝灰全高侧栏+顶部暖金核销指挥条',
     swatchClass: 'swatch-meituan',
   },
 ];
 
 const DEFAULTS = {
   consumer: 'taobao',
-  layout: 'classic',
   admin: 'arco',
 };
 
 const VALID_CONSUMER = new Set(CONSUMER_THEMES.map((item) => item.id));
-const VALID_LAYOUT = new Set(HOME_LAYOUTS.map((item) => item.id));
 const VALID_ADMIN = new Set(ADMIN_THEMES.map((item) => item.id));
 
 export const designTheme = reactive({
   consumer: DEFAULTS.consumer,
-  layout: DEFAULTS.layout,
   admin: DEFAULTS.admin,
+  searchDraft: '',
 });
+
+function normalizeConsumer(id) {
+  return VALID_CONSUMER.has(id) ? id : DEFAULTS.consumer;
+}
+
+function normalizeAdmin(id) {
+  return VALID_ADMIN.has(id) ? id : DEFAULTS.admin;
+}
 
 function readStoredTheme() {
   try {
@@ -96,7 +103,6 @@ function persistTheme() {
       STORAGE_KEY,
       JSON.stringify({
         consumer: designTheme.consumer,
-        layout: designTheme.layout,
         admin: designTheme.admin,
       }),
     );
@@ -115,7 +121,6 @@ function applyDataset() {
   if (typeof document === 'undefined' || !document.documentElement) return;
   const root = document.documentElement;
   root.dataset.consumerTheme = designTheme.consumer;
-  root.dataset.homeLayout = designTheme.layout;
   root.dataset.adminTheme = designTheme.admin;
 }
 
@@ -123,25 +128,28 @@ let hashListenerInstalled = false;
 
 function syncFromHashQuery() {
   const hashParams = parseHashQuery();
-  const ct = hashParams.get('ct');
-  const hl = hashParams.get('hl');
-  const at = hashParams.get('at');
   let changed = false;
 
-  if (ct && VALID_CONSUMER.has(ct) && designTheme.consumer !== ct) {
-    designTheme.consumer = ct;
-    changed = true;
+  if (hashParams.has('ct')) {
+    const nextConsumer = normalizeConsumer(hashParams.get('ct'));
+    if (designTheme.consumer !== nextConsumer) {
+      designTheme.consumer = nextConsumer;
+      changed = true;
+    }
   }
-  if (hl && VALID_LAYOUT.has(hl) && designTheme.layout !== hl) {
-    designTheme.layout = hl;
-    changed = true;
-  }
-  if (at && VALID_ADMIN.has(at) && designTheme.admin !== at) {
-    designTheme.admin = at;
-    changed = true;
+
+  if (hashParams.has('at')) {
+    const nextAdmin = normalizeAdmin(hashParams.get('at'));
+    if (designTheme.admin !== nextAdmin) {
+      designTheme.admin = nextAdmin;
+      changed = true;
+    }
   }
 
   if (changed) {
+    applyDataset();
+    persistTheme();
+  } else if (hashParams.has('ct') || hashParams.has('at')) {
     applyDataset();
     persistTheme();
   }
@@ -152,25 +160,19 @@ export function initDesignTheme() {
   const searchParams = new URLSearchParams(window.location.search || '');
   const hashParams = parseHashQuery();
 
-  const nextConsumer =
-    hashParams.get('ct') || searchParams.get('ct') || saved?.consumer || DEFAULTS.consumer;
-  const nextLayout =
-    hashParams.get('hl') || searchParams.get('hl') || saved?.layout || DEFAULTS.layout;
-  const nextAdmin =
-    hashParams.get('at') || searchParams.get('at') || saved?.admin || DEFAULTS.admin;
+  const rawConsumer =
+    hashParams.get('ct') ?? searchParams.get('ct') ?? saved?.consumer ?? DEFAULTS.consumer;
+  const rawAdmin = hashParams.get('at') ?? searchParams.get('at') ?? saved?.admin ?? DEFAULTS.admin;
 
-  designTheme.consumer = VALID_CONSUMER.has(nextConsumer) ? nextConsumer : DEFAULTS.consumer;
-  designTheme.layout = VALID_LAYOUT.has(nextLayout) ? nextLayout : DEFAULTS.layout;
-  designTheme.admin = VALID_ADMIN.has(nextAdmin) ? nextAdmin : DEFAULTS.admin;
+  designTheme.consumer = normalizeConsumer(rawConsumer);
+  designTheme.admin = normalizeAdmin(rawAdmin);
 
   applyDataset();
 
   if (
     hashParams.has('ct') ||
-    hashParams.has('hl') ||
     hashParams.has('at') ||
     searchParams.has('ct') ||
-    searchParams.has('hl') ||
     searchParams.has('at')
   ) {
     persistTheme();
@@ -183,29 +185,19 @@ export function initDesignTheme() {
 }
 
 export function setConsumerTheme(id) {
-  if (!VALID_CONSUMER.has(id)) return;
-  designTheme.consumer = id;
-  applyDataset();
-  persistTheme();
-}
-
-export function setHomeLayout(id) {
-  if (!VALID_LAYOUT.has(id)) return;
-  designTheme.layout = id;
+  designTheme.consumer = normalizeConsumer(id);
   applyDataset();
   persistTheme();
 }
 
 export function setAdminTheme(id) {
-  if (!VALID_ADMIN.has(id)) return;
-  designTheme.admin = id;
+  designTheme.admin = normalizeAdmin(id);
   applyDataset();
   persistTheme();
 }
 
 export function resetDesignTheme() {
   designTheme.consumer = DEFAULTS.consumer;
-  designTheme.layout = DEFAULTS.layout;
   designTheme.admin = DEFAULTS.admin;
   applyDataset();
   persistTheme();

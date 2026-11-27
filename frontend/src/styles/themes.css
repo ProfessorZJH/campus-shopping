@@ -1,21 +1,21 @@
 /* ==========================================================================
-   V7 多套国内大厂主题矩阵与方案切换器样式 (themes.css)
-   - 消费端 4 套：taobao / youpin / hema / dingdong
-   - 商家与平台后台 3 套（独立作用域）：arco / antd / meituan
-   - 右下角悬浮视觉方案切换胶囊与面板 (.variant-switcher-*)
+   V8 国内大厂 1:1 结构复刻主题矩阵与内嵌式切换器样式 (themes.css)
+   - 消费端 4 套完整大厂复刻：taobao / jd / youpin / xiaohongshu
+   - 后台 3 套独立设计系统：arco / antd / meituan
+   - 内嵌顶栏/侧栏触发器与纯白下拉浮层 (.variant-switcher-inline / .variant-switcher-panel)
    ========================================================================== */
 
-/* ---------- 1. 淘宝 2025 新版 / 京东潮流零售风 (Default) ---------- */
+/* ---------- 1. 淘宝 2025 PC 版 (Default) ---------- */
 html[data-consumer-theme='taobao'] {
   --bg-canvas: #f4f5f7;
   --bg-canvas-end: #f0f2f5;
   --bg-surface: #ffffff;
   --bg-subtle: #f7f8fa;
   --bg-hover: #f2f3f5;
-  --ink-primary: #1d2129;
-  --ink-secondary: #4e5969;
+  --ink-primary: #1f1f1f;
+  --ink-secondary: #50607a;
   --ink-muted: #86909c;
-  --border-subtle: rgba(29, 33, 41, 0.06);
+  --border-subtle: rgba(31, 31, 31, 0.06);
   --border-default: #e5e6eb;
   --border-control: #c9cdd4;
   --color-brand: #ff5000;
@@ -25,7 +25,7 @@ html[data-consumer-theme='taobao'] {
   --color-brand-border: #ffd8bf;
   --color-focus: #ff5000;
   --gradient-brand: linear-gradient(135deg, #ff6a00 0%, #ff4500 100%);
-  --gradient-buy: linear-gradient(135deg, #ff9402 0%, #ff6200 100%);
+  --gradient-buy: linear-gradient(135deg, #ff9900 0%, #ff6a00 100%);
   --color-price: #ff5000;
   --radius-card: 12px;
   --radius-btn: 999px;
@@ -35,83 +35,101 @@ html[data-consumer-theme='taobao'] {
   --logo-accent: #ffe066;
 }
 
-/* ---------- 2. 小米有品 / 网易严选精品生活风 ---------- */
+/* ---------- 2. 京东 PC 版 ---------- */
+html[data-consumer-theme='jd'] {
+  --bg-canvas: #f4f4f4;
+  --bg-canvas-end: #efefef;
+  --bg-surface: #ffffff;
+  --bg-subtle: #f8f8f8;
+  --bg-hover: #f0f0f0;
+  --ink-primary: #333333;
+  --ink-secondary: #666666;
+  --ink-muted: #999999;
+  --border-subtle: rgba(51, 51, 51, 0.06);
+  --border-default: #e6e6e6;
+  --border-control: #cccccc;
+  --color-brand: #e1251b;
+  --color-brand-hover: #c81623;
+  --color-brand-strong: #a8121b;
+  --color-brand-soft: #fff0f0;
+  --color-brand-border: #ffccc7;
+  --color-focus: #e1251b;
+  --gradient-brand: linear-gradient(135deg, #f12e24 0%, #d91e18 100%);
+  --gradient-buy: linear-gradient(135deg, #ff7a18 0%, #e1251b 100%);
+  --color-price: #e1251b;
+  --radius-card: 4px;
+  --radius-btn: 4px;
+  --search-border: #e1251b;
+  --logo-from: #ec2b21;
+  --logo-to: #c81623;
+  --logo-accent: #ffe066;
+}
+
+/* ---------- 3. 小米有品 PC 版 ---------- */
 html[data-consumer-theme='youpin'] {
-  --bg-canvas: #f5f5f7;
-  --bg-canvas-end: #f2f2f5;
+  --bg-canvas: #ffffff;
+  --bg-canvas-end: #f9f9f9;
   --bg-surface: #ffffff;
-  --bg-subtle: #f7f7f8;
-  --bg-hover: #efeff2;
-  --color-brand: #1d2129;
-  --color-brand-hover: #111318;
-  --color-brand-strong: #0f1115;
-  --color-brand-soft: #f5f3ef;
-  --color-brand-border: #e3dacb;
-  --color-focus: #8a6d46;
-  --gradient-brand: linear-gradient(135deg, #2b303a 0%, #15181e 100%);
-  --gradient-buy: linear-gradient(135deg, #a98656 0%, #8c6d43 100%);
-  --color-price: #c93b2b;
-  --radius-card: 8px;
-  --radius-btn: 6px;
-  --search-border: #d4d7dd;
-  --logo-from: #2a2e37;
-  --logo-to: #14171d;
-  --logo-accent: #d9b37c;
+  --bg-subtle: #f8f8f8;
+  --bg-hover: #f3efe9;
+  --ink-primary: #333333;
+  --ink-secondary: #666666;
+  --ink-muted: #999999;
+  --border-subtle: rgba(51, 51, 51, 0.06);
+  --border-default: #e7e7e7;
+  --border-control: #d5cdc2;
+  --color-brand: #845f3f;
+  --color-brand-hover: #6e4e33;
+  --color-brand-strong: #583d27;
+  --color-brand-soft: #f7f3ee;
+  --color-brand-border: #e5d7c6;
+  --color-focus: #845f3f;
+  --gradient-brand: linear-gradient(135deg, #966d49 0%, #7a5637 100%);
+  --gradient-buy: linear-gradient(135deg, #c93b2b 0%, #a92112 100%);
+  --color-price: #a92112;
+  --radius-card: 2px;
+  --radius-btn: 2px;
+  --search-border: #e7e7e7;
+  --logo-from: #946b47;
+  --logo-to: #745134;
+  --logo-accent: #f4dec4;
 }
 
-/* ---------- 3. 盒马 / 山姆品质即时零售风 ---------- */
-html[data-consumer-theme='hema'] {
-  --bg-canvas: #f4f6f9;
-  --bg-canvas-end: #eef2f7;
+/* ---------- 4. 小红书 Web 版 ---------- */
+html[data-consumer-theme='xiaohongshu'] {
+  --bg-canvas: #ffffff;
+  --bg-canvas-end: #ffffff;
   --bg-surface: #ffffff;
-  --bg-subtle: #f2f6fc;
-  --bg-hover: #eaf1fa;
-  --color-brand: #0089ff;
-  --color-brand-hover: #0074e0;
-  --color-brand-strong: #005bb5;
-  --color-brand-soft: #edf6ff;
-  --color-brand-border: #b8deff;
-  --color-focus: #0089ff;
-  --gradient-brand: linear-gradient(135deg, #1698ff 0%, #0075eb 100%);
-  --gradient-buy: linear-gradient(135deg, #ff7d1a 0%, #ff5800 100%);
-  --color-price: #ff5500;
-  --radius-card: 14px;
+  --bg-subtle: #f5f5f5;
+  --bg-hover: #f0f0f0;
+  --ink-primary: #333333;
+  --ink-secondary: #666666;
+  --ink-muted: #999999;
+  --border-subtle: rgba(0, 0, 0, 0.05);
+  --border-default: #eeeeee;
+  --border-control: #dcdcdc;
+  --color-brand: #ff2442;
+  --color-brand-hover: #e01d38;
+  --color-brand-strong: #c41730;
+  --color-brand-soft: #fff0f2;
+  --color-brand-border: #ffd0d6;
+  --color-focus: #ff2442;
+  --gradient-brand: linear-gradient(135deg, #ff3b56 0%, #ff2442 100%);
+  --gradient-buy: linear-gradient(135deg, #2d2d2d 0%, #171717 100%);
+  --color-price: #ff2442;
+  --radius-card: 16px;
   --radius-btn: 999px;
-  --search-border: #0089ff;
-  --logo-from: #1597ff;
-  --logo-to: #006ee6;
-  --logo-accent: #ff8a2b;
-}
-
-/* ---------- 4. 叮咚买菜 / 小象明快生鲜风 ---------- */
-html[data-consumer-theme='dingdong'] {
-  --bg-canvas: #f5f7f5;
-  --bg-canvas-end: #f2f5f2;
-  --bg-surface: #ffffff;
-  --bg-subtle: #f2fbf4;
-  --bg-hover: #ebf5ed;
-  --color-brand: #00b42a;
-  --color-brand-hover: #009a23;
-  --color-brand-strong: #007a1c;
-  --color-brand-soft: #edfaef;
-  --color-brand-border: #b4ebc0;
-  --color-focus: #00b42a;
-  --gradient-brand: linear-gradient(135deg, #14c63e 0%, #00a426 100%);
-  --gradient-buy: linear-gradient(135deg, #ff6433 0%, #f03c19 100%);
-  --color-price: #ff4d29;
-  --radius-card: 14px;
-  --radius-btn: 999px;
-  --search-border: #00b42a;
-  --logo-from: #14c63e;
-  --logo-to: #009e24;
-  --logo-accent: #ffe566;
+  --search-border: transparent;
+  --logo-from: #ff3b56;
+  --logo-to: #ff2442;
+  --logo-accent: #ffffff;
 }
 
 /* ==========================================================================
-   商家与平台后台 3 套大厂 B 端设计系统（与消费端完全解耦）
+   商家与平台后台 3 套大厂 B 端工作台设计系统（与消费端完全解耦）
    ========================================================================== */
 
-/* ---------- B1. 字节 Arco Design / 抖店商家后台 (Default) ---------- */
+/* ---------- B1. 字节 Arco Design Pro (Default) ---------- */
 .application.admin-mode,
 .merchant-shell,
 html[data-admin-theme='arco'] .application.admin-mode,
@@ -121,7 +139,12 @@ html[data-admin-theme='arco'] .merchant-shell {
   --bg-surface: #ffffff;
   --bg-subtle: #f7f8fa;
   --bg-hover: #f2f3f5;
+  --ink-primary: #1d2129;
+  --ink-secondary: #4e5969;
+  --ink-muted: #86909c;
+  --border-subtle: rgba(29, 33, 41, 0.06);
   --border-default: #e5e6eb;
+  --border-control: #c9cdd4;
   --color-brand: #165dff;
   --color-brand-hover: #0e42d2;
   --color-brand-strong: #092fa8;
@@ -139,23 +162,42 @@ html[data-admin-theme='arco'] .merchant-shell {
   --chart-4: #722ed1;
   --chart-5: #f53f3f;
   --chart-6: #86909c;
+  --ink: var(--ink-primary);
+  --muted: var(--ink-muted);
   --mint: var(--color-brand-soft);
   --mintdark: var(--color-brand-strong);
   --canvas: var(--bg-canvas);
   --canvas-subtle: var(--bg-subtle);
   --border: var(--border-default);
+  --white: var(--bg-surface);
+  --obsidian: var(--ink-primary);
+  --emerald-bright: var(--color-brand);
+  --emerald-wash: var(--color-brand-soft);
+  --color-surface: var(--bg-surface);
+  --color-surface-muted: var(--bg-subtle);
+  --color-text: var(--ink-primary);
+  --color-text-secondary: var(--ink-secondary);
+  --color-text-muted: var(--ink-muted);
+  --color-border: var(--border-default);
   --color-accent: var(--color-brand);
+  --color-control-border: var(--border-control);
+  --color-control-text: var(--ink-secondary);
 }
 
-/* ---------- B2. 阿里 Ant Design 5 / 淘宝千牛工作台 ---------- */
+/* ---------- B2. 阿里 Ant Design Pro / 淘宝千牛工作台 ---------- */
 html[data-admin-theme='antd'] .application.admin-mode,
 html[data-admin-theme='antd'] .merchant-shell {
-  --bg-canvas: #f5f5f5;
+  --bg-canvas: #f0f2f5;
   --bg-sidebar: #ffffff;
   --bg-surface: #ffffff;
   --bg-subtle: #fafafa;
   --bg-hover: #f5f5f5;
+  --ink-primary: #1f1f1f;
+  --ink-secondary: #595959;
+  --ink-muted: #8c8c8c;
+  --border-subtle: rgba(0, 0, 0, 0.06);
   --border-default: #f0f0f0;
+  --border-control: #d9d9d9;
   --color-brand: #1677ff;
   --color-brand-hover: #0958d9;
   --color-brand-strong: #003eb3;
@@ -173,15 +215,29 @@ html[data-admin-theme='antd'] .merchant-shell {
   --chart-4: #722ed1;
   --chart-5: #ff4d4f;
   --chart-6: #8c8c8c;
+  --ink: var(--ink-primary);
+  --muted: var(--ink-muted);
   --mint: var(--color-brand-soft);
   --mintdark: var(--color-brand-strong);
   --canvas: var(--bg-canvas);
   --canvas-subtle: var(--bg-subtle);
   --border: var(--border-default);
+  --white: var(--bg-surface);
+  --obsidian: var(--ink-primary);
+  --emerald-bright: var(--color-brand);
+  --emerald-wash: var(--color-brand-soft);
+  --color-surface: var(--bg-surface);
+  --color-surface-muted: var(--bg-subtle);
+  --color-text: var(--ink-primary);
+  --color-text-secondary: var(--ink-secondary);
+  --color-text-muted: var(--ink-muted);
+  --color-border: var(--border-default);
   --color-accent: var(--color-brand);
+  --color-control-border: var(--border-control);
+  --color-control-text: var(--ink-secondary);
 }
 
-/* ---------- B3. 美团商家版 / 经典深蓝灰侧栏工具风 ---------- */
+/* ---------- B3. 美团商家版 ---------- */
 html[data-admin-theme='meituan'] .application.admin-mode,
 html[data-admin-theme='meituan'] .merchant-shell {
   --bg-canvas: #f5f6f8;
@@ -189,7 +245,12 @@ html[data-admin-theme='meituan'] .merchant-shell {
   --bg-surface: #ffffff;
   --bg-subtle: #f7f8fa;
   --bg-hover: #f2f3f5;
+  --ink-primary: #1d2129;
+  --ink-secondary: #4e5969;
+  --ink-muted: #86909c;
+  --border-subtle: rgba(29, 33, 41, 0.06);
   --border-default: #e5e6eb;
+  --border-control: #c9cdd4;
   --color-brand: #d97706;
   --color-brand-hover: #b45309;
   --color-brand-strong: #92400e;
@@ -202,91 +263,147 @@ html[data-admin-theme='meituan'] .merchant-shell {
   --logo-to: #ff9f00;
   --logo-accent: #1b2432;
   --chart-1: #ff9500;
-  --chart-2: #1b2432;
-  --chart-3: #00b42a;
-  --chart-4: #722ed1;
-  --chart-5: #f53f3f;
-  --chart-6: #86909c;
+  --chart-2: #334155;
+  --chart-3: #f59e0b;
+  --chart-4: #64748b;
+  --chart-5: #d97706;
+  --chart-6: #94a3b8;
+  --ink: var(--ink-primary);
+  --muted: var(--ink-muted);
   --mint: var(--color-brand-soft);
   --mintdark: var(--color-brand-strong);
   --canvas: var(--bg-canvas);
   --canvas-subtle: var(--bg-subtle);
   --border: var(--border-default);
+  --white: var(--bg-surface);
+  --obsidian: var(--ink-primary);
+  --emerald-bright: var(--color-brand);
+  --emerald-wash: var(--color-brand-soft);
+  --color-surface: var(--bg-surface);
+  --color-surface-muted: var(--bg-subtle);
+  --color-text: var(--ink-primary);
+  --color-text-secondary: var(--ink-secondary);
+  --color-text-muted: var(--ink-muted);
+  --color-border: var(--border-default);
   --color-accent: var(--color-brand);
+  --color-control-border: var(--border-control);
+  --color-control-text: var(--ink-secondary);
 }
 
 /* ==========================================================================
-   悬浮大厂视觉方案切换组件 (DesignVariantSwitcher.js)
-   左下角静默停靠：绝不遮挡右侧商品卡、AI 发送按钮、环形图图例与核销面板
+   内嵌式大厂 1:1 复刻切换器 (DesignVariantSwitcher.js)
+   零全屏固定悬浮遮挡；内嵌于消费端顶栏/侧栏底部与后台 .merchant-topbar
    ========================================================================== */
-.variant-switcher {
-  position: fixed;
-  left: 10px;
-  bottom: 14px;
+.variant-switcher-inline {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  max-width: 100%;
+  z-index: 40;
+}
+
+.variant-switcher-inline.is-open {
   z-index: 880;
-  display: flex;
-  flex-direction: column-reverse;
-  align-items: flex-start;
-  gap: 8px;
-  max-width: calc(100vw - 20px);
-  pointer-events: none;
 }
 
-.variant-switcher-fab,
-.variant-switcher-panel {
-  pointer-events: auto;
-}
-
-.variant-switcher-fab {
+.variant-trigger-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
-  height: 30px;
-  padding: 0 10px 0 9px;
-  border: 1px solid #e5e6eb;
+  height: 26px;
+  max-width: 100%;
+  padding: 0 10px 0 8px;
+  border: 1px solid #d9dce2;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #1d2129;
-  font-size: 11.5px;
+  background: #ffffff;
+  color: #1f1f1f;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
-  box-shadow:
-    0 4px 14px rgba(29, 33, 41, 0.1),
-    0 1px 3px rgba(29, 33, 41, 0.05);
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   transition:
-    border-color 0.18s var(--ease-out-expo),
-    color 0.18s var(--ease-out-expo),
-    box-shadow 0.18s var(--ease-out-expo),
-    transform 0.18s var(--ease-out-expo);
+    border-color 0.16s var(--ease-out-expo),
+    background-color 0.16s var(--ease-out-expo),
+    color 0.16s var(--ease-out-expo),
+    box-shadow 0.16s var(--ease-out-expo);
 }
 
-.variant-switcher-fab svg {
+.variant-trigger-btn.is-compact {
+  height: 28px;
+  padding: 0 9px 0 8px;
+}
+
+.variant-trigger-icon {
   color: var(--color-brand);
+  flex-shrink: 0;
 }
 
-.variant-switcher-fab:hover {
+.variant-trigger-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.variant-trigger-chevron {
+  color: #86909c;
+  flex-shrink: 0;
+}
+
+.variant-trigger-btn:hover,
+.variant-trigger-btn.is-open {
   border-color: var(--color-brand);
   color: var(--color-brand);
-  transform: translateY(-1px);
-  box-shadow:
-    0 10px 24px rgba(29, 33, 41, 0.16),
-    0 2px 6px rgba(29, 33, 41, 0.08);
+  background: #ffffff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.variant-trigger-btn:hover .variant-trigger-chevron,
+.variant-trigger-btn.is-open .variant-trigger-chevron {
+  color: var(--color-brand);
 }
 
 .variant-switcher-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 890;
   width: min(328px, calc(100vw - 24px));
-  max-height: min(76vh, 600px);
+  max-height: min(78vh, 620px);
   overflow-y: auto;
-  padding: 16px;
+  padding: 15px;
   border: 1px solid #e5e6eb;
   border-radius: 14px;
   background: #ffffff;
   color: #1d2129;
+  font-weight: 400;
+  text-align: left;
+  white-space: normal;
   box-shadow:
-    0 20px 48px -8px rgba(29, 33, 41, 0.18),
-    0 4px 12px rgba(29, 33, 41, 0.06);
+    0 20px 48px -8px rgba(29, 33, 41, 0.2),
+    0 4px 14px rgba(29, 33, 41, 0.08);
   animation: csPopoverIn 0.16s var(--ease-out-expo);
+}
+
+.variant-switcher-inline.align-left .variant-switcher-panel {
+  left: 0;
+  right: auto;
+}
+
+.variant-switcher-inline.align-up-left .variant-switcher-panel {
+  top: auto;
+  bottom: calc(100% + 8px);
+  left: 0;
+  right: auto;
+}
+
+.variant-switcher-inline.align-up-right .variant-switcher-panel {
+  top: auto;
+  bottom: calc(100% + 8px);
+  right: 0;
+  left: auto;
 }
 
 .variant-panel-head {
@@ -294,8 +411,8 @@ html[data-admin-theme='meituan'] .merchant-shell {
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
+  padding-bottom: 11px;
+  margin-bottom: 11px;
   border-bottom: 1px solid #f2f3f5;
 }
 
@@ -307,37 +424,43 @@ html[data-admin-theme='meituan'] .merchant-shell {
 }
 
 .variant-panel-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 700;
   color: #1d2129;
+  line-height: 1.3;
 }
 
 .variant-panel-sub {
-  font-size: 11.5px;
+  font-size: 11px;
   color: #86909c;
+  line-height: 1.3;
 }
 
 .variant-panel-actions {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
 .variant-reset-btn {
   padding: 4px 8px;
+  border: 1px solid #e5e6eb;
   border-radius: 6px;
   background: #f7f8fa;
   color: #4e5969;
   font-size: 11.5px;
   font-weight: 500;
+  line-height: 1.2;
   transition:
     background-color 0.15s ease,
+    border-color 0.15s ease,
     color 0.15s ease;
 }
 
 .variant-reset-btn:hover {
   background: #f2f3f5;
+  border-color: #c9cdd4;
   color: #1d2129;
 }
 
@@ -360,11 +483,11 @@ html[data-admin-theme='meituan'] .merchant-shell {
 }
 
 .variant-section + .variant-section {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .variant-section-label {
-  margin: 0 0 8px;
+  margin: 0 0 7px;
   font-size: 11.5px;
   font-weight: 600;
   color: #86909c;
@@ -394,7 +517,7 @@ html[data-admin-theme='meituan'] .merchant-shell {
   text-align: left;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   transition:
     border-color 0.15s ease,
     background-color 0.15s ease,
@@ -405,10 +528,6 @@ html[data-admin-theme='meituan'] .merchant-shell {
   flex-direction: column;
   align-items: flex-start;
   gap: 6px;
-}
-
-.variant-layout-card {
-  padding: 9px 10px;
 }
 
 .variant-option-card:hover,
@@ -429,7 +548,7 @@ html[data-admin-theme='meituan'] .merchant-shell {
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  width: 100%;
+  flex: 1;
 }
 
 .variant-option-text strong {
@@ -442,7 +561,7 @@ html[data-admin-theme='meituan'] .merchant-shell {
 .variant-option-text small {
   font-size: 11px;
   color: #86909c;
-  line-height: 1.3;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -451,6 +570,18 @@ html[data-admin-theme='meituan'] .merchant-shell {
 .variant-option-card.is-active .variant-option-text small,
 .variant-option-row.is-active .variant-option-text small {
   color: #4e5969;
+}
+
+.variant-active-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: #ffffff;
+  flex-shrink: 0;
 }
 
 /* 双色圆点色板（严禁内联 style，纯 CSS 类驱动） */
@@ -466,7 +597,7 @@ html[data-admin-theme='meituan'] .merchant-shell {
   height: 13px;
   border-radius: 50%;
   border: 1.5px solid #ffffff;
-  box-shadow: 0 0 0 1px rgba(29, 33, 41, 0.12);
+  box-shadow: 0 0 0 1px rgba(29, 33, 41, 0.14);
 }
 
 .swatch-dot-b {
@@ -478,31 +609,31 @@ html[data-admin-theme='meituan'] .merchant-shell {
 }
 
 .swatch-taobao .swatch-dot-b {
-  background: #ff9402;
+  background: #ff9900;
+}
+
+.swatch-jd .swatch-dot-a {
+  background: #e1251b;
+}
+
+.swatch-jd .swatch-dot-b {
+  background: #ff7a18;
 }
 
 .swatch-youpin .swatch-dot-a {
-  background: #1d2129;
+  background: #333333;
 }
 
 .swatch-youpin .swatch-dot-b {
-  background: #a98656;
+  background: #845f3f;
 }
 
-.swatch-hema .swatch-dot-a {
-  background: #0089ff;
+.swatch-xiaohongshu .swatch-dot-a {
+  background: #ff2442;
 }
 
-.swatch-hema .swatch-dot-b {
-  background: #ff6a00;
-}
-
-.swatch-dingdong .swatch-dot-a {
-  background: #00b42a;
-}
-
-.swatch-dingdong .swatch-dot-b {
-  background: #ff4d29;
+.swatch-xiaohongshu .swatch-dot-b {
+  background: #171717;
 }
 
 .swatch-arco .swatch-dot-a {
@@ -518,7 +649,7 @@ html[data-admin-theme='meituan'] .merchant-shell {
 }
 
 .swatch-antd .swatch-dot-b {
-  background: #69b1ff;
+  background: #001529;
 }
 
 .swatch-meituan .swatch-dot-a {
@@ -529,19 +660,13 @@ html[data-admin-theme='meituan'] .merchant-shell {
   background: #ffbd00;
 }
 
-@media (max-width: 768px) {
-  .variant-switcher {
-    left: 10px;
-    bottom: 66px;
-  }
-
-  .variant-switcher-fab {
-    width: 32px;
-    height: 32px;
-    padding: 0;
-  }
-
-  .variant-switcher-fab span {
+@media (max-width: 640px) {
+  .variant-trigger-prefix {
     display: none;
+  }
+
+  .variant-trigger-btn {
+    padding: 0 8px 0 7px;
+    font-size: 11.5px;
   }
 }

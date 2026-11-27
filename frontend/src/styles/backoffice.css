@@ -1,9 +1,9 @@
 /* ==========================================================================
    青柠校园 · 商家工作台与平台管理中心 (backoffice.css)
-   V7 Authentic Chinese Big-Tech B-Side Design Systems:
-   1. arco    (默认) · 字节 Arco Design / 抖店商家后台 (#FFFFFF 220px, #165DFF)
-   2. antd          · 阿里 Ant Design 5 / 淘宝千牛工作台 (#FFFFFF 224px, #1677FF 右侧竖条)
-   3. meituan       · 美团商家版 / 经典深蓝灰侧栏工具风 (#1B2432 侧栏 + #FFBD00 金色锚点)
+   V8 国内三大厂 1:1 结构复刻 B 端工作台设计系统 (零强制覆盖 · 零内联样式):
+   1. arco    (默认) · 字节 Arco Design Pro Workplace (60px 通栏白顶栏 + 左7右3双栏工作台)
+   2. antd          · 阿里 Ant Design Pro / 千牛 Analysis (56px #001529 深海蓝顶栏 + PageHeader + 双拼图表卡)
+   3. meituan       · 美团商家版 PC 极速工作台 (212px #1B2432 全高侧栏 + #FFBD00 核销指挥条)
    ========================================================================== */
 
 .admin-mode {
@@ -47,32 +47,175 @@
   }
 }
 
-/* ---------- 1. Shell & 3 Big-Tech Sidebar Systems (arco / antd / meituan) ---------- */
+/* ==========================================================================
+   1. 三套真实大厂 Shell 骨架网格 (arco / antd / meituan)
+   ========================================================================== */
 .merchant-shell {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'topbar'
+    'main';
   min-height: 100vh;
   background: var(--bg-canvas);
   color: var(--ink-primary);
 }
 
-@media (min-width: 961px) {
-  html[data-admin-theme='antd'] .merchant-shell {
-    grid-template-columns: 224px minmax(0, 1fr);
-  }
+.merchant-topbar {
+  grid-area: topbar;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  height: 60px;
+  padding: 0 20px;
+  background: #ffffff;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .merchant-sidebar {
+  grid-area: sidebar;
   position: sticky;
-  top: 0;
-  height: 100vh;
+  top: 60px;
+  height: calc(100vh - 60px);
   background: var(--bg-sidebar, #ffffff);
   border-right: 1px solid var(--border-default);
   color: #4e5969;
   display: flex;
   flex-direction: column;
-  padding: 16px 10px 14px;
+  padding: 12px 10px 14px;
   overflow-y: auto;
+}
+
+.merchant-content-shell {
+  grid-area: main;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 桌面端 (> 960px)：三套截然不同的顶栏与侧栏拓扑 */
+@media (min-width: 961px) {
+  /* Shell 1: 字节 Arco Design Pro — 60px 通栏纯白顶栏横跨 220px 侧栏上方 */
+  .merchant-shell,
+  html[data-admin-theme='arco'] .merchant-shell {
+    grid-template-areas:
+      'topbar topbar'
+      'sidebar main';
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: 60px minmax(0, 1fr);
+  }
+
+  /* Shell 2: 阿里 Ant Design Pro / 千牛 — 56px #001529 通栏深海蓝顶栏横跨 220px 侧栏上方 */
+  html[data-admin-theme='antd'] .merchant-shell {
+    grid-template-areas:
+      'topbar topbar'
+      'sidebar main';
+    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-rows: 56px minmax(0, 1fr);
+  }
+
+  html[data-admin-theme='antd'] .merchant-topbar {
+    height: 56px;
+  }
+
+  html[data-admin-theme='antd'] .merchant-sidebar {
+    top: 56px;
+    height: calc(100vh - 56px);
+  }
+
+  /* Shell 3: 美团商家版 PC 工作台 — 212px #1B2432 全高深蓝灰侧栏通顶到底 + 右侧 56px 白顶栏 */
+  html[data-admin-theme='meituan'] .merchant-shell {
+    grid-template-areas:
+      'sidebar topbar'
+      'sidebar main';
+    grid-template-columns: 212px minmax(0, 1fr);
+    grid-template-rows: 56px minmax(0, 1fr);
+  }
+
+  html[data-admin-theme='meituan'] .merchant-topbar {
+    height: 56px;
+  }
+
+  html[data-admin-theme='meituan'] .merchant-sidebar {
+    top: 0;
+    height: 100vh;
+    padding-top: 16px;
+  }
+}
+
+/* 平板紧凑导航栏 (561px .. 960px)：保持各自 grid-template-areas 并折叠为 72px 图标轨 */
+@media (min-width: 561px) and (max-width: 960px) {
+  .merchant-shell,
+  html[data-admin-theme='arco'] .merchant-shell,
+  html[data-admin-theme='antd'] .merchant-shell {
+    grid-template-areas:
+      'topbar topbar'
+      'sidebar main';
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  html[data-admin-theme='meituan'] .merchant-shell {
+    grid-template-areas:
+      'sidebar topbar'
+      'sidebar main';
+    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .merchant-sidebar,
+  html[data-admin-theme='antd'] .merchant-sidebar {
+    top: 54px;
+    height: calc(100vh - 54px);
+  }
+
+  html[data-admin-theme='meituan'] .merchant-sidebar {
+    top: 0;
+    height: 100vh;
+  }
+}
+
+/* ---------- 顶栏左区品牌标识与面包屑 ---------- */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.topbar-brand-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 4px 6px 4px 2px;
+  border-radius: 6px;
+  color: inherit;
+  text-align: left;
+  min-width: 0;
+  transition: background-color 0.14s ease;
+}
+
+.topbar-brand-btn:hover {
+  background: rgba(29, 33, 41, 0.04);
+}
+
+.topbar-brand-word {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1d2129;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+}
+
+.topbar-brand-divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-default);
+  flex-shrink: 0;
 }
 
 .merchant-brand {
@@ -110,14 +253,14 @@
   border-radius: 4px;
   font-size: 11px;
   font-weight: 600;
-  line-height: 1.3;
+  line-height: 1.35;
   white-space: nowrap;
 }
 
 .role-badge-merchant {
-  background: #e8f3ff;
-  border: 1px solid #bedaff;
-  color: #165dff;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand-border);
+  color: var(--color-brand);
 }
 
 .role-badge-admin {
@@ -126,6 +269,7 @@
   color: #722ed1;
 }
 
+/* ---------- 侧栏分组导航菜单 (.merchant-nav) ---------- */
 .merchant-nav {
   display: flex;
   flex-direction: column;
@@ -134,7 +278,7 @@
 }
 
 .nav-group-title {
-  padding: 14px 12px 5px;
+  padding: 13px 12px 5px;
   font-size: 11px;
   font-weight: 600;
   color: #86909c;
@@ -155,7 +299,7 @@
   gap: 10px;
   text-align: left;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     color 0.14s ease,
     box-shadow 0.14s ease;
 }
@@ -165,7 +309,7 @@
   color: #1d2129;
 }
 
-/* Default System 1: ByteDance Arco Design / 抖店商家后台 */
+/* Default Shell 1: 字节 Arco Design Pro 激活胶囊 (#E8F3FF + #165DFF) */
 .merchant-nav button.active,
 .merchant-nav button.active:hover:not(:disabled) {
   background: #e8f3ff;
@@ -203,7 +347,7 @@
   align-items: center;
   gap: 8px;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     color 0.14s ease;
 }
 
@@ -212,66 +356,59 @@
   color: #1d2129;
 }
 
-/* System 2: Alibaba Ant Design 5 / 淘宝千牛工作台 */
-html[data-admin-theme='antd'] .merchant-sidebar {
-  background: #ffffff;
-  border-right-color: #f0f0f0;
-  padding: 16px 8px 14px;
-}
-
-html[data-admin-theme='antd'] .merchant-brand,
-html[data-admin-theme='antd'] .merchant-sidebar-bottom {
-  border-color: #f0f0f0;
-}
-
-html[data-admin-theme='antd'] .role-badge-merchant {
-  background: #e6f4ff;
-  border-color: #91caff;
-  color: #1677ff;
-}
-
-html[data-admin-theme='antd'] .merchant-nav button {
-  color: rgba(0, 0, 0, 0.72);
-  border-radius: 6px;
-}
-
-html[data-admin-theme='antd'] .merchant-nav button:hover:not(:disabled) {
-  background: rgba(0, 0, 0, 0.04);
-  color: rgba(0, 0, 0, 0.88);
-}
-
-html[data-admin-theme='antd'] .merchant-nav button.active,
-html[data-admin-theme='antd'] .merchant-nav button.active:hover:not(:disabled) {
-  background: #e6f4ff;
-  color: #1677ff;
-  font-weight: 600;
-  border-radius: 6px;
-  box-shadow: inset -3px 0 0 #1677ff;
-}
-
-html[data-admin-theme='antd'] .merchant-nav button.active svg {
-  color: #1677ff;
-}
-
-/* 阿里千牛 / Ant Design Pro 标志性深海蓝顶栏与锐利企业边框 */
+/* ---------- Shell 2 专属视觉: 阿里 Ant Design Pro / 千牛 (#001529 顶栏 + 右侧竖条 + PageHeader) ---------- */
 html[data-admin-theme='antd'] .merchant-topbar {
   background: #001529;
   border-bottom-color: #001529;
   color: #ffffff;
 }
 
-html[data-admin-theme='antd'] .topbar-title {
+html[data-admin-theme='antd'] .topbar-brand-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html[data-admin-theme='antd'] .topbar-brand-word {
   color: #ffffff;
 }
 
-html[data-admin-theme='antd'] .topbar-role-pill {
-  background: rgba(22, 119, 255, 0.24);
+html[data-admin-theme='antd'] .topbar-brand-divider {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+html[data-admin-theme='antd'] .merchant-topbar .crumb-role-badge {
+  background: rgba(22, 119, 255, 0.26);
   border-color: rgba(105, 177, 255, 0.45);
   color: #e6f4ff;
 }
 
+html[data-admin-theme='antd'] .merchant-topbar .variant-trigger-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+html[data-admin-theme='antd'] .merchant-topbar .variant-trigger-btn:hover,
+html[data-admin-theme='antd'] .merchant-topbar .variant-trigger-btn.is-open {
+  background: rgba(22, 119, 255, 0.32);
+  border-color: #69b1ff;
+  color: #ffffff;
+}
+
+html[data-admin-theme='antd'] .merchant-topbar .variant-trigger-icon,
+html[data-admin-theme='antd'] .merchant-topbar .variant-trigger-chevron {
+  color: #69b1ff;
+}
+
 html[data-admin-theme='antd'] .merchant-live-status {
-  color: rgba(255, 255, 255, 0.82);
+  background: rgba(82, 196, 26, 0.16);
+  border-color: rgba(149, 222, 100, 0.36);
+  color: #b7eb8f;
+}
+
+html[data-admin-theme='antd'] .admin-preview-tag {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 html[data-admin-theme='antd'] .topbar-chime-btn,
@@ -280,6 +417,14 @@ html[data-admin-theme='antd'] .topbar-ghost-btn {
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.18);
   color: rgba(255, 255, 255, 0.9);
+}
+
+html[data-admin-theme='antd'] .topbar-chime-btn:hover,
+html[data-admin-theme='antd'] .topbar-avatar:hover,
+html[data-admin-theme='antd'] .topbar-ghost-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.32);
+  color: #ffffff;
 }
 
 html[data-admin-theme='antd'] .topbar-chime-btn.active {
@@ -298,18 +443,106 @@ html[data-admin-theme='antd'] .topbar-merchant-select {
   color: #ffffff;
 }
 
+html[data-admin-theme='antd'] .topbar-merchant-select svg {
+  color: #69b1ff;
+}
+
 html[data-admin-theme='antd'] .topbar-merchant-select select {
   color: #ffffff;
 }
 
+html[data-admin-theme='antd'] .topbar-merchant-select select option {
+  color: #1f1f1f;
+  background: #ffffff;
+}
+
+html[data-admin-theme='antd'] .merchant-sidebar {
+  background: #ffffff;
+  border-right-color: #f0f0f0;
+  padding: 12px 0 14px 8px;
+}
+
+html[data-admin-theme='antd'] .merchant-sidebar-bottom {
+  border-color: #f0f0f0;
+  padding-right: 8px;
+}
+
+html[data-admin-theme='antd'] .merchant-nav button {
+  color: rgba(0, 0, 0, 0.72);
+  border-radius: 6px 0 0 6px;
+}
+
+html[data-admin-theme='antd'] .merchant-nav button:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.88);
+}
+
+html[data-admin-theme='antd'] .merchant-nav button.active,
+html[data-admin-theme='antd'] .merchant-nav button.active:hover:not(:disabled) {
+  background: #e6f4ff;
+  color: #1677ff;
+  font-weight: 600;
+  border-radius: 6px 0 0 6px;
+  box-shadow: inset -3px 0 0 #1677ff;
+}
+
+html[data-admin-theme='antd'] .merchant-nav button.active svg {
+  color: #1677ff;
+}
+
+/* Ant Design Pro 标志性纯白 PageHeader + 面包屑条 */
+.antd-page-header {
+  background: #ffffff;
+  border-bottom: 1px solid #f0f0f0;
+  padding: 14px 24px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.antd-breadcrumb {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 12.5px;
+  color: #8c8c8c;
+}
+
+.antd-crumb-link {
+  padding: 0;
+  color: #8c8c8c;
+  font-size: 12.5px;
+  transition: color 0.14s ease;
+}
+
+.antd-crumb-link:hover {
+  color: #1677ff;
+}
+
+.antd-crumb-sep {
+  color: #bfbfbf;
+  user-select: none;
+}
+
+.antd-crumb-current {
+  color: #1f1f1f;
+  font-weight: 500;
+}
+
+.antd-heading-row {
+  max-width: 1560px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 html[data-admin-theme='antd'] .ops-card,
-html[data-admin-theme='antd'] .ops-kpis > div,
-html[data-admin-theme='antd'] .todo-tile {
-  border-color: #d9d9d9;
+html[data-admin-theme='antd'] .ops-kpis > div {
+  border-color: #f0f0f0;
   border-radius: 6px;
 }
 
-/* System 3: Meituan Merchant / 美团商家版经典深蓝灰侧栏工具风 */
+/* ---------- Shell 3 专属视觉: 美团商家版 PC 工作台 (#1B2432 全高侧栏 + #FFBD00 金色锚点) ---------- */
 html[data-admin-theme='meituan'] .merchant-sidebar {
   background: #1b2432;
   border-right-color: #1b2432;
@@ -326,11 +559,17 @@ html[data-admin-theme='meituan'] .merchant-sidebar .brand-word {
 
 html[data-admin-theme='meituan'] .merchant-sidebar .brand-suffix {
   background: rgba(255, 189, 0, 0.16);
-  border-color: rgba(255, 189, 0, 0.34);
+  border-color: rgba(255, 189, 0, 0.38);
   color: #ffca28;
 }
 
 html[data-admin-theme='meituan'] .topbar-crumb .role-badge-merchant {
+  background: #fff8e1;
+  border-color: #ffe082;
+  color: #995c00;
+}
+
+html[data-admin-theme='meituan'] .topbar-crumb .role-badge-admin {
   background: #fff8e1;
   border-color: #ffe082;
   color: #995c00;
@@ -394,29 +633,18 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   html[data-admin-theme='meituan'] .merchant-mobile-nav button.active svg {
     color: #ffbd00;
   }
+
+  .arco-crumb,
+  .topbar-brand-divider {
+    display: none;
+  }
+
+  .antd-page-header {
+    padding: 12px 12px 14px;
+  }
 }
 
-/* ---------- 2. Content Shell, Pure White 56px Topbar & Mobile Nav ---------- */
-.merchant-content-shell {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.merchant-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 35;
-  height: 56px;
-  padding: 0 24px;
-  background: #ffffff;
-  border-bottom: 1px solid var(--border-default);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
+/* ---------- 2. 顶栏操作区 (.merchant-topbar-actions) 与页面容器 ---------- */
 .topbar-crumb {
   display: flex;
   align-items: center;
@@ -434,6 +662,7 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   white-space: nowrap;
 }
 
+.merchant-topbar-actions,
 .merchant-topbar-tools {
   display: flex;
   align-items: center;
@@ -454,6 +683,13 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   align-items: center;
   gap: 7px;
   white-space: nowrap;
+}
+
+.merchant-live-status.is-meituan {
+  background: #e8ffea;
+  border-color: #7be188;
+  color: #009a29;
+  font-weight: 700;
 }
 
 .live-dot {
@@ -494,7 +730,7 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   gap: 5px;
   white-space: nowrap;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     border-color 0.14s ease,
     color 0.14s ease;
 }
@@ -542,7 +778,7 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   cursor: pointer;
   transition:
     border-color 0.14s ease,
-    background 0.14s ease;
+    background-color 0.14s ease;
 }
 
 .topbar-merchant-select svg {
@@ -614,7 +850,889 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   text-decoration: underline;
 }
 
-/* ---------- 3. Enterprise Cards, Todo Bench, KPIs & Pure SVG Charts ---------- */
+/* ==========================================================================
+   3. 三套截然不同的工作台首页布局 (Arco Workplace / AntD Analysis / Meituan Command)
+   ========================================================================== */
+
+/* ---------- 3A. 字节 Arco Design Pro Workplace (左主栏 + 右侧 300px 工具轨) ---------- */
+.arco-workplace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 16px;
+  align-items: start;
+}
+
+.arco-workplace-main,
+.arco-workplace-rail {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.arco-welcome-card {
+  padding: 20px 24px;
+}
+
+.arco-welcome-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 16px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #f2f3f5;
+}
+
+.arco-welcome-greeting {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.arco-welcome-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #e8f3ff;
+  color: #165dff;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.arco-welcome-avatar.is-admin {
+  background: #f5e8ff;
+  color: #722ed1;
+}
+
+.arco-welcome-greeting h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: #1d2129;
+  line-height: 1.35;
+}
+
+.arco-welcome-greeting p {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  color: #86909c;
+}
+
+.arco-hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+}
+
+.arco-hero-metric {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 16px;
+  border-right: 1px solid #f2f3f5;
+  min-width: 0;
+}
+
+.arco-hero-metric:first-child {
+  padding-left: 0;
+}
+
+.arco-hero-metric:last-child {
+  border-right: 0;
+  padding-right: 0;
+}
+
+.arco-metric-medallion {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #f2f3f5;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.arco-metric-medallion.is-blue {
+  color: #165dff;
+}
+
+.arco-metric-medallion.is-cyan {
+  color: #0fc6c2;
+}
+
+.arco-metric-medallion.is-amber {
+  color: #ff7d00;
+}
+
+.arco-metric-medallion.is-purple {
+  color: #722ed1;
+}
+
+.arco-metric-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.arco-metric-copy span {
+  font-size: 12px;
+  color: #4e5969;
+  white-space: nowrap;
+}
+
+.arco-metric-copy strong {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1d2129;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.arco-metric-copy strong small {
+  font-size: 12px;
+  font-weight: 500;
+  color: #86909c;
+}
+
+.arco-charts-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.arco-card-head > div {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.arco-peak-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
+  color: #4e5969;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.arco-charts-subgrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.arco-rail-card {
+  padding: 18px;
+}
+
+.arco-shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.arco-shortcut-tile {
+  padding: 10px 4px;
+  border-radius: 8px;
+  background: transparent;
+  color: #4e5969;
+  font-size: 12px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.arco-shortcut-ico {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f7f8fa;
+  color: #1d2129;
+  display: grid;
+  place-items: center;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.arco-shortcut-tile:hover:not(:disabled) {
+  color: #165dff;
+}
+
+.arco-shortcut-tile:hover:not(:disabled) .arco-shortcut-ico {
+  background: #e8f3ff;
+  color: #165dff;
+}
+
+.arco-shortcut-tile:disabled {
+  opacity: 0.42;
+}
+
+.arco-todo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.arco-todo-row {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 6px;
+  background: #f7f8fa;
+  color: #1d2129;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-align: left;
+  transition: background-color 0.14s ease;
+}
+
+.arco-todo-row:hover {
+  background: #e8f3ff;
+}
+
+.arco-todo-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #165dff;
+  flex-shrink: 0;
+}
+
+.arco-todo-dot.is-warn {
+  background: #ff7d00;
+}
+
+.arco-todo-dot.is-danger {
+  background: #f53f3f;
+}
+
+.arco-todo-dot.is-ok {
+  background: #00b42a;
+}
+
+.arco-todo-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+}
+
+.arco-todo-pill {
+  font-style: normal;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  background: #e8f3ff;
+  color: #165dff;
+}
+
+.arco-todo-pill.is-warn {
+  background: #fff7e8;
+  color: #ff7d00;
+}
+
+.arco-todo-pill.is-danger {
+  background: #ffece8;
+  color: #f53f3f;
+}
+
+.arco-todo-pill.is-ok {
+  background: #e8ffea;
+  color: #00b42a;
+}
+
+.arco-notice-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.arco-notice-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #4e5969;
+  line-height: 1.45;
+}
+
+.arco-notice-tag {
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.arco-notice-tag.is-blue {
+  background: #e8f3ff;
+  color: #165dff;
+}
+
+.arco-notice-tag.is-green {
+  background: #e8ffea;
+  color: #00b42a;
+}
+
+.arco-notice-tag.is-amber {
+  background: #fff7e8;
+  color: #ff7d00;
+}
+
+.compact-rail-line {
+  padding: 9px 0;
+}
+
+/* ---------- 3B. 阿里 Ant Design Pro / 千牛 Analysis (4张分析卡 + 趋势&Top6双拼卡) ---------- */
+.antd-analysis-stack,
+.antd-charts-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.antd-chartcard-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.antd-chart-card {
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  padding: 18px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.antd-cc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13.5px;
+  color: #8c8c8c;
+  margin-bottom: 6px;
+}
+
+.antd-cc-badge {
+  font-style: normal;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: #e6f4ff;
+  color: #1677ff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.antd-cc-badge.is-green {
+  background: #f6ffed;
+  color: #389e0d;
+}
+
+.antd-cc-badge.is-amber {
+  background: #fffbe6;
+  color: #d48806;
+}
+
+.antd-cc-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: #1f1f1f;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+.antd-cc-visual {
+  height: 36px;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.antd-spark-svg {
+  width: 100%;
+  height: 28px;
+  display: block;
+}
+
+.antd-cc-trend {
+  font-size: 12.5px;
+  color: #595959;
+}
+
+.antd-cc-trend b {
+  color: #1f1f1f;
+  font-variant-numeric: tabular-nums;
+}
+
+.antd-cc-footer {
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  color: #595959;
+}
+
+.antd-cc-footer b {
+  color: #1f1f1f;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.antd-cc-link {
+  padding: 0;
+  color: #1677ff;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.antd-cc-link:hover {
+  color: #0958d9;
+  text-decoration: underline;
+}
+
+.stats-period-pills.compact {
+  padding: 2px;
+}
+
+.stats-period-pills.compact button {
+  height: 22px;
+  padding: 0 7px;
+  font-size: 11.5px;
+}
+
+/* AntD Pro 经典「趋势 65% + 热销排名 Top 6 35%」一体式白卡 */
+.antd-dual-chart-card {
+  padding: 0;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.antd-dual-head {
+  min-height: 50px;
+  padding: 0 24px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.antd-dual-tabs {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.antd-dual-tab {
+  height: 50px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.antd-dual-tab.is-active {
+  color: #1677ff;
+  box-shadow: inset 0 -2px 0 #1677ff;
+}
+
+.antd-dual-sub,
+.antd-dual-meta {
+  font-size: 12.5px;
+  color: #8c8c8c;
+}
+
+.antd-dual-body {
+  display: grid;
+  grid-template-columns: minmax(0, 65fr) minmax(240px, 35fr);
+  gap: 28px;
+  padding: 20px 24px 24px;
+  align-items: start;
+}
+
+.antd-dual-left,
+.antd-dual-right {
+  min-width: 0;
+}
+
+.antd-panel-subtitle {
+  margin: 0 0 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f1f1f;
+}
+
+.antd-rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+}
+
+.antd-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13.5px;
+  min-width: 0;
+}
+
+/* Ant Design Pro 标志性 #314659 深灰圆标 Top 1/2/3 */
+.antd-rank-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #f0f2f5;
+  color: #595959;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.antd-rank-badge.is-top {
+  background: #314659;
+  color: #ffffff;
+}
+
+.antd-rank-name {
+  flex: 1;
+  min-width: 0;
+  color: #1f1f1f;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.antd-rank-count {
+  color: #595959;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.antd-donut-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+
+.antd-donut-row.is-paired {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.antd-todo-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.antd-todo-strip button {
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  background: #fafafa;
+  color: #595959;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: 12px;
+  transition:
+    border-color 0.14s ease,
+    background-color 0.14s ease,
+    color 0.14s ease;
+}
+
+.antd-todo-strip button:hover {
+  border-color: #91caff;
+  background: #e6f4ff;
+  color: #1677ff;
+}
+
+.antd-todo-strip button strong {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f1f1f;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 3C. 美团商家版 PC 极速接单工作台 (深蓝灰核销指挥条 + #FFBD00 实心黄按钮) ---------- */
+.meituan-workbench-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.meituan-command-banner {
+  background: linear-gradient(90deg, #1b2432 0%, #263447 100%);
+  border: 1px solid #2d3d54;
+  border-radius: 10px;
+  padding: 20px 24px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  box-shadow: 0 6px 20px rgba(27, 36, 50, 0.14);
+}
+
+.meituan-cmd-left {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  flex: 1 1 460px;
+}
+
+.meituan-cmd-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meituan-cmd-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: #ffbd00;
+  color: #1b2432;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.meituan-cmd-head h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+.meituan-cmd-head small {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.68);
+}
+
+.meituan-cmd-counters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.meituan-counter-pill {
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.88);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12.5px;
+  transition:
+    background-color 0.14s ease,
+    border-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.meituan-counter-pill:hover {
+  background: rgba(255, 255, 255, 0.13);
+  border-color: rgba(255, 189, 0, 0.55);
+  transform: translateY(-1px);
+}
+
+.meituan-counter-pill strong {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  font-variant-numeric: tabular-nums;
+}
+
+.meituan-counter-pill.is-gold {
+  background: rgba(255, 189, 0, 0.16);
+  border-color: rgba(255, 189, 0, 0.55);
+}
+
+.meituan-counter-pill.is-gold strong {
+  color: #ffca28;
+}
+
+.meituan-counter-pill small {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.meituan-cmd-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.meituan-period-switch {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.meituan-period-switch button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.meituan-period-switch button.active {
+  background: #ffbd00;
+  color: #1b2432;
+  font-weight: 700;
+}
+
+.meituan-gold-cta {
+  height: 42px;
+  padding: 0 20px;
+  border-radius: 8px;
+  background: #ffbd00;
+  color: #1b2432;
+  font-size: 14px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(255, 189, 0, 0.28);
+  transition:
+    background-color 0.14s ease,
+    transform 0.14s ease;
+}
+
+.meituan-gold-cta:hover {
+  background: #ffca28;
+  transform: translateY(-1px);
+}
+
+.meituan-kpi-strip > div:first-child {
+  border-top: 3px solid #ffbd00;
+}
+
+@media (max-width: 1120px) {
+  .arco-workplace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .antd-chartcard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 960px) {
+  .arco-hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .arco-hero-metric {
+    padding: 6px 8px;
+    border-right: 0;
+    background: #f7f8fa;
+    border-radius: 8px;
+  }
+
+  .arco-hero-metric:first-child,
+  .arco-hero-metric:last-child {
+    padding: 6px 8px;
+  }
+
+  .arco-charts-subgrid,
+  .antd-dual-body,
+  .antd-donut-row.is-paired {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meituan-cmd-right {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 560px) {
+  .arco-hero-metrics,
+  .antd-chartcard-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .antd-todo-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .meituan-command-banner {
+    padding: 16px;
+  }
+
+  .meituan-gold-cta {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* ==========================================================================
+   4. 通用工作台卡片、KPI、纯 SVG 图表与高频列表
+   ========================================================================== */
 .ops-card {
   background: #ffffff;
   border: 1px solid var(--border-default);
@@ -695,126 +1813,6 @@ html[data-admin-theme='meituan'] .sidebar-back:hover {
   white-space: nowrap;
 }
 
-/* Clean Enterprise Todo Workbench Tiles */
-.todo-tiles-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.todo-tile {
-  padding: 16px 18px;
-  border-radius: var(--admin-radius, 8px);
-  border: 1px solid var(--border-default);
-  background: #ffffff;
-  text-align: left;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease,
-    box-shadow 0.15s ease;
-}
-
-.todo-tile:hover {
-  border-color: var(--color-brand-border);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(29, 33, 41, 0.06);
-}
-
-.todo-tile.highlight {
-  background: #ffffff;
-  border-color: var(--color-brand-border);
-}
-
-.todo-tile.highlight:hover {
-  border-color: var(--color-brand);
-  box-shadow: 0 4px 14px rgba(22, 93, 255, 0.09);
-}
-
-.todo-tile-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  width: 100%;
-}
-
-.todo-tile-label {
-  font-size: 13px;
-  color: #4e5969;
-  font-weight: 600;
-}
-
-.todo-tile.highlight .todo-tile-label {
-  color: #1d2129;
-}
-
-.todo-tile-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--admin-radius, 8px);
-  display: inline-grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.todo-tile-icon.amber {
-  background: #fff7e8;
-  border: 1px solid #ffe4ba;
-  color: #ff7d00;
-}
-
-.todo-tile-icon.emerald,
-.todo-tile-icon.brand {
-  background: var(--color-brand-soft);
-  border: 1px solid var(--color-brand-border);
-  color: var(--color-brand);
-}
-
-.todo-tile-icon.sky {
-  background: #e8f3ff;
-  border: 1px solid #bedaff;
-  color: #165dff;
-}
-
-.todo-tile-icon.slate {
-  background: #f5e8ff;
-  border: 1px solid #d9b8ff;
-  color: #722ed1;
-}
-
-html[data-admin-theme='meituan'] .todo-tile-icon.emerald,
-html[data-admin-theme='meituan'] .todo-tile-icon.brand {
-  background: #fff8e1;
-  border-color: #ffe082;
-  color: #d48806;
-}
-
-.todo-tile strong {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1d2129;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.todo-tile-foot {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 11.5px;
-  color: #86909c;
-}
-
-.todo-tile.highlight .todo-tile-foot {
-  color: var(--color-brand);
-  font-weight: 500;
-}
-
 /* Period pills & Enterprise KPI metric cards */
 .kpi-section-bar {
   display: flex;
@@ -867,7 +1865,7 @@ html[data-admin-theme='meituan'] .todo-tile-icon.brand {
   font-size: 12.5px;
   font-weight: 500;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     color 0.14s ease;
 }
 
@@ -1216,7 +2214,7 @@ html[data-admin-theme='meituan'] .todo-tile-icon.brand {
   justify-content: center;
   gap: 7px;
   transition:
-    background 0.15s ease,
+    background-color 0.15s ease,
     border-color 0.15s ease,
     color 0.15s ease;
 }
@@ -1263,7 +2261,9 @@ html[data-admin-theme='meituan'] .todo-tile-icon.brand {
   color: #1d2129;
 }
 
-/* ---------- 4. Arco / AntD Clean Enterprise Tables & Semantic Status Tags ---------- */
+/* ==========================================================================
+   5. 企业级数据表格与语义状态标签 (.ops-table / .product-table / .status-tag)
+   ========================================================================== */
 .ops-toolbar {
   display: flex;
   align-items: center;
@@ -1300,7 +2300,7 @@ html[data-admin-theme='meituan'] .todo-tile-icon.brand {
 
 .ops-search:focus-within {
   border-color: var(--color-brand);
-  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1);
+  box-shadow: 0 0 0 2px var(--color-brand-soft);
 }
 
 .ops-search input {
@@ -1417,11 +2417,6 @@ html[data-admin-theme='antd'] .product-table tbody tr:hover td {
   background: var(--color-brand-soft);
 }
 
-html[data-admin-theme='meituan'] .ops-table tbody tr.active td,
-html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
-  background: #f0f7ff;
-}
-
 .product-table tbody tr {
   cursor: pointer;
 }
@@ -1490,6 +2485,8 @@ html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
 }
 
 .mono-order-link {
+  display: inline-block;
+  vertical-align: middle;
   max-width: 124px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1505,7 +2502,6 @@ html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
   font-family: var(--font-mono);
 }
 
-/* Crisp Arco / AntD semantic status tags */
 .status-tag {
   display: inline-flex;
   align-items: center;
@@ -1534,8 +2530,8 @@ html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
 }
 
 .status-tag.tone-info {
-  background: #e8f3ff;
-  color: #165dff;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 
 .status-tag.draft,
@@ -1561,7 +2557,9 @@ html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
   font-size: 11px;
 }
 
-/* ---------- 5. Clean Bright Enterprise Pickup Verification Desk & Queue Banner ---------- */
+/* ==========================================================================
+   6. 自提凭证核销台、叫号横幅与订单检查器 (保留缩略图与核销契约)
+   ========================================================================== */
 .quick-verify-bar {
   padding: 16px 20px;
   margin-bottom: 16px;
@@ -1569,7 +2567,7 @@ html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
   background: #ffffff;
   border: 1px solid var(--color-brand-border);
   color: #1d2129;
-  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.06);
+  box-shadow: 0 2px 8px rgba(29, 33, 41, 0.05);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1593,12 +2591,6 @@ html[data-admin-theme='meituan'] .product-table tbody tr.row-selected td {
   display: grid;
   place-items: center;
   flex-shrink: 0;
-}
-
-html[data-admin-theme='meituan'] .quick-verify-icon {
-  background: #fff8e1;
-  border-color: #ffe082;
-  color: #d48806;
 }
 
 .quick-verify-eyebrow {
@@ -1691,12 +2683,6 @@ html[data-admin-theme='meituan'] .quick-verify-icon {
   font-variant-numeric: tabular-nums;
 }
 
-html[data-admin-theme='meituan'] .pickup-queue-badge {
-  background: #fff8e1;
-  border-color: #ffe082;
-  color: #995c00;
-}
-
 .order-ritual-badges {
   display: flex;
   flex-wrap: wrap;
@@ -1730,15 +2716,9 @@ html[data-admin-theme='meituan'] .pickup-queue-badge {
   font-weight: 600;
   white-space: nowrap;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     border-color 0.14s ease,
     color 0.14s ease;
-}
-
-html[data-admin-theme='meituan'] .row-quick-btn {
-  background: #e8f3ff;
-  border-color: #bedaff;
-  color: #1677ff;
 }
 
 .row-quick-btn:hover:not(:disabled) {
@@ -1763,7 +2743,6 @@ html[data-admin-theme='meituan'] .row-quick-btn {
   color: #1d2129;
 }
 
-/* Clean bright enterprise queue call-number banner */
 .inspector-queue-banner {
   display: flex;
   align-items: center;
@@ -1885,7 +2864,9 @@ html[data-admin-theme='meituan'] .row-quick-btn {
   gap: 10px;
 }
 
-/* ---------- 6. Product Workspace, Inspector & Image Uploaders ---------- */
+/* ==========================================================================
+   7. 商品管理工作区、侧边详情检视器与上传弹窗 (Merchant.js)
+   ========================================================================== */
 .inventory-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(180px, 1.15fr);
@@ -1917,8 +2898,8 @@ html[data-admin-theme='meituan'] .row-quick-btn {
 }
 
 .summary-icon.blue {
-  background: #e8f3ff;
-  color: #165dff;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 
 .summary-icon.green {
@@ -2126,6 +3107,16 @@ html[data-admin-theme='meituan'] .row-quick-btn {
   display: none;
 }
 
+.table-select select {
+  height: 34px;
+  padding: 0 28px 0 10px;
+  border-radius: var(--admin-radius, 6px);
+  border: 1px solid var(--border-control);
+  background-color: var(--bg-surface);
+  color: #1d2129;
+  font-size: 12.5px;
+}
+
 .filter-reset {
   height: 34px;
   padding: 0 10px;
@@ -2218,8 +3209,8 @@ html[data-admin-theme='meituan'] .row-quick-btn {
 /* Product Inspector */
 .product-inspector {
   position: sticky;
-  top: 72px;
-  max-height: calc(100vh - 90px);
+  top: 76px;
+  max-height: calc(100vh - 94px);
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -2662,50 +3653,6 @@ textarea.admin-input {
   min-width: 0;
 }
 
-.product-image-field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 4px 0 14px;
-}
-
-.product-image-preview {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  border-radius: var(--admin-radius, 8px);
-  border: 1px solid var(--border-default);
-  background: #f7f8fa;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-}
-
-.product-image-preview > img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.product-image-busy {
-  position: absolute;
-  inset: auto 0 0;
-  padding: 4px;
-  background: rgba(29, 33, 41, 0.76);
-  color: #ffffff;
-  font-size: 11px;
-  text-align: center;
-}
-
-.product-image-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-  min-width: 0;
-}
-
 .image-upload-button {
   position: relative;
   display: inline-flex;
@@ -2724,158 +3671,15 @@ textarea.admin-input {
   white-space: nowrap;
 }
 
-html[data-admin-theme='meituan'] .image-upload-button {
-  background: #e8f3ff;
-  border-color: #bedaff;
-  color: #1677ff;
-}
-
 .image-upload-button:hover:not(.disabled) {
   background: var(--color-brand);
   border-color: var(--color-brand);
   color: #ffffff;
 }
 
-.image-upload-button.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.image-upload-button input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.image-upload-button input:disabled {
-  cursor: not-allowed;
-}
-
-.image-upload-button:focus-within {
-  outline: 3px solid var(--color-focus);
-  outline-offset: 2px;
-}
-
-.image-remove-button {
-  font-size: 12px;
-  color: #86909c;
-  text-decoration: underline;
-}
-
-.product-image-list-field {
-  margin-bottom: 12px;
-}
-
-.product-image-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.product-image-tile {
-  position: relative;
-  width: 76px;
-}
-
-.product-image-tile img {
-  width: 76px;
-  height: 76px;
-  border-radius: var(--admin-radius, 6px);
-  border: 1px solid var(--border-default);
-  background: #f7f8fa;
-  object-fit: cover;
-}
-
-.product-image-tile > span {
-  position: absolute;
-  top: 4px;
-  left: 4px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--color-brand);
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.product-image-tile div {
-  display: flex;
-  gap: 2px;
-  margin-top: 3px;
-}
-
-.product-image-tile button {
-  flex: 1;
-  padding: 2px;
-  border-radius: 4px;
-  border: 1px solid var(--border-default);
-  background: #ffffff;
-  color: #4e5969;
-  font-size: 10px;
-}
-
-.product-image-list-field small,
-.product-image-controls small {
-  display: block;
-  margin-top: 5px;
-  font-size: 11.5px;
-  color: #86909c;
-}
-
-.image-field-error {
-  display: block;
-  margin: 6px 0 4px;
-  font-size: 12px;
-  color: #f53f3f;
-}
-
-.image-field-notice {
-  display: block;
-  margin: 6px 0 4px;
-  font-size: 12px;
-  color: var(--color-brand);
-}
-
-.product-image-failures {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin: 6px 0;
-}
-
-.product-image-failure {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  border-radius: var(--admin-radius, 6px);
-  background: #ffece8;
-  border: 1px solid #fdcdc5;
-  color: #f53f3f;
-  font-size: 11.5px;
-}
-
-.product-image-failure span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.product-image-failure button {
-  padding: 3px 7px;
-  border-radius: 4px;
-  border: 1px solid #fdcdc5;
-  background: #ffffff;
-  color: #f53f3f;
-  font-size: 11px;
-}
-
-/* ---------- 7. Inventory, Sideforms, Settings, Aftersales & Disputes ---------- */
+/* ==========================================================================
+   8. 库存、侧边表单、门店设置、售后审核、知识库与 RBAC 角色权限
+   ========================================================================== */
 .inventory-grid {
   grid-template-columns: minmax(0, 1.75fr) minmax(270px, 0.85fr);
 }
@@ -2924,28 +3728,6 @@ html[data-admin-theme='meituan'] .image-upload-button {
 
 .ops-settings .teal-button {
   align-self: flex-start;
-}
-
-.store-image-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 12.5px;
-  color: #4e5969;
-}
-
-.store-image-field img {
-  width: 68px;
-  height: 68px;
-  border-radius: var(--admin-radius, 8px);
-  border: 1px solid var(--border-default);
-  object-fit: cover;
-}
-
-.store-image-field small {
-  color: #86909c;
-  font-size: 11.5px;
 }
 
 .review-inline {
@@ -3032,7 +3814,7 @@ html[data-admin-theme='meituan'] .image-upload-button {
   white-space: nowrap;
 }
 
-/* ---------- 8. Knowledge Base, Retrieval Debug & RBAC Workspace ---------- */
+/* Knowledge Base & Retrieval Debug */
 .kb-forms {
   margin-bottom: 4px;
 }
@@ -3055,7 +3837,7 @@ html[data-admin-theme='meituan'] .image-upload-button {
   border: 1px solid transparent;
   text-align: left;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     border-color 0.14s ease;
 }
 
@@ -3256,7 +4038,7 @@ html[data-admin-theme='meituan'] .image-upload-button {
   white-space: pre-wrap;
 }
 
-/* RBAC Role & Permission Editor */
+/* RBAC Role & Permission Editor (15 .rbac-permission, .rbac-role, .rbac-editor contracts preserved) */
 .rbac-layout {
   grid-template-columns: minmax(240px, 1fr) minmax(420px, 2fr);
   gap: 18px;
@@ -3280,7 +4062,7 @@ html[data-admin-theme='meituan'] .image-upload-button {
   background: transparent;
   text-align: left;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     border-color 0.14s ease;
 }
 
@@ -3349,7 +4131,7 @@ html[data-admin-theme='meituan'] .image-upload-button {
   cursor: pointer;
   min-width: 0;
   transition:
-    background 0.14s ease,
+    background-color 0.14s ease,
     border-color 0.14s ease;
 }
 
@@ -3360,11 +4142,6 @@ html[data-admin-theme='meituan'] .image-upload-button {
 .rbac-permission:has(input:checked) {
   background: var(--color-brand-soft);
   border-color: var(--color-brand-border);
-}
-
-html[data-admin-theme='meituan'] .rbac-permission:has(input:checked) {
-  background: #f0f7ff;
-  border-color: #91caff;
 }
 
 .rbac-permission input {
@@ -3391,7 +4168,9 @@ html[data-admin-theme='meituan'] .rbac-permission:has(input:checked) {
   background: #f7f8fa;
 }
 
-/* ---------- 9. Executive Arco / AntD Cloud Dual-Redis Infrastructure Monitor ---------- */
+/* ==========================================================================
+   9. 双平面 Redis 运行与访问安全监控面板 (三套工作台自适应色板，零蓝偏泄漏)
+   ========================================================================== */
 .redis-telemetry-card {
   display: flex;
   flex-direction: column;
@@ -3596,35 +4375,4 @@ html[data-admin-theme='meituan'] .rbac-permission:has(input:checked) {
   color: #1d2129;
   font-size: 12px;
   font-weight: 500;
-}
-
-.sdd-pager {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  margin: 14px 0 4px;
-  color: #4e5969;
-  font-size: 13px;
-  flex-wrap: wrap;
-}
-
-.sdd-pager button {
-  height: 34px;
-  padding: 0 13px;
-  border-radius: var(--admin-radius, 6px);
-  border: 1px solid var(--border-control);
-  background: #ffffff;
-  color: #1d2129;
-  font-size: 12.5px;
-  font-weight: 500;
-}
-
-.sdd-pager button:hover:not(:disabled) {
-  background: #f7f8fa;
-}
-
-.sdd-pager button:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
 }

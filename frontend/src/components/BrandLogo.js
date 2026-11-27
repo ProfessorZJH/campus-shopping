@@ -1,6 +1,6 @@
 let nextLogoUid = 0;
 
-/** 主题自适应品牌图形标志：通过 CSS 变量色槽自动随 4 套消费端与 3 套后台主题切换，零内联样式，严守 CSP style-src 'self'。 */
+/** 主题自适应品牌图形标志：通过 CSS 变量色槽自动随 4 套消费端大厂复刻与 3 套后台工作台切换，零内联样式，严守 CSP style-src 'self'。 */
 export default {
   name: 'BrandLogo',
   props: {

@@ -34,7 +34,6 @@ const App = {
   name: 'CampusApp',
   components: {
     AuthDialog,
-    DesignVariantSwitcher,
     NotFound: {
       template: `<main class="mobile-empty"><h1>404</h1><p>页面不存在</p><a href="#/">返回首页</a></main>`,
     },
@@ -153,11 +152,12 @@ const App = {
     watch([() => store.route, () => store.identityVersion], refresh);
     return { store, current, ready, contextError, authRequired, loginOpen, refresh };
   },
-  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='KnowledgeDebug'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="authRequired" class="mobile-empty"><h1>请先登录</h1><p>登录后继续访问当前后台页面</p><button class="teal-button" @click="loginOpen=true">登录</button></div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><AuthDialog v-if="loginOpen" @close="loginOpen=false"/><DesignVariantSwitcher/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
+  template: `<div class="application" :class="{'admin-mode':current==='Merchant'||current==='MerchantOps'||current==='Platform'||current==='Knowledge'||current==='KnowledgeDebug'||current==='RoleManager'}"><div v-if="!ready" class="inline-loading" role="status">正在恢复身份与权限…</div><div v-else-if="authRequired" class="mobile-empty"><h1>请先登录</h1><p>登录后继续访问当前后台页面</p><button class="teal-button" @click="loginOpen=true">登录</button></div><div v-else-if="contextError" class="inline-error">{{contextError}} <button @click="refresh">重试</button></div><component v-else :is="current" :key="store.route+':'+store.identityVersion+':'+store.merchantId"/><AuthDialog v-if="loginOpen" @close="loginOpen=false"/><div v-if="store.toast" class="toast" role="status">{{store.toast}}</div></div>`,
 };
 const app = createApp(App);
 app.component('Icon', Icon);
 app.component('BrandLogo', BrandLogo);
+app.component('DesignVariantSwitcher', DesignVariantSwitcher);
 app.directive('modal', modal);
 installCustomSelects();
 initDesignTheme();

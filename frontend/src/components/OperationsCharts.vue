@@ -21,11 +21,21 @@ interface StatsData {
   statuses?: StatusItem[];
 }
 
-const props = defineProps<{
-  stats: StatsData;
-  money: (cent: number) => string;
-  orderStatusLabel: (status: string) => string;
-}>();
+const props = withDefaults(
+  defineProps<{
+    stats: StatsData;
+    money: (cent: number) => string;
+    orderStatusLabel: (status: string) => string;
+    mode?: 'grid' | 'arco' | 'antd' | 'meituan';
+  }>(),
+  {
+    mode: 'grid',
+  },
+);
+
+const uid = Math.random().toString(36).slice(2, 8);
+const areaGradId = `ops-area-grad-${uid}`;
+const barGradId = `ops-bar-grad-${uid}`;
 
 const HBAR_COLORS = [
   'var(--chart-1)',
@@ -43,10 +53,17 @@ const SLICE_COLORS = [
   'var(--chart-5)',
 ];
 
-const trendModel = computed(() => {
-  const raw = props.stats?.trend || [];
-  if (!raw.length)
-    return { bars: [], maxVal: 0, midVal: 0, peakVal: 0, linePath: '', areaPath: '' };
+function buildTrendGeometry(
+  raw: TrendItem[],
+  startX: number,
+  plotW: number,
+  baseY: number,
+  plotH: number,
+  maxBarW: number,
+) {
+  if (!raw.length) {
+    return { bars: [], maxVal: 0, midVal: 0, peakVal: 0, totalVal: 0, linePath: '', areaPath: '' };
+  }
   const byDay = new Map<string, number>();
   for (const item of raw) {
     byDay.set(String(item.day || '').slice(0, 10), Number(item.orderCount || 0));
@@ -64,16 +81,14 @@ const trendModel = computed(() => {
       days = padded;
     }
   }
-  const peakVal = Math.max(0, ...days.map((d) => byDay.get(d) || 0));
+  const vals = days.map((d) => byDay.get(d) || 0);
+  const peakVal = Math.max(0, ...vals);
+  const totalVal = vals.reduce((acc, n) => acc + n, 0);
   const maxVal = Math.max(2, peakVal);
   const midVal = Math.round(maxVal / 2);
   const count = Math.max(1, days.length);
-  const plotW = 308;
-  const startX = 36;
-  const baseY = 124;
-  const plotH = 86;
   const step = plotW / count;
-  const barW = Math.min(24, Math.max(11, step * 0.52));
+  const barW = Math.min(maxBarW, Math.max(11, step * 0.48));
   const bars = days.map((day, idx) => {
     const val = byDay.get(day) || 0;
     const h = val > 0 ? Math.max(8, Math.round((val / maxVal) * plotH)) : 4;
@@ -120,8 +135,16 @@ const trendModel = computed(() => {
     areaPath = `${linePath} L ${last.cx.toFixed(1)} ${baseY} L ${first.cx.toFixed(1)} ${baseY} Z`;
   }
 
-  return { bars, maxVal, midVal, peakVal, linePath, areaPath };
-});
+  return { bars, maxVal, midVal, peakVal, totalVal, linePath, areaPath };
+}
+
+const trendModel = computed(() =>
+  buildTrendGeometry(props.stats?.trend || [], 36, 308, 124, 86, 24),
+);
+
+const wideTrendModel = computed(() =>
+  buildTrendGeometry(props.stats?.trend || [], 42, 518, 146, 108, 30),
+);
 
 const topProducts = computed(() => {
   const list = props.stats?.products || [];
@@ -164,7 +187,301 @@ const donutModel = computed(() => {
 </script>
 
 <template>
-  <div class="ops-grid stats-three-col echarts-pro-grid">
+  <!-- Mode 1: ByteDance Arco Design Pro Workplace (Full-width Area Trend + 2-Col Hot Products & Donut) -->
+  <div v-if="mode === 'arco'" class="arco-charts-stack">
+    <section class="ops-card arco-trend-card">
+      <div class="ops-card-header arco-card-head">
+        <div>
+          <h2>内容与订单数据</h2>
+          <span>近 {{ wideTrendModel.bars.length || 7 }} 日履约趋势</span>
+        </div>
+        <span v-if="wideTrendModel.bars.length" class="arco-peak-pill">
+          单日峰值 {{ wideTrendModel.peakVal }} 单 · 累计 {{ wideTrendModel.totalVal }} 单
+        </span>
+      </div>
+      <div v-if="wideTrendModel.bars.length" class="chart-svg-wrap">
+        <svg class="chart-svg" viewBox="0 0 580 176" role="img" aria-label="每日订单量趋势图">
+          <defs>
+            <linearGradient :id="areaGradId" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.24" />
+              <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.01" />
+            </linearGradient>
+          </defs>
+          <text class="chart-axis-text" x="34" y="40" text-anchor="end">
+            {{ wideTrendModel.maxVal }}
+          </text>
+          <text class="chart-axis-text" x="34" y="94" text-anchor="end">
+            {{ wideTrendModel.midVal }}
+          </text>
+          <text class="chart-axis-text" x="34" y="148" text-anchor="end">0</text>
+          <line x1="40" y1="38" x2="564" y2="38" stroke="#E5E6EB" stroke-dasharray="3 3" />
+          <line x1="40" y1="92" x2="564" y2="92" stroke="#E5E6EB" stroke-dasharray="3 3" />
+          <line x1="40" y1="146" x2="564" y2="146" stroke="#E5E6EB" />
+          <path
+            v-if="wideTrendModel.areaPath"
+            :d="wideTrendModel.areaPath"
+            :fill="'url(#' + areaGradId + ')'"
+          />
+          <path
+            v-if="wideTrendModel.linePath"
+            :d="wideTrendModel.linePath"
+            fill="none"
+            stroke="var(--chart-1)"
+            stroke-width="2.6"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+          <g v-for="bar in wideTrendModel.bars" :key="'arco-' + bar.day">
+            <line
+              :x1="bar.cx"
+              :y1="bar.pointY"
+              :x2="bar.cx"
+              y2="146"
+              stroke="var(--chart-1)"
+              stroke-opacity="0.1"
+              stroke-dasharray="2 2"
+            />
+            <circle
+              :cx="bar.cx"
+              :cy="bar.pointY"
+              r="4.2"
+              fill="#FFFFFF"
+              stroke="var(--chart-1)"
+              stroke-width="2.4"
+            />
+            <text
+              v-if="bar.val > 0"
+              class="chart-val-text"
+              :x="bar.cx"
+              :y="bar.pointY - 9"
+              text-anchor="middle"
+            >
+              {{ bar.val }}
+            </text>
+            <text class="chart-axis-text" :x="bar.cx" y="166" text-anchor="middle">
+              {{ bar.shortDay }}
+            </text>
+          </g>
+        </svg>
+      </div>
+      <div v-else class="admin-empty">暂无订单数据</div>
+    </section>
+
+    <div class="arco-charts-subgrid">
+      <section class="ops-card">
+        <div class="ops-card-header">
+          <h2>线上热门商品</h2>
+          <span v-if="topProducts.length">TOP {{ topProducts.length }}</span>
+        </div>
+        <div v-if="topProducts.length" class="hbar-list">
+          <div v-for="item in topProducts" :key="item.productId" class="hbar-item">
+            <div class="hbar-head">
+              <div class="hbar-rank-title">
+                <span class="rank-medal" :class="'medal-' + item.rank">{{ item.rank }}</span>
+                <strong>{{ item.title || item.productId }}</strong>
+              </div>
+              <b>{{ item.quantity }} 件</b>
+            </div>
+            <svg class="hbar-svg" viewBox="0 0 280 8" aria-hidden="true">
+              <rect x="0" y="0" width="280" height="8" rx="4" fill="#F2F3F5" />
+              <rect x="0" y="0" :width="item.barWidth" height="8" rx="4" :fill="item.color" />
+            </svg>
+          </div>
+        </div>
+        <div v-else class="admin-empty">暂无成交商品</div>
+      </section>
+
+      <section class="ops-card">
+        <div class="ops-card-header">
+          <h2>订单状态占比</h2>
+          <span v-if="donutModel.slices.length">实时履约占比</span>
+        </div>
+        <div v-if="donutModel.slices.length" class="donut-chart-layout">
+          <div class="donut-svg-box">
+            <svg viewBox="0 0 124 124" class="donut-svg" role="img" aria-label="订单状态环形图">
+              <circle cx="62" cy="62" r="40" fill="none" stroke="#F2F3F5" stroke-width="15" />
+              <circle
+                cx="62"
+                cy="62"
+                r="28"
+                fill="none"
+                stroke="#E5E6EB"
+                stroke-width="1"
+                stroke-dasharray="2.5 3"
+              />
+              <circle
+                v-for="s in donutModel.slices"
+                :key="s.status"
+                cx="62"
+                cy="62"
+                r="40"
+                fill="none"
+                :stroke="s.color"
+                stroke-width="15"
+                :stroke-dasharray="s.dashArray"
+                :stroke-dashoffset="s.dashOffset"
+                transform="rotate(-90 62 62)"
+              />
+            </svg>
+            <div class="donut-center-label">
+              <strong>{{ donutModel.totalOrders }}</strong>
+              <small>总单量</small>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <div v-for="s in donutModel.slices" :key="'lg-' + s.status" class="donut-legend-row">
+              <svg class="legend-dot" width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+                <circle cx="5" cy="5" r="4.5" :fill="s.color" />
+              </svg>
+              <span class="legend-name">{{ orderStatusLabel(s.status) }}</span>
+              <small class="legend-pct">{{ s.pct }}%</small>
+              <b>{{ s.orderCount }}单</b>
+            </div>
+          </div>
+        </div>
+        <div v-else class="admin-empty">暂无状态统计</div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Mode 2: Alibaba Ant Design Pro Analysis (Unified 65% Trend + 35% #314659 Top-6 Ranking Card + Status Donut Row) -->
+  <div v-else-if="mode === 'antd'" class="antd-charts-stack">
+    <section class="ops-card antd-dual-chart-card">
+      <div class="antd-dual-head">
+        <div class="antd-dual-tabs">
+          <span class="antd-dual-tab is-active">订单量趋势</span>
+          <span class="antd-dual-sub">近 {{ wideTrendModel.bars.length || 7 }} 日成交走势</span>
+        </div>
+        <span v-if="wideTrendModel.bars.length" class="antd-dual-meta">
+          单日峰值 {{ wideTrendModel.peakVal }} 单
+        </span>
+      </div>
+      <div class="antd-dual-body">
+        <div class="antd-dual-left">
+          <h3 class="antd-panel-subtitle">每日订单趋势</h3>
+          <div v-if="wideTrendModel.bars.length" class="chart-svg-wrap">
+            <svg class="chart-svg" viewBox="0 0 580 176" role="img" aria-label="每日订单量趋势图">
+              <defs>
+                <linearGradient :id="areaGradId" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.18" />
+                  <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0" />
+                </linearGradient>
+                <linearGradient :id="barGradId" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="var(--chart-1)" />
+                  <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.78" />
+                </linearGradient>
+              </defs>
+              <text class="chart-axis-text" x="34" y="40" text-anchor="end">
+                {{ wideTrendModel.maxVal }}
+              </text>
+              <text class="chart-axis-text" x="34" y="94" text-anchor="end">
+                {{ wideTrendModel.midVal }}
+              </text>
+              <text class="chart-axis-text" x="34" y="148" text-anchor="end">0</text>
+              <line x1="40" y1="38" x2="564" y2="38" stroke="#F0F0F0" stroke-dasharray="3 3" />
+              <line x1="40" y1="92" x2="564" y2="92" stroke="#F0F0F0" stroke-dasharray="3 3" />
+              <line x1="40" y1="146" x2="564" y2="146" stroke="#D9D9D9" />
+              <rect
+                v-for="bar in wideTrendModel.bars"
+                :key="'antd-col-' + bar.day"
+                class="chart-bar-rect"
+                :x="bar.x"
+                :y="bar.y"
+                :width="bar.w"
+                :height="bar.h"
+                rx="2"
+                :fill="'url(#' + barGradId + ')'"
+                opacity="0.92"
+              />
+              <g v-for="bar in wideTrendModel.bars" :key="'antd-lbl-' + bar.day">
+                <text
+                  v-if="bar.val > 0"
+                  class="chart-val-text"
+                  :x="bar.cx"
+                  :y="bar.pointY - 7"
+                  text-anchor="middle"
+                >
+                  {{ bar.val }}
+                </text>
+                <text class="chart-axis-text" :x="bar.cx" y="166" text-anchor="middle">
+                  {{ bar.shortDay }}
+                </text>
+              </g>
+            </svg>
+          </div>
+          <div v-else class="admin-empty">暂无订单数据</div>
+        </div>
+
+        <div class="antd-dual-right">
+          <h3 class="antd-panel-subtitle">热销商品排名 Top 6</h3>
+          <ul v-if="topProducts.length" class="antd-rank-list">
+            <li v-for="item in topProducts" :key="item.productId" class="antd-rank-row">
+              <span class="antd-rank-badge" :class="{ 'is-top': item.rank <= 3 }">{{
+                item.rank
+              }}</span>
+              <span class="antd-rank-name" :title="item.title || item.productId">{{
+                item.title || item.productId
+              }}</span>
+              <strong class="antd-rank-count">{{ item.quantity }} 件</strong>
+            </li>
+          </ul>
+          <div v-else class="admin-empty">暂无成交商品</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="antd-donut-row" :class="{ 'is-paired': !!$slots.besideDonut }">
+      <section class="ops-card antd-donut-card">
+        <div class="ops-card-header">
+          <h2>订单状态类别占比</h2>
+          <span v-if="donutModel.slices.length">实时履约分布</span>
+        </div>
+        <div v-if="donutModel.slices.length" class="donut-chart-layout">
+          <div class="donut-svg-box">
+            <svg viewBox="0 0 124 124" class="donut-svg" role="img" aria-label="订单状态环形图">
+              <circle cx="62" cy="62" r="40" fill="none" stroke="#F5F5F5" stroke-width="15" />
+              <circle
+                v-for="s in donutModel.slices"
+                :key="s.status"
+                cx="62"
+                cy="62"
+                r="40"
+                fill="none"
+                :stroke="s.color"
+                stroke-width="15"
+                :stroke-dasharray="s.dashArray"
+                :stroke-dashoffset="s.dashOffset"
+                transform="rotate(-90 62 62)"
+              />
+            </svg>
+            <div class="donut-center-label">
+              <strong>{{ donutModel.totalOrders }}</strong>
+              <small>订单数</small>
+            </div>
+          </div>
+          <div class="donut-legend">
+            <div v-for="s in donutModel.slices" :key="'lg-' + s.status" class="donut-legend-row">
+              <svg class="legend-dot" width="9" height="9" viewBox="0 0 10 10" aria-hidden="true">
+                <circle cx="5" cy="5" r="4.5" :fill="s.color" />
+              </svg>
+              <span class="legend-name">{{ orderStatusLabel(s.status) }}</span>
+              <small class="legend-pct">{{ s.pct }}%</small>
+              <b>{{ money(s.amountCent) }}</b>
+            </div>
+          </div>
+        </div>
+        <div v-else class="admin-empty">暂无状态统计</div>
+      </section>
+      <slot name="besideDonut" />
+    </div>
+  </div>
+
+  <!-- Mode 3 / Default: Responsive 3-Column Operational Charts ('grid' | 'meituan') -->
+  <div
+    v-else
+    class="ops-grid stats-three-col echarts-pro-grid"
+    :class="{ 'is-meituan-charts': mode === 'meituan' }"
+  >
     <section class="ops-card">
       <div class="ops-card-header">
         <h2>近 {{ trendModel.bars.length || 7 }} 日订单趋势</h2>
@@ -173,13 +490,13 @@ const donutModel = computed(() => {
       <div v-if="trendModel.bars.length" class="chart-svg-wrap">
         <svg class="chart-svg" viewBox="0 0 360 154" role="img" aria-label="每日订单量趋势图">
           <defs>
-            <linearGradient id="ops-area-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.22" />
+            <linearGradient :id="areaGradId" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--chart-1)" stop-opacity="0.24" />
               <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0" />
             </linearGradient>
-            <linearGradient id="ops-bar-grad" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient :id="barGradId" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stop-color="var(--chart-1)" />
-              <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.65" />
+              <stop offset="100%" stop-color="var(--chart-1)" stop-opacity="0.68" />
             </linearGradient>
           </defs>
           <text class="chart-axis-text" x="28" y="40" text-anchor="end">
@@ -201,10 +518,14 @@ const donutModel = computed(() => {
             :width="bar.w"
             :height="bar.h"
             rx="4"
-            fill="url(#ops-bar-grad)"
-            opacity="0.16"
+            :fill="'url(#' + barGradId + ')'"
+            opacity="0.2"
           />
-          <path v-if="trendModel.areaPath" :d="trendModel.areaPath" fill="url(#ops-area-grad)" />
+          <path
+            v-if="trendModel.areaPath"
+            :d="trendModel.areaPath"
+            :fill="'url(#' + areaGradId + ')'"
+          />
           <path
             v-if="trendModel.linePath"
             :d="trendModel.linePath"

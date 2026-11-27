@@ -1,7 +1,7 @@
 /* ==========================================================================
-   青柠校园 · V7 国内大厂级 PC Web & SaaS 设计变量基座
-   1. 纯净大厂中性灰白画布与字色体系 (--bg-*, --ink-*, --border-*)
-   2. 默认消费端：淘宝 2025 / 京东活力橙红零售视觉 (--color-brand: #FF5000)
+   青柠校园 · V8 国内大厂 1:1 结构复刻设计变量基座 (tokens.css)
+   1. 纯净大厂中性画布与字色体系 (--bg-*, --ink-*, --border-*)
+   2. 默认消费端：淘宝 2025 PC 零售设计语言 (--color-brand: #FF5000)
    3. 企业级语义状态色、图表调色板 (--chart-1..6) 与历史变量全量兼容别名
    ========================================================================== */
 
@@ -14,7 +14,7 @@
     'JetBrains Mono', 'SFMono-Regular', 'Cascadia Mono', Consolas, 'Liberation Mono', Menlo,
     monospace;
 
-  /* 国内大厂标准中性色阶（字节 Arco / 阿里 AntD / 淘宝白昼基底） */
+  /* 默认画布色阶（淘宝 2025 PC 白昼基底） */
   --bg-canvas: #f4f5f7;
   --bg-canvas-end: #f0f2f5;
   --bg-surface: #ffffff;
@@ -24,15 +24,15 @@
   --bg-sidebar: #ffffff;
 
   /* 清晰层级正文与描边色阶 */
-  --ink-primary: #1d2129;
-  --ink-secondary: #4e5969;
+  --ink-primary: #1f1f1f;
+  --ink-secondary: #50607a;
   --ink-muted: #86909c;
 
-  --border-subtle: rgba(29, 33, 41, 0.06);
+  --border-subtle: rgba(31, 31, 31, 0.06);
   --border-default: #e5e6eb;
   --border-control: #c9cdd4;
 
-  /* 默认消费端主品牌（淘宝 2025 / 京东橙红零售体系） */
+  /* 默认消费端主品牌（淘宝 2025 PC） */
   --color-brand: #ff5000;
   --color-brand-hover: #e64500;
   --color-brand-strong: #cc3d00;
@@ -41,7 +41,7 @@
   --color-focus: #ff5000;
 
   --gradient-brand: linear-gradient(135deg, #ff6a00 0%, #ff4500 100%);
-  --gradient-buy: linear-gradient(135deg, #ff9402 0%, #ff6200 100%);
+  --gradient-buy: linear-gradient(135deg, #ff9900 0%, #ff6a00 100%);
   --gradient-copilot: linear-gradient(145deg, #fff7f0 0%, #ffffff 56%, #f7f8fa 100%);
 
   /* 零售价格色、卡片/按钮形态与搜索框特征色 */

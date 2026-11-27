@@ -1,6 +1,6 @@
 /* ==========================================================================
    青柠校园 · AI 导购对话工作台 (guide.css)
-   V7 Authentic Doubao / Kimi Clean Studio · Pure White Workspace & Neutral Rail
+   V8 豆包 / Kimi 纯净对话工作台 · 纯白画布 + #F2F3F5 中性气泡 + 4 套消费端主题自适应按钮
    ========================================================================== */
 
 .guide-shell {
@@ -990,6 +990,7 @@
   padding: 0 18px;
   border-radius: var(--radius-btn, 999px);
   border: 0;
+  background-color: var(--color-brand);
   background-image: var(--gradient-brand);
   color: #ffffff;
   font-size: 13.5px;
@@ -1078,6 +1079,7 @@
   height: 38px;
   border-radius: 50%;
   border: 0;
+  background-color: var(--color-brand);
   background-image: var(--gradient-brand);
   color: #ffffff;
   display: grid;

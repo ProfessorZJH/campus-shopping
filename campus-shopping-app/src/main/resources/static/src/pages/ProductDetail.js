@@ -6,6 +6,7 @@ import { api } from '../services/api.js';
 import { store, go, money, preview, notify, skuOf, available } from '../services/store.js';
 import { pathId, safeDecodeId, dateTime, priceSku } from '../services/page-utils.js';
 const { ref, computed, onMounted } = Vue;
+
 const STORE_PHOTOS = [
   './images/store-campus-hub.jpg',
   './images/store-library-cafe.jpg',
@@ -38,8 +39,13 @@ export default {
       lightboxOpen = ref(false),
       favorited = ref(false),
       favBusy = ref(false),
+      activeSection = ref('detail'),
+      detailSectionEl = ref(null),
+      reviewsSectionEl = ref(null),
+      recoSectionEl = ref(null),
       reviewSummary = ref(null),
       recommendations = ref({ boughtTogether: [], sameStoreHot: [] });
+
     const defaultSku = (p) =>
       p?.skus?.find((s) => s.status === 'ACTIVE' && Number(s.available || 0) > 0) || skuOf(p);
     const id = computed(() => safeDecodeId(store.route.split('?')[0].split('/')[2] || ''));
@@ -85,6 +91,7 @@ export default {
       }
       return combined;
     });
+
     /** 下架/不存在/网络失败是不同事实，不能都显示成同一条加载错误。 */
     const errorText = computed(() => {
       if (errorCode.value === 'C0001') return '该商品已下架或暂不可售';
@@ -93,6 +100,17 @@ export default {
         return '商品加载失败，请检查网络后重试';
       return error.value || '商品加载失败，请重试';
     });
+
+    function jumpSection(sectionKey) {
+      activeSection.value = sectionKey;
+      const map = {
+        detail: detailSectionEl.value,
+        reviews: reviewsSectionEl.value,
+        reco: recoSectionEl.value,
+      };
+      map[sectionKey]?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }
+
     async function load() {
       const request = scope.begin();
       const target = id.value;
@@ -102,6 +120,7 @@ export default {
       recommendations.value = { boughtTogether: [], sameStoreHot: [] };
       favorited.value = false;
       lightboxOpen.value = false;
+      activeSection.value = 'detail';
       error.value = '';
       errorCode.value = '';
       loading.value = true;
@@ -159,7 +178,9 @@ export default {
       imageIndex.value = 0;
       count.value = 1;
     }
+
     onMounted(load);
+
     async function add(goCart = false) {
       if (preview || busy.value || !sku.value?.skuId) return;
       const current = scope.capture(),
@@ -190,6 +211,7 @@ export default {
         if (current()) busy.value = false;
       }
     }
+
     async function toggleFavorite() {
       if (preview || favBusy.value || !product.value?.productId) return;
       if (!store.user) {
@@ -212,22 +234,27 @@ export default {
         if (current()) favBusy.value = false;
       }
     }
+
     function splitTags(raw) {
       return String(raw || '')
         .split(/[,，]/)
         .map((s) => s.trim())
         .filter(Boolean);
     }
+
     function prevImage() {
       imageIndex.value =
         (imageIndex.value + detailImages.value.length - 1) % detailImages.value.length;
     }
+
     function nextImage() {
       imageIndex.value = (imageIndex.value + 1) % detailImages.value.length;
     }
+
     function touchStart(event) {
       touchStartX.value = event.touches?.[0]?.clientX ?? null;
     }
+
     function touchEnd(event) {
       if (touchStartX.value == null || detailImages.value.length < 2) return;
       const end = event.changedTouches?.[0]?.clientX;
@@ -252,6 +279,7 @@ export default {
       go,
       money,
       splitPrice,
+      skuOf,
       available,
       priceSku,
       dateTime,
@@ -266,6 +294,11 @@ export default {
       favorited,
       favBusy,
       toggleFavorite,
+      activeSection,
+      detailSectionEl,
+      reviewsSectionEl,
+      recoSectionEl,
+      jumpSection,
       reviewSummary,
       relatedProducts,
       splitTags,
@@ -277,72 +310,117 @@ export default {
     };
   },
   template: `<ConsumerShell active="home">
-    <div class="mobile-page-top"><button @click="go('/')" aria-label="返回首页"><Icon name="arrowLeft"/></button><b>商品详情</b><span></span></div>
-    <StatusPanel v-if="loading" state="loading" message="正在加载商品…"/>
-    <StatusPanel v-else-if="error" state="error" :message="errorText" action-label="重新加载" :busy="loading" @retry="load"/>
+    <div class="mobile-page-top">
+      <button aria-label="返回首页" @click="go('/')"><Icon name="arrowLeft" /></button>
+      <b>商品详情</b>
+      <span></span>
+    </div>
+
+    <StatusPanel v-if="loading" state="loading" message="正在加载商品…" />
+    <StatusPanel v-else-if="error" state="error" :message="errorText" action-label="重新加载" :busy="loading" @retry="load" />
+
     <template v-else-if="product">
       <nav class="mall-breadcrumb" aria-label="面包屑导航">
         <button type="button" @click="go('/')">首页</button>
         <span>/</span>
-        <span>{{categoryName}}</span>
+        <span>{{ categoryName }}</span>
         <span>/</span>
-        <button type="button" @click="go('/shops/'+pathId(product.merchantId))">{{product.merchantName||merchant.name||'校内门店'}}</button>
+        <button type="button" @click="go('/shops/' + pathId(product.merchantId))">{{ product.merchantName || merchant.name || '校内门店' }}</button>
         <span>/</span>
-        <strong>{{product.title}}</strong>
+        <strong>{{ product.title }}</strong>
       </nav>
 
+      <!-- 大厂详情页顶部店铺微横条 (Store Mini-Bar) -->
+      <section class="pdp-store-minibar" aria-label="门店信息条">
+        <div class="pdp-store-left">
+          <span class="merchant-logo pdp-store-logo">
+            <ProductImage :src="merchantPhoto" :alt="merchant.name || '门店'" />
+          </span>
+          <div class="pdp-store-copy">
+            <div class="pdp-store-title-row">
+              <strong>{{ product.merchantName || merchant.name || '校内门店' }}</strong>
+              <span class="pdp-store-cert">校内自提认证</span>
+            </div>
+            <div class="pdp-store-facts">
+              <span><Icon name="pin" :size="12" />{{ product.merchantStoreName || merchant.storeName || '门店' }} · {{ product.merchantLocation || merchant.location || '校园自提点' }}</span>
+              <span class="pdp-fact-sep">·</span>
+              <span><Icon name="clock" :size="12" />{{ merchant.businessHours || '正常营业 · 到店即取' }}</span>
+            </div>
+          </div>
+        </div>
+        <button type="button" class="pdp-enter-store-btn" @click="go('/shops/' + pathId(product.merchantId))">
+          <Icon name="store" :size="14" />
+          <span>进店逛逛</span>
+          <Icon name="chevronRight" :size="13" />
+        </button>
+      </section>
+
+      <!-- 核心双栏商品选购白卡 (440px 方图画廊 + 右侧价格/履约/规格/双主按钮) -->
       <div class="detail-cabin-card">
         <div class="detail-layout">
           <div class="detail-gallery-col">
             <div class="detail-art" @touchstart.passive="touchStart" @touchend.passive="touchEnd">
-              <button type="button" class="detail-art-trigger" aria-label="查看大图" @click="lightboxOpen=true">
-                <ProductImage :src="detailImages[imageIndex].url" :alt="product.title" loading="eager"/>
+              <button type="button" class="detail-art-trigger" aria-label="查看大图" @click="lightboxOpen = true">
+                <ProductImage :src="detailImages[imageIndex].url" :alt="product.title" loading="eager" />
               </button>
-              <button v-if="detailImages.length>1" type="button" class="detail-image-prev" aria-label="上一张" @click="prevImage">‹</button>
-              <button v-if="detailImages.length>1" type="button" class="detail-image-next" aria-label="下一张" @click="nextImage">›</button>
+              <button v-if="detailImages.length > 1" type="button" class="detail-image-prev" aria-label="上一张" @click="prevImage">‹</button>
+              <button v-if="detailImages.length > 1" type="button" class="detail-image-next" aria-label="下一张" @click="nextImage">›</button>
             </div>
-            <div v-if="detailImages.length>1" class="detail-image-thumbs">
-              <button v-for="(img,i) in detailImages" :key="img.imageId||img.url" type="button" :class="{active:i===imageIndex}" @click="imageIndex=i">
-                <ProductImage :src="img.url" :alt="product.title"/>
+            <div v-if="detailImages.length > 1" class="detail-image-thumbs">
+              <button
+                v-for="(img, i) in detailImages"
+                :key="img.imageId || img.url"
+                type="button"
+                :class="{ active: i === imageIndex }"
+                @click="imageIndex = i"
+              >
+                <ProductImage :src="img.url" :alt="product.title" />
               </button>
             </div>
           </div>
 
           <div class="detail-buy-col detail-buy-box">
             <div class="detail-info">
-              <h1>{{product.title}}</h1>
-              <p v-if="product.description" class="muted-short detail-desc-text">{{product.description}}</p>
+              <h1>{{ product.title }}</h1>
+              <p v-if="product.description" class="muted-short detail-desc-text">{{ product.description }}</p>
             </div>
 
             <div class="tmall-price-banner">
               <div class="tmall-price-main-row">
                 <div class="detail-price rtl-price">
-                  <em class="yen">¥</em><b class="int">{{splitPrice(sku.priceCent).int}}</b><i v-if="splitPrice(sku.priceCent).dec" class="dec">{{splitPrice(sku.priceCent).dec}}</i>
+                  <em class="yen">¥</em><b class="int">{{ splitPrice(sku.priceCent).int }}</b><i v-if="splitPrice(sku.priceCent).dec" class="dec">{{ splitPrice(sku.priceCent).dec }}</i>
                 </div>
-                <button type="button" class="fav-toggle-btn" :class="{active:favorited}" :disabled="preview||favBusy" :aria-pressed="favorited" @click="toggleFavorite">
-                  <Icon name="heart" :size="15"/><span>{{favorited?'已收藏':'收藏'}}</span>
+                <button
+                  type="button"
+                  class="fav-toggle-btn"
+                  :class="{ active: favorited }"
+                  :disabled="preview || favBusy"
+                  :aria-pressed="favorited"
+                  @click="toggleFavorite"
+                >
+                  <Icon name="heart" :size="15" /><span>{{ favorited ? '已收藏' : '收藏' }}</span>
                 </button>
               </div>
               <div class="detail-assurance-strip" aria-label="履约保障">
-                <span><Icon name="clock" :size="13"/>极速备餐</span>
-                <span><Icon name="store" :size="13"/>校内自提免运费</span>
-                <span><Icon name="shield" :size="13"/>未取随时退</span>
+                <span><Icon name="clock" :size="13" />极速备货</span>
+                <span><Icon name="store" :size="13" />校内自提免运费</span>
+                <span><Icon name="shield" :size="13" />未取随时退</span>
               </div>
             </div>
 
             <div class="tmall-meta-rows">
               <div class="tmall-meta-row">
-                <span class="meta-label">取货门店</span>
+                <span class="meta-label">自提门店</span>
                 <div class="meta-val">
-                  <strong>{{product.merchantStoreName||merchant.storeName||product.merchantName||merchant.name||'校内门店'}}</strong>
-                  <span>· {{product.merchantLocation||merchant.location||'校园自提点'}}</span>
+                  <strong>{{ product.merchantStoreName || merchant.storeName || product.merchantName || merchant.name || '校内门店' }}</strong>
+                  <span>· {{ product.merchantLocation || merchant.location || '校园自提点' }}</span>
                   <em class="meta-eta">约8分钟备好</em>
                 </div>
               </div>
               <div class="tmall-meta-row">
-                <span class="meta-label">营业时间</span>
+                <span class="meta-label">服务保障</span>
                 <div class="meta-val">
-                  <span>{{merchant.businessHours||'正常营业 · 未取货支持随时退款'}}</span>
+                  <span>{{ merchant.businessHours || '正常营业' }} · 免打包费 · 未核销全额退</span>
                 </div>
               </div>
             </div>
@@ -351,10 +429,18 @@ export default {
               <div class="tmall-sku-row">
                 <span class="meta-label">规格</span>
                 <div class="sku-picker tmall-sku-picker">
-                  <button v-for="s in product.skus" :key="s.skuId" type="button" :class="{active:sku.skuId===s.skuId}" :aria-pressed="sku.skuId===s.skuId" :disabled="busy||s.status!=='ACTIVE'||Number(s.available)<=0" @click="chosen=s.skuId;count=1">
-                    <span>{{s.specKey}}</span>
-                    <small v-if="s.status!=='ACTIVE'" class="sku-state">已下架</small>
-                    <small v-else-if="Number(s.available)<=0" class="sku-state">无货</small>
+                  <button
+                    v-for="s in product.skus"
+                    :key="s.skuId"
+                    type="button"
+                    :class="{ active: sku.skuId === s.skuId }"
+                    :aria-pressed="sku.skuId === s.skuId"
+                    :disabled="busy || s.status !== 'ACTIVE' || Number(s.available) <= 0"
+                    @click="chosen = s.skuId; count = 1"
+                  >
+                    <span>{{ s.specKey }}</span>
+                    <small v-if="s.status !== 'ACTIVE'" class="sku-state">已下架</small>
+                    <small v-else-if="Number(s.available) <= 0" class="sku-state">无货</small>
                   </button>
                 </div>
               </div>
@@ -363,71 +449,145 @@ export default {
                 <span class="meta-label">数量</span>
                 <div class="quantity-picker tmall-qty-picker">
                   <div>
-                    <button type="button" aria-label="减少" :disabled="busy" @click="count=Math.max(1,count-1)"><Icon name="minus" :size="16"/></button>
-                    <b>{{count}}</b>
-                    <button type="button" aria-label="增加" :disabled="busy||count>=Math.min(99,Number(sku.available||0))" @click="count++"><Icon name="plus" :size="16"/></button>
+                    <button type="button" aria-label="减少" :disabled="busy" @click="count = Math.max(1, count - 1)">
+                      <Icon name="minus" :size="16" />
+                    </button>
+                    <b>{{ count }}</b>
+                    <button
+                      type="button"
+                      aria-label="增加"
+                      :disabled="busy || count >= Math.min(99, Number(sku.available || 0))"
+                      @click="count++"
+                    >
+                      <Icon name="plus" :size="16" />
+                    </button>
                   </div>
-                  <span class="stock-live-text">库存 {{sku.available||0}} 件</span>
+                  <span class="stock-live-text">库存 {{ sku.available || 0 }} 件</span>
                 </div>
               </div>
             </div>
 
             <div class="detail-fixed tmall-action-bar">
-              <button type="button" class="teal-button" :disabled="preview||busy||sku.status!=='ACTIVE'||Number(sku.available||0)<=0||product.status!=='PUBLISHED'" @click="add(false)">{{busy?'加入中…':'加入购物车'}}</button>
-              <button type="button" class="buy-now-button" :disabled="preview||busy||sku.status!=='ACTIVE'||Number(sku.available||0)<=0||product.status!=='PUBLISHED'" @click="add(true)">立即购买</button>
+              <button
+                type="button"
+                class="teal-button"
+                :disabled="preview || busy || sku.status !== 'ACTIVE' || Number(sku.available || 0) <= 0 || product.status !== 'PUBLISHED'"
+                @click="add(false)"
+              >
+                {{ busy ? '加入中…' : '加入购物车' }}
+              </button>
+              <button
+                type="button"
+                class="buy-now-button"
+                :disabled="preview || busy || sku.status !== 'ACTIVE' || Number(sku.available || 0) <= 0 || product.status !== 'PUBLISHED'"
+                @click="add(true)"
+              >
+                立即购买
+              </button>
             </div>
-
-            <button type="button" class="detail-merchant" @click="go('/shops/'+pathId(product.merchantId))">
-              <span class="merchant-logo"><ProductImage :src="merchantPhoto" :alt="merchant.name||'门店'"/></span>
-              <div class="store-dsr-main">
-                <strong>{{product.merchantName||merchant.name||'校内门店'}}</strong>
-                <span>{{product.merchantStoreName||merchant.storeName||product.merchantLocation||merchant.location||'支持到店自提'}}</span>
-              </div>
-              <span class="shop-enter-label">进店逛逛 <Icon name="chevronRight" :size="13"/></span>
-            </button>
           </div>
         </div>
       </div>
 
+      <!-- 大厂详情页下部锚点导航与内容楼层 (商品详情 / 商品评价 / 店内热销) -->
+      <div class="pdp-section-tabs" role="tablist" aria-label="详情内容导航">
+        <button
+          type="button"
+          :class="{ active: activeSection === 'detail' }"
+          @click="jumpSection('detail')"
+        >
+          商品详情
+        </button>
+        <button
+          type="button"
+          :class="{ active: activeSection === 'reviews' }"
+          @click="jumpSection('reviews')"
+        >
+          商品评价 <span>({{ reviewSummary?.totalCount || 0 }})</span>
+        </button>
+        <button
+          v-if="relatedProducts.length"
+          type="button"
+          :class="{ active: activeSection === 'reco' }"
+          @click="jumpSection('reco')"
+        >
+          店内热销
+        </button>
+      </div>
+
       <div class="detail-sections">
-        <section class="detail-card detail-reviews-card">
+        <section ref="detailSectionEl" class="detail-card pdp-spec-card">
           <div class="detail-section-head">
-            <h2>评价 ({{reviewSummary?.totalCount||0}})</h2>
-            <div v-if="reviewSummary?.totalCount" class="review-summary-pill"><b>{{reviewSummary.averageRating.toFixed(1)}} ★</b></div>
+            <h2>商品详情</h2>
+          </div>
+          <div class="pdp-spec-grid">
+            <div><span>商品名称</span><strong>{{ product.title }}</strong></div>
+            <div><span>所属分类</span><strong>{{ categoryName }}</strong></div>
+            <div><span>当前规格</span><strong>{{ sku.specKey || '标准装' }}</strong></div>
+            <div><span>取货方式</span><strong>校内门店凭码自提</strong></div>
+          </div>
+          <p class="pdp-rich-desc">{{ product.description || '校内合作门店正品直供，下单支付后凭 6 位取件码或二维码到店即取。' }}</p>
+        </section>
+
+        <section ref="reviewsSectionEl" class="detail-card detail-reviews-card">
+          <div class="detail-section-head">
+            <h2>商品评价 ({{ reviewSummary?.totalCount || 0 }})</h2>
+            <div v-if="reviewSummary?.totalCount" class="review-summary-pill">
+              <b>{{ reviewSummary.averageRating.toFixed(1) }} ★</b>
+            </div>
           </div>
           <div v-if="reviewSummary?.items?.length" class="review-list">
             <article v-for="r in reviewSummary.items" :key="r.id" class="review-item">
               <div class="review-item-head">
-                <span class="review-buyer"><span class="buyer-mini-avatar">{{(r.buyerDisplayName||'同').slice(0,1)}}</span> {{r.buyerDisplayName||'同学'}}</span>
-                <span class="review-stars-static">{{'★'.repeat(Math.max(1,Math.min(5,r.rating||5)))}}</span>
-                <small>{{dateTime(r.createdAt)}}</small>
+                <span class="review-buyer">
+                  <span class="buyer-mini-avatar">{{ (r.buyerDisplayName || '同').slice(0, 1) }}</span>
+                  {{ r.buyerDisplayName || '同学' }}
+                </span>
+                <span class="review-stars-static">{{ '★'.repeat(Math.max(1, Math.min(5, r.rating || 5))) }}</span>
+                <small>{{ dateTime(r.createdAt) }}</small>
               </div>
-              <div v-if="r.tags" class="review-tag-row"><span v-for="t in splitTags(r.tags)" :key="t" class="review-tag-chip">{{t}}</span></div>
-              <p class="review-body">{{r.content}}</p>
+              <div v-if="r.tags" class="review-tag-row">
+                <span v-for="t in splitTags(r.tags)" :key="t" class="review-tag-chip">{{ t }}</span>
+              </div>
+              <p class="review-body">{{ r.content }}</p>
             </article>
           </div>
           <p v-else class="muted-short">暂无评价，取货完成后可在订单页写评价</p>
         </section>
 
-        <section v-if="relatedProducts.length" class="detail-card detail-reco-card">
-          <div class="detail-section-head"><h2>店内热销</h2></div>
+        <section v-if="relatedProducts.length" ref="recoSectionEl" class="detail-card detail-reco-card">
+          <div class="detail-section-head">
+            <h2>店内热销</h2>
+          </div>
           <div class="detail-reco-grid">
-            <button type="button" v-for="rp in relatedProducts" :key="rp.productId" class="detail-reco-item" @click="go('/product/'+pathId(rp.productId))">
-              <div class="detail-reco-photo"><ProductImage :src="rp.imageUrl" :alt="rp.title"/></div>
-              <strong>{{rp.title}}</strong>
-              <b class="rtl-price"><em class="yen">¥</em><b class="int">{{splitPrice((priceSku(rp)||skuOf(rp))?.priceCent).int}}</b><i v-if="splitPrice((priceSku(rp)||skuOf(rp))?.priceCent).dec" class="dec">{{splitPrice((priceSku(rp)||skuOf(rp))?.priceCent).dec}}</i></b>
+            <button
+              v-for="rp in relatedProducts"
+              :key="rp.productId"
+              type="button"
+              class="detail-reco-item"
+              @click="go('/product/' + pathId(rp.productId))"
+            >
+              <div class="detail-reco-photo">
+                <ProductImage :src="rp.imageUrl" :alt="rp.title" />
+              </div>
+              <strong>{{ rp.title }}</strong>
+              <b class="rtl-price">
+                <em class="yen">¥</em><b class="int">{{ splitPrice((priceSku(rp) || skuOf(rp))?.priceCent).int }}</b><i v-if="splitPrice((priceSku(rp) || skuOf(rp))?.priceCent).dec" class="dec">{{ splitPrice((priceSku(rp) || skuOf(rp))?.priceCent).dec }}</i>
+              </b>
             </button>
           </div>
         </section>
       </div>
 
-      <div v-if="lightboxOpen" v-modal="() => lightboxOpen=false" class="ui-overlay lightbox-overlay" @click.self="lightboxOpen=false">
-        <div class="lightbox-dialog" role="dialog" aria-modal="true" :aria-label="product.title+'大图预览'">
-          <button type="button" class="sheet-close lightbox-close" aria-label="关闭大图" @click="lightboxOpen=false"><Icon name="x" :size="20"/></button>
-          <ProductImage :src="detailImages[imageIndex].url" :alt="product.title"/>
-          <div v-if="detailImages.length>1" class="lightbox-controls">
+      <div v-if="lightboxOpen" v-modal="() => (lightboxOpen = false)" class="ui-overlay lightbox-overlay" @click.self="lightboxOpen = false">
+        <div class="lightbox-dialog" role="dialog" aria-modal="true" :aria-label="product.title + '大图预览'">
+          <button type="button" class="sheet-close lightbox-close" aria-label="关闭大图" @click="lightboxOpen = false">
+            <Icon name="x" :size="20" />
+          </button>
+          <ProductImage :src="detailImages[imageIndex].url" :alt="product.title" />
+          <div v-if="detailImages.length > 1" class="lightbox-controls">
             <button type="button" class="outline-button small" @click="prevImage">上一张</button>
-            <span>{{imageIndex+1}} / {{detailImages.length}}</span>
+            <span>{{ imageIndex + 1 }} / {{ detailImages.length }}</span>
             <button type="button" class="outline-button small" @click="nextImage">下一张</button>
           </div>
         </div>

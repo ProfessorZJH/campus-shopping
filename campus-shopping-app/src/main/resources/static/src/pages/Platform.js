@@ -5,7 +5,8 @@ import { requestScope } from '../services/request-scope.js';
 import BackofficeShell from '../components/BackofficeShell.js';
 import ProductImage from '../components/ProductImage.js';
 import StatusPanel from '../components/StatusPanel.vue';
-import { api, query, idempotency } from '../services/api.js';
+import { api, query } from '../services/api.js';
+import { designTheme } from '../services/design-theme.js';
 import { store, go, preview, notify, money } from '../services/store.js';
 import {
   DEMO_STATS,
@@ -47,6 +48,7 @@ export default {
   },
   setup() {
     const scope = requestScope();
+    const adminTheme = computed(() => designTheme.admin || 'arco');
     const route = computed(() => store.route.split('?')[0] || '/admin'),
       title = computed(() => titles[route.value] || '平台总览');
     const stats = ref(null),
@@ -56,7 +58,9 @@ export default {
       products = ref([]),
       orders = ref([]),
       aftersales = ref([]),
-      categories = ref([]);
+      categories = ref([]),
+      merchantTotal = ref(0),
+      productTotal = ref(0);
     const selectedId = ref(''),
       search = ref(''),
       statsPeriod = ref(7),
@@ -143,6 +147,8 @@ export default {
         orders.value = DEMO_MERCHANT_ORDERS;
         aftersales.value = DEMO_AFTERSALES;
         categories.value = DEMO_CATEGORIES;
+        merchantTotal.value = DEMO_MERCHANTS.length;
+        productTotal.value = DEMO_PRODUCTS.filter((p) => p.status === 'PUBLISHED').length;
         return;
       }
       loading.value = true;
@@ -167,9 +173,11 @@ export default {
           if (!valid()) return;
           stats.value = s;
           merchants.value = m.items || [];
+          merchantTotal.value = Number(m?.total || merchants.value.length);
           orders.value = o.items || [];
           telemetry.value = t;
           if (p?.items?.length) products.value = p.items;
+          if (p?.total != null) productTotal.value = Number(p.total);
         }
         if (current === '/admin/applications') {
           const result = await read(
@@ -383,8 +391,61 @@ export default {
       if (fromStore) return fromStore;
       return '校内热销单品 #' + pid.slice(0, 6).toUpperCase();
     };
+    const pendingAppCount = computed(
+      () => applications.value.filter((a) => a.status === 'SUBMITTED').length,
+    );
+    const disputedCount = computed(
+      () =>
+        aftersales.value.filter((a) => a.status === 'DISPUTED').length ||
+        Number(stats.value?.refundedOrders || 0),
+    );
+    const displayMerchantCount = computed(() =>
+      preview ? merchants.value.length : merchantTotal.value || merchants.value.length,
+    );
+    const displayProductCount = computed(() =>
+      preview
+        ? products.value.filter((p) => p.status === 'PUBLISHED').length
+        : productTotal.value || products.value.length,
+    );
+    const peakDayOrders = computed(() =>
+      Math.max(0, ...(stats.value?.trend || []).map((t) => Number(t.orderCount || 0))),
+    );
+    const securityInterceptTotal = computed(
+      () =>
+        Number(telemetry.value?.crawlerBlockedCount || 0) +
+        Number(telemetry.value?.rateLimitedCount || 0) +
+        Number(telemetry.value?.orderBrushBlockedCount || 0) +
+        Number(telemetry.value?.pinLockoutCount || 0),
+    );
+    const sparkPaths = computed(() => {
+      const list = (stats.value?.trend || []).slice(-7);
+      if (!list.length) {
+        return {
+          line: 'M 4 22 L 56 18 L 112 20 L 176 12',
+          area: 'M 4 22 L 56 18 L 112 20 L 176 12 L 176 28 L 4 28 Z',
+        };
+      }
+      const max = Math.max(2, ...list.map((d) => Number(d.orderCount || 0)));
+      const step = list.length > 1 ? 172 / (list.length - 1) : 172;
+      const pts = list.map((d, idx) => {
+        const x = (4 + idx * step).toFixed(1);
+        const y = (24 - (Number(d.orderCount || 0) / max) * 18).toFixed(1);
+        return { x, y };
+      });
+      if (pts.length === 1) {
+        return {
+          line: `M 4 ${pts[0].y} L 176 ${pts[0].y}`,
+          area: `M 4 ${pts[0].y} L 176 ${pts[0].y} L 176 28 L 4 28 Z`,
+        };
+      }
+      const line = pts.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+      const area = `${line} L ${pts[pts.length - 1].x} 28 L ${pts[0].x} 28 Z`;
+      return { line, area };
+    });
     return {
       store,
+      designTheme,
+      adminTheme,
       route,
       title,
       stats,
@@ -395,6 +456,15 @@ export default {
       orders,
       aftersales,
       categories,
+      merchantTotal,
+      productTotal,
+      pendingAppCount,
+      disputedCount,
+      displayMerchantCount,
+      displayProductCount,
+      peakDayOrders,
+      securityInterceptTotal,
+      sparkPaths,
       selectedId,
       search,
       statsPeriod,
@@ -438,7 +508,412 @@ export default {
     };
   },
   template: `<BackofficeShell role="admin" :title="title"><template #actions><button class="outline-button small" @click="load"><Icon name="refresh" :size="16"/>刷新</button></template><StatusPanel v-if="loading" state="loading" message="正在加载…"/><StatusPanel v-else-if="error" state="error" :message="error" action-label="重新加载" :busy="loading" @retry="load"/><div v-else-if="!allowed&&!preview" class="ops-card access-denied"><Icon name="shield" :size="38"/><h2>无权限访问</h2></div>
-  <template v-else-if="route==='/admin'"><div class="kpi-section-bar"><div class="stats-period-pills"><button :class="{active:statsPeriod===7}" @click="statsPeriod=7">近 7 天</button><button :class="{active:statsPeriod===30}" @click="statsPeriod=30">近 30 天</button></div><small v-if="stats?.periodStart&&stats?.periodEnd">{{String(stats.periodStart).slice(0,10)}} 至 {{String(stats.periodEnd).slice(0,10)}}</small></div><div class="ops-kpis" v-if="stats"><div><span>成交总额</span><strong class="red-text">{{money(stats.completedAmountCent)}}</strong></div><div><span>订单总数</span><strong>{{stats.totalOrders||0}}</strong></div><div><span>已支付笔数</span><strong>{{stats.paidOrders||0}}</strong></div><div><span>退款笔数</span><strong>{{stats.refundedOrders||0}}</strong></div><div><span>退款率</span><strong>{{stats.refundRate==null?'—':(stats.refundRate*100).toFixed(1)+'%'}}</strong></div></div><OperationsCharts v-if="stats" :stats="stats" :money="money" :order-status-label="orderStatusLabel"/><section v-if="telemetry" class="ops-card redis-telemetry-card"><div class="ops-card-header"><div class="telemetry-title-group"><h2>系统运行与访问安全</h2><code v-if="telemetry.namespace" class="redis-ns-badge">{{telemetry.namespace}}</code></div><div class="telemetry-nodes"><span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'"><i></i>交易与会话服务：{{telemetry.securityConnected?'正常':'降级'}}</span><span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'"><i></i>商品缓存加速：{{telemetry.cacheConnected?'正常':'降级'}}</span></div></div><div class="redis-plane-grid"><div class="redis-plane-card is-security"><div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.securityConnected?'online':'degraded'" aria-hidden="true"></span><strong>交易与安全协调节点</strong><code class="plane-code-tag">SECURITY · SESSION</code></div><span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'">{{telemetry.securityConnected?'运行正常':'已降级'}}</span></div><p>负责登录会话、请求限流、防刷占单与取件码安全核验</p></div><div class="redis-plane-card is-cache"><div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.cacheConnected?'online':'degraded'" aria-hidden="true"></span><strong>公开目录与热榜缓存节点</strong><code class="plane-code-tag">CATALOG · REALTIME</code></div><span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'">{{telemetry.cacheConnected?'运行正常':'回源运行'}}</span></div><p>负责在售商品展示加速、实时热搜统计与热销商品排行</p></div></div><div class="telemetry-metrics"><div class="metric-security"><small class="metric-domain">安全防护</small><span>异常访问拦截</span><strong>{{telemetry.crawlerBlockedCount||0}}</strong></div><div class="metric-security"><small class="metric-domain">流量治理</small><span>高频请求限流</span><strong>{{telemetry.rateLimitedCount||0}}</strong></div><div class="metric-security"><small class="metric-domain">交易风控</small><span>异常占单拦截</span><strong>{{telemetry.orderBrushBlockedCount||0}}</strong></div><div class="metric-security"><small class="metric-domain">核销防爆破</small><span>输错码保护</span><strong>{{telemetry.pinLockoutCount||0}}</strong></div><div class="metric-realtime is-queue"><small class="metric-domain">延时队列</small><span>待超时关单</span><strong :class="{'brand-text':(telemetry.delayedExpiryQueueSize||0)>0}">{{telemetry.delayedExpiryQueueSize||0}}</strong></div><div class="metric-realtime is-live"><small class="metric-domain">SSE 实时通道</small><span>在线接单门店</span><strong>{{telemetry.activeRealtimeSubscribers||0}}</strong></div></div><div v-if="telemetry.topHotKeywords?.length||telemetry.topSellingProductIds?.length" class="telemetry-strips"><div v-if="telemetry.topHotKeywords?.length" class="telemetry-strip"><span>热门搜索</span><div class="telemetry-chips"><em v-for="kw in telemetry.topHotKeywords.slice(0,8)" :key="kw">{{kw}}</em></div></div><div v-if="telemetry.topSellingProductIds?.length" class="telemetry-strip"><span>热销商品</span><div class="telemetry-chips"><em v-for="pid in telemetry.topSellingProductIds.slice(0,6)" :key="pid">{{resolveProductTitle(pid)}}</em></div></div></div></section><div class="ops-grid"><section class="ops-card"><div class="ops-card-header"><h2>最新订单</h2><button @click="go('/admin/orders')">全部 <Icon name="chevronRight" :size="16"/></button></div><div class="ops-list-line" v-for="o in orders.slice(0,6)" :key="o.orderId"><span class="mini-icon"><Icon name="order"/></span><div><strong>{{o.items?.[0]?.title||o.orderId}}</strong><small>#{{o.orderId.length>12?o.orderId.slice(0,8).toUpperCase():o.orderId}} · {{dateTime(o.createdAt)}}</small></div><b>{{money(o.totalCent)}}</b><span class="status-tag" :class="o.status==='COMPLETED'?'tone-ok':o.status==='PAID'?'tone-info':o.status==='REFUNDED'?'tone-danger':'tone-warn'">{{orderStatusLabel(o.status)}}</span></div><div v-if="!orders.length" class="admin-empty">暂无订单</div></section><section class="ops-card"><div class="ops-card-header"><h2>快捷管理</h2></div><div class="ops-quick"><button @click="go('/admin/applications')"><Icon name="store"/>商户审核</button><button @click="go('/admin/merchants')"><Icon name="users"/>商户监管</button><button @click="go('/admin/disputes')"><Icon name="shield"/>争议处理</button><button @click="go('/admin/knowledge')"><Icon name="book"/>知识库</button></div></section></div></template>
+  <template v-else-if="route==='/admin'">
+    <!-- Workbench 1: ByteDance Arco Design Pro Workplace 1:1 Structural Replica -->
+    <div v-if="adminTheme==='arco'" class="arco-workplace-grid">
+      <div class="arco-workplace-main">
+        <section class="ops-card arco-welcome-card">
+          <div class="arco-welcome-head">
+            <div class="arco-welcome-greeting">
+              <span class="arco-welcome-avatar is-admin" aria-hidden="true"><Icon name="shield" :size="22"/></span>
+              <div>
+                <h2>欢迎回来，实时同步校园经营数据</h2>
+                <p>青柠校园平台治理中心<template v-if="stats?.periodStart&&stats?.periodEnd"> · {{String(stats.periodStart).slice(0,10)}} 至 {{String(stats.periodEnd).slice(0,10)}}</template></p>
+              </div>
+            </div>
+            <div class="stats-period-pills">
+              <button type="button" :class="{active:statsPeriod===7}" @click="statsPeriod=7">近 7 天</button>
+              <button type="button" :class="{active:statsPeriod===30}" @click="statsPeriod=30">近 30 天</button>
+            </div>
+          </div>
+          <div class="arco-hero-metrics">
+            <div class="arco-hero-metric">
+              <span class="arco-metric-medallion is-blue" aria-hidden="true"><Icon name="creditCard" :size="20"/></span>
+              <div class="arco-metric-copy">
+                <span>平台成交额</span>
+                <strong>{{stats?money(stats.completedAmountCent):'—'}}</strong>
+              </div>
+            </div>
+            <div class="arco-hero-metric">
+              <span class="arco-metric-medallion is-cyan" aria-hidden="true"><Icon name="order" :size="20"/></span>
+              <div class="arco-metric-copy">
+                <span>总订单数</span>
+                <strong>{{stats?.totalOrders||0}} <small>单</small></strong>
+              </div>
+            </div>
+            <div class="arco-hero-metric">
+              <span class="arco-metric-medallion is-amber" aria-hidden="true"><Icon name="store" :size="20"/></span>
+              <div class="arco-metric-copy">
+                <span>入驻商户</span>
+                <strong>{{displayMerchantCount}} <small>家</small></strong>
+              </div>
+            </div>
+            <div class="arco-hero-metric">
+              <span class="arco-metric-medallion is-purple" aria-hidden="true"><Icon name="package" :size="20"/></span>
+              <div class="arco-metric-copy">
+                <span>在售商品</span>
+                <strong>{{displayProductCount}} <small>件</small></strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section v-if="telemetry" class="ops-card redis-telemetry-card">
+          <div class="ops-card-header">
+            <div class="telemetry-title-group"><h2>系统运行与访问安全</h2><code v-if="telemetry.namespace" class="redis-ns-badge">{{telemetry.namespace}}</code></div>
+            <div class="telemetry-nodes">
+              <span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'"><i></i>交易与会话服务：{{telemetry.securityConnected?'正常':'降级'}}</span>
+              <span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'"><i></i>商品缓存加速：{{telemetry.cacheConnected?'正常':'降级'}}</span>
+            </div>
+          </div>
+          <div class="redis-plane-grid">
+            <div class="redis-plane-card is-security">
+              <div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.securityConnected?'online':'degraded'" aria-hidden="true"></span><strong>交易与安全协调节点</strong><code class="plane-code-tag">SECURITY · SESSION</code></div><span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'">{{telemetry.securityConnected?'运行正常':'已降级'}}</span></div>
+              <p>负责登录会话、请求限流、防刷占单与取件码安全核验</p>
+            </div>
+            <div class="redis-plane-card is-cache">
+              <div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.cacheConnected?'online':'degraded'" aria-hidden="true"></span><strong>公开目录与热榜缓存节点</strong><code class="plane-code-tag">CATALOG · REALTIME</code></div><span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'">{{telemetry.cacheConnected?'运行正常':'回源运行'}}</span></div>
+              <p>负责在售商品展示加速、实时热搜统计与热销商品排行</p>
+            </div>
+          </div>
+          <div class="telemetry-metrics">
+            <div class="metric-security"><small class="metric-domain">安全防护</small><span>异常访问拦截</span><strong>{{telemetry.crawlerBlockedCount||0}}</strong></div>
+            <div class="metric-security"><small class="metric-domain">流量治理</small><span>高频请求限流</span><strong>{{telemetry.rateLimitedCount||0}}</strong></div>
+            <div class="metric-security"><small class="metric-domain">交易风控</small><span>异常占单拦截</span><strong>{{telemetry.orderBrushBlockedCount||0}}</strong></div>
+            <div class="metric-security"><small class="metric-domain">核销防爆破</small><span>输错码保护</span><strong>{{telemetry.pinLockoutCount||0}}</strong></div>
+            <div class="metric-realtime is-queue"><small class="metric-domain">延时队列</small><span>待超时关单</span><strong :class="{'brand-text':(telemetry.delayedExpiryQueueSize||0)>0}">{{telemetry.delayedExpiryQueueSize||0}}</strong></div>
+            <div class="metric-realtime is-live"><small class="metric-domain">SSE 实时通道</small><span>在线接单门店</span><strong>{{telemetry.activeRealtimeSubscribers||0}}</strong></div>
+          </div>
+          <div v-if="telemetry.topHotKeywords?.length||telemetry.topSellingProductIds?.length" class="telemetry-strips">
+            <div v-if="telemetry.topHotKeywords?.length" class="telemetry-strip"><span>热门搜索</span><div class="telemetry-chips"><em v-for="kw in telemetry.topHotKeywords.slice(0,8)" :key="kw">{{kw}}</em></div></div>
+            <div v-if="telemetry.topSellingProductIds?.length" class="telemetry-strip"><span>热销商品</span><div class="telemetry-chips"><em v-for="pid in telemetry.topSellingProductIds.slice(0,6)" :key="pid">{{resolveProductTitle(pid)}}</em></div></div>
+          </div>
+        </section>
+
+        <OperationsCharts v-if="stats" mode="arco" :stats="stats" :money="money" :order-status-label="orderStatusLabel"/>
+      </div>
+
+      <aside class="arco-workplace-rail">
+        <section class="ops-card arco-rail-card">
+          <div class="ops-card-header">
+            <h2>快捷操作</h2>
+            <span>治理入口</span>
+          </div>
+          <div class="arco-shortcut-grid">
+            <button type="button" class="arco-shortcut-tile" @click="go('/admin/applications')">
+              <span class="arco-shortcut-ico"><Icon name="store" :size="18"/></span>
+              <span>入驻审核</span>
+            </button>
+            <button type="button" class="arco-shortcut-tile" @click="go('/admin/products')">
+              <span class="arco-shortcut-ico"><Icon name="package" :size="18"/></span>
+              <span>商品巡检</span>
+            </button>
+            <button type="button" class="arco-shortcut-tile" @click="go('/admin/disputes')">
+              <span class="arco-shortcut-ico"><Icon name="shield" :size="18"/></span>
+              <span>争议裁决</span>
+            </button>
+            <button type="button" class="arco-shortcut-tile" @click="go('/admin/categories')">
+              <span class="arco-shortcut-ico"><Icon name="grid" :size="18"/></span>
+              <span>分类管理</span>
+            </button>
+            <button type="button" class="arco-shortcut-tile" @click="go('/admin/knowledge')">
+              <span class="arco-shortcut-ico"><Icon name="book" :size="18"/></span>
+              <span>知识库</span>
+            </button>
+            <button type="button" class="arco-shortcut-tile" @click="go('/admin/orders')">
+              <span class="arco-shortcut-ico"><Icon name="clipboard" :size="18"/></span>
+              <span>日志审计</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="ops-card arco-rail-card">
+          <div class="ops-card-header">
+            <h2>今日待办</h2>
+            <span>平台监管</span>
+          </div>
+          <div class="arco-todo-list">
+            <button type="button" class="arco-todo-row" @click="go('/admin/applications')">
+              <span class="arco-todo-dot is-brand" aria-hidden="true"></span>
+              <span class="arco-todo-title">待审入驻申请</span>
+              <em class="arco-todo-pill is-brand">{{pendingAppCount}} 家</em>
+            </button>
+            <button type="button" class="arco-todo-row" @click="go('/admin/disputes')">
+              <span class="arco-todo-dot is-danger" aria-hidden="true"></span>
+              <span class="arco-todo-title">待裁决售后争议</span>
+              <em class="arco-todo-pill is-danger">{{disputedCount}} 单</em>
+            </button>
+            <button type="button" class="arco-todo-row" @click="go('/admin/merchants')">
+              <span class="arco-todo-dot is-ok" aria-hidden="true"></span>
+              <span class="arco-todo-title">在营监管商户</span>
+              <em class="arco-todo-pill is-ok">{{displayMerchantCount}} 家</em>
+            </button>
+            <button type="button" class="arco-todo-row" @click="go('/admin/products')">
+              <span class="arco-todo-dot is-warn" aria-hidden="true"></span>
+              <span class="arco-todo-title">全站在售商品</span>
+              <em class="arco-todo-pill is-warn">{{displayProductCount}} 件</em>
+            </button>
+          </div>
+        </section>
+
+        <section class="ops-card arco-rail-card">
+          <div class="ops-card-header">
+            <h2>最新订单</h2>
+            <button type="button" @click="go('/admin/orders')">全部 <Icon name="chevronRight" :size="14"/></button>
+          </div>
+          <div class="ops-list-line compact-rail-line" v-for="o in orders.slice(0,4)" :key="o.orderId">
+            <div>
+              <strong>{{o.items?.[0]?.title||o.orderId}}</strong>
+              <small>{{money(o.totalCent)}} · {{orderStatusLabel(o.status)}}</small>
+            </div>
+          </div>
+          <div v-if="!orders.length" class="admin-empty">暂无订单</div>
+        </section>
+      </aside>
+    </div>
+
+    <!-- Workbench 2: Alibaba Ant Design Pro Analysis 1:1 Structural Replica -->
+    <div v-else-if="adminTheme==='antd'" class="antd-analysis-stack">
+      <div class="antd-chartcard-grid">
+        <article class="antd-chart-card">
+          <div class="antd-cc-top">
+            <span>平台总成交额</span>
+            <em class="antd-cc-badge">近 {{statsPeriod}} 天</em>
+          </div>
+          <strong class="antd-cc-value">{{stats?money(stats.completedAmountCent):'—'}}</strong>
+          <div class="antd-cc-visual">
+            <span class="antd-cc-trend">已支付 <b>{{stats?.paidOrders||0}}</b> 笔 · 退款 <b>{{stats?.refundedOrders||0}}</b> 笔</span>
+          </div>
+          <div class="antd-cc-footer">
+            <span>交易实时复验正常</span>
+            <b>{{stats?.totalOrders||0}} 笔总单</b>
+          </div>
+        </article>
+
+        <article class="antd-chart-card">
+          <div class="antd-cc-top">
+            <span>全平台订单量</span>
+            <em class="antd-cc-badge is-green">实时</em>
+          </div>
+          <strong class="antd-cc-value">{{stats?.totalOrders||0}}</strong>
+          <div class="antd-cc-visual">
+            <svg class="antd-spark-svg" viewBox="0 0 180 28" preserveAspectRatio="none" aria-hidden="true">
+              <path :d="sparkPaths.area" fill="var(--color-brand)" fill-opacity="0.16"/>
+              <path :d="sparkPaths.line" fill="none" stroke="var(--color-brand)" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="antd-cc-footer">
+            <span>单日峰值订单</span>
+            <b>{{peakDayOrders}} 单</b>
+          </div>
+        </article>
+
+        <article class="antd-chart-card">
+          <div class="antd-cc-top">
+            <span>入驻商户规模</span>
+            <em class="antd-cc-badge is-amber">校内经营</em>
+          </div>
+          <strong class="antd-cc-value">{{displayMerchantCount}}</strong>
+          <div class="antd-cc-visual">
+            <svg class="progress-bar-svg" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true">
+              <rect x="0" y="0" width="100" height="6" rx="3" class="progress-track-bg"/>
+              <rect x="0" y="0" width="82" height="6" rx="3" class="progress-track-fill"/>
+            </svg>
+          </div>
+          <div class="antd-cc-footer">
+            <span>在售商品 {{displayProductCount}} 件</span>
+            <button type="button" class="antd-cc-link" @click="go('/admin/merchants')">监管 →</button>
+          </div>
+        </article>
+
+        <article class="antd-chart-card">
+          <div class="antd-cc-top">
+            <span>平台退款率</span>
+            <div class="stats-period-pills compact">
+              <button type="button" :class="{active:statsPeriod===7}" @click="statsPeriod=7">7天</button>
+              <button type="button" :class="{active:statsPeriod===30}" @click="statsPeriod=30">30天</button>
+            </div>
+          </div>
+          <strong class="antd-cc-value">{{stats?.refundRate==null?'—':(stats.refundRate*100).toFixed(1)+'%'}}</strong>
+          <div class="antd-cc-visual">
+            <span class="antd-cc-trend">安全风控累计拦截 <b>{{securityInterceptTotal}}</b> 次</span>
+          </div>
+          <div class="antd-cc-footer">
+            <span>争议工单 {{disputedCount}} 单</span>
+            <button type="button" class="antd-cc-link" @click="go('/admin/disputes')">裁决 →</button>
+          </div>
+        </article>
+      </div>
+
+      <OperationsCharts v-if="stats" mode="antd" :stats="stats" :money="money" :order-status-label="orderStatusLabel">
+        <template #besideDonut>
+          <section class="ops-card antd-qianniu-card">
+            <div class="ops-card-header">
+              <h2>平台治理待办与最新订单</h2>
+              <button type="button" @click="go('/admin/orders')">全部订单 <Icon name="chevronRight" :size="15"/></button>
+            </div>
+            <div class="antd-todo-strip">
+              <button type="button" @click="go('/admin/applications')"><span>入驻审核</span><strong>{{pendingAppCount}}</strong></button>
+              <button type="button" @click="go('/admin/disputes')"><span>争议裁决</span><strong>{{disputedCount}}</strong></button>
+              <button type="button" @click="go('/admin/products')"><span>商品巡检</span><strong>{{displayProductCount}}</strong></button>
+              <button type="button" @click="go('/admin/categories')"><span>分类管理</span><Icon name="arrowRight" :size="14"/></button>
+            </div>
+            <div class="ops-list-line" v-for="o in orders.slice(0,4)" :key="o.orderId">
+              <span class="mini-icon"><Icon name="order" :size="17"/></span>
+              <div>
+                <strong>{{o.items?.[0]?.title||o.orderId}}</strong>
+                <small>#{{o.orderId.length>12?o.orderId.slice(0,8).toUpperCase():o.orderId}} · {{dateTime(o.createdAt)}}</small>
+              </div>
+              <b>{{money(o.totalCent)}}</b>
+              <span class="status-tag" :class="o.status==='COMPLETED'?'tone-ok':o.status==='PAID'?'tone-info':o.status==='REFUNDED'?'tone-danger':'tone-warn'">{{orderStatusLabel(o.status)}}</span>
+            </div>
+            <div v-if="!orders.length" class="admin-empty">暂无订单</div>
+          </section>
+        </template>
+      </OperationsCharts>
+
+      <section v-if="telemetry" class="ops-card redis-telemetry-card">
+        <div class="ops-card-header">
+          <div class="telemetry-title-group"><h2>双平面 Redis 运行与访问安全</h2><code v-if="telemetry.namespace" class="redis-ns-badge">{{telemetry.namespace}}</code></div>
+          <div class="telemetry-nodes">
+            <span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'"><i></i>交易与会话服务：{{telemetry.securityConnected?'正常':'降级'}}</span>
+            <span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'"><i></i>商品缓存加速：{{telemetry.cacheConnected?'正常':'降级'}}</span>
+          </div>
+        </div>
+        <div class="redis-plane-grid">
+          <div class="redis-plane-card is-security">
+            <div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.securityConnected?'online':'degraded'" aria-hidden="true"></span><strong>交易与安全协调节点</strong><code class="plane-code-tag">SECURITY · SESSION</code></div><span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'">{{telemetry.securityConnected?'运行正常':'已降级'}}</span></div>
+            <p>负责登录会话、请求限流、防刷占单与取件码安全核验</p>
+          </div>
+          <div class="redis-plane-card is-cache">
+            <div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.cacheConnected?'online':'degraded'" aria-hidden="true"></span><strong>公开目录与热榜缓存节点</strong><code class="plane-code-tag">CATALOG · REALTIME</code></div><span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'">{{telemetry.cacheConnected?'运行正常':'回源运行'}}</span></div>
+            <p>负责在售商品展示加速、实时热搜统计与热销商品排行</p>
+          </div>
+        </div>
+        <div class="telemetry-metrics">
+          <div class="metric-security"><small class="metric-domain">安全防护</small><span>异常访问拦截</span><strong>{{telemetry.crawlerBlockedCount||0}}</strong></div>
+          <div class="metric-security"><small class="metric-domain">流量治理</small><span>高频请求限流</span><strong>{{telemetry.rateLimitedCount||0}}</strong></div>
+          <div class="metric-security"><small class="metric-domain">交易风控</small><span>异常占单拦截</span><strong>{{telemetry.orderBrushBlockedCount||0}}</strong></div>
+          <div class="metric-security"><small class="metric-domain">核销防爆破</small><span>输错码保护</span><strong>{{telemetry.pinLockoutCount||0}}</strong></div>
+          <div class="metric-realtime is-queue"><small class="metric-domain">延时队列</small><span>待超时关单</span><strong :class="{'brand-text':(telemetry.delayedExpiryQueueSize||0)>0}">{{telemetry.delayedExpiryQueueSize||0}}</strong></div>
+          <div class="metric-realtime is-live"><small class="metric-domain">SSE 实时通道</small><span>在线接单门店</span><strong>{{telemetry.activeRealtimeSubscribers||0}}</strong></div>
+        </div>
+        <div v-if="telemetry.topHotKeywords?.length||telemetry.topSellingProductIds?.length" class="telemetry-strips">
+          <div v-if="telemetry.topHotKeywords?.length" class="telemetry-strip"><span>热门搜索</span><div class="telemetry-chips"><em v-for="kw in telemetry.topHotKeywords.slice(0,8)" :key="kw">{{kw}}</em></div></div>
+          <div v-if="telemetry.topSellingProductIds?.length" class="telemetry-strip"><span>热销商品</span><div class="telemetry-chips"><em v-for="pid in telemetry.topSellingProductIds.slice(0,6)" :key="pid">{{resolveProductTitle(pid)}}</em></div></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Workbench 3: Meituan PC Operational Command Workbench 1:1 Structural Replica -->
+    <div v-else class="meituan-workbench-stack">
+      <section class="meituan-command-banner">
+        <div class="meituan-cmd-left">
+          <div class="meituan-cmd-head">
+            <span class="meituan-cmd-badge">美团商家调度中心</span>
+            <h2>门店极速接单与核销看板 · 全站治理</h2>
+            <small v-if="stats?.periodStart&&stats?.periodEnd">{{String(stats.periodStart).slice(0,10)}} 至 {{String(stats.periodEnd).slice(0,10)}}</small>
+          </div>
+          <div class="meituan-cmd-counters">
+            <button type="button" class="meituan-counter-pill is-gold" @click="go('/admin/applications')">
+              <span>待审入驻</span>
+              <strong>{{pendingAppCount}}</strong>
+              <small>家</small>
+            </button>
+            <button type="button" class="meituan-counter-pill" @click="go('/admin/disputes')">
+              <span>待裁争议</span>
+              <strong>{{disputedCount}}</strong>
+              <small>单</small>
+            </button>
+            <button type="button" class="meituan-counter-pill" @click="go('/admin/merchants')">
+              <span>在线门店</span>
+              <strong>{{telemetry?.activeRealtimeSubscribers||displayMerchantCount}}</strong>
+              <small>家</small>
+            </button>
+            <button type="button" class="meituan-counter-pill" @click="go('/admin/orders')">
+              <span>风控拦截</span>
+              <strong>{{securityInterceptTotal}}</strong>
+              <small>次</small>
+            </button>
+          </div>
+        </div>
+        <div class="meituan-cmd-right">
+          <div class="meituan-period-switch">
+            <button type="button" :class="{active:statsPeriod===7}" @click="statsPeriod=7">近 7 天</button>
+            <button type="button" :class="{active:statsPeriod===30}" @click="statsPeriod=30">近 30 天</button>
+          </div>
+          <button type="button" class="meituan-gold-cta" @click="go(disputedCount > 0 ? '/admin/disputes' : '/admin/applications')">
+            <Icon name="shield" :size="17"/>
+            <span>处理待办工单</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="ops-kpis meituan-kpi-strip" v-if="stats">
+        <div><span>成交总额</span><strong>{{money(stats.completedAmountCent)}}</strong></div>
+        <div><span>订单总数</span><strong>{{stats.totalOrders||0}}</strong></div>
+        <div><span>已支付笔数</span><strong>{{stats.paidOrders||0}}</strong></div>
+        <div><span>退款笔数</span><strong>{{stats.refundedOrders||0}}</strong></div>
+        <div><span>退款率</span><strong>{{stats.refundRate==null?'—':(stats.refundRate*100).toFixed(1)+'%'}}</strong></div>
+      </div>
+
+      <OperationsCharts v-if="stats" mode="meituan" :stats="stats" :money="money" :order-status-label="orderStatusLabel"/>
+
+      <section v-if="telemetry" class="ops-card redis-telemetry-card">
+        <div class="ops-card-header">
+          <div class="telemetry-title-group"><h2>系统运行与访问安全</h2><code v-if="telemetry.namespace" class="redis-ns-badge">{{telemetry.namespace}}</code></div>
+          <div class="telemetry-nodes">
+            <span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'"><i></i>交易与会话服务：{{telemetry.securityConnected?'正常':'降级'}}</span>
+            <span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'"><i></i>商品缓存加速：{{telemetry.cacheConnected?'正常':'降级'}}</span>
+          </div>
+        </div>
+        <div class="redis-plane-grid">
+          <div class="redis-plane-card is-security">
+            <div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.securityConnected?'online':'degraded'" aria-hidden="true"></span><strong>交易与安全协调节点</strong><code class="plane-code-tag">SECURITY · SESSION</code></div><span class="status-tag" :class="telemetry.securityConnected?'tone-ok':'tone-warn'">{{telemetry.securityConnected?'运行正常':'已降级'}}</span></div>
+            <p>负责登录会话、请求限流、防刷占单与取件码安全核验</p>
+          </div>
+          <div class="redis-plane-card is-cache">
+            <div class="redis-plane-head"><div class="redis-plane-title"><span class="plane-beacon" :class="telemetry.cacheConnected?'online':'degraded'" aria-hidden="true"></span><strong>公开目录与热榜缓存节点</strong><code class="plane-code-tag">CATALOG · REALTIME</code></div><span class="status-tag" :class="telemetry.cacheConnected?'tone-ok':'tone-warn'">{{telemetry.cacheConnected?'运行正常':'回源运行'}}</span></div>
+            <p>负责在售商品展示加速、实时热搜统计与热销商品排行</p>
+          </div>
+        </div>
+        <div class="telemetry-metrics">
+          <div class="metric-security"><small class="metric-domain">安全防护</small><span>异常访问拦截</span><strong>{{telemetry.crawlerBlockedCount||0}}</strong></div>
+          <div class="metric-security"><small class="metric-domain">流量治理</small><span>高频请求限流</span><strong>{{telemetry.rateLimitedCount||0}}</strong></div>
+          <div class="metric-security"><small class="metric-domain">交易风控</small><span>异常占单拦截</span><strong>{{telemetry.orderBrushBlockedCount||0}}</strong></div>
+          <div class="metric-security"><small class="metric-domain">核销防爆破</small><span>输错码保护</span><strong>{{telemetry.pinLockoutCount||0}}</strong></div>
+          <div class="metric-realtime is-queue"><small class="metric-domain">延时队列</small><span>待超时关单</span><strong :class="{'brand-text':(telemetry.delayedExpiryQueueSize||0)>0}">{{telemetry.delayedExpiryQueueSize||0}}</strong></div>
+          <div class="metric-realtime is-live"><small class="metric-domain">SSE 实时通道</small><span>在线接单门店</span><strong>{{telemetry.activeRealtimeSubscribers||0}}</strong></div>
+        </div>
+        <div v-if="telemetry.topHotKeywords?.length||telemetry.topSellingProductIds?.length" class="telemetry-strips">
+          <div v-if="telemetry.topHotKeywords?.length" class="telemetry-strip"><span>热门搜索</span><div class="telemetry-chips"><em v-for="kw in telemetry.topHotKeywords.slice(0,8)" :key="kw">{{kw}}</em></div></div>
+          <div v-if="telemetry.topSellingProductIds?.length" class="telemetry-strip"><span>热销商品</span><div class="telemetry-chips"><em v-for="pid in telemetry.topSellingProductIds.slice(0,6)" :key="pid">{{resolveProductTitle(pid)}}</em></div></div>
+        </div>
+      </section>
+
+      <div class="ops-grid">
+        <section class="ops-card">
+          <div class="ops-card-header"><h2>最新订单</h2><button type="button" @click="go('/admin/orders')">全部 <Icon name="chevronRight" :size="16"/></button></div>
+          <div class="ops-list-line" v-for="o in orders.slice(0,6)" :key="o.orderId">
+            <span class="mini-icon"><Icon name="order"/></span>
+            <div><strong>{{o.items?.[0]?.title||o.orderId}}</strong><small>#{{o.orderId.length>12?o.orderId.slice(0,8).toUpperCase():o.orderId}} · {{dateTime(o.createdAt)}}</small></div>
+            <b>{{money(o.totalCent)}}</b>
+            <span class="status-tag" :class="o.status==='COMPLETED'?'tone-ok':o.status==='PAID'?'tone-info':o.status==='REFUNDED'?'tone-danger':'tone-warn'">{{orderStatusLabel(o.status)}}</span>
+          </div>
+          <div v-if="!orders.length" class="admin-empty">暂无订单</div>
+        </section>
+        <section class="ops-card">
+          <div class="ops-card-header"><h2>快捷管理</h2></div>
+          <div class="ops-quick">
+            <button type="button" @click="go('/admin/applications')"><Icon name="store"/>商户审核</button>
+            <button type="button" @click="go('/admin/merchants')"><Icon name="users"/>商户监管</button>
+            <button type="button" @click="go('/admin/disputes')"><Icon name="shield"/>争议处理</button>
+            <button type="button" @click="go('/admin/knowledge')"><Icon name="book"/>知识库</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </template>
  <template v-else-if="route==='/admin/applications'"><div class="ops-grid admin-review-grid"><section class="ops-card"><div class="ops-card-header"><h2>入驻申请</h2><span>{{preview?applications.length:pageInfo.total}} 条</span></div><div class="ops-toolbar"><label class="ops-search"><Icon name="search" :size="16"/><input v-model="search" placeholder="搜索商户或申请人"/></label><select class="admin-input compact-select" v-model="state"><option value="">全部状态</option><option value="SUBMITTED">待审核</option><option value="APPROVED">已通过</option><option value="REJECTED">已拒绝</option></select></div><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>商户</th><th>申请人</th><th>门店</th><th>状态</th><th></th></tr></thead><tbody><tr v-for="a in filtered" :key="a.applicationId" :class="{active:pickedApplication?.applicationId===a.applicationId}" @click="selectApplication(a)"><td><button class="row-link" @click.stop="selectApplication(a)" :aria-pressed="pickedApplication?.applicationId===a.applicationId">{{a.merchantName}}</button><small>{{a.category}}</small></td><td>{{a.contactName}}</td><td>{{a.storeName}}</td><td><span class="status-tag" :class="a.status==='APPROVED'?'published':a.status==='REJECTED'?'tone-danger':'draft'">{{applicationStatusLabel(a.status)}}</span></td><td><Icon name="chevronRight" :size="16"/></td></tr></tbody></table></div><div v-if="!filtered.length" class="admin-empty">暂无符合条件的申请</div></section><PlatformApplicationReview v-if="pickedApplication" :application="pickedApplication" v-model:reason="reason" :disabled="loading||!!error||preview||busy" @review="review"/></div></template>
  <template v-else-if="route==='/admin/merchants'"><section class="ops-card"><div class="ops-card-header"><h2>商户列表</h2><span>{{preview?merchants.length:pageInfo.total}} 家</span></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="search" placeholder="搜索经营名称"/></label><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>商户</th><th>品类</th><th>门店名称</th><th>自提位置</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="m in filtered" :key="m.merchantId"><td><strong>{{m.name}}</strong></td><td>{{m.category}}</td><td>{{m.storeName}}</td><td>{{m.location}}</td><td><span class="status-tag" :class="m.status==='ACTIVE'?'published':'tone-danger'">{{merchantStatusLabel(m.status)}}</span></td><td><button class="row-link" :disabled="loading||!!error||preview||busy" @click="stateMerchant(m)">{{m.status==='ACTIVE'?'停用':'恢复'}}</button></td></tr></tbody></table></div></section></template>
  <template v-else-if="route==='/admin/products'"><section class="ops-card"><div class="ops-card-header"><h2>商品监管</h2><span>{{preview?products.length:pageInfo.total}} 件</span></div><label class="ops-search"><Icon name="search" :size="17"/><input v-model="search" placeholder="搜索商品 / 商户"/></label><div class="ops-table-wrap"><table class="ops-table"><thead><tr><th>商品</th><th>商户</th><th>分类</th><th>售价</th><th>状态</th><th>操作</th></tr></thead><tbody><tr v-for="p in filtered" :key="p.productId"><td><div class="table-product-cell"><ProductImage :src="p.imageUrl" :alt="p.title"/><div><strong>{{p.title}}</strong><span v-if="p.skus?.length">{{p.skus.length}} 个规格</span></div></div></td><td>{{merchantName(p.merchantId,p)}}</td><td>{{categoryName(p.categoryCode)}}</td><td>{{priceSku(p) ? money(priceSku(p).priceCent)+' 起' : '暂无有效规格'}}</td><td><span class="status-tag" :class="p.status==='PUBLISHED'?'published':'draft'">{{productStatusLabel(p.status)}}</span></td><td><button class="row-link" :disabled="loading||!!error||preview||busy||p.status!=='PUBLISHED'" @click="forceProduct(p)">强制下架</button></td></tr></tbody></table></div></section></template>
