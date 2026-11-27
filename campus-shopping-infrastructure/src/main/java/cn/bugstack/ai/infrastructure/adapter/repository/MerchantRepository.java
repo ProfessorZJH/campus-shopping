@@ -107,7 +107,9 @@ public class MerchantRepository implements IMerchantRepository {
     }
 
     public void setStatus(String id, String status) {
+        MerchantPO before = dao.displayFacts(id);
         dao.setStatus(id, status);
+        if (before != null && cache != null) cache.evictAfterCommit("merchant:v2:" + id + ":" + before.getVersion());
     }
 
     private MerchantVO fromPO(MerchantPO p) {
@@ -129,7 +131,9 @@ public class MerchantRepository implements IMerchantRepository {
     }
 
     public void updateProfile(String id, String name, String storeName, String location, String description, String businessHours, String imageUrl) {
+        MerchantPO before = dao.displayFacts(id);
         dao.updateProfile(id, name);
         dao.updateStore(id, storeName, location, description, businessHours, imageUrl);
+        if (before != null && cache != null) cache.evictAfterCommit("merchant:v2:" + id + ":" + before.getVersion());
     }
 }

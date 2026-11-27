@@ -44,6 +44,16 @@ class PurchaseConstraintTest {
     }
 
     @Test
+    void mixedShoppingAndServiceInquiryAttachesAuthorizedKnowledgeBrief() {
+        assertTrue(ShoppingAnswerPolicy.hasServiceInquiry("预算20元推荐无糖乌龙茶，顺便问自提几点关门？"));
+        assertFalse(ShoppingAnswerPolicy.hasServiceInquiry("预算20元推荐两瓶无糖乌龙茶"));
+        String brief = ShoppingAnswerPolicy.evidenceBrief(List.of(new AiCitationVO("doc-1", "c-1", "自提时间与售后规则", "每日08:00-22:30营业自提", 0.92)));
+        assertTrue(brief.contains("《自提时间与售后规则》"));
+        assertTrue(brief.contains("08:00-22:30"));
+        assertEquals("", ShoppingAnswerPolicy.evidenceBrief(List.of()));
+    }
+
+    @Test
     void semanticRankControlsFusionInsteadOfMapIterationOrder() {
         var ranks = new HashMap<String, Integer>();
         ranks.put("semantic-late", 2);

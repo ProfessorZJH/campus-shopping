@@ -9,10 +9,14 @@ import { createGuideConversationTransport } from '../services/guide-conversation
 import { store, go, money, skuOf, preview, previewGuard, notify } from '../services/store.js';
 const { ref, computed, onMounted, onUnmounted, watch } = Vue;
 const prompts = [
-  { label: '30元内夜宵', icon: 'clock', query: '30元以内，推荐几样适合复习时吃的夜宵' },
-  { label: '高蛋白零食', icon: 'sparkles', query: '想买点高蛋白的零食，有什么推荐？' },
-  { label: '复习清单', icon: 'book', query: '帮我列一个考试周的购物清单' },
-  { label: '找点好喝的', icon: 'cart', query: '推荐适合夏天喝的饮料' },
+  {
+    label: '无糖饮料+营业时间',
+    icon: 'clock',
+    query: '预算20元推荐无糖饮料，顺便问自提几点关门？',
+  },
+  { label: '30元内夜宵', icon: 'sparkles', query: '30元内配一套熬夜复习泡面零食加饮料' },
+  { label: '查我的订单进度', icon: 'order', query: '帮我看看我的订单备好货了吗？' },
+  { label: '宿舍常备抽纸牛奶', icon: 'cart', query: '推荐宿舍常备抽纸和牛奶' },
 ];
 export default {
   name: 'Guide',
@@ -37,6 +41,8 @@ export default {
     const proposalBusy = computed(() => confirmingProposal.value || rejectingProposal.value);
     const proposalFeedback = ref('');
     const streamProgress = ref(0);
+    const streamStage = ref('');
+    const streamingText = ref('');
     const reconnecting = ref(false);
     const cancelRequested = ref(false);
     let conversationEpoch = 0,
@@ -104,6 +110,7 @@ export default {
         reconnecting.value = false;
         cancelRequested.value = false;
         streamProgress.value = 0;
+        streamingText.value = '';
         openingConversation.value = false;
         loadingHistory.value = false;
         historyOpen.value = false;
@@ -239,6 +246,8 @@ export default {
       }
       thinking.value = true;
       streamProgress.value = 0;
+      streamStage.value = 'recall';
+      streamingText.value = '';
       reconnecting.value = false;
       cancelRequested.value = false;
       activeStreamController = new AbortController();
@@ -257,16 +266,25 @@ export default {
             streamConversationId = id;
             store.conversationId = id;
           },
+          onStage: (stage) => {
+            streamStage.value = stage;
+          },
           onProgress: (bytes) => {
             streamProgress.value = bytes;
           },
+          onDelta: (chunk) => {
+            streamingText.value += chunk;
+          },
           onCompleted: (answer) => {
             completed = true;
+            streamStage.value = '';
+            streamingText.value = '';
             applyChatAnswer(answer, stamp);
           },
           onCancelled: () => {
             cancelled = true;
             cancelRequested.value = true;
+            streamingText.value = '';
           },
         });
         completed = result.completed;
@@ -300,6 +318,7 @@ export default {
         if (stamp === conversationEpoch) {
           thinking.value = false;
           cancelRequested.value = false;
+          streamingText.value = '';
         }
       }
     }
@@ -358,6 +377,7 @@ export default {
       reconnecting.value = false;
       cancelRequested.value = false;
       streamProgress.value = 0;
+      streamingText.value = '';
       openingConversation.value = false;
       historyOpen.value = false;
     }
@@ -493,6 +513,8 @@ export default {
       proposalBusy,
       proposalFeedback,
       streamProgress,
+      streamStage,
+      streamingText,
       reconnecting,
       cancelRequested,
       cancelTurn,
@@ -503,15 +525,43 @@ export default {
   },
   template: `
     <ConsumerShell active="ai">
-      <section class="ai-hero">
-        <div class="ai-hero-text"><h1><span>AI</span> 导购助手</h1><p>说出预算、口味或场景，挑好后由你确认加购</p></div>
-        <img src="./images/robot.webp" alt="AI 导购助手" class="ai-hero-robot"/>
-      </section>
-      <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
-      <div class="quick-prompts" aria-label="快捷提问"><button v-for="p in prompts" :key="p.label" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="15"/>{{p.label}}</button></div>
-      <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :error="error"/>
-      <GuideRecommendations v-if="showProposal" :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :rejecting="rejectingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
-      <div class="chat-composer-placeholder" aria-hidden="true"></div>
-      <form class="chat-composer" @submit.prevent="ask()"><input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：30元内适合复习吃的零食…"/><button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止生成'}}</button><button v-else type="submit" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="19"/></button></form>
+      <div class="guide-shell" :class="{'has-proposal': showProposal}">
+        <section class="ai-wenwen-topbar">
+          <div class="wenwen-brand">
+            <span class="wenwen-avatar" aria-hidden="true">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M11 3L13.1 8.9L19 11L13.1 13.1L11 19L8.9 13.1L3 11L8.9 8.9L11 3Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M18.5 15L19.4 17.6L22 18.5L19.4 19.4L18.5 22L17.6 19.4L15 18.5L17.6 17.6L18.5 15Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <div class="wenwen-brand-copy">
+              <div class="wenwen-title-row">
+                <h1><span>AI</span> 导购助手</h1>
+                <span class="wenwen-live-pill"><i class="wenwen-live-dot" aria-hidden="true"></i>现货实时核验</span>
+              </div>
+              <p>说出预算、口味或场景，直接挑好校内现货并核验门店规则</p>
+            </div>
+          </div>
+          <GuideHistory v-if="!preview" :open="historyOpen" :conversations="conversations" :thinking="thinking" :opening-conversation="openingConversation" :confirming-proposal="proposalBusy" :has-more="historyHasMore" :loading="loadingHistory" :format-time="formatHistoryTime" @new="newConversation" @toggle="historyOpen=!historyOpen;historyOpen&&loadHistory()" @open="openConversation" @more="loadHistory(false)"/>
+        </section>
+        <div class="ai-workspace" :class="{'has-proposal': showProposal}">
+          <div class="ai-workspace-main">
+            <div class="quick-prompts" aria-label="快捷提问">
+              <button v-for="p in prompts" :key="p.label" type="button" @click="ask(p.query)" :disabled="thinking||openingConversation||proposalBusy"><Icon :name="p.icon" :size="14"/>{{p.label}}</button>
+            </div>
+            <GuideConversation :messages="messages" :thinking="thinking" :reconnecting="reconnecting" :cancel-requested="cancelRequested" :stream-progress="streamProgress" :stream-stage="streamStage" :streaming-text="streamingText" :error="error" @prompt="ask"/>
+            <div class="chat-composer-placeholder" aria-hidden="true"></div>
+            <form class="chat-composer" @submit.prevent="ask()">
+              <span class="composer-spark-icon" aria-hidden="true"><Icon name="sparkles" :size="16"/></span>
+              <input v-model="input" :disabled="thinking||openingConversation||proposalBusy" aria-label="输入问题" maxlength="500" placeholder="例如：预算20元推荐无糖饮料，或查一下我的订单进度…"/>
+              <button v-if="thinking" type="button" class="stream-cancel" @click="cancelTurn" :disabled="cancelRequested||!store.conversationId">{{cancelRequested?'停止中…':'停止'}}</button>
+              <button v-else type="submit" class="wenwen-send-btn" :disabled="openingConversation||proposalBusy||!input.trim()" aria-label="发送问题"><Icon name="send" :size="16"/></button>
+            </form>
+          </div>
+          <aside v-if="showProposal" class="ai-workspace-side">
+            <GuideRecommendations :items="items" :selected-ids="selectedIds" :total="total" :feedback="proposalFeedback" :preview="preview" :thinking="thinking" :confirming="confirmingProposal" :rejecting="rejectingProposal" :proposal-status="proposal?.status" @toggle="toggle" @detail="openDetail" @reject="reject" @confirm="confirm" @cart="go('/cart')"/>
+          </aside>
+        </div>
+      </div>
     </ConsumerShell>`,
 };

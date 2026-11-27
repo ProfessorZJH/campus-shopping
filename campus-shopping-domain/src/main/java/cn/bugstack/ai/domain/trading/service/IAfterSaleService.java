@@ -10,6 +10,11 @@ import java.util.*;
 public interface IAfterSaleService {
     AfterSaleVO afterSaleForUpdate(String order);
     AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason);
+
+    default AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason, String evidenceImageUrl) {
+        return requestAfterSale(order, buyer, reason);
+    }
+
     void requirePickupAllowed(String order);
     boolean rejectAfterSale(String order, String reason);
     AfterSaleVO appeal(OrderAggregate order, String buyer);

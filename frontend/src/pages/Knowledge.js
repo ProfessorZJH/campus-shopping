@@ -151,6 +151,9 @@ export default {
         if (!valid()) return;
         docs.value = result.items || [];
         docInfo.value = result;
+        if (docs.value.length && !selected.value) {
+          read(docs.value[0]);
+        }
       } catch (e) {
         if (valid()) error.value = e.message;
       }

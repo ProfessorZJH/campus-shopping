@@ -55,7 +55,7 @@ public class CatalogCaseImpl implements ICatalogCase {
             .getSkus()
             .stream()
             .collect(java.util.stream.Collectors.toMap(sku -> sku.id(), sku -> new StockVO(merchant, owner.storeId(), sku.id(), 0, 0, 0)));
-        return ProductReadModel.from(product, owner.name(), stocks, images.findAll(product.getId()));
+        return ProductReadModel.from(product, owner.name(), owner.storeName(), owner.location(), stocks, images.findAll(product.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -76,7 +76,7 @@ public class CatalogCaseImpl implements ICatalogCase {
             .stream()
             .collect(java.util.stream.Collectors.toMap(StockVO::skuId, stock -> stock));
         // 商品行已锁定；图片需当前读，不能将旧事务快照混入写操作响应。
-        return ProductReadModel.from(product, owner.name(), stocks, images.findAllForUpdate(product.getId()));
+        return ProductReadModel.from(product, owner.name(), owner.storeName(), owner.location(), stocks, images.findAllForUpdate(product.getId()));
     }
 
     @Transactional(rollbackFor = Exception.class)

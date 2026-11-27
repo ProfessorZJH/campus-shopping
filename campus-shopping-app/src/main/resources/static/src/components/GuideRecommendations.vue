@@ -14,6 +14,7 @@ interface Recommendation {
   imageUrl?: string;
   product?: { imageUrl?: string };
   detailAvailable?: boolean;
+  reason?: string;
 }
 defineProps<{
   items: Recommendation[];
@@ -33,20 +34,32 @@ defineEmits<{
   confirm: [];
   cart: [];
 }>();
+
+function meaningfulReason(raw?: string): string {
+  const text = String(raw || '').trim();
+  if (!text || text.includes('数量、库存和预算已校验')) return '';
+  return text;
+}
 </script>
 
 <template>
-  <section class="recommendation-panel">
+  <section class="recommendation-panel" aria-label="推荐商品组合">
     <div class="recommendation-header">
-      <div>
+      <div class="rec-header-copy">
         <h2>
-          为你挑了 <em>{{ items.length }}</em> 件好物
+          推荐搭配 <em>{{ items.length }}</em>
         </h2>
-        <p>勾选想要的商品，确认后加入购物车</p>
+        <small class="rec-header-caption">勾选心仪单品，一键加入购物车</small>
       </div>
+      <span class="rec-header-sub"><Icon name="shield" :size="12" />现货复验</span>
     </div>
     <div class="rec-cards">
-      <article v-for="item in items" :key="item.skuId" class="rec-item">
+      <article
+        v-for="item in items"
+        :key="item.skuId"
+        class="rec-item"
+        :class="{ 'is-checked': selectedIds.includes(item.skuId) }"
+      >
         <button
           type="button"
           class="rec-check"
@@ -74,23 +87,28 @@ defineEmits<{
         </button>
         <div class="rec-card-content">
           <div class="rec-item-tag">
-            {{ item.merchantName || (item.merchantId ? shopName(item.merchantId) : '校内自提') }}
+            {{ item.merchantName || (item.merchantId ? shopName(item.merchantId) : '校内门店') }}
           </div>
           <strong>{{ item.title }}</strong>
           <small
             >{{ item.specKey
             }}<template v-if="(item.quantity || 1) > 1"> × {{ item.quantity }}</template></small
           >
-          <button
-            class="rec-detail-link"
-            type="button"
-            :disabled="!item.detailAvailable || !item.productId"
-            @click="$emit('detail', item)"
-          >
-            {{ item.detailAvailable ? '查看详情' : '详情暂不可用' }}
-          </button>
-          <div class="rec-price">
-            <span>{{ money(item.priceCent) }}</span>
+          <div v-if="meaningfulReason(item.reason)" class="rec-item-reason">
+            {{ meaningfulReason(item.reason) }}
+          </div>
+          <div class="rec-price-row">
+            <div class="rec-price">
+              <span>{{ money(item.priceCent) }}</span>
+            </div>
+            <button
+              class="rec-detail-link"
+              type="button"
+              :disabled="!item.detailAvailable || !item.productId"
+              @click="$emit('detail', item)"
+            >
+              {{ item.detailAvailable ? '查看详情' : '暂无详情' }}
+            </button>
           </div>
         </div>
       </article>
@@ -113,12 +131,14 @@ defineEmits<{
         <button
           v-if="proposalStatus === 'CONFIRMED'"
           type="button"
-          class="outline-button small"
+          class="confirm-button"
           @click="$emit('cart')"
         >
-          去购物车
+          去购物车结算 →
         </button>
         <button
+          v-else
+          type="button"
           class="confirm-button"
           :disabled="
             preview ||
@@ -130,9 +150,7 @@ defineEmits<{
           "
           @click="$emit('confirm')"
         >
-          <Icon name="check" :size="17" />{{
-            proposalStatus === 'CONFIRMED' ? '已确认' : confirming ? '确认中…' : '确认加购'
-          }}
+          <Icon name="check" :size="15" />{{ confirming ? '加入中…' : '确认加购' }}
         </button>
       </div>
     </div>

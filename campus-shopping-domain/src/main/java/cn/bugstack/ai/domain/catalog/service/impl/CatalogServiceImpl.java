@@ -344,6 +344,31 @@ public class CatalogServiceImpl implements ICatalogService {
         return repository.displayCategories();
     }
 
+    @Override
+    public void addFavorite(String userId, String productId) {
+        repository.addFavorite(Checks.text(userId, "用户编号", 64), Checks.text(productId, "商品编号", 64));
+    }
+
+    @Override
+    public void removeFavorite(String userId, String productId) {
+        repository.removeFavorite(Checks.text(userId, "用户编号", 64), Checks.text(productId, "商品编号", 64));
+    }
+
+    @Override
+    public List<String> favoriteProductIds(String userId, int limit) {
+        return repository.favoriteProductIds(Checks.text(userId, "用户编号", 64), Math.max(1, Math.min(limit, 100)));
+    }
+
+    @Override
+    public boolean isFavorited(String userId, String productId) {
+        return repository.isFavorited(Checks.text(userId, "用户编号", 64), Checks.text(productId, "商品编号", 64));
+    }
+
+    @Override
+    public List<ProductAggregate> publicByIds(List<String> ids) {
+        return recallByIds(ids);
+    }
+
     private void validCategory(String code) {
         require(
             repository

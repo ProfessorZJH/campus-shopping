@@ -43,8 +43,14 @@ public class AfterSaleServiceImpl implements IAfterSaleService, IAfterSaleQueryS
 
     @Transactional(propagation = Propagation.MANDATORY)
     public AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason) {
+        return requestAfterSale(order, buyer, reason, "");
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public AfterSaleVO requestAfterSale(OrderAggregate order, String buyer, String reason, String evidenceImageUrl) {
         AfterSaleVO previous = repository.afterSale(order.getId(), true);
-        AfterSaleVO result = AfterSaleAggregate.request(order, buyer, reason, previous, UUID.randomUUID().toString(), clock.instant());
+        AfterSaleVO result = AfterSaleAggregate.request(order, buyer, reason, evidenceImageUrl, previous, UUID.randomUUID().toString(), clock.instant());
         if (previous == null) repository.insertAfterSale(result);
         return result;
     }

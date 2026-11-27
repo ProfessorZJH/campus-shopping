@@ -11,4 +11,8 @@ public interface IFulfillmentRepository {
     void save(PickupVO task);
     void verify(String pickup, String actor);
     List<PickupVO> list(String merchant, String status, int offset, int size);
+
+    default PickupVO findReadyByMerchantAndPinHash(String merchantId, String pinHash) {
+        return null;
+    }
 }

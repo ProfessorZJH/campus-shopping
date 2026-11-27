@@ -14,4 +14,16 @@ public interface ICatalogRepository {
     List<SkuOfferVO> offers(List<String> ids, boolean lock);
     List<CategoryVO> categories();
     void category(String code, String name, boolean active);
+
+    default void addFavorite(String userId, String productId) {}
+
+    default void removeFavorite(String userId, String productId) {}
+
+    default List<String> favoriteProductIds(String userId, int limit) {
+        return List.of();
+    }
+
+    default boolean isFavorited(String userId, String productId) {
+        return false;
+    }
 }

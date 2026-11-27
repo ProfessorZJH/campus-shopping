@@ -23,7 +23,29 @@ public interface IOrderService {
         List<OrderItemEntity> items,
         Instant deadline
     );
+
+    default OrderAggregate create(
+        String id,
+        String buyer,
+        String merchant,
+        String store,
+        String pickupStoreName,
+        String pickupLocation,
+        String buyerRemark,
+        String pickupSlot,
+        List<OrderItemEntity> items,
+        Instant deadline
+    ) {
+        return create(id, buyer, merchant, store, pickupStoreName, pickupLocation, items, deadline);
+    }
+
     void save(OrderAggregate order);
     void recordPayment(OrderAggregate order);
     void recordRefund(OrderAggregate order);
+
+    default void insertReview(OrderReviewVO review) {}
+
+    default boolean hasOrderReviews(String orderId) {
+        return false;
+    }
 }

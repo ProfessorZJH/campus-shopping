@@ -13,6 +13,11 @@ public interface ICatalogQueryCase {
     List<ProductReadModel> publicProducts(String merchant, String query, String category, Long minPriceCent, Long maxPriceCent, int page, int size);
     ProductPage publicPage(String merchant, String query, String category, Long minPriceCent, Long maxPriceCent, int page, int size, String sort);
     ProductReadModel detail(String product);
+
+    default List<ProductReadModel> publicByIds(List<String> ids) {
+        return List.of();
+    }
+
     List<ProductReadModel> managedProducts(String actor, String merchant, int page, int size);
     ProductPage managedPage(String actor, String merchant, String query, String category, String status, int page, int size, String sort);
     List<ProductReadModel> adminProducts(String actor, String merchant, String query, int page, int size);

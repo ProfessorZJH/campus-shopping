@@ -7,8 +7,18 @@ import java.util.*;
 public interface IFulfillmentService {
     List<PickupVO> pickupsByOrders(List<String> orders);
     void create(String order, String merchant, String store, String buyer);
+
+    default void create(String order, String merchant, String store, String buyer, String pickupCode) {
+        create(order, merchant, store, buyer);
+    }
+
     PickupVO pickup(String order);
     PickupVO pickupForUpdate(String order);
+
+    default PickupVO findReadyByMerchantAndPin(String merchant, String pinCode) {
+        return null;
+    }
+
     boolean startPreparing(String order);
     boolean markReady(String order);
     PickupTokenVO issue(String order);

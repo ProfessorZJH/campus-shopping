@@ -54,6 +54,10 @@ public class OrderRepository implements IOrderRepository {
                 .storeId(o.getStoreId())
                 .pickupStoreName(o.getPickupStoreName())
                 .pickupLocation(o.getPickupLocation())
+                .buyerRemark(o.getBuyerRemark())
+                .pickupSlot(o.getPickupSlot())
+                .paymentChannel(o.getPaymentChannel())
+                .paymentTradeNo(o.getPaymentTradeNo())
                 .totalCent(o.getTotalCent())
                 .status(o.getStatus())
                 .deadline(o.getDeadline())
@@ -79,7 +83,7 @@ public class OrderRepository implements IOrderRepository {
     }
 
     public void save(OrderAggregate o) {
-        require(dao.saveOrder(o.getId(), o.getStatus()) == 1, ResponseCode.NOT_FOUND);
+        require(dao.saveOrder(o.getId(), o.getStatus(), o.getPaymentChannel(), o.getPaymentTradeNo()) == 1, ResponseCode.NOT_FOUND);
     }
 
     public List<OrderAggregate> orders(String buyer, String merchant, String status, int offset, int size) {
@@ -237,6 +241,10 @@ public class OrderRepository implements IOrderRepository {
             p.getStoreId(),
             p.getPickupStoreName() == null ? "" : p.getPickupStoreName(),
             p.getPickupLocation() == null ? "" : p.getPickupLocation(),
+            p.getBuyerRemark() == null ? "" : p.getBuyerRemark(),
+            p.getPickupSlot() == null || p.getPickupSlot().isBlank() ? "IMMEDIATE" : p.getPickupSlot(),
+            p.getPaymentChannel() == null ? "" : p.getPaymentChannel(),
+            p.getPaymentTradeNo() == null ? "" : p.getPaymentTradeNo(),
             items,
             p.getStatus(),
             p.getDeadline(),
@@ -244,6 +252,57 @@ public class OrderRepository implements IOrderRepository {
         );
         require(order.getTotalCent() == p.getTotalCent(), ResponseCode.UN_ERROR);
         return order;
+    }
+
+    @Override
+    public void insertReview(OrderReviewVO r) {
+        dao.insertReview(
+            OrderReviewPO.builder()
+                .id(r.id())
+                .orderId(r.orderId())
+                .productId(r.productId())
+                .merchantId(r.merchantId())
+                .buyerId(r.buyerId())
+                .buyerName(r.buyerName())
+                .rating(r.rating())
+                .tags(r.tags() == null ? "" : r.tags())
+                .content(r.content())
+                .createdAt(r.createdAt())
+                .build()
+        );
+    }
+
+    @Override
+    public List<OrderReviewVO> reviewsByProduct(String productId, int limit) {
+        return dao
+            .reviewsByProduct(productId, Math.max(1, Math.min(limit, 100)))
+            .stream()
+            .map(p ->
+                new OrderReviewVO(
+                    p.getId(),
+                    p.getOrderId(),
+                    p.getProductId(),
+                    p.getMerchantId(),
+                    p.getBuyerId(),
+                    p.getBuyerName(),
+                    p.getRating() == null ? 5 : p.getRating(),
+                    p.getTags() == null ? "" : p.getTags(),
+                    p.getContent(),
+                    p.getCreatedAt()
+                )
+            )
+            .toList();
+    }
+
+    @Override
+    public Set<String> reviewedOrderIds(List<String> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) return Set.of();
+        return Set.copyOf(dao.reviewedOrderIds(orderIds));
+    }
+
+    @Override
+    public boolean hasOrderReviews(String orderId) {
+        return dao.countOrderReviews(orderId) > 0;
     }
 
     @Override

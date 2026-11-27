@@ -14,6 +14,8 @@ public class ProductResponseDTO {
     private String productId;
     private String merchantId;
     private String merchantName;
+    private String merchantStoreName;
+    private String merchantLocation;
     private String storeId;
     private String title;
     private String description;

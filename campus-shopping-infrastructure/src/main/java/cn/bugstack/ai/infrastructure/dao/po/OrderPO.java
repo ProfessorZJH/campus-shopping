@@ -22,4 +22,8 @@ public class OrderPO {
     private Instant deadline;
     private Long version;
     private Instant createdAt;
+    private String buyerRemark;
+    private String pickupSlot;
+    private String paymentChannel;
+    private String paymentTradeNo;
 }

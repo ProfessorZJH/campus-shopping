@@ -19,7 +19,16 @@ public interface ITradingDao {
     int insertItem(@Param("p") OrderItemPO p);
     OrderPO order(@Param("id") String id, @Param("lock") boolean lock);
     List<OrderItemPO> items(@Param("id") String id, @Param("lock") boolean lock);
-    int saveOrder(@Param("id") String id, @Param("status") String status);
+    int saveOrder(
+        @Param("id") String id,
+        @Param("status") String status,
+        @Param("paymentChannel") String paymentChannel,
+        @Param("paymentTradeNo") String paymentTradeNo
+    );
+    int insertReview(@Param("p") OrderReviewPO p);
+    List<OrderReviewPO> reviewsByProduct(@Param("productId") String productId, @Param("limit") int limit);
+    List<String> reviewedOrderIds(@Param("ids") List<String> ids);
+    long countOrderReviews(@Param("orderId") String orderId);
     List<OrderPO> orders(
         @Param("buyer") String buyer,
         @Param("merchant") String merchant,

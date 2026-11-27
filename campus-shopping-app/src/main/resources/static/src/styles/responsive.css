@@ -1,309 +1,825 @@
+/* ==========================================================================
+   青柠校园 · V8 全端跨断点零溢出响应式规则 (responsive.css)
+   覆盖 4 套消费端大厂复刻 (taobao / jd / youpin / xiaohongshu)
+      + 3 套后台工作台 (arco / antd / meituan)
+   全视口 320px / 390px / 768px / 1024px / 1440px 零强权覆盖 & 零横向溢出
+   ========================================================================== */
+
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
 }
-@keyframes typing {
-  to {
-    opacity: 0.25;
-    transform: translateY(-3px);
-  }
+
+/* ---------- 1. Global Min-Width & Fixed-Containing-Block Guards ---------- */
+/* 保留 .consumer-width / .xhs-app-frame 在 consumer.css 中的居中版心最大宽度，绝不用 100% 覆盖导致大屏卡片撑大 */
+.consumer-width,
+.xhs-app-frame {
+  min-width: 0;
+  width: 100%;
 }
-@media (min-width: 620px) {
-  .consumer-width {
-    border-left: 1px solid #eaf1f5;
-    border-right: 1px solid #eaf1f5;
+
+.consumer-shell,
+.consumer-main,
+.xhs-main-column,
+.guide-shell,
+.ai-workspace,
+.ai-workspace-main,
+.ai-workspace-side,
+.merchant-shell,
+.merchant-content-shell,
+.merchant-main,
+.ops-card,
+.ops-table-wrap,
+.product-workspace,
+.product-list-panel,
+.product-inspector {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Prevent sticky/sidebar containers from creating a fixed-position trap for .mobile-tabbar */
+.consumer-header,
+.xhs-left-sidebar {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: none;
+  filter: none;
+}
+
+/* ---------- 2. Consumer Primary Navigation: Mobile Tabbar vs Desktop Modes ---------- */
+@media (max-width: 768px) {
+  .consumer-shell {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
+
+  .bt-util-desktop,
+  .bt-util-slogan,
+  .bt-util-sep,
+  .jd-cart-box,
+  .header-workbench-btn,
+  .desktop-only-head,
+  .floating-cart-pill {
+    display: none;
+  }
+
+  .bt-utility-inner {
+    padding: 4px 12px;
+    min-height: 32px;
+  }
+
+  .consumer-header-inner {
+    padding: 8px 12px 10px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .header-search-col,
+  .youpin-search-col,
+  .jd-search-col,
+  .xhs-search-col {
+    flex: 1 1 100%;
+    max-width: 100%;
+    order: 3;
+  }
+
+  .xhs-header-right {
+    display: none;
+  }
+
+  .consumer-width,
+  .xhs-content-width {
+    padding: 0 12px;
+  }
+
   .consumer-main {
-    padding-inline: 21px;
+    padding-top: 10px;
   }
-  .mobile-tabbar-inner {
-    border-radius: 15px 15px 0 0;
+
+  .big-search {
+    height: 38px;
+    padding: 0 3px 0 12px;
   }
-  .home-product-photo {
-    height: 191px;
+
+  .big-search button {
+    height: 30px;
+    padding: 0 15px;
+    font-size: 12.5px;
   }
-  .merchant-card {
-    flex-basis: 145px;
+
+  .popular-tags {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-right: 18px;
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0%, #000 88%, transparent 100%);
+  }
+
+  .popular-tags::-webkit-scrollbar {
+    display: none;
+  }
+
+  .popular-tags button,
+  .search-history-chip {
+    flex-shrink: 0;
+  }
+
+  .home-scene-banner {
+    min-height: 146px;
+    padding: 16px;
+  }
+
+  .scene-banner-copy {
+    max-width: 76%;
+  }
+
+  .scene-banner-copy h2,
+  .yp-banner-copy h2 {
+    font-size: 18px;
+  }
+
+  .scene-banner-copy p,
+  .yp-banner-copy p {
+    display: none;
+  }
+
+  .yp-banner-copy {
+    padding: 16px;
+  }
+
+  .feed-sticky-bar {
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .sort-tabs button {
+    height: 26px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+
+  .price-filter {
+    gap: 4px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    scrollbar-width: none;
+  }
+
+  .price-filter::-webkit-scrollbar {
+    display: none;
+  }
+
+  .price-filter input {
+    width: 54px;
+    height: 28px;
+    padding: 0 6px;
+    font-size: 11.5px;
+    flex-shrink: 0;
+  }
+
+  .price-filter button {
+    height: 28px;
+    padding: 0 8px;
+    font-size: 11.5px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .cashier-channels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 全模式统一移动端固定底栏 5 格主导航 */
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    display: block;
+    width: 100%;
+    height: auto;
+    padding: 0 0 env(safe-area-inset-bottom, 0px);
+    background: #ffffff;
+    border: 0;
+    border-top: 1px solid var(--border-default);
+    border-radius: 0;
+    box-shadow: 0 -2px 12px rgba(29, 33, 41, 0.06);
+  }
+
+  .consumer-shell .mobile-tabbar-inner {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: 100%;
+    height: 56px;
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar button {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 56px;
+    padding: 0 2px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--ink-secondary);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar button.selected {
+    background: transparent;
+    box-shadow: none;
+    color: var(--color-brand);
+    font-weight: 650;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar .nav-cart-badge {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 20px);
+    border: 1.5px solid #ffffff;
   }
 }
-@media (max-width: 1250px) {
-  .inventory-summary {
-    grid-template-columns: repeat(4, 1fr);
+
+@media (min-width: 769px) {
+  .consumer-shell {
+    padding-bottom: 0;
   }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar {
+    position: static;
+    display: inline-flex;
+    align-items: center;
+    width: auto;
+    height: auto;
+    padding: 0;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .consumer-shell .mobile-tabbar-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    height: 36px;
+    padding: 0;
+    margin: 0;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar button {
+    position: relative;
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: var(--radius-btn, 999px);
+    background: transparent;
+    color: var(--ink-secondary);
+    font-size: 13px;
+    font-weight: 550;
+    white-space: nowrap;
+    transition:
+      background-color 0.16s ease,
+      color 0.16s ease;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar button svg {
+    width: 15px;
+    height: 15px;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar button:hover {
+    background: var(--bg-subtle);
+    color: var(--ink-primary);
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar button.selected {
+    background: var(--color-brand-soft);
+    color: var(--color-brand);
+    font-weight: 650;
+  }
+
+  .consumer-shell .desktop-consumer-nav.mobile-tabbar .nav-cart-badge {
+    position: static;
+    border: 0;
+  }
+
+  /* 小米有品居中编辑感导航微调 */
+  .consumer-shell .youpin-center-nav .mobile-tabbar-inner {
+    gap: 8px;
+  }
+
+  .consumer-shell .youpin-center-nav button {
+    height: 38px;
+    padding: 0 12px;
+    border-radius: 2px;
+    font-size: 14.5px;
+    color: #333333;
+  }
+
+  .consumer-shell .youpin-center-nav button.selected {
+    background: transparent;
+    color: #845f3f;
+    font-weight: 700;
+    box-shadow: inset 0 -2px 0 #845f3f;
+  }
+}
+
+/* 769px..959px 平板端小红书顶部导航过渡态 */
+@media (min-width: 769px) and (max-width: 959px) {
+  .xhs-left-sidebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+
+  .xhs-sidebar-top {
+    flex: 1;
+  }
+}
+
+/* >= 960px 桌面端小红书左侧 224px 纯白竖向圆角胶囊主导航 */
+@media (min-width: 960px) {
+  .consumer-shell .xhs-vertical-nav.desktop-consumer-nav.mobile-tabbar {
+    display: block;
+    width: 100%;
+  }
+
+  .consumer-shell .xhs-vertical-nav .mobile-tabbar-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    width: 100%;
+    height: auto;
+  }
+
+  .consumer-shell .xhs-vertical-nav.desktop-consumer-nav.mobile-tabbar button {
+    width: 100%;
+    height: 46px;
+    padding: 0 16px;
+    border-radius: 999px;
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 15.5px;
+    font-weight: 500;
+    color: #333333;
+  }
+
+  .consumer-shell .xhs-vertical-nav.desktop-consumer-nav.mobile-tabbar button svg {
+    width: 19px;
+    height: 19px;
+  }
+
+  .consumer-shell .xhs-vertical-nav.desktop-consumer-nav.mobile-tabbar button:hover {
+    background: #f7f7f7;
+    color: #1f1f1f;
+  }
+
+  .consumer-shell .xhs-vertical-nav.desktop-consumer-nav.mobile-tabbar button.selected {
+    background: #f7f7f7;
+    color: #1f1f1f;
+    font-weight: 700;
+  }
+
+  .consumer-shell .xhs-vertical-nav.desktop-consumer-nav.mobile-tabbar button.selected svg {
+    color: #ff2442;
+  }
+
+  .consumer-shell .xhs-vertical-nav .nav-cart-badge {
+    margin-left: auto;
+  }
+}
+
+/* 769px..1024px 紧凑桌面端头部收敛，防止多元素挤压 */
+@media (min-width: 769px) and (max-width: 1060px) {
+  .consumer-header-inner {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+  }
+
+  .youpin-search-col {
+    flex: 1 1 240px;
+    max-width: 280px;
+  }
+
+  .bt-util-slogan {
+    display: none;
+  }
+}
+
+/* ---------- 3. Desktop & Large Tablet Backoffice Breakpoints (<= 1240px / <= 1024px) ---------- */
+@media (max-width: 1240px) {
+  .inventory-summary {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .summary-stockbar {
     display: none;
   }
+
   .product-workspace {
     grid-template-columns: minmax(0, 1fr) 320px;
   }
-  .summary-piece {
-    padding: 12px;
+
+  .telemetry-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .knowledge-layout {
+    grid-template-columns: 210px minmax(0, 1fr);
+  }
+
+  .kb-preview {
+    grid-column: 1 / -1;
   }
 }
-@media (max-width: 1080px) {
-  .merchant-shell {
-    grid-template-columns: 67px minmax(0, 1fr);
+
+@media (max-width: 1024px) {
+  .ops-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .ops-grid.stats-three-col,
+  .echarts-pro-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rbac-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------- 4. Tablet & Compact Sidebar Rail (561px .. 960px) ---------- */
+@media (max-width: 960px) {
+  .product-workspace,
+  .orders-split,
+  .inventory-grid,
+  .admin-review-grid,
+  .ops-grid,
+  .redis-plane-grid,
+  .kb-forms {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .knowledge-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .kb-preview {
+    grid-column: auto;
+  }
+
+  .product-inspector {
+    position: static;
+    max-height: none;
+  }
+
+  .order-inspector {
+    border-left: 0;
+    border-top: 1px solid var(--border-default);
+    padding: 16px 0 0;
+  }
+
+  .merchant-topbar {
+    height: auto;
+    min-height: 54px;
+    padding: 8px 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .merchant-main {
+    padding: 18px 16px 30px;
+  }
+}
+
+@media (min-width: 561px) and (max-width: 960px) {
+  .merchant-shell,
+  .merchant-shell.shell-arco,
+  .merchant-shell.shell-antd,
+  .merchant-shell.shell-meituan {
+    grid-template-columns: 72px minmax(0, 1fr);
+  }
+
   .merchant-sidebar {
-    padding-inline: 9px;
+    padding: 16px 8px;
+    align-items: center;
   }
+
   .merchant-brand {
     justify-content: center;
-    padding: 0;
+    padding: 4px 0 14px;
   }
-  .merchant-brand .brand-word,
-  .sidebar-caption,
-  .merchant-nav span:not(.nav-left-bar),
+
+  .merchant-brand .brand-word-stack,
+  .nav-group-title,
+  .merchant-nav button span,
   .sidebar-back span {
     display: none;
   }
+
+  .merchant-nav button,
   .sidebar-back {
+    width: 44px;
     justify-content: center;
     padding: 0;
   }
-  .merchant-nav {
-    margin-top: 38px;
-  }
-  .merchant-nav button {
-    justify-content: center;
-    padding: 0;
-  }
-  .merchant-nav button.active .nav-left-bar {
-    left: -9px;
-  }
-  .merchant-page-heading h1 {
-    font-size: 25px;
-  }
-  .product-workspace {
-    grid-template-columns: minmax(0, 1fr) 320px;
-  }
 }
-@media (max-width: 860px) {
-  .product-workspace {
-    grid-template-columns: 1fr;
-  }
-  .product-inspector {
-    position: static;
-    min-height: auto;
-  }
-  .product-list-panel {
-    min-height: 400px;
-  }
-  .merchant-main {
-    padding: 20px 14px 30px;
-  }
-  .inventory-summary {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .summary-piece {
-    gap: 7px;
-  }
-  .summary-piece .summary-icon {
-    width: 33px;
-    height: 33px;
-  }
-  .summary-piece div strong {
-    font-size: 20px;
-  }
-}
+
+/* ---------- 5. Mobile Backoffice & Guide (<= 560px) ---------- */
 @media (max-width: 560px) {
-  .merchant-shell {
-    grid-template-columns: 1fr;
+  .merchant-shell,
+  .merchant-shell.shell-arco,
+  .merchant-shell.shell-antd,
+  .merchant-shell.shell-meituan {
+    display: block;
+    grid-template-columns: minmax(0, 1fr);
   }
+
   .merchant-sidebar {
     display: none;
   }
+
+  /* CRITICAL CONTRACT (ui_copy_polish.py): relative + auto height so topbar never intercepts mobile-nav */
   .merchant-topbar {
-    height: 60px;
-    padding: 0 12px;
-  }
-  .merchant-topbar-tools {
+    position: relative;
+    height: auto;
+    min-height: 50px;
+    padding: 8px 12px;
+    flex-wrap: wrap;
     gap: 6px;
   }
-  .topbar-merchant-select {
-    max-width: 158px;
-    padding: 7px;
+
+  .topbar-left,
+  .topbar-crumb,
+  .merchant-topbar-tools {
+    min-width: 0;
+    flex-wrap: wrap;
   }
-  .topbar-merchant-select select {
-    max-width: 113px;
-  }
-  .admin-user {
+
+  .topbar-mall-btn,
+  .merchant-live-status,
+  .topbar-chime-btn span,
+  .admin-user,
+  .arco-crumb,
+  .topbar-brand-divider {
     display: none;
   }
+
+  .topbar-merchant-select {
+    max-width: 152px;
+    padding: 0 4px 0 8px;
+  }
+
+  .topbar-merchant-select select {
+    max-width: 112px;
+  }
+
+  /* CRITICAL CONTRACT (ui_design_system.py): horizontal scrollable nav visible at <= 560px */
+  .merchant-mobile-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow-x: auto;
+    max-width: 100%;
+    padding: 8px 12px;
+    background: #ffffff;
+    border-bottom: 1px solid var(--border-default);
+    scrollbar-width: none;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+  }
+
+  .merchant-mobile-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .merchant-mobile-nav button {
+    flex: 0 0 auto;
+    height: 34px;
+    padding: 0 11px;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--ink-secondary);
+    font-size: 12.5px;
+    font-weight: 500;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .merchant-mobile-nav button.active {
+    background: var(--color-brand-soft);
+    color: var(--color-brand);
+    font-weight: 600;
+    box-shadow: none;
+  }
+
+  .merchant-mobile-nav button.active svg {
+    color: var(--color-brand);
+  }
+
   .merchant-main {
-    padding: 18px 9px;
+    padding: 14px 12px 28px;
+    gap: 12px;
   }
+
+  .antd-page-header {
+    padding: 12px 12px 10px;
+  }
+
   .merchant-page-heading h1 {
-    font-size: 24px;
+    font-size: 20px;
   }
-  .inventory-summary {
-    grid-template-columns: repeat(2, 1fr);
+
+  .ops-card {
+    padding: 14px;
   }
+
+  .inventory-summary,
+  .todo-tiles-grid,
+  .ops-kpis,
+  .telemetry-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .ops-kpis > div,
+  .todo-tile,
   .summary-piece {
-    height: 75px;
+    padding: 12px;
   }
-  .product-toolbar {
-    padding-inline: 9px;
+
+  .ops-kpis > div strong,
+  .todo-tile strong,
+  .summary-piece div strong {
+    font-size: 22px;
   }
-  .table-select {
-    max-width: 98px;
+
+  .rbac-permissions,
+  .wenwen-scene-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
-  .product-tabs {
-    gap: 15px;
-    padding: 0 13px;
+
+  .donut-chart-layout {
+    flex-direction: column;
+    align-items: flex-start;
   }
+
+  .donut-legend {
+    width: 100%;
+  }
+}
+
+/* ---------- 6. Ultra-Narrow 390px / 320px Zero-Overflow Safeguards ---------- */
+@media (max-width: 420px) {
+  .consumer-header-inner,
+  .bt-utility-inner,
+  .xhs-left-sidebar,
+  .consumer-width,
+  .xhs-content-width {
+    padding-inline: 10px;
+  }
+
+  .brand-sub-en,
+  .topbar-brand-word {
+    display: none;
+  }
+
+  .bt-utility-left {
+    gap: 5px;
+  }
+
+  .bt-zone-trigger span {
+    max-width: 52px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .user-menu-name {
+    max-width: 48px;
+  }
+
+  .detail-cabin-card,
+  .detail-card,
+  .tmall-cart-summary,
+  .cashier-card,
+  .token-card {
+    padding: 14px;
+  }
+
+  .tmall-action-bar {
+    gap: 8px;
+  }
+
+  .tmall-action-bar .teal-button,
+  .buy-now-button {
+    padding: 0 10px;
+    font-size: 13.5px;
+  }
+
+  .order-stepper {
+    padding: 10px 8px;
+    gap: 4px;
+  }
+
+  .order-step {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .account-profile {
+    padding: 16px 14px;
+    flex-wrap: wrap;
+  }
+
+  .account-quick {
+    padding: 12px 6px;
+    gap: 4px;
+  }
+
+  .account-quick button {
+    font-size: 11.5px;
+    padding: 6px 2px;
+  }
+
+  .ai-wenwen-topbar {
+    padding: 12px 14px;
+  }
+
+  .chat-welcome.wenwen-welcome {
+    padding: 16px;
+  }
+
+  .chat-body {
+    max-width: 90%;
+  }
+
+  .rec-photo {
+    width: 64px;
+    height: 64px;
+  }
+
+  .product-toolbar .table-search {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+
   .toolbar-count {
     display: none;
   }
-  .merchant-page-heading {
-    align-items: center;
+
+  .quick-verify-inputs {
+    flex: 1 1 100%;
     flex-wrap: wrap;
+  }
+
+  .quick-verify-inputs .teal-button {
+    width: 100%;
+  }
+
+  .product-image-field {
     gap: 10px;
   }
-  .head-actions {
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-  .head-actions .outline-button {
-    padding: 0 10px;
-  }
-  .head-actions .teal-button {
-    padding: 0 10px;
+
+  .product-image-preview {
+    width: 84px;
+    height: 84px;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   *,
-  *:before,
-  *:after {
-    animation-duration: 0.001ms !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.001ms !important;
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
   }
 }
-.header-login {
-  background: #0bbba7;
-  color: #fff;
-  padding: 6px 12px;
-  border-radius: 16px;
-  font-size: 11px;
-  font-weight: 740;
-}
-.account-pill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: #e7f7f5;
-  color: #009d8e;
-  padding: 6px 9px;
-  border-radius: 13px;
-  font-size: 10px;
-}
-.merchant-login-action {
-  font-size: 11px;
-  color: #009e95;
-  text-decoration: underline;
-  margin-left: auto;
-}
-.login-dialog {
-  width: min(calc(100% - 32px), 370px);
-  padding: 25px 25px 21px;
-  background: white;
-  border-radius: 22px;
-  align-self: center;
-  box-shadow: 0 20px 70px #112b4b35;
-}
-.login-dialog-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 17px;
-}
-.auth-logo {
-  width: 43px;
-  height: 43px;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  color: white;
-  background: linear-gradient(145deg, #18d8b2, #03a5c4);
-}
-.login-dialog-heading button {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: #8fa1b0;
-}
-.login-dialog h2 {
-  font-size: 23px;
-  font-weight: 860;
-  letter-spacing: -0.6px;
-}
-.login-dialog p {
-  font-size: 11px;
-  color: #98acbc;
-  letter-spacing: 2px;
-  margin: 4px 0 23px;
-}
-.login-dialog label {
-  display: block;
-  font-size: 11.5px;
-  font-weight: 710;
-  color: #536a7f;
-  margin: 14px 0 8px;
-}
-.login-dialog input {
-  width: 100%;
-  height: 43px;
-  border-radius: var(--radius-input);
-  border: 1px solid #e0eaf0;
-  padding: 0 12px;
-  font-size: 12.5px;
-}
-.auth-hint {
-  display: block;
-  font-size: 11px;
-  color: #7f91a4;
-  line-height: 1.5;
-  margin-top: 8px;
-}
-.login-error {
-  font-size: 11px;
-  color: #ed6573;
-  margin-top: 11px;
-}
-.login-submit {
-  margin-top: 22px;
-  height: 43px;
-}
-.login-switch {
-  display: block;
-  margin: 16px auto 0;
-  color: #269d9a;
-  font-size: 11px;
-}
-
-@media (max-width: 500px) {
-  .rec-item {
-    flex: 0 0 calc((100% - 18px) / 3);
-  }
-  .rec-photo {
-    height: 108px;
-  }
-  .rec-card-content {
-    padding: 7px 6px 10px;
-  }
-  .rec-item-tag {
-    font-size: 9px;
-    letter-spacing: 0;
-  }
-  .rec-item strong {
-    font-size: 11px;
-  }
-  .rec-item small {
-    font-size: 9px;
-  }
-}
-
-/* 第二批：消费者交易页与平台/商户操作页，共享第一批色板与密度。 */

@@ -24,6 +24,9 @@ public class OrderExpiryJob {
     @Autowired(required = false)
     private IOrderExpiryCoordinator coordinator;
 
+    @Autowired(required = false)
+    private cn.bugstack.ai.domain.identity.adapter.port.ICampusRedisPort redisHub;
+
     private String cursor = "";
     private final java.util.concurrent.atomic.AtomicLong failures = new java.util.concurrent.atomic.AtomicLong();
     private final java.util.concurrent.atomic.AtomicLong scans = new java.util.concurrent.atomic.AtomicLong();
@@ -53,6 +56,10 @@ public class OrderExpiryJob {
                     failures.get()
                 );
             }
+            if (redisHub != null && (cursor == null || cursor.isEmpty())) {
+                String saved = redisHub.loadExpiryCursor();
+                if (saved != null && !saved.isEmpty()) cursor = saved;
+            }
             // 每轮最多2000笔；游标跨轮保留，失败旧单不会长期占据第一页。重启可安全重扫。
             for (int batch = 0; batch < 20; batch++) {
                 var ids = trading.expiredAfter(cursor, 100);
@@ -65,8 +72,10 @@ public class OrderExpiryJob {
                     }
                     cursor = id;
                 }
+                if (redisHub != null) redisHub.saveExpiryCursor(cursor);
                 if (ids.size() < 100) {
                     cursor = "";
+                    if (redisHub != null) redisHub.saveExpiryCursor("");
                     return;
                 }
             }

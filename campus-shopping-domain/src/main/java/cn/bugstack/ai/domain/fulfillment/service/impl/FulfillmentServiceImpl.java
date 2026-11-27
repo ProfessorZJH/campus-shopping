@@ -6,6 +6,7 @@ import cn.bugstack.ai.domain.fulfillment.adapter.repository.IFulfillmentReposito
 import cn.bugstack.ai.domain.fulfillment.model.aggregate.PickupAggregate;
 import cn.bugstack.ai.domain.fulfillment.model.valobj.*;
 import cn.bugstack.ai.domain.fulfillment.service.IFulfillmentService;
+import cn.bugstack.ai.types.common.Fingerprints;
 import cn.bugstack.ai.types.enums.ResponseCode;
 import java.security.SecureRandom;
 import java.time.*;
@@ -13,7 +14,7 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.*;
 
-/** 自提状态机实现，凭证为 256 位随机值，仅保存 SHA-256 摘要。 */
+/** 自提状态机实现，凭证为 256 位随机值及 6 位短码，仅保存 SHA-256 摘要。 */
 @Service
 public class FulfillmentServiceImpl implements IFulfillmentService {
 
@@ -28,12 +29,21 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
 
     @Transactional(propagation = Propagation.MANDATORY)
     public void create(String order, String merchant, String store, String buyer) {
+        create(order, merchant, store, buyer, "");
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void create(String order, String merchant, String store, String buyer, String pickupCode) {
         PickupVO old = repository.pickup(order, true);
         if (old != null) {
             require(old.merchantId().equals(merchant) && old.storeId().equals(store) && old.buyerId().equals(buyer), ResponseCode.STATE_CONFLICT);
             return;
         }
-        repository.insert(new PickupVO(UUID.randomUUID().toString(), order, merchant, store, buyer, PickupStatusEnumVO.WAIT_PREP.getCode(), null, null));
+        String cleanCode = optional(pickupCode, 16);
+        repository.insert(
+            new PickupVO(UUID.randomUUID().toString(), order, merchant, store, buyer, PickupStatusEnumVO.WAIT_PREP.getCode(), null, null, cleanCode, null)
+        );
     }
 
     public List<PickupVO> pickupsByOrders(List<String> orders) {
@@ -50,6 +60,12 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
     @Transactional(propagation = Propagation.MANDATORY)
     public PickupVO pickupForUpdate(String order) {
         return repository.pickup(order, true);
+    }
+
+    @Override
+    public PickupVO findReadyByMerchantAndPin(String merchant, String pinCode) {
+        if (merchant == null || merchant.isBlank() || pinCode == null || !pinCode.trim().matches("\\d{6}")) return null;
+        return repository.findReadyByMerchantAndPinHash(merchant, Fingerprints.sha256(pinCode.trim()));
     }
 
     private PickupAggregate required(String order) {
@@ -82,10 +98,12 @@ public class FulfillmentServiceImpl implements IFulfillmentService {
         byte[] bytes = new byte[32];
         random.nextBytes(bytes);
         String token = Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+        String pinCode = String.valueOf(100000 + random.nextInt(900000));
         Instant expires = clock.instant().plusSeconds(1200);
-        p.issue(token, expires);
-        repository.save(p.view());
-        return new PickupTokenVO(token, expires);
+        p.issue(token, pinCode, expires);
+        PickupVO saved = p.view();
+        repository.save(saved);
+        return new PickupTokenVO(token, expires, saved.pickupCode(), pinCode, "CS1|" + order + "|" + token);
     }
 
     @Transactional(propagation = Propagation.MANDATORY)

@@ -29,4 +29,8 @@ public interface ICatalogDao {
     int countImageUpload(@Param("objectKey") String objectKey, @Param("merchantId") String merchantId, @Param("usageType") String usageType);
     int claimProductImage(@Param("objectKey") String objectKey, @Param("merchantId") String merchantId, @Param("productId") String productId);
     List<String> productImageClaims(@Param("productId") String productId);
+    int addFavorite(@Param("userId") String userId, @Param("productId") String productId);
+    int removeFavorite(@Param("userId") String userId, @Param("productId") String productId);
+    List<String> favoriteProductIds(@Param("userId") String userId, @Param("limit") int limit);
+    int isFavorited(@Param("userId") String userId, @Param("productId") String productId);
 }

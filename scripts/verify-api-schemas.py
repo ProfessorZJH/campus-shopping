@@ -91,6 +91,8 @@ def main():
         check(order, payload, False, 'incomplete success response is rejected: '+str(payload))
     valid_order = {'orderId':'o','buyerId':'b','merchantId':'m','merchantName':'店铺','storeId':'s',
                    'pickupStoreName':'校园店','pickupLocation':'图书馆一层','status':'PAID','totalCent':100,
+                   'buyerRemark':'少冰','pickupSlot':'IMMEDIATE','paymentChannel':'WECHAT_PAY',
+                   'paymentTradeNo':'WX202611260001','reviewed':False,
                    'deadline':'2026-10-29T00:00:00Z','createdAt':'2026-10-29T00:00:00Z',
                    'items':[{'skuId':'sku','title':'笔','specKey':'黑色','imageUrl':'','unitPriceCent':100,'quantity':1}],
                    'events':[],'pickup':None,'afterSale':None}

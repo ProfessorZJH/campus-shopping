@@ -49,6 +49,9 @@ class Settings:
     llm_timeout_seconds: int = 60
     trusted_http_hosts: tuple[str, ...] = ('milvus', 'qdrant')
     milvus_transport: str = "auto"
+    redis_url: str = ""
+    redis_password: str = ""
+    redis_namespace: str = "cs:dev"
 
     @classmethod
     def from_env(cls):
@@ -62,7 +65,10 @@ class Settings:
             product_collection=os.getenv("MILVUS_PRODUCT_COLLECTION", "campus_products_v1"),
             max_concurrent_requests=int(os.getenv("AI_MAX_CONCURRENT_REQUESTS", "4")),
             llm_timeout_seconds=int(os.getenv("LLM_TIMEOUT_SECONDS", "60")),
-            trusted_http_hosts=tuple(x.strip().lower() for x in os.getenv('AI_TRUSTED_HTTP_HOSTS', 'milvus,qdrant').split(',') if x.strip()))
+            trusted_http_hosts=tuple(x.strip().lower() for x in os.getenv('AI_TRUSTED_HTTP_HOSTS', 'milvus,qdrant').split(',') if x.strip()),
+            redis_url=(os.getenv("AI_REDIS_URL") or os.getenv("REDIS_CACHE_ADDRESS") or "").strip(),
+            redis_password=(os.getenv("AI_REDIS_PASSWORD") or os.getenv("REDIS_CACHE_PASSWORD") or "").strip(),
+            redis_namespace=(os.getenv("REDIS_NAMESPACE") or "cs:dev").strip() or "cs:dev")
     def validate(self):
         if not 1<=self.max_concurrent_requests<=32:raise ValueError("AI_MAX_CONCURRENT_REQUESTS 必须为1至32")
         if len(self.api_key)<24:

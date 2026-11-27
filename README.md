@@ -2,6 +2,15 @@
 
 > 基于 **DDD 六边形模块化单体 + 受控混合 RAG 智能导购** 构建的校园商品交易与智能导购全栈系统。交易事实（价格、库存、权限、订单、核销、退款）由 Java/MySQL 强一致裁决；Python 智能服务仅承担意图解析、混合检索与加购提案建议，不拥有任何交易写权限。
 
+## 在线前端交互演示（GitHub Pages · 零后端直开）
+
+正式版默认锁定为 **淘宝 2025 PC 消费端 + 阿里 Ant Design Pro / 千牛商家工作台**；其余 3 套消费端与 2 套后台大厂 1:1 复刻已完整归档并发布至 `gh-pages` 演示分支（在 GitHub 仓库 `Settings -> Pages` 选择 `gh-pages / (root)` 即可开启）：
+
+- **交互演示画廊（4 套消费端 × 3 套后台总览）**：`https://professorzjh.github.io/campus-shopping/gallery.html`
+- **默认正式视觉（淘宝 2025 PC + 阿里千牛）**：`https://professorzjh.github.io/campus-shopping/`
+- **其他大厂复刻直达**：[京东 PC 版](https://professorzjh.github.io/campus-shopping/?ct=jd#/) · [小米有品 PC](https://professorzjh.github.io/campus-shopping/?ct=youpin#/) · [小红书 Web](https://professorzjh.github.io/campus-shopping/?ct=xiaohongshu#/) · [字节 Arco Pro 后台](https://professorzjh.github.io/campus-shopping/?at=arco#/merchant) · [美团商家版后台](https://professorzjh.github.io/campus-shopping/?at=meituan#/merchant)
+- **本地重新生成演示站**：`python scripts/build-demo-pages.py --out var/verify/gh-pages-site`
+
 ## 1. 核心架构与工程规模
 
 - **后端（Java 17 / Spring Boot 3.4.3 / MyBatis 3.0.4 / Redisson 4.8.0）**：

@@ -26,6 +26,7 @@ import java.util.concurrent.Flow;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 import java.util.function.LongConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -127,7 +128,27 @@ public class AiGatewayService {
      * 连接和共享 AI 准入在整个响应体读取完成前保持有效，避免客户端断开后提前释放执行槽。
      */
     public AiGatewayDTO.Answer queryStream(AiGatewayDTO.Query request, LongConsumer progress) {
+        return queryStream(request, progress, null);
+    }
+
+    /**
+     * 读取 Python 流式桥接的 SSE 协议；支持透传安全增量文本 delta，并始终在完整答案通过 Java 复核后再落库。
+     */
+    public AiGatewayDTO.Answer queryStream(AiGatewayDTO.Query request, LongConsumer progress, Consumer<String> deltaListener) {
         if (key == null || key.length() < 24) throw new AppException(ResponseCode.AI_UNAVAILABLE);
+        AiGatewayDTO.Query payload = request.streamText()
+            ? request
+            : new AiGatewayDTO.Query(
+                  request.question(),
+                  request.allowedDocumentIds(),
+                  request.offers(),
+                  request.history(),
+                  request.retrievalQuery(),
+                  request.semanticSkuIds(),
+                  request.externalDocumentIds(),
+                  request.answerPreview(),
+                  true
+              );
         String requestId = MDC.get("requestId");
         if (requestId == null) requestId = UUID.randomUUID().toString();
         int timeout = Math.max(5, Math.min(timeoutSeconds, 120));
@@ -139,7 +160,7 @@ public class AiGatewayService {
                 .header("Accept", "text/event-stream")
                 .header("X-Service-Key", key)
                 .header("X-Request-ID", requestId)
-                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(request), StandardCharsets.UTF_8))
+                .POST(HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(payload), StandardCharsets.UTF_8))
                 .build();
             CompletableFuture<HttpResponse<StreamChunkQueue>> future = client.sendAsync(httpRequest, ignored -> new StreamChunkQueue());
             HttpResponse<StreamChunkQueue> response;
@@ -155,7 +176,7 @@ public class AiGatewayService {
             try (StreamChunkQueue stream = response.body()) {
                 if (response.statusCode() == 422) throw new RemoteStatusException(422);
                 if (response.statusCode() / 100 != 2) throw new AppException(ResponseCode.AI_UNAVAILABLE);
-                AiGatewayDTO.Answer answer = readSseAnswer(stream, deadline, progress);
+                AiGatewayDTO.Answer answer = readSseAnswer(stream, deadline, progress, deltaListener);
                 if (answer != null) return answer;
             }
             throw new AppException(ResponseCode.AI_UNAVAILABLE);
@@ -169,7 +190,8 @@ public class AiGatewayService {
 
     private static final byte[] EMPTY_BYTES = new byte[0];
 
-    private AiGatewayDTO.Answer readSseAnswer(StreamChunkQueue stream, long deadline, LongConsumer progress) throws IOException, InterruptedException {
+    private AiGatewayDTO.Answer readSseAnswer(StreamChunkQueue stream, long deadline, LongConsumer progress, Consumer<String> deltaListener)
+        throws IOException, InterruptedException {
         CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
             .onMalformedInput(CodingErrorAction.REPLACE)
             .onUnmappableCharacter(CodingErrorAction.REPLACE);
@@ -196,7 +218,7 @@ public class AiGatewayService {
             while (true) {
                 var result = decoder.decode(input, chars, eof);
                 chars.flip();
-                AiGatewayDTO.Answer answer = drainDecodedChars(chars, currentLine, state, progress);
+                AiGatewayDTO.Answer answer = drainDecodedChars(chars, currentLine, state, progress, deltaListener);
                 if (answer != null) return answer;
                 chars.clear();
                 if (result.isUnderflow()) break;
@@ -209,7 +231,7 @@ public class AiGatewayService {
                 while (true) {
                     var flushResult = decoder.flush(chars);
                     chars.flip();
-                    AiGatewayDTO.Answer answer = drainDecodedChars(chars, currentLine, state, progress);
+                    AiGatewayDTO.Answer answer = drainDecodedChars(chars, currentLine, state, progress, deltaListener);
                     if (answer != null) return answer;
                     chars.clear();
                     if (flushResult.isUnderflow()) break;
@@ -217,21 +239,27 @@ public class AiGatewayService {
                 if (!currentLine.isEmpty()) {
                     String trailing = trimCarriageReturn(currentLine);
                     currentLine.setLength(0);
-                    AiGatewayDTO.Answer last = processSseLine(trailing, state, progress);
+                    AiGatewayDTO.Answer last = processSseLine(trailing, state, progress, deltaListener);
                     if (last != null) return last;
                 }
-                return consumeStreamEvent(state[0], state[1], progress);
+                return consumeStreamEvent(state[0], state[1], progress, deltaListener);
             }
         }
     }
 
-    private AiGatewayDTO.Answer drainDecodedChars(CharBuffer chars, StringBuilder currentLine, String[] state, LongConsumer progress) throws IOException {
+    private AiGatewayDTO.Answer drainDecodedChars(
+        CharBuffer chars,
+        StringBuilder currentLine,
+        String[] state,
+        LongConsumer progress,
+        Consumer<String> deltaListener
+    ) throws IOException {
         while (chars.hasRemaining()) {
             char ch = chars.get();
             if (ch == '\n') {
                 String line = trimCarriageReturn(currentLine);
                 currentLine.setLength(0);
-                AiGatewayDTO.Answer answer = processSseLine(line, state, progress);
+                AiGatewayDTO.Answer answer = processSseLine(line, state, progress, deltaListener);
                 if (answer != null) return answer;
             } else {
                 if (currentLine.length() >= 65536) throw new AppException(ResponseCode.AI_UNAVAILABLE);
@@ -246,9 +274,9 @@ public class AiGatewayService {
         return len > 0 && line.charAt(len - 1) == '\r' ? line.substring(0, len - 1) : line.toString();
     }
 
-    private AiGatewayDTO.Answer processSseLine(String line, String[] state, LongConsumer progress) throws IOException {
+    private AiGatewayDTO.Answer processSseLine(String line, String[] state, LongConsumer progress, Consumer<String> deltaListener) throws IOException {
         if (line.isEmpty()) {
-            AiGatewayDTO.Answer answer = consumeStreamEvent(state[0], state[1], progress);
+            AiGatewayDTO.Answer answer = consumeStreamEvent(state[0], state[1], progress, deltaListener);
             state[0] = null;
             state[1] = null;
             return answer;
@@ -263,12 +291,17 @@ public class AiGatewayService {
         return null;
     }
 
-    private AiGatewayDTO.Answer consumeStreamEvent(String event, String data, LongConsumer progress) throws IOException {
+    private AiGatewayDTO.Answer consumeStreamEvent(String event, String data, LongConsumer progress, Consumer<String> deltaListener) throws IOException {
         if (event == null || data == null || data.isBlank()) return null;
         var node = mapper.readTree(data);
         if (node == null || !node.isObject()) throw new AppException(ResponseCode.AI_UNAVAILABLE);
         return switch (event) {
             case "started" -> null;
+            case "delta" -> {
+                String text = node.path("text").asText("");
+                if (!text.isEmpty() && deltaListener != null) deltaListener.accept(text);
+                yield null;
+            }
             case "progress" -> {
                 long bytes = node.path("bytes").asLong(-1);
                 if (bytes < 0) throw new AppException(ResponseCode.AI_UNAVAILABLE);

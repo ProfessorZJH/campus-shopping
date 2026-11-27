@@ -268,6 +268,7 @@ public class ShoppingAiController implements IShoppingAiApi {
             .quantity(i.quantity())
             .detailAvailable(available)
             .detailUnavailableReason(reason)
+            .reason(i.reason() == null ? "" : i.reason())
             .build();
     }
 

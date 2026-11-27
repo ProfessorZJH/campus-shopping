@@ -95,11 +95,18 @@ public final class RecommendationPolicy {
                     quote.quoteVersion(),
                     recommendation.quantity(),
                     quote.imageUrl(),
-                    quote.productId()
+                    quote.productId(),
+                    cleanReason(recommendation.reason())
                 )
             );
             if (result.size() == (constraints.requestedQuantity() == null ? 3 : 1)) break;
         }
         return List.copyOf(result);
+    }
+
+    private static String cleanReason(String raw) {
+        if (raw == null || raw.isBlank()) return "";
+        String trimmed = raw.trim();
+        return trimmed.length() <= 120 ? trimmed : trimmed.substring(0, 120);
     }
 }

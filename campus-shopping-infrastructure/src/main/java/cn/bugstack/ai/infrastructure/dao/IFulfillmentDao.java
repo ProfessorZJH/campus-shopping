@@ -10,6 +10,7 @@ import org.apache.ibatis.annotations.*;
 public interface IFulfillmentDao {
     List<PickupPO> pickupsByOrders(@Param("ids") List<String> ids);
     PickupPO pickup(@Param("order") String order, @Param("lock") boolean lock);
+    PickupPO findReadyByMerchantAndPinHash(@Param("merchant") String merchant, @Param("pinHash") String pinHash);
     int insert(@Param("p") PickupPO p);
     int save(@Param("p") PickupPO p);
     List<PickupPO> list(@Param("merchant") String merchant, @Param("status") String status, @Param("offset") int offset, @Param("limit") int limit);

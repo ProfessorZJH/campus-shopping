@@ -10,9 +10,9 @@ from fastapi.responses import JSONResponse,StreamingResponse
 from pydantic import BaseModel,Field,ConfigDict
 from .config import Settings
 from .retrieval import KnowledgeStore
-from .engine import answer,recall_terms,StreamCancelled
+from .engine import answer,recall_terms,StreamCancelled,iter_answer_chunks
 from .product_index import ProductIndex
-from .observability import RequestContext, failure, diagnostics, ExecutionGate
+from .observability import RequestContext, failure, diagnostics, ExecutionGate, embedding_cache_hits
 from .runtime_bridge import RuntimeBridge, RuntimeBridgeError, RuntimeBridgeRequest
 
 class RequestBodyLimit:
@@ -64,6 +64,7 @@ class QueryRequest(StrictModel):
     history: list[HistoryItem]=Field(default_factory=list,max_length=12)
     semanticSkuIds: list[str]=Field(default_factory=list,max_length=300)
     answerPreview: bool=True
+    streamText: bool=False
 class RecallRequest(StrictModel):
     question: str=Field(min_length=1,max_length=2000)
     history: list[HistoryItem]=Field(default_factory=list,max_length=12)
@@ -99,7 +100,7 @@ def create_app(settings: Settings|None=None):
     app.add_middleware(RequestBodyLimit, limit=4_000_000)
     app.add_middleware(RequestContext)
     @app.get('/health')
-    def health():return {'status':'UP','llmConfigured':bool(settings.llm_key),'retrievalMode':store.provider.vector_mode,'vectorStore':'QDRANT' if settings.qdrant_url else 'LOCAL_SQLITE','productIndex':'MILVUS' if products.enabled else 'DISABLED'}
+    def health():return {'status':'UP','llmConfigured':bool(settings.llm_key),'retrievalMode':store.provider.vector_mode,'vectorStore':'QDRANT' if settings.qdrant_url else 'LOCAL_SQLITE','productIndex':'MILVUS' if products.enabled else 'DISABLED','redisConnected':store.provider.redis_connected,'embeddingCacheHits':embedding_cache_hits()}
     @app.get('/ready',dependencies=[Depends(authorized)])
     def readiness():
         # 本地事实可读决定就绪；外部依赖只报告最近实际调用，不为探针额外发送数据。
@@ -199,6 +200,12 @@ def create_app(settings: Settings|None=None):
             def work():
                 try:
                     result=answer(store,request.question,request.allowedDocumentIds,[o.model_dump() for o in request.offers],[h.model_dump() for h in request.history],request.retrievalQuery,request.semanticSkuIds,external_document_ids=request.externalDocumentIds,_stream_progress=progress if settings.llm_key else None,answer_preview=request.answerPreview)
+                    if request.streamText and isinstance(result,dict):
+                        final_answer=result.get('answer') or ''
+                        if isinstance(final_answer,str) and final_answer:
+                            for chunk in iter_answer_chunks(final_answer):
+                                if stopped.is_set():raise StreamCancelled()
+                                publish('delta',{'text':chunk})
                     publish('completed',result)
                 except StreamCancelled:publish('failed',{'errorCode':'CANCELLED'})
                 except Exception as error:

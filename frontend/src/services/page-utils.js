@@ -95,6 +95,20 @@ export const proposalStatusLabel = statusLabel({
   EXPIRED: '已过期',
 });
 export const accountStatusLabel = statusLabel({ ACTIVE: '账号正常', DISABLED: '账号已停用' });
+export const paymentChannelLabel = statusLabel({
+  WECHAT_PAY: '微信支付',
+  ALIPAY: '支付宝',
+  CAMPUS_CARD: '校园一卡通',
+});
+export function pickupSlotLabel(slot) {
+  if (!slot || slot === 'IMMEDIATE') return '立即备餐（约8分钟）';
+  return String(slot);
+}
+export function formatPin(pin) {
+  const digits = String(pin || '').replace(/\s+/g, '');
+  if (digits.length === 6) return digits.slice(0, 3) + ' ' + digits.slice(3);
+  return digits;
+}
 export function priceSku(product) {
   return (
     [...(product?.skus || [])]

@@ -21,6 +21,8 @@ public interface ICatalogApi {
     );
     /** 查看可售商品与实时库存快照。 */
     Response<ProductResponseDTO> detail(String productId);
+    /** 查看公开商品的真实买家评价汇总。 */
+    Response<ProductReviewSummaryResponseDTO> reviews(String productId, int limit);
     /** 商品类目列表。 */
     Response<List<CategoryResponseDTO>> categories();
     /** 商户自己的商品，包括草稿和下架。 */

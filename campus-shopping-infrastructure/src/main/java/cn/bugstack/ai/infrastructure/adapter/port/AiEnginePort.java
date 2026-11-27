@@ -65,16 +65,25 @@ public class AiEnginePort implements IAiEnginePort {
     }
 
     public AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress) {
-        AiGatewayDTO.Query request = toRequest(query, true);
+        return queryStream(query, progress, null);
+    }
+
+    @Override
+    public AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress, java.util.function.Consumer<String> deltaListener) {
+        AiGatewayDTO.Query request = toRequest(query, true, true);
         try {
-            return toAnswer(gateway.queryStream(request, progress));
+            return toAnswer(gateway.queryStream(request, progress, deltaListener));
         } catch (AiGatewayService.RemoteStatusException rejected) {
             if (rejected.status() != 422) throw rejected;
-            return toAnswer(queryGatewayWithFallback(request));
+            return toAnswer(queryGatewayWithFallback(toRequest(query, true, false)));
         }
     }
 
     private AiGatewayDTO.Query toRequest(AiQueryEntity query, boolean answerPreview) {
+        return toRequest(query, answerPreview, false);
+    }
+
+    private AiGatewayDTO.Query toRequest(AiQueryEntity query, boolean answerPreview, boolean streamText) {
         return new AiGatewayDTO.Query(
             query.question(),
             query.allowedDocumentIds(),
@@ -93,7 +102,8 @@ public class AiEnginePort implements IAiEnginePort {
             query.retrievalQuery(),
             query.semanticSkuIds(),
             query.externalDocumentIds(),
-            answerPreview
+            answerPreview,
+            streamText
         );
     }
 

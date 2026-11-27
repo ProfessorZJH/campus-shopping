@@ -58,6 +58,7 @@ from .provider import Provider
 class KnowledgeStore:
     def __init__(self,settings: Settings):
         self.settings=settings;self.provider=Provider(settings);self.lock=threading.RLock();self._delete_epoch: dict[str,int]={};self._deleting: dict[str,int]={}
+        self._qdrant_lock=threading.Lock();self._qdrant_client: httpx.Client | None=None
         db_path = Path(settings.db_path)
         fresh = not db_path.exists()
         self.db=sqlite3.connect(settings.db_path,check_same_thread=False,isolation_level=None)
@@ -71,12 +72,26 @@ class KnowledgeStore:
             chunks={row['name'] for row in self.db.execute('PRAGMA table_info(chunks)')} if 'chunks' in tables else set()
             if DOC_COLUMNS - docs or CHUNK_COLUMNS - chunks:
                 raise RuntimeError('SQLite 索引结构需要先执行显式迁移')
-    def close(self):self.db.close()
+    def close(self):
+        with self._qdrant_lock:
+            if self._qdrant_client is not None and not self._qdrant_client.is_closed:
+                try:self._qdrant_client.close()
+                except Exception:pass
+            self._qdrant_client=None
+        if hasattr(self.provider,'close'):self.provider.close()
+        self.db.close()
     @observed('qdrant')
     def _qdrant(self,method: str,path: str,body: dict|None=None):
         s=self.settings
+        headers={'api-key':s.qdrant_key} if s.qdrant_key else {}
+        if getattr(httpx.Client,'__module__','').startswith('httpx'):
+            with self._qdrant_lock:
+                if self._qdrant_client is None or self._qdrant_client.is_closed:
+                    self._qdrant_client=httpx.Client(timeout=30.0,follow_redirects=False,trust_env=False,limits=httpx.Limits(max_connections=16,max_keepalive_connections=8))
+                client=self._qdrant_client
+            return bounded_json(client,method,s.qdrant_url+path,limit=4_194_304,headers=headers,json=body).get('result')
         with httpx.Client(timeout=30.0,follow_redirects=False,trust_env=False) as client:
-            return bounded_json(client,method,s.qdrant_url+path,limit=4_194_304,headers={'api-key':s.qdrant_key} if s.qdrant_key else {},json=body).get('result')
+            return bounded_json(client,method,s.qdrant_url+path,limit=4_194_304,headers=headers,json=body).get('result')
     def _ensure_collection(self,size: int):
         s=self.settings
         try:

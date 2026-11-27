@@ -25,6 +25,11 @@ public interface IAiEnginePort {
         return query(query);
     }
 
+    /** 流式查询并回调文本增量；不支持流式增量时回退为标准流式查询。 */
+    default AiAnswerVO queryStream(AiQueryEntity query, LongConsumer progress, java.util.function.Consumer<String> deltaListener) {
+        return queryStream(query, progress);
+    }
+
     /** 只返回可能相关的商品ID，不包含价格与库存；故障时由调用者降级关键词检索。 */
     java.util.List<String> semanticProducts(String question, int limit);
 

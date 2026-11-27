@@ -86,6 +86,8 @@ public final class ApiViews {
         return ProductResponseDTO.builder()
             .productId(p.getId())
             .merchantName(model.merchantName())
+            .merchantStoreName(model.merchantStoreName())
+            .merchantLocation(model.merchantLocation())
             .merchantId(p.getMerchantId())
             .storeId(p.getStoreId())
             .title(p.getTitle())
@@ -140,11 +142,24 @@ public final class ApiViews {
                   .reason(a.reason())
                   .decisionReason(a.decisionReason())
                   .createdAt(a.createdAt())
+                  .evidenceImageUrl(a.evidenceImageUrl() == null ? "" : a.evidenceImageUrl())
                   .build();
     }
 
     public static OrderEventResponseDTO orderEvent(OrderEventVO e) {
         return OrderEventResponseDTO.builder().eventId(e.id()).type(e.type()).occurredAt(e.occurredAt()).actorRole(e.actorRole()).reason(e.reason()).build();
+    }
+
+    public static ProductReviewResponseDTO review(cn.bugstack.ai.domain.trading.model.valobj.OrderReviewVO r) {
+        return ProductReviewResponseDTO.builder()
+            .id(r.id())
+            .productId(r.productId())
+            .buyerDisplayName(r.buyerName())
+            .rating(r.rating())
+            .tags(r.tags() == null ? "" : r.tags())
+            .content(r.content())
+            .createdAt(r.createdAt())
+            .build();
     }
 
     public static OrderResponseDTO order(OrderReadModel model) {
@@ -158,6 +173,11 @@ public final class ApiViews {
             .storeId(model.storeId())
             .pickupStoreName(model.pickupStoreName())
             .pickupLocation(model.pickupLocation())
+            .buyerRemark(model.buyerRemark())
+            .pickupSlot(model.pickupSlot())
+            .paymentChannel(model.paymentChannel())
+            .paymentTradeNo(model.paymentTradeNo())
+            .reviewed(model.reviewed())
             .status(model.status())
             .totalCent(model.totalCent())
             .deadline(model.deadline())
@@ -178,7 +198,15 @@ public final class ApiViews {
                     )
                     .toList()
             )
-            .pickup(p == null ? null : PickupResponseDTO.builder().status(p.status()).expiresAt(p.expiresAt()).build())
+            .pickup(
+                p == null
+                    ? null
+                    : PickupResponseDTO.builder()
+                          .status(p.status())
+                          .expiresAt(p.expiresAt())
+                          .pickupCode(p.pickupCode() == null ? "" : p.pickupCode())
+                          .build()
+            )
             .events(model.events().stream().map(ApiViews::orderEvent).toList())
             .afterSale(afterSale(a))
             .build();

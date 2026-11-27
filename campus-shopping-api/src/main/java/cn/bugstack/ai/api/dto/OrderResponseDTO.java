@@ -18,6 +18,11 @@ public class OrderResponseDTO {
     private String storeId;
     private String pickupStoreName;
     private String pickupLocation;
+    private String buyerRemark;
+    private String pickupSlot;
+    private String paymentChannel;
+    private String paymentTradeNo;
+    private Boolean reviewed;
     private String status;
     private Long totalCent;
     private Instant deadline;

@@ -170,6 +170,11 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
         return afterSales.countAfterSales(null, null, state);
     }
 
+    @Override
+    public List<cn.bugstack.ai.domain.trading.model.valobj.OrderReviewVO> productReviews(String productId, int limit) {
+        return orders.reviewsByProduct(productId, Math.max(1, Math.min(limit, 100)));
+    }
+
     private List<OrderReadModel> views(List<OrderAggregate> page) {
         if (page.isEmpty()) return List.of();
         var ids = page.stream().map(OrderAggregate::getId).toList();
@@ -186,12 +191,20 @@ public class OrderQueryCaseImpl implements IOrderQueryCase {
             .stream()
             .collect(Collectors.toMap(MerchantVO::id, MerchantVO::name));
         var timelines = events.eventsByOrders(ids);
+        Set<String> reviewed = orders.reviewedOrderIds(ids);
         return page
             .stream()
             .map(o -> {
                 String name = names.get(o.getMerchantId());
                 if (name == null) throw new IllegalStateException("订单所属商户丢失");
-                return new OrderReadModel(o, name, pickups.get(o.getId()), refunds.get(o.getId()), timelines.getOrDefault(o.getId(), List.of()));
+                return new OrderReadModel(
+                    o,
+                    name,
+                    pickups.get(o.getId()),
+                    refunds.get(o.getId()),
+                    timelines.getOrDefault(o.getId(), List.of()),
+                    reviewed != null && reviewed.contains(o.getId())
+                );
             })
             .toList();
     }

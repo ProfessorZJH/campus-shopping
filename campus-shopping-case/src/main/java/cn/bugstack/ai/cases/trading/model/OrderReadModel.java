@@ -17,6 +17,11 @@ public record OrderReadModel(
     String storeId,
     String pickupStoreName,
     String pickupLocation,
+    String buyerRemark,
+    String pickupSlot,
+    String paymentChannel,
+    String paymentTradeNo,
+    boolean reviewed,
     String status,
     long totalCent,
     Instant deadline,
@@ -28,10 +33,14 @@ public record OrderReadModel(
     List<OrderEventVO> events
 ) {
     public OrderReadModel(OrderAggregate order, String merchantName, PickupVO pickup, AfterSaleVO afterSale) {
-        this(order, merchantName, pickup, afterSale, List.of());
+        this(order, merchantName, pickup, afterSale, List.of(), false);
     }
 
     public OrderReadModel(OrderAggregate order, String merchantName, PickupVO pickup, AfterSaleVO afterSale, List<OrderEventVO> events) {
+        this(order, merchantName, pickup, afterSale, events, false);
+    }
+
+    public OrderReadModel(OrderAggregate order, String merchantName, PickupVO pickup, AfterSaleVO afterSale, List<OrderEventVO> events, boolean reviewed) {
         this(
             order.getId(),
             order.getBuyerId(),
@@ -39,6 +48,11 @@ public record OrderReadModel(
             order.getStoreId(),
             order.getPickupStoreName(),
             order.getPickupLocation(),
+            order.getBuyerRemark(),
+            order.getPickupSlot(),
+            order.getPaymentChannel(),
+            order.getPaymentTradeNo(),
+            reviewed,
             order.getStatus(),
             order.getTotalCent(),
             order.getDeadline(),
@@ -53,6 +67,10 @@ public record OrderReadModel(
 
     public OrderReadModel {
         Objects.requireNonNull(orderId);
+        buyerRemark = buyerRemark == null ? "" : buyerRemark;
+        pickupSlot = pickupSlot == null || pickupSlot.isBlank() ? "IMMEDIATE" : pickupSlot;
+        paymentChannel = paymentChannel == null ? "" : paymentChannel;
+        paymentTradeNo = paymentTradeNo == null ? "" : paymentTradeNo;
         items = List.copyOf(items);
         events = List.copyOf(events);
         Objects.requireNonNull(merchantName);

@@ -8,25 +8,38 @@
       "expectedHistoryPrefix": "",
       "expectedHistory": [],
       "sourceFingerprint": "6594fcd4cff4a05c19a8d079dbc9c6dbc6d42f678b450bd16ee9c3f45be6a3f9",
-      "targetFingerprint": "bdcf5727947149d744c981d2aef68e20c353e8eb250d3413782bcd5b2094290f"
+      "targetFingerprint": "9233d6e7cf8c9ae57929c5a8a063430f6978512aeebe4012fb8befedd882e4b6"
     },
     {
       "release": "pre-redis-7bd21e2",
       "file": "docs/database/baselines/pre-redis-7bd21e2.sql",
       "sourceCommit": "7bd21e2^",
       "expectedHistoryPrefix": "V20261028_01..V20261030_01",
-      "expectedHistory": ["V20261028_01", "V20261028_02", "V20261029_01", "V20261030_01"],
+      "expectedHistory": [
+        "V20261028_01",
+        "V20261028_02",
+        "V20261029_01",
+        "V20261030_01"
+      ],
       "sourceFingerprint": "0adf2987adf2b2f201599b683eb132834cbec5ee641603d5a6c8a4d1f18cb5a5",
-      "targetFingerprint": "bdcf5727947149d744c981d2aef68e20c353e8eb250d3413782bcd5b2094290f"
+      "targetFingerprint": "9233d6e7cf8c9ae57929c5a8a063430f6978512aeebe4012fb8befedd882e4b6"
     },
     {
       "release": "pre-multiimage-ab31f89",
       "file": "docs/database/baselines/pre-multiimage-ab31f89.sql",
       "sourceCommit": "ab31f89^",
       "expectedHistoryPrefix": "V20261028_01..V20261031_03",
-      "expectedHistory": ["V20261028_01", "V20261028_02", "V20261029_01", "V20261030_01", "V20261031_01", "V20261031_02", "V20261031_03"],
+      "expectedHistory": [
+        "V20261028_01",
+        "V20261028_02",
+        "V20261029_01",
+        "V20261030_01",
+        "V20261031_01",
+        "V20261031_02",
+        "V20261031_03"
+      ],
       "sourceFingerprint": "7fc16b68aa7356912644b302df67153e9ad87c8629972c0c4651875958d66541",
-      "targetFingerprint": "bdcf5727947149d744c981d2aef68e20c353e8eb250d3413782bcd5b2094290f"
+      "targetFingerprint": "9233d6e7cf8c9ae57929c5a8a063430f6978512aeebe4012fb8befedd882e4b6"
     }
   ]
 }

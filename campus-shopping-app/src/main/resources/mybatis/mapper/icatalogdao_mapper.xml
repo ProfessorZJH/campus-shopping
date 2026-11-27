@@ -56,4 +56,8 @@ SELECT image_id,product_id,provider,object_key,url,sort_order FROM cat_product_i
         SELECT object_key FROM cat_product_image_upload WHERE product_id=#{productId}
         UNION SELECT object_key FROM cat_product_image WHERE product_id=#{productId}
     </select>
+    <insert id="addFavorite">INSERT IGNORE INTO cat_product_favorite(user_id,product_id) VALUES(#{userId},#{productId})</insert>
+    <delete id="removeFavorite">DELETE FROM cat_product_favorite WHERE user_id=#{userId} AND product_id=#{productId}</delete>
+    <select id="favoriteProductIds" resultType="java.lang.String">SELECT product_id FROM cat_product_favorite WHERE user_id=#{userId} ORDER BY created_at DESC,product_id LIMIT #{limit}</select>
+    <select id="isFavorited" resultType="int">SELECT COUNT(*) FROM cat_product_favorite WHERE user_id=#{userId} AND product_id=#{productId}</select>
 </mapper>
